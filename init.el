@@ -16,6 +16,8 @@
 ; (setq catppuccin-flavor 'latte) ; or 'latte, 'macchiato, or 'mocha
 ; (load-theme 'catppuccin t)
 
+;; Load snazzy theme
+(load-theme 'snazzy t)
 
 
 
