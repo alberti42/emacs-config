@@ -16,9 +16,6 @@
 (setq catppuccin-flavor 'macchiato) ; or 'latte, 'macchiato, or 'mocha
 (load-theme 'catppuccin t)
 
-;; Load snazzy theme
-; (load-theme 'snazzy t)
-
 (use-package all-the-icons
   :ensure t)
 
@@ -42,7 +39,9 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(smart-mode-line all-the-icons ## snazzy-theme)))
+ '(custom-safe-themes
+   '("0a2168af143fb09b67e4ea2a7cef857e8a7dad0ba3726b500c6a579775129635" "0fd2e0ffc4a09142407f598a68632c49df67334ccc9fafe007ced8b79f40bb01" default))
+ '(package-selected-packages '(smart-mode-line all-the-icons ##)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
