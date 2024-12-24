@@ -15,6 +15,8 @@
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
 (setq catppuccin-flavor 'macchiato) ; or 'latte, 'macchiato, or 'mocha
 (load-theme 'catppuccin t)
+(set-face-attribute 'default nil :background "#282935")
+(set-face-attribute 'mode-line nil :background "#22232e")
 
 (use-package all-the-icons
   :ensure t)
