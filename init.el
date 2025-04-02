@@ -15,6 +15,9 @@
 ;; Configure TAB character’s length
 (setq-default tab-width 4)
 
+;; Save minibuffer history
+(savehist-mode 1)
+
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
 (setq catppuccin-flavor 'frappe) ; or 'latte, 'macchiato, or 'mocha
 (load-theme 'catppuccin :no-confirm)
