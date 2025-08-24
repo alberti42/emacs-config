@@ -1,16 +1,24 @@
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
-(menu-bar-mode -1) ; turn off menu ba
+(menu-bar-mode -1) ; turn off menu bar
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
 ;; Emacs packages
 ;; Any add to list for package-archives (to add marmalade or melpa) goes here
 ;; MELPA is a popular emacs package loader
 (require 'package)
-(add-to-list 'package-archives 
-    '("MELPA" .
-      "http://melpa.org/packages/"))
+(setq package-archives
+      '(("gnu"   . "https://elpa.gnu.org/packages/")
+        ("melpa" . "https://melpa.org/packages/")))  ; was http + "MELPA"
 (package-initialize)
+
+;; Refresh once if cache is empty, then install what you need
+(unless package-archive-contents
+  (package-refresh-contents))
+
+(dolist (pkg '(use-package magit catppuccin-theme lua-mode ssh-config-mode pbcopy xclip))
+  (unless (package-installed-p pkg)
+    (package-install pkg)))
 
 ;; Configure TAB character’s length
 (setq-default tab-width 4)
@@ -38,7 +46,8 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(ssh-config-mode catppuccin-theme)))
+ '(package-selected-packages
+   '(## catppuccin-theme lua-mode magit pbcopy ssh-config-mode xclip)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -46,4 +55,21 @@
  ;; If there is more than one, they won't work right.
  )
 
+;; Always sync kill ring <-> system clipboard
+(setq select-enable-clipboard t)
+(setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
 
+(cond
+ ;; macOS: use pbcopy in terminal
+ ((eq system-type 'darwin)
+  (use-package pbcopy
+    :ensure t
+    :config
+    (turn-on-pbcopy)))
+
+ ;; GNU/Linux: use xclip in terminal
+ ((eq system-type 'gnu/linux)
+  (use-package xclip
+    :ensure t
+    :config
+    (xclip-mode 1))))
