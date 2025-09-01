@@ -58,7 +58,6 @@
 ;; Always sync kill ring <-> system clipboard
 (setq select-enable-clipboard t)
 (setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
-
 (cond
  ;; macOS: use pbcopy in terminal
  ((eq system-type 'darwin)
@@ -73,3 +72,20 @@
     :ensure t
     :config
     (xclip-mode 1))))
+
+;; Enable mouse support
+(unless window-system
+  (require 'mouse)
+  (xterm-mouse-mode 1)
+  (global-set-key [wheel-up] (lambda ()
+                               (interactive)
+                               (scroll-down 1)))
+  (global-set-key [wheel-down] (lambda ()
+                                 (interactive)
+                                 (scroll-up 1)))
+  ;; Optional: support shift/ctrl modifiers
+  (global-set-key [double-wheel-up] 'scroll-down-command)
+  (global-set-key [double-wheel-down] 'scroll-up-command)
+  (defun track-mouse (e))
+  (setq mouse-sel-mode t))
+
