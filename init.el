@@ -16,6 +16,7 @@
 (unless package-archive-contents
   (package-refresh-contents))
 
+;; Install packages if they are not installed yet
 (dolist (pkg '(use-package magit catppuccin-theme lua-mode ssh-config-mode pbcopy xclip))
   (unless (package-installed-p pkg)
     (package-install pkg)))
