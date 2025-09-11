@@ -12,14 +12,27 @@
         ("melpa" . "https://melpa.org/packages/")))  ; was http + "MELPA"
 (package-initialize)
 
-;; Refresh once if cache is empty, then install what you need
-(unless package-archive-contents
-  (package-refresh-contents))
+;; Function installing packages and refreshing cache if needed
+(defun install-packages-at-startup (pkgs)
+  (let ((refreshed nil))
+    (dolist (pkg pkgs)
+      (unless (package-installed-p pkg)
+        ;; If we don't even see the package in the current metadata, refresh once.
+        (unless (assoc pkg package-archive-contents)
+          (package-refresh-contents)
+          (setq refreshed t))
+        (condition-case err
+            (package-install pkg)
+          ;; If install fails (e.g. stale version URL), refresh once and retry.
+          (error
+           (unless refreshed
+             (package-refresh-contents)
+             (setq refreshed t))
+           (package-install pkg)))))))
 
-;; Install packages if they are not installed yet
-(dolist (pkg '(use-package magit catppuccin-theme lua-mode ssh-config-mode pbcopy xclip))
-  (unless (package-installed-p pkg)
-    (package-install pkg)))
+;; Install the listed packages if not already installed
+(install-packages-at-startup
+ '(use-package magit catppuccin-theme lua-mode ssh-config-mode pbcopy xclip))
 
 ;; Configure TAB character’s length
 (setq-default tab-width 4)
@@ -28,7 +41,7 @@
 (savehist-mode 1)
 
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
-(setq catppuccin-flavor 'frappe) ; or 'latte, 'macchiato, or 'mocha
+(setq catppuccin-flavor 'mocha) ; 'frappe, 'latte, 'macchiato. or 'mocha
 (load-theme 'catppuccin :no-confirm)
 (set-face-attribute 'default nil :background "#282935")
 (set-face-attribute 'mode-line nil :background "#22232e")
@@ -47,8 +60,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(## catppuccin-theme lua-mode magit pbcopy ssh-config-mode xclip)))
+ '(package-selected-packages nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
