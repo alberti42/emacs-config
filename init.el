@@ -41,7 +41,7 @@
 (savehist-mode 1)
 
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
-(setq catppuccin-flavor 'mocha) ; 'frappe, 'latte, 'macchiato. or 'mocha
+(setq catppuccin-flavor 'macchiato) ; 'frappe, 'latte, 'macchiato. or 'mocha
 (load-theme 'catppuccin :no-confirm)
 (set-face-attribute 'default nil :background "#282935")
 (set-face-attribute 'mode-line nil :background "#22232e")
