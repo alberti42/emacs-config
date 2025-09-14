@@ -41,10 +41,10 @@
 (savehist-mode 1)
 
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
-(setq catppuccin-flavor 'macchiato) ; 'frappe, 'latte, 'macchiato. or 'mocha
+(setq catppuccin-flavor 'frappe) ; 'frappe, 'latte, 'macchiato. or 'mocha
 (load-theme 'catppuccin :no-confirm)
-(set-face-attribute 'default nil :background "#282935")
-(set-face-attribute 'mode-line nil :background "#22232e")
+;; (set-face-attribute 'default nil :background "#282935")
+;; (set-face-attribute 'mode-line nil :background "#22232e")
 
 ;; Set default font for Emacs
 (set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
