@@ -103,3 +103,11 @@
   (defun track-mouse (e))
   (setq mouse-sel-mode t))
 
+;; Prevent sudden recentering / keep point away from window edges
+(setq scroll-margin 2)
+(setq scroll-conservatively 101)
+(setq scroll-step 1)
+
+;; Smoother horizontal scrolling too
+(setq hscroll-margin 2)
+(setq hscroll-step 1)
