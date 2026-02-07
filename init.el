@@ -24,6 +24,8 @@
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
 
+(use-package cl-lib)
+
 ;; Install packages (straight will install them if missing)
 (use-package magit)
 (use-package catppuccin-theme)
@@ -51,11 +53,73 @@
 (savehist-mode 1)
 
 ;; Catppuccin for Emacs https://github.com/catppuccin/emacs
-(setq catppuccin-flavor 'frappe) ; 'frappe, 'latte, 'macchiato. or 'mocha
-(load-theme 'catppuccin :no-confirm)
-(set-face-attribute 'default nil :background "unspecified-bg")
-(set-face-attribute 'mode-line nil :background "unspecified-bg")
-(set-face-attribute 'mode-line-inactive nil :background "unspecified-bg")
+;;
+;; Optional: auto switch flavour based on zsh-appearance-control cache.
+;;
+;; The file contains:
+;; - "1" => dark
+;; - "0" => light
+;;
+;; We map:
+;; - dark  => macchiato
+;; - light => frappe
+(require 'subr-x)
+(defvar zac--watch nil)
+(defvar zac--last-catppuccin-flavor nil)
+
+(defun zac--appearance-file ()
+  (expand-file-name
+   "appearance"
+   (or (getenv "ZAC_CACHE_DIR")
+       (expand-file-name "zac" (or (getenv "XDG_CACHE_HOME")
+                                   (expand-file-name "~/.cache"))))))
+
+(defun zac--read-appearance ()
+  (when (file-readable-p (zac--appearance-file))
+    (string-trim
+     (with-temp-buffer
+       (insert-file-contents (zac--appearance-file))
+       (buffer-string)))))
+
+(defun zac--apply-appearance ()
+  (let* ((v (zac--read-appearance))
+         (flavor (if (string= v "1") 'macchiato 'frappe)))
+    (unless (eq zac--last-catppuccin-flavor flavor)
+      (setq zac--last-catppuccin-flavor flavor)
+      (setq catppuccin-flavor flavor)
+      (mapc #'disable-theme custom-enabled-themes)
+      (load-theme 'catppuccin t)
+      (set-face-attribute 'default nil :background "unspecified-bg")
+      (set-face-attribute 'mode-line nil :background "unspecified-bg")
+      (set-face-attribute 'mode-line-inactive nil :background "unspecified-bg"))))
+
+(defun zac-watch-start ()
+  (interactive)
+  (unless (fboundp 'file-notify-add-watch)
+    (message "zac: file notifications not supported; skipping watcher")
+    (setq zac--watch nil)
+    (zac--apply-appearance)
+    nil)
+
+  (zac--apply-appearance)
+  (when (fboundp 'file-notify-add-watch)
+    (unless zac--watch
+      (setq zac--watch
+            (file-notify-add-watch
+             (zac--appearance-file)
+             '(change)
+             (lambda (_event)
+               (zac--apply-appearance))))))
+  nil)
+
+(defun zac-watch-stop ()
+  (interactive)
+  (when zac--watch
+    (file-notify-rm-watch zac--watch)
+    (setq zac--watch nil)))
+
+;; Start watcher automatically.
+(zac-watch-start)
 
 ;; Set default font for Emacs
 (set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
