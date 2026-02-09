@@ -46,8 +46,12 @@
   :config
   (vim-file-locals-mode 1))
 
-;; Configure TAB character’s length
+;; Use spaces for indentation (never literal \t)
+(setq-default indent-tabs-mode nil)
+
+;; Configure indentation defaults
 (setq-default tab-width 4)
+(setq-default standard-indent 4)
 
 ;; Save minibuffer history
 (savehist-mode 1)
@@ -186,4 +190,4 @@
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
-;; vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2 :
+;; vim: set expandtab tabstop=4 shiftwidth=4 softtabstop=4 :
