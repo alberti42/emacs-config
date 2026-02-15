@@ -7,63 +7,15 @@
 (menu-bar-mode -1) ; turn off menu bar
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
-;; Local modules {{{
-;;
-;; This config is symlinked into ~/.config/emacs. To make local modules work
-;; without extra symlinks, resolve the real location of this init file.
-(defconst emacs-config-dir
-  (file-name-directory (file-truename (or load-file-name user-init-file user-emacs-directory)))
-  "Directory containing this Emacs configuration.")
-
-(defun emacs-config-load-module (module warning)
-  "Load local MODULE from `emacs-config-dir`.
-
-MODULE is a symbol or string (e.g. 'zac-theme-autodetection).
-If loading fails, emit WARNING via `display-warning` and return nil.
-On success, return non-nil." 
-  (let* ((name (if (symbolp module) (symbol-name module) module))
-         (path (expand-file-name name emacs-config-dir)))
-    (if (load path t 'nomessage)
-        t
-      (display-warning 'init warning :warning)
-      nil)))
-
-;; Keep Emacs Customize UI writes out of init.el.
-;;
-;; "Customize" (a built-in Emacs feature) lets you change options/faces via
-;; interactive buffers like M-x customize-variable / M-x customize-face.
-;; If you press "Save", Emacs persists those settings by writing Elisp forms.
-;; We redirect those writes into `custom-file` to keep this init.el readable.
-;;
-;; This config intentionally does NOT auto-load custom.el. Treat it as
-;; optional, machine-written state:
-;; - Prefer editing init.el / modules directly for permanent configuration.
-;; - If you did save something via Customize and want it enabled, load it
-;;   explicitly: M-x load-file RET custom.el, or evaluate (load custom-file).
-(setq custom-file (expand-file-name "custom.el" emacs-config-dir))
-
-;; Packages: straight.el + use-package
-;; straight is not on MELPA; it bootstraps itself from GitHub.
-(defvar bootstrap-version)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 7))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
-
-;; Install and configure use-package via straight.
-;;
-;; straight.el is our package manager: it can install packages from ELPA/MELPA
-;; and also directly from Git repos (e.g. GitHub) via recipes.
-;; use-package provides a declarative way to configure those packages.
-(straight-use-package 'use-package)
-(setq straight-use-package-by-default t)
+;; Core helpers + package manager bootstrap.
+;; Keep init.el compact; details live in emacs-config-core.el.
+(let ((init-path (or load-file-name
+                     user-init-file
+                     (expand-file-name "init.el" user-emacs-directory))))
+  (load (expand-file-name
+         "emacs-config-core"
+         (file-name-directory (file-truename init-path)))
+        nil 'nomessage))
 
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
 (use-package cl-lib)
@@ -189,4 +141,4 @@ On success, return non-nil."
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
-;; vim: set expandtab tabstop=4 shiftwidth=4 softtabstop=4 :
+;; vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2 :
