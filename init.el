@@ -7,7 +7,7 @@
 (menu-bar-mode -1) ; turn off menu bar
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
-;; Core helpers + package manager bootstrap.
+;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
 (let ((init-path (or load-file-name
                      user-init-file
@@ -17,21 +17,42 @@
          (file-name-directory (file-truename init-path)))
         nil 'nomessage))
 
+;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
-(use-package cl-lib)
+(use-package cl-lib
+  :straight nil) ; use built-in cl-lib (Emacs 24+), don't fetch via straight
 
-;; Install packages (straight will install them if missing)
-;; magit: Git porcelain inside Emacs.
-(use-package magit)
+;; UI & Convenience
+;; which-key: display available keybindings in popup.
+(use-package which-key
+  :straight nil  ; use built-in which-key (Emacs 30+), don't fetch via straight
+  :config
+  (which-key-mode 1))
 
-;; catppuccin-theme: Catppuccin theme collection.
-(use-package catppuccin-theme)
+;; Save minibuffer history
+(savehist-mode 1)
 
-;; lua-mode: major mode for editing Lua.
-(use-package lua-mode)
+;; Editing Defaults
+;; Use spaces for indentation (never literal \t)
+(setq-default indent-tabs-mode nil)
+;; Configure indentation defaults
+(setq-default tab-width 4)
+(setq-default standard-indent 4)
 
-;; ssh-config-mode: major mode for ~/.ssh/config.
-(use-package ssh-config-mode)
+;; vim-file-locals: parse Vim modelines/file-local settings in files.
+(use-package vim-file-locals
+  :straight (vim-file-locals
+             :type git
+             :host github
+             :repo "abougouffa/emacs-vim-file-locals")
+  ;; Enable globally after startup; it adds `vim-file-locals-apply` to
+  ;; `find-file-hook` for newly opened files.
+  :hook (after-init . vim-file-locals-mode))
+
+;; Clipboard
+;; Always sync kill ring <-> system clipboard
+(setq select-enable-clipboard t)
+(setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
 
 ;; pbcopy: sync clipboard in terminal on macOS.
 ;; Only needed when running Emacs in a terminal on macOS.
@@ -47,11 +68,9 @@
   :config
   (xclip-mode 1))
 
-;; which-key: display available keybindings in popup.
-(use-package which-key
-  :straight nil  ; use built-in which-key (Emacs 30+), don't fetch via straight
-  :config
-  (which-key-mode 1))
+;; Development
+;; magit: Git porcelain inside Emacs.
+(use-package magit)
 
 ;; LSP modules
 (emacs-config-load-module
@@ -70,29 +89,16 @@
  'lsp-ltex
  "Could not load lsp-ltex.el; LTEX is disabled.")
 
-;; Example for a GitHub-only package (uncomment if needed):
-;; (use-package vim-modeline
-;;   :straight (vim-modeline :type git :host github :repo "cinsk/emacs-vim-modeline"))
+;; Languages
+;; lua-mode: major mode for editing Lua.
+(use-package lua-mode)
 
-;; vim-file-locals: parse Vim modelines/file-local settings in files.
-(use-package vim-file-locals
-  :straight (vim-file-locals
-             :type git
-             :host github
-             :repo "abougouffa/emacs-vim-file-locals")
-  ;; Enable globally after startup; it adds `vim-file-locals-apply` to
-  ;; `find-file-hook` for newly opened files.
-  :hook (after-init . vim-file-locals-mode))
+;; ssh-config-mode: major mode for ~/.ssh/config.
+(use-package ssh-config-mode)
 
-;; Use spaces for indentation (never literal \t)
-(setq-default indent-tabs-mode nil)
-
-;; Configure indentation defaults
-(setq-default tab-width 4)
-(setq-default standard-indent 4)
-
-;; Save minibuffer history
-(savehist-mode 1)
+;; Theme
+;; catppuccin-theme: Catppuccin theme collection.
+(use-package catppuccin-theme)
 
 ;; Theme auto-detection via zsh-appearance-control.
 (emacs-config-load-module
@@ -106,10 +112,7 @@
 (set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 120 :weight 'bold)
 (set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 120)
 
-;; Always sync kill ring <-> system clipboard
-(setq select-enable-clipboard t)
-(setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
-
+;; Terminal UX
 ;; Mouse support in terminal Emacs.
 ;; `xterm-mouse-mode` enables mouse events in terminal emulators that support it.
 (use-package mouse
