@@ -38,25 +38,6 @@
   (setq-local lsp-idle-delay 0.8)
   (lsp-deferred))
 
-(with-eval-after-load 'lsp-mode
-  (require 'lsp-ltex)
-  ;; Disable the default stdio-based ltex-ls client; use the TCP daemon instead.
-  (add-to-list 'lsp-disabled-clients 'ltex-ls)
-  (lsp-register-client
-   (make-lsp-client
-    :new-connection (list
-                     :connect #'my--lsp-ltex-tcp-connect
-                     :test? (lambda () t))
-    :major-modes lsp-ltex-active-modes
-    :action-handlers
-    (lsp-ht
-     ("_ltex.addToDictionary" #'lsp-ltex--code-action-add-to-dictionary)
-     ("_ltex.disableRules" #'lsp-ltex--code-action-disable-rules)
-     ("_ltex.hideFalsePositives" #'lsp-ltex--code-action-hide-false-positives))
-    :priority -2
-    :add-on? t
-    :server-id 'ltex-ls-tcp)))
-
 (use-package lsp-ltex
   :init
   ;; Opt-in comment checking for selected programming languages.
@@ -74,6 +55,23 @@
                   js-mode js-ts-mode
                   typescript-mode typescript-ts-mode tsx-ts-mode))
     (add-to-list 'lsp-ltex-active-modes mode))
+
+  ;; Use the LTEX+ LS daemon over TCP (instead of spawning the stdio server).
+  (add-to-list 'lsp-disabled-clients 'ltex-ls)
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (list
+                     :connect #'my--lsp-ltex-tcp-connect
+                     :test? (lambda () t))
+    :major-modes lsp-ltex-active-modes
+    :action-handlers
+    (lsp-ht
+     ("_ltex.addToDictionary" #'lsp-ltex--code-action-add-to-dictionary)
+     ("_ltex.disableRules" #'lsp-ltex--code-action-disable-rules)
+     ("_ltex.hideFalsePositives" #'lsp-ltex--code-action-hide-false-positives))
+    :priority -2
+    :add-on? t
+    :server-id 'ltex-ls-tcp))
 
   :hook
   ((org-mode markdown-mode latex-mode text-mode
