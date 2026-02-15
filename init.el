@@ -57,70 +57,22 @@ On success, return non-nil."
 (use-package pbcopy)
 (use-package xclip)
 
-;; LSP + LTEX (grammar/spell/style checking via LanguageTool)
-(use-package which-key
-  :config
-  (which-key-mode 1))
+;; LSP modules
+(emacs-config-load-module
+ 'lsp-core
+ "Could not load lsp-core.el; LSP is disabled.")
 
-(use-package lsp-mode
-  :commands (lsp lsp-deferred)
-  :init
-  (setq lsp-keymap-prefix "C-c l")
-  ;; Performance: increase the amount of data Emacs reads from subprocesses.
-  ;; This helps with LSP servers that send larger JSON payloads.
-  (setq read-process-output-max (* 1024 1024))
-  :hook
-  (lsp-mode . lsp-enable-which-key-integration))
+(emacs-config-load-module
+ 'lsp-python
+ "Could not load lsp-python.el; Python LSP is disabled.")
 
-(use-package lsp-ui
-  :after lsp-mode
-  :commands lsp-ui-mode
-  :hook (lsp-mode . lsp-ui-mode)
-  :init
-  (setq lsp-ui-doc-position 'at-point))
+(emacs-config-load-module
+ 'lsp-web
+ "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
 
-;; Python LSP (Pyright). Requires an external server; see notes below.
-(use-package lsp-pyright
-  :after lsp-mode
-  :init
-  (setq lsp-pyright-langserver-command "basedpyright")
-  :hook (python-mode . (lambda ()
-                        (require 'lsp-pyright)
-                        (lsp-deferred))))
-
-;; TypeScript/JavaScript LSP. Requires typescript-language-server + tsserver.
-(use-package typescript-mode
-  :mode "\\.ts\\'"
-  :mode "\\.tsx\\'"
-  :hook (typescript-mode . lsp-deferred))
-
-(use-package js
-  :straight nil
-  :hook (js-mode . lsp-deferred))
-
-(use-package lsp-ltex
-  :after lsp-mode
-  :init
-  (setq lsp-ltex-version "16.0.0")
-  (setq lsp-ltex-language "en-US")
-  ;; LTEX-LS requires Java 11+. Ensure Emacs launches it with a modern JDK.
-  (let* ((jdk-home (cond
-                    ((file-directory-p "/opt/homebrew/opt/openjdk@17")
-                     "/opt/homebrew/opt/openjdk@17")
-                    ((file-directory-p "/opt/homebrew/opt/openjdk@11")
-                     "/opt/homebrew/opt/openjdk@11")
-                    (t nil)))
-         (jdk-bin (when jdk-home (expand-file-name "bin" jdk-home))))
-    (when (and jdk-bin (file-executable-p (expand-file-name "java" jdk-bin)))
-      (setenv "JAVA_HOME" jdk-home)
-      (add-to-list 'exec-path jdk-bin)
-      (let ((path (or (getenv "PATH") "")))
-        (unless (string-match-p (regexp-quote jdk-bin) path)
-          (setenv "PATH" (concat jdk-bin path-separator path))))))
-  :hook ((org-mode markdown-mode latex-mode text-mode) .
-         (lambda ()
-           (require 'lsp-ltex)
-           (lsp-deferred))))
+(emacs-config-load-module
+ 'lsp-ltex
+ "Could not load lsp-ltex.el; LTEX is disabled.")
 
 ;; Example for a GitHub-only package (uncomment if needed):
 ;; (use-package vim-modeline
