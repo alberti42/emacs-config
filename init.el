@@ -83,6 +83,11 @@
 ;; magit: Git porcelain inside Emacs.
 (use-package magit)
 
+;; VCS gutter (TTY)
+(emacs-config-load-module
+ 'git-gutter-tty
+ "Could not load git-gutter-tty.el; VCS gutter is disabled.")
+
 ;; LSP modules
 (emacs-config-load-module
  'lsp-core
