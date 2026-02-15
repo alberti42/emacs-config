@@ -32,6 +32,12 @@
 ;; Save minibuffer history
 (savehist-mode 1)
 
+;; Line numbers
+(setq display-line-numbers-type 'relative)
+;; Keep current line absolute while others are relative.
+(setq display-line-numbers-current-absolute t)
+(global-display-line-numbers-mode 1)
+
 ;; Editing Defaults
 ;; Use spaces for indentation (never literal \t)
 (setq-default indent-tabs-mode nil)
