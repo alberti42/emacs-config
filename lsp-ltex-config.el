@@ -42,9 +42,8 @@
   :init
   ;; Opt-in comment checking for selected programming languages.
   (setq lsp-ltex-enabled
-        ["bibtex" "context" "context.tex" "html" "latex" "markdown" "mdx"
-         "typst" "asciidoc" "neorg" "org" "quarto" "restructuredtext" "rsweave"
-         "git-commit" "python" "javascript" "javascriptreact" "typescript" "typescriptreact"])
+        ["bibtex" "latex" "markdown" "typst" "asciidoc" "neorg" "org"
+         "git-commit" "python" "javascript" "typescript"])
 
   (setq lsp-ltex-language "en-US")
   (setq lsp-ltex-check-frequency "edit")
