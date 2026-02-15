@@ -102,8 +102,8 @@
  "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
- 'lsp-ltex-config
- "Could not load lsp-ltex-config.el; LTEX is disabled.")
+ 'lsp-ltex-plus-config
+ "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 ;; VCS gutter (TTY)
 (emacs-config-load-module
