@@ -28,6 +28,20 @@ On success, return non-nil."
       (display-warning 'init warning :warning)
       nil)))
 
+;; Keep Emacs Customize UI writes out of init.el.
+;;
+;; "Customize" (a built-in Emacs feature) lets you change options/faces via
+;; interactive buffers like M-x customize-variable / M-x customize-face.
+;; If you press "Save", Emacs persists those settings by writing Elisp forms.
+;; We redirect those writes into `custom-file` to keep this init.el readable.
+;;
+;; This config intentionally does NOT auto-load custom.el. Treat it as
+;; optional, machine-written state:
+;; - Prefer editing init.el / modules directly for permanent configuration.
+;; - If you did save something via Customize and want it enabled, load it
+;;   explicitly: M-x load-file RET custom.el, or evaluate (load custom-file).
+(setq custom-file (expand-file-name "custom.el" emacs-config-dir))
+
 ;; Packages: straight.el + use-package
 ;; straight is not on MELPA; it bootstraps itself from GitHub.
 (defvar bootstrap-version)
@@ -142,18 +156,6 @@ On success, return non-nil."
 
 ;; Set syntax for ssh config file
 ; (add-to-list 'auto-mode-alist '("/.ssh/config" . ssh-config-mode))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
 
 ;; Always sync kill ring <-> system clipboard
 (setq select-enable-clipboard t)
