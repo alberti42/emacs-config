@@ -1,44 +1,49 @@
-;;; lsp-ltex-config.el --- LTEX+ LS via TCP daemon -*- lexical-binding: t; -*-
+;;; lsp-ltex-config.el --- LTEX+ LS via stdio (per Emacs session) -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
-;; Configure lsp-ltex to connect to an already-running LTEX+ LS daemon over TCP.
+;; Configure lsp-ltex to run LTEX+ LS (ltex-ls-plus) as a normal LSP server
+;; process (stdio) managed by Emacs/lsp-mode.
 ;;
-;; Proof-of-principle: connect to 127.0.0.1:38080. No bootstrap logic and no
-;; runtime checks.
+;; This avoids the instability seen when attaching to a long-lived TCP daemon.
 ;;
 
 ;;; Code:
 
+;; This module uses cl-lib (e.g. `cl-pushnew`).
+;; cl-lib is loaded early from init.el.
 
-(defconst my-ltex-plus-daemon-host "127.0.0.1"
-  "Host running the LTEX+ LS daemon.")
+(defconst my-ltex-ls-plus-command "ltex-ls-plus"
+  "Command used to start LTEX+ LS.")
 
-(defconst my-ltex-plus-daemon-port 38080
-  "Port of the LTEX+ LS daemon.")
+(defun my--lsp-ltex--session-root ()
+  "Return a suitable root directory for the current buffer." 
+  (let ((proj (when (fboundp 'project-current)
+                (project-current nil))))
+    (cond
+     (proj (project-root proj))
+     ((buffer-file-name) (file-name-directory (buffer-file-name)))
+     (t default-directory))))
 
-(defun my--lsp-ltex-tcp-connect (filter sentinel name _environment-fn _workspace)
-  "Connect lsp-mode to an already-running LTEX+ LS daemon." 
-  (let ((proc (open-network-stream
-               (format "%s::tcp" name)
-               nil
-               my-ltex-plus-daemon-host
-               my-ltex-plus-daemon-port
-               :type 'plain
-               :coding 'no-conversion)))
-    (set-process-query-on-exit-flag proc nil)
-    (set-process-filter proc filter)
-    (set-process-sentinel proc sentinel)
-    ;; lsp-mode expects (COMM-PROC . CMD-PROC). For an external daemon there is
-    ;; no command process; return PROC in both slots as a proof-of-principle.
-    (cons proc proc)))
+(defun my--lsp-ltex--ensure-session-folder ()
+  "Add a workspace folder to the lsp session without prompting.
+
+This prevents the `lsp-mode` project import prompt for LTEX buffers." 
+  (when (fboundp 'lsp-session)
+    (let* ((session (lsp-session))
+           (root (my--lsp-ltex--session-root))
+           (root (if (fboundp 'lsp-f-canonical) (lsp-f-canonical root) (expand-file-name root))))
+      (cl-pushnew root (lsp-session-folders session) :test #'equal))))
 
 (defun my--lsp-ltex-enable ()
   "Enable LTEX in the current buffer." 
   (setq-local lsp-idle-delay 0.8)
+  (my--lsp-ltex--ensure-session-folder)
   (lsp-deferred))
 
 (use-package lsp-ltex
+  :after lsp-mode
+  :demand t
   :init
   ;; Opt-in comment checking for selected programming languages.
   (setq lsp-ltex-enabled
@@ -55,13 +60,13 @@
                   typescript-mode typescript-ts-mode tsx-ts-mode))
     (add-to-list 'lsp-ltex-active-modes mode))
 
-  ;; Use the LTEX+ LS daemon over TCP (instead of spawning the stdio server).
+  ;; Use ltex-ls-plus (installed externally, e.g. via zinit) instead of the
+  ;; default ltex-ls downloader.
   (add-to-list 'lsp-disabled-clients 'ltex-ls)
   (lsp-register-client
    (make-lsp-client
-    :new-connection (list
-                     :connect #'my--lsp-ltex-tcp-connect
-                     :test? (lambda () t))
+    :new-connection (lsp-stdio-connection
+                     (lambda () (list my-ltex-ls-plus-command)))
     :major-modes lsp-ltex-active-modes
     :action-handlers
     (lsp-ht
@@ -70,10 +75,10 @@
      ("_ltex.hideFalsePositives" #'lsp-ltex--code-action-hide-false-positives))
     :priority -2
     :add-on? t
-    :server-id 'ltex-ls-tcp))
+    :server-id 'ltex-ls-plus))
 
   :hook
-  ((org-mode markdown-mode latex-mode text-mode
+  ((org-mode markdown-mode gfm-mode latex-mode text-mode
              python-mode python-ts-mode
              js-mode js-ts-mode
              typescript-mode typescript-ts-mode tsx-ts-mode) . my--lsp-ltex-enable))
