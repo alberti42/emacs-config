@@ -34,6 +34,36 @@
 (use-package pbcopy)
 (use-package xclip)
 
+;; LSP + LTEX (grammar/spell/style checking via LanguageTool)
+(use-package lsp-mode
+  :commands (lsp lsp-deferred)
+  :init
+  (setq lsp-keymap-prefix "C-c l"))
+
+(use-package lsp-ltex
+  :after lsp-mode
+  :init
+  (setq lsp-ltex-version "16.0.0")
+  (setq lsp-ltex-language "en-US")
+  ;; LTEX-LS requires Java 11+. Ensure Emacs launches it with a modern JDK.
+  (let* ((jdk-home (cond
+                    ((file-directory-p "/opt/homebrew/opt/openjdk@17")
+                     "/opt/homebrew/opt/openjdk@17")
+                    ((file-directory-p "/opt/homebrew/opt/openjdk@11")
+                     "/opt/homebrew/opt/openjdk@11")
+                    (t nil)))
+         (jdk-bin (when jdk-home (expand-file-name "bin" jdk-home))))
+    (when (and jdk-bin (file-executable-p (expand-file-name "java" jdk-bin)))
+      (setenv "JAVA_HOME" jdk-home)
+      (add-to-list 'exec-path jdk-bin)
+      (let ((path (or (getenv "PATH") "")))
+        (unless (string-match-p (regexp-quote jdk-bin) path)
+          (setenv "PATH" (concat jdk-bin path-separator path))))))
+  :hook ((org-mode markdown-mode latex-mode text-mode) .
+         (lambda ()
+           (require 'lsp-ltex)
+           (lsp-deferred))))
+
 ;; Example for a GitHub-only package (uncomment if needed):
 ;; (use-package vim-modeline
 ;;   :straight (vim-modeline :type git :host github :repo "cinsk/emacs-vim-modeline"))
