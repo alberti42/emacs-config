@@ -32,6 +32,11 @@
 ;; Save minibuffer history
 (savehist-mode 1)
 
+;; Minibuffer completion UI
+(emacs-config-load-module
+ 'completion
+ "Could not load completion.el; using default minibuffer completion.")
+
 ;; Line numbers
 (setq display-line-numbers-type 'relative)
 ;; Keep current line absolute while others are relative.
