@@ -7,10 +7,6 @@
 
 ;;; Code:
 
-(use-package which-key
-  :config
-  (which-key-mode 1))
-
 (use-package lsp-mode
   :commands (lsp lsp-deferred)
   :init

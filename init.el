@@ -43,19 +43,41 @@ On success, return non-nil."
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
-;; Install and configure use-package via straight
+;; Install and configure use-package via straight.
+;;
+;; straight.el is our package manager: it can install packages from ELPA/MELPA
+;; and also directly from Git repos (e.g. GitHub) via recipes.
+;; use-package provides a declarative way to configure those packages.
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
 
+;; cl-lib: Common Lisp compatibility helpers used by many packages.
 (use-package cl-lib)
 
 ;; Install packages (straight will install them if missing)
+;; magit: Git porcelain inside Emacs.
 (use-package magit)
+
+;; catppuccin-theme: Catppuccin theme collection.
 (use-package catppuccin-theme)
+
+;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
+
+;; ssh-config-mode: major mode for ~/.ssh/config.
 (use-package ssh-config-mode)
+
+;; pbcopy: sync clipboard in terminal on macOS.
 (use-package pbcopy)
+
+;; xclip: sync clipboard in terminal on Linux.
 (use-package xclip)
+
+;; which-key: display available keybindings in popup.
+(use-package which-key
+  :straight nil  ; use built-in which-key (Emacs 30+), don't fetch via straight
+  :config
+  (which-key-mode 1))
 
 ;; LSP modules
 (emacs-config-load-module
@@ -78,6 +100,7 @@ On success, return non-nil."
 ;; (use-package vim-modeline
 ;;   :straight (vim-modeline :type git :host github :repo "cinsk/emacs-vim-modeline"))
 
+;; vim-file-locals: parse Vim modelines/file-local settings in files.
 (use-package vim-file-locals
   :straight (vim-file-locals
              :type git
