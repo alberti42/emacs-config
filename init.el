@@ -154,28 +154,31 @@ On success, return non-nil."
 (set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 120 :weight 'bold)
 (set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 120)
 
-;; Set syntax for ssh config file
-; (add-to-list 'auto-mode-alist '("/.ssh/config" . ssh-config-mode))
-
 ;; Always sync kill ring <-> system clipboard
 (setq select-enable-clipboard t)
 (setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
 
-;; Enable mouse support
-(unless window-system
-  (require 'mouse)
+;; Mouse support in terminal Emacs.
+;; `xterm-mouse-mode` enables mouse events in terminal emulators that support it.
+(use-package mouse
+  :straight nil
+  :if (not window-system)
+  :preface
+  (defun emacs-config--scroll-down-1 ()
+    (interactive)
+    (scroll-down 1))
+
+  (defun emacs-config--scroll-up-1 ()
+    (interactive)
+    (scroll-up 1))
+  :config
   (xterm-mouse-mode 1)
-  (global-set-key [wheel-up] (lambda ()
-                               (interactive)
-                               (scroll-down 1)))
-  (global-set-key [wheel-down] (lambda ()
-                                 (interactive)
-                                 (scroll-up 1)))
-  ;; Optional: support shift/ctrl modifiers
-  (global-set-key [double-wheel-up] 'scroll-down-command)
-  (global-set-key [double-wheel-down] 'scroll-up-command)
-  (defun track-mouse (e))
-  (setq mouse-sel-mode t))
+  ;; Wheel events in terminals are usually mouse-4/mouse-5.
+  ;; Keep wheel-up/wheel-down bindings too (some builds/terminals use them).
+  (global-set-key [mouse-4] #'emacs-config--scroll-down-1)
+  (global-set-key [mouse-5] #'emacs-config--scroll-up-1)
+  (global-set-key [wheel-up] #'emacs-config--scroll-down-1)
+  (global-set-key [wheel-down] #'emacs-config--scroll-up-1))
 
 ;; Prevent sudden recentering / keep point away from window edges
 (setq scroll-margin 2)
