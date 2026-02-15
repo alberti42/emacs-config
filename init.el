@@ -35,10 +35,45 @@
 (use-package xclip)
 
 ;; LSP + LTEX (grammar/spell/style checking via LanguageTool)
+(use-package which-key
+  :config
+  (which-key-mode 1))
+
 (use-package lsp-mode
   :commands (lsp lsp-deferred)
   :init
-  (setq lsp-keymap-prefix "C-c l"))
+  (setq lsp-keymap-prefix "C-c l")
+  ;; Performance: increase the amount of data Emacs reads from subprocesses.
+  ;; This helps with LSP servers that send larger JSON payloads.
+  (setq read-process-output-max (* 1024 1024))
+  :hook
+  (lsp-mode . lsp-enable-which-key-integration))
+
+(use-package lsp-ui
+  :after lsp-mode
+  :commands lsp-ui-mode
+  :hook (lsp-mode . lsp-ui-mode)
+  :init
+  (setq lsp-ui-doc-position 'at-point))
+
+;; Python LSP (Pyright). Requires an external server; see notes below.
+(use-package lsp-pyright
+  :after lsp-mode
+  :init
+  (setq lsp-pyright-langserver-command "basedpyright")
+  :hook (python-mode . (lambda ()
+                        (require 'lsp-pyright)
+                        (lsp-deferred))))
+
+;; TypeScript/JavaScript LSP. Requires typescript-language-server + tsserver.
+(use-package typescript-mode
+  :mode "\\.ts\\'"
+  :mode "\\.tsx\\'"
+  :hook (typescript-mode . lsp-deferred))
+
+(use-package js
+  :straight nil
+  :hook (js-mode . lsp-deferred))
 
 (use-package lsp-ltex
   :after lsp-mode
