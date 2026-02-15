@@ -114,8 +114,9 @@ On success, return non-nil."
              :type git
              :host github
              :repo "abougouffa/emacs-vim-file-locals")
-  :config
-  (vim-file-locals-mode 1))
+  ;; Enable globally after startup; it adds `vim-file-locals-apply` to
+  ;; `find-file-hook` for newly opened files.
+  :hook (after-init . vim-file-locals-mode))
 
 ;; Use spaces for indentation (never literal \t)
 (setq-default indent-tabs-mode nil)
