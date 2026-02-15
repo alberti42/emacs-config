@@ -1,38 +1,65 @@
-;;; lsp-ltex-config.el --- LTEX (LanguageTool) LSP configuration -*- lexical-binding: t; -*-
+;;; lsp-ltex-config.el --- LTEX+ LS via TCP daemon -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
-;; Grammar/spell/style checking via LTEX language server.
+;; Configure lsp-ltex to connect to an already-running LTEX+ LS daemon over TCP.
 ;;
-;; This configuration is intended to run LTEX+ LS (ltex-ls-plus) so that
-;; diagnostics can be produced for prose *and* for comments/strings in
-;; programming buffers.
+;; Proof-of-principle: connect to 127.0.0.1:38080. No bootstrap logic and no
+;; runtime checks.
 ;;
 
 ;;; Code:
 
-(defvar my--lsp-ltex-java-ok nil
-  "Non-nil when JAVA_HOME is set to a compatible JDK.")
 
-(defun my--java-home-major-version (java-home)
-  "Return major Java version for JAVA-HOME, or nil." 
-  (let* ((java (expand-file-name "bin/java" java-home)))
-    (when (file-executable-p java)
-      (let ((out (shell-command-to-string (format "%s -version 2>&1" (shell-quote-argument java)))))
-        (when (string-match "\\(?:openjdk\\|java\\)\\s-+\\(?:version\\s-+\\)?\\\"\\([0-9]+\\)" out)
-          (string-to-number (match-string 1 out)))))))
+(defconst my-ltex-plus-daemon-host "127.0.0.1"
+  "Host running the LTEX+ LS daemon.")
+
+(defconst my-ltex-plus-daemon-port 38080
+  "Port of the LTEX+ LS daemon.")
+
+(defun my--lsp-ltex-tcp-connect (filter sentinel name _environment-fn _workspace)
+  "Connect lsp-mode to an already-running LTEX+ LS daemon." 
+  (let ((proc (open-network-stream
+               (format "%s::tcp" name)
+               nil
+               my-ltex-plus-daemon-host
+               my-ltex-plus-daemon-port
+               :type 'plain
+               :coding 'no-conversion)))
+    (set-process-query-on-exit-flag proc nil)
+    (set-process-filter proc filter)
+    (set-process-sentinel proc sentinel)
+    ;; lsp-mode expects (COMM-PROC . CMD-PROC). For an external daemon there is
+    ;; no command process; return PROC in both slots as a proof-of-principle.
+    (cons proc proc)))
+
+(defun my--lsp-ltex-enable ()
+  "Enable LTEX in the current buffer." 
+  (setq-local lsp-idle-delay 0.8)
+  (lsp-deferred))
+
+(with-eval-after-load 'lsp-mode
+  (require 'lsp-ltex)
+  ;; Disable the default stdio-based ltex-ls client; use the TCP daemon instead.
+  (add-to-list 'lsp-disabled-clients 'ltex-ls)
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (list
+                     :connect #'my--lsp-ltex-tcp-connect
+                     :test? (lambda () t))
+    :major-modes lsp-ltex-active-modes
+    :action-handlers
+    (lsp-ht
+     ("_ltex.addToDictionary" #'lsp-ltex--code-action-add-to-dictionary)
+     ("_ltex.disableRules" #'lsp-ltex--code-action-disable-rules)
+     ("_ltex.hideFalsePositives" #'lsp-ltex--code-action-hide-false-positives))
+    :priority -2
+    :add-on? t
+    :server-id 'ltex-ls-tcp)))
 
 (use-package lsp-ltex
-  :after lsp-mode
   :init
-  ;; Use LTEX+ LS, installed manually under this directory as:
-  ;;   <store>/latest/bin/ltex-ls
-  ;; (The lsp-ltex package expects the entrypoint to be named ltex-ls.)
-  (setq lsp-ltex-server-store-path
-        (expand-file-name "ltex-ls-plus" lsp-server-install-dir))
-
-  ;; Enable LTEX for markup languages and opt-in comment checking in popular
-  ;; programming language buffers.
+  ;; Opt-in comment checking for selected programming languages.
   (setq lsp-ltex-enabled
         ["bibtex" "context" "context.tex" "html" "latex" "markdown" "mdx"
          "typst" "asciidoc" "neorg" "org" "quarto" "restructuredtext" "rsweave"
@@ -40,40 +67,6 @@
 
   (setq lsp-ltex-language "en-US")
   (setq lsp-ltex-check-frequency "edit")
-
-  ;; Ensure a compatible JAVA_HOME for Java-based tooling.
-  ;;
-  ;; LTEX+ LS bundles its own JDK (currently Java 21+), and our ltex-ls wrapper
-  ;; forces that bundled JDK. Still, setting JAVA_HOME here keeps the Emacs
-  ;; environment consistent for other tools.
-  (let ((java-home (getenv "JAVA_HOME")))
-    (cond
-     ((not (and java-home (file-directory-p java-home)))
-      (setq my--lsp-ltex-java-ok nil)
-      (display-warning
-       'lsp-ltex
-       (concat
-        "JAVA_HOME is not set (or does not point to a JDK). "
-        "Set JAVA_HOME in the environment, e.g.\n\n"
-        "  export JAVA_HOME=$(/usr/libexec/java_home -v 21)\n\n"
-        "Then restart Emacs.")
-       :warning))
-     ((let ((ver (my--java-home-major-version java-home)))
-        (and ver (>= ver 21)))
-      (setq my--lsp-ltex-java-ok t)
-      (let ((jdk-bin (expand-file-name "bin" java-home)))
-        (when (file-directory-p jdk-bin)
-          (add-to-list 'exec-path jdk-bin)
-          (let ((path (or (getenv "PATH") "")))
-            (unless (string-match-p (regexp-quote jdk-bin) path)
-              (setenv "PATH" (concat jdk-bin path-separator path)))))))
-     (t
-      (setq my--lsp-ltex-java-ok nil)
-      (display-warning
-       'lsp-ltex
-       (format
-        "JAVA_HOME points to an incompatible Java version (need 21+): %s" java-home)
-       :warning))))
 
   :config
   ;; Enable lsp-ltex in additional programming modes.
@@ -86,13 +79,7 @@
   ((org-mode markdown-mode latex-mode text-mode
              python-mode python-ts-mode
              js-mode js-ts-mode
-             typescript-mode typescript-ts-mode tsx-ts-mode) .
-   (lambda ()
-     ;; Debounce updates while typing (buffer-local).
-     (setq-local lsp-idle-delay 0.8)
-     (require 'lsp-ltex)
-     (when my--lsp-ltex-java-ok
-       (lsp-deferred)))))
+             typescript-mode typescript-ts-mode tsx-ts-mode) . my--lsp-ltex-enable))
 
 (provide 'lsp-ltex-config)
 
