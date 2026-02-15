@@ -68,10 +68,18 @@ On success, return non-nil."
 (use-package ssh-config-mode)
 
 ;; pbcopy: sync clipboard in terminal on macOS.
-(use-package pbcopy)
+;; Only needed when running Emacs in a terminal on macOS.
+(use-package pbcopy
+  :if (and (eq system-type 'darwin) (not window-system))
+  :config
+  (turn-on-pbcopy))
 
 ;; xclip: sync clipboard in terminal on Linux.
-(use-package xclip)
+;; Only needed when running Emacs in a terminal on Linux.
+(use-package xclip
+  :if (and (eq system-type 'gnu/linux) (not window-system))
+  :config
+  (xclip-mode 1))
 
 ;; which-key: display available keybindings in popup.
 (use-package which-key
@@ -149,20 +157,6 @@ On success, return non-nil."
 ;; Always sync kill ring <-> system clipboard
 (setq select-enable-clipboard t)
 (setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
-(cond
- ;; macOS: use pbcopy in terminal
- ((eq system-type 'darwin)
-  (use-package pbcopy
-    :ensure t
-    :config
-    (turn-on-pbcopy)))
-
- ;; GNU/Linux: use xclip in terminal
- ((eq system-type 'gnu/linux)
-  (use-package xclip
-    :ensure t
-    :config
-    (xclip-mode 1))))
 
 ;; Enable mouse support
 (unless window-system
