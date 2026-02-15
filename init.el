@@ -1,9 +1,32 @@
+;;; init.el -*- lexical-binding: t; -*-
+
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
 (setq create-lockfiles nil) ; stop lock files (.#filename)
 (menu-bar-mode -1) ; turn off menu bar
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
+
+;; Local modules {{{
+;;
+;; This config is symlinked into ~/.config/emacs. To make local modules work
+;; without extra symlinks, resolve the real location of this init file.
+(defconst emacs-config-dir
+  (file-name-directory (file-truename (or load-file-name user-init-file user-emacs-directory)))
+  "Directory containing this Emacs configuration.")
+
+(defun emacs-config-load-module (module warning)
+  "Load local MODULE from `emacs-config-dir`.
+
+MODULE is a symbol or string (e.g. 'zac-theme-autodetection).
+If loading fails, emit WARNING via `display-warning` and return nil.
+On success, return non-nil." 
+  (let* ((name (if (symbolp module) (symbol-name module) module))
+         (path (expand-file-name name emacs-config-dir)))
+    (if (load path t 'nomessage)
+        t
+      (display-warning 'init warning :warning)
+      nil)))
 
 ;; Packages: straight.el + use-package
 ;; straight is not on MELPA; it bootstraps itself from GitHub.
@@ -121,74 +144,10 @@
 ;; Save minibuffer history
 (savehist-mode 1)
 
-;; Catppuccin for Emacs https://github.com/catppuccin/emacs
-;;
-;; Optional: auto switch flavour based on zsh-appearance-control cache.
-;;
-;; The file contains:
-;; - "1" => dark
-;; - "0" => light
-;;
-;; We map:
-;; - dark  => macchiato
-;; - light => frappe
-(require 'subr-x)
-(defvar zac--watch nil)
-(defvar zac--last-catppuccin-flavor nil)
-
-(defun zac--appearance-file ()
-  (expand-file-name
-   "appearance"
-   (or (getenv "ZAC_CACHE_DIR")
-       (expand-file-name "zac" (or (getenv "XDG_CACHE_HOME")
-                                   (expand-file-name "~/.cache"))))))
-
-(defun zac--read-appearance ()
-  (when (file-readable-p (zac--appearance-file))
-    (string-trim
-     (with-temp-buffer
-       (insert-file-contents (zac--appearance-file))
-       (buffer-string)))))
-
-(defun zac--apply-appearance ()
-  (let* ((v (zac--read-appearance))
-         (flavor (if (string= v "1") 'macchiato 'frappe)))
-    (unless (eq zac--last-catppuccin-flavor flavor)
-      (setq zac--last-catppuccin-flavor flavor)
-      (setq catppuccin-flavor flavor)
-      (mapc #'disable-theme custom-enabled-themes)
-      (load-theme 'catppuccin t)
-      (set-face-attribute 'default nil :background "unspecified-bg")
-      (set-face-attribute 'mode-line nil :background "unspecified-bg")
-      (set-face-attribute 'mode-line-inactive nil :background "unspecified-bg"))))
-
-(defun zac-watch-start ()
-  (interactive)
-  (unless (fboundp 'file-notify-add-watch)
-    (message "zac: file notifications not supported; skipping watcher")
-    (setq zac--watch nil)
-    (zac--apply-appearance)
-    nil)
-
-  (zac--apply-appearance)
-  (when (fboundp 'file-notify-add-watch)
-    (unless zac--watch
-      (setq zac--watch
-            (file-notify-add-watch
-             (zac--appearance-file)
-             '(change)
-             (lambda (_event)
-               (zac--apply-appearance))))))
-  nil)
-
-(defun zac-watch-stop ()
-  (interactive)
-  (when zac--watch
-    (file-notify-rm-watch zac--watch)
-    (setq zac--watch nil)))
-
-;; Start watcher automatically.
-(zac-watch-start)
+;; Theme auto-detection via zsh-appearance-control.
+(emacs-config-load-module
+ 'zac-theme-autodetection
+ "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
 
 ;; Set default font for Emacs
 (set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
