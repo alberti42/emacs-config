@@ -102,8 +102,8 @@
  "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
- 'lsp-ltex
- "Could not load lsp-ltex.el; LTEX is disabled.")
+ 'lsp-ltex-config
+ "Could not load lsp-ltex-config.el; LTEX is disabled.")
 
 ;; Languages
 ;; lua-mode: major mode for editing Lua.

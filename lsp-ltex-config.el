@@ -1,0 +1,69 @@
+;;; lsp-ltex-config.el --- LTEX (LanguageTool) LSP configuration -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;;
+;; Grammar/spell/style checking via LTEX language server.
+;;
+;; This configuration is intended to run LTEX+ LS (ltex-ls-plus) so that
+;; diagnostics can be produced for prose *and* for comments/strings in
+;; programming buffers.
+;;
+
+;;; Code:
+
+(use-package lsp-ltex
+  :after lsp-mode
+  :init
+  ;; Use LTEX+ LS, installed manually under this directory as:
+  ;;   <store>/latest/bin/ltex-ls
+  ;; (The lsp-ltex package expects the entrypoint to be named ltex-ls.)
+  (setq lsp-ltex-server-store-path
+        (expand-file-name "ltex-ls-plus" lsp-server-install-dir))
+
+  ;; Enable LTEX for markup languages and opt-in comment checking in popular
+  ;; programming language buffers.
+  (setq lsp-ltex-enabled
+        ["bibtex" "context" "context.tex" "html" "latex" "markdown" "mdx"
+         "typst" "asciidoc" "neorg" "org" "quarto" "restructuredtext" "rsweave"
+         "git-commit" "python" "javascript" "javascriptreact" "typescript" "typescriptreact"])
+
+  (setq lsp-ltex-language "en-US")
+  (setq lsp-ltex-check-frequency "edit")
+
+  ;; LTEX+ LS platform-specific archives come with everything included.
+  ;; If a platform-independent server is used, JAVA_HOME must be set.
+  (let* ((jdk-home (cond
+                    ((file-directory-p "/opt/homebrew/opt/openjdk@17")
+                     "/opt/homebrew/opt/openjdk@17")
+                    ((file-directory-p "/opt/homebrew/opt/openjdk@11")
+                     "/opt/homebrew/opt/openjdk@11")
+                    (t nil)))
+         (jdk-bin (when jdk-home (expand-file-name "bin" jdk-home))))
+    (when (and jdk-bin (file-executable-p (expand-file-name "java" jdk-bin)))
+      (setenv "JAVA_HOME" jdk-home)
+      (add-to-list 'exec-path jdk-bin)
+      (let ((path (or (getenv "PATH") "")))
+        (unless (string-match-p (regexp-quote jdk-bin) path)
+          (setenv "PATH" (concat jdk-bin path-separator path))))))
+
+  :config
+  ;; Enable lsp-ltex in additional programming modes.
+  (dolist (mode '(python-mode python-ts-mode
+                  js-mode js-ts-mode
+                  typescript-mode typescript-ts-mode tsx-ts-mode))
+    (add-to-list 'lsp-ltex-active-modes mode))
+
+  :hook
+  ((org-mode markdown-mode latex-mode text-mode
+             python-mode python-ts-mode
+             js-mode js-ts-mode
+             typescript-mode typescript-ts-mode tsx-ts-mode) .
+   (lambda ()
+     ;; Debounce updates while typing (buffer-local).
+     (setq-local lsp-idle-delay 0.8)
+     (require 'lsp-ltex)
+     (lsp-deferred))))
+
+(provide 'lsp-ltex-config)
+
+;;; lsp-ltex-config.el ends here
