@@ -39,6 +39,11 @@
 (setq-default tab-width 4)
 (setq-default standard-indent 4)
 
+;; Terminal key decoding (CSI u).
+(emacs-config-load-module
+ 'csi-u-keys
+ "Could not load csi-u-keys.el; CSI-u key decoding is disabled.")
+
 ;; vim-file-locals: parse Vim modelines/file-local settings in files.
 (use-package vim-file-locals
   :straight (vim-file-locals
