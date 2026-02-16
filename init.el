@@ -4,7 +4,33 @@
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
 (setq create-lockfiles nil) ; stop lock files (.#filename)
+
+;; UI chrome
+;; Keep window UI minimal and consistent across GUI/TTY.
 (menu-bar-mode -1) ; turn off menu bar
+(when (fboundp 'tool-bar-mode)
+  (tool-bar-mode -1)) ; turn off tool bar icons
+(when (fboundp 'scroll-bar-mode)
+  (scroll-bar-mode -1)) ; turn off scroll bars
+(when (fboundp 'tooltip-mode)
+  (tooltip-mode -1)) ; turn off tooltips
+
+;; Frame chrome
+;; On macOS, use a transparent titlebar for a more modern look.
+;; On other GUI builds, fall back to a frameless (undecorated) window.
+(when (display-graphic-p)
+  (cond
+   ((eq system-type 'darwin)
+    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
+   (t
+    (add-to-list 'default-frame-alist '(undecorated . t))
+    (add-to-list 'default-frame-alist '(internal-border-width . 10)))))
+
+;; Fonts
+(set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
+(set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 120 :weight 'bold)
+(set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 120)
+
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
 ;; Bootstrap
@@ -125,13 +151,6 @@
 (emacs-config-load-module
  'zac-theme-autodetection
  "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
-
-;; Set default font for Emacs
-(set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
-
-;; Customize the mode line font
-(set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 120 :weight 'bold)
-(set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 120)
 
 ;; Terminal UX
 ;; Mouse support in terminal Emacs.
