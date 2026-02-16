@@ -223,6 +223,10 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
 
   (setq lsp-ltex-plus-language "en-US")
   (setq lsp-ltex-plus-check-frequency "edit")
+  ;; JVM heap size for the underlying LTEX+ Java process (in MB).
+  ;; Tune this if you see OOMs or excessive memory use.
+  (setq lsp-ltex-plus-java-initial-heap-size 64)
+  (setq lsp-ltex-plus-java-maximum-heap-size 512)
   ;; Make diagnostics visible.
   (setq lsp-ltex-plus-diagnostic-severity "warning")
   ;; Enable LTEX+ checks for the language IDs we use.
