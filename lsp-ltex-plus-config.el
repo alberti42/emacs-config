@@ -39,7 +39,27 @@
   (defun my--lsp-ltex-plus-enable ()
     "Enable LTEX+ in the current buffer." 
     (require 'lsp-ltex-plus)
+    ;; LTEX+ with `ltex.checkFrequency=edit` may not publish diagnostics until
+    ;; the first change. Trigger a first pass explicitly on open.
+    (add-hook 'lsp-managed-mode-hook #'my--lsp-ltex-plus--check-document-once nil t)
     (lsp-deferred))
+
+  (defun my--lsp-ltex-plus--check-document-once ()
+    "Ask LTEX+ LS to check the current document once." 
+    (remove-hook 'lsp-managed-mode-hook #'my--lsp-ltex-plus--check-document-once t)
+    (when (and (bound-and-true-p lsp-mode)
+               (fboundp 'lsp-workspace-command-execute)
+               (fboundp 'lsp--buffer-uri))
+      ;; Delay slightly to avoid racing server initialization.
+      (run-at-time
+       0.2 nil
+       (lambda ()
+         (when (bound-and-true-p lsp-mode)
+           (ignore-errors
+             (lsp-workspace-command-execute
+              "_ltex.checkDocument"
+              (vector (list :uri (lsp--buffer-uri)
+                            :codeLanguageId (lsp-buffer-language))))))))))
 
   (setq lsp-ltex-plus-language "en-US")
   (setq lsp-ltex-plus-check-frequency "edit")
