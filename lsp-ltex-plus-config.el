@@ -10,6 +10,146 @@
 
 ;;; Code:
 
+(defvar my--lsp-ltex-plus-debug t
+  "If non-nil, log when LTEX+ hooks run.")
+
+(defun my--lsp-ltex-plus--debug (fmt &rest args)
+  (when my--lsp-ltex-plus-debug
+    (apply #'message (concat "[ltex+] " fmt) args)))
+
+(defvar-local my--lsp-ltex-plus--check-in-flight nil
+  "Non-nil while an LTEX+ check request is in flight for this buffer.")
+
+(defun my--lsp-ltex-plus--initialized-workspace ()
+  "Return an initialized workspace for the current buffer, or nil." 
+  (when (and (bound-and-true-p lsp-mode)
+             (fboundp 'lsp-workspaces)
+             (fboundp 'lsp--workspace-status))
+    (seq-find (lambda (ws) (eq 'initialized (lsp--workspace-status ws)))
+              (lsp-workspaces))))
+
+(defun my--lsp-ltex-plus--eligible-buffer-p ()
+  "Return non-nil if the current buffer should be checked by LTEX+."
+  (and (buffer-file-name)
+       (derived-mode-p 'markdown-mode 'gfm-mode
+                       'tex-mode 'plain-tex-mode 'TeX-mode
+                       'latex-mode 'LaTeX-mode)))
+
+(defun my--lsp-ltex-plus--execute-check-async--in-current-workspace (buf)
+  "Send an async `_ltex.checkDocument' for BUF using the current workspace." 
+  (with-current-buffer buf
+    (let ((params (list :command "_ltex.checkDocument"
+                        :arguments (vector (list :uri (lsp--buffer-uri)
+                                                :codeLanguageId (lsp-buffer-language))))))
+      (setq my--lsp-ltex-plus--check-in-flight t)
+      (cond
+       ((fboundp 'lsp-request-async)
+       (lsp-request-async
+         "workspace/executeCommand"
+         params
+         (lambda (res)
+           (when (buffer-live-p buf)
+             (with-current-buffer buf
+               (setq my--lsp-ltex-plus--check-in-flight nil)
+               (my--lsp-ltex-plus--debug "check done: %s res=%S" (buffer-name) res)
+               ;; Ensure flymake renders the latest diagnostics even if they
+               ;; arrived before flymake's first backend run.
+               (when (and (bound-and-true-p flymake-mode)
+                          (fboundp 'lsp-diagnostics--flymake-update-diagnostics))
+                 (ignore-errors
+                   (lsp-diagnostics--flymake-update-diagnostics)))
+               ;; If the server supports pull diagnostics, explicitly refresh.
+               (when (and (fboundp 'lsp-diagnostics--request-pull-diagnostics)
+                          (bound-and-true-p lsp--cur-workspace))
+                 (ignore-errors
+                   (lsp-diagnostics--request-pull-diagnostics lsp--cur-workspace))))))
+         :error-handler
+         (lambda (err)
+           (when (buffer-live-p buf)
+             (with-current-buffer buf
+               (setq my--lsp-ltex-plus--check-in-flight nil)
+               (my--lsp-ltex-plus--debug "check error: %S" err))))
+         :mode 'detached))
+       (t
+        ;; Fallback: synchronous request (may block).
+        (unwind-protect
+            (progn
+              (my--lsp-ltex-plus--debug "no async; running sync check")
+              (lsp-request "workspace/executeCommand" params)
+              (when (and (fboundp 'lsp-diagnostics--request-pull-diagnostics)
+                         (bound-and-true-p lsp--cur-workspace))
+                (ignore-errors
+                  (lsp-diagnostics--request-pull-diagnostics lsp--cur-workspace))))
+          (setq my--lsp-ltex-plus--check-in-flight nil)))))))
+
+(defun my--lsp-ltex-plus--execute-check-async (&optional buffer workspace)
+  "Send an async `_ltex.checkDocument' for BUFFER (defaults to current buffer).
+
+If WORKSPACE is non-nil, execute the request in that workspace." 
+  (let* ((buf (or buffer (current-buffer)))
+         (ws (or workspace (with-current-buffer buf (my--lsp-ltex-plus--initialized-workspace)))))
+    (if (and ws (fboundp 'with-lsp-workspace))
+        (with-lsp-workspace ws
+          (my--lsp-ltex-plus--execute-check-async--in-current-workspace buf))
+      (my--lsp-ltex-plus--execute-check-async--in-current-workspace buf))))
+
+(defun my--lsp-ltex-plus--schedule-check (&optional buffer attempts)
+  "Schedule an LTEX+ document check once LSP is ready.
+
+BUFFER is the buffer to check (defaults to current buffer).
+ATTEMPTS controls how many times we retry while waiting for LSP."
+  (let ((buf (or buffer (current-buffer)))
+        (attempts (or attempts 60)))
+    (run-at-time
+     0.2 nil
+     (lambda ()
+       (if (not (buffer-live-p buf))
+           (my--lsp-ltex-plus--debug "buffer dead; skipping")
+         (with-current-buffer buf
+           (cond
+            ((not (my--lsp-ltex-plus--eligible-buffer-p))
+             (my--lsp-ltex-plus--debug "not eligible: %s (%S)" (buffer-name) major-mode)
+             nil)
+            (my--lsp-ltex-plus--check-in-flight
+             (my--lsp-ltex-plus--debug "check already in flight: %s" (buffer-name))
+             nil)
+             ((let ((ws (my--lsp-ltex-plus--initialized-workspace)))
+                (when ws
+                  (my--lsp-ltex-plus--debug "checking %s (%S)" (buffer-name) major-mode)
+                  (ignore-errors
+                    (my--lsp-ltex-plus--execute-check-async (current-buffer) ws))
+                  t)))
+            ((> attempts 0)
+             (my--lsp-ltex-plus--debug "waiting for lsp (%s)" (buffer-name))
+             (my--lsp-ltex-plus--schedule-check buf (1- attempts)))
+             (t
+              (my--lsp-ltex-plus--debug "gave up waiting (%s)" (buffer-name))
+              nil))))))))
+
+(defun my--lsp-ltex-plus--check-document-once ()
+  "Ask LTEX+ LS to check the current document once." 
+  (interactive)
+  (remove-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once t)
+  (when (and (fboundp 'lsp--buffer-uri)
+             (fboundp 'lsp-buffer-language))
+    (my--lsp-ltex-plus--schedule-check (current-buffer))))
+
+(defun my--lsp-ltex-plus--server-maybe-check ()
+  "When using emacsclient, ensure LTEX+ diagnostics are refreshed." 
+  (when (my--lsp-ltex-plus--eligible-buffer-p)
+    (my--lsp-ltex-plus--debug "server hook in %s (%S)" (buffer-name) major-mode)
+    (require 'lsp-ltex-plus)
+    (lsp-deferred)
+    (my--lsp-ltex-plus--schedule-check (current-buffer))))
+
+(defun my--lsp-ltex-plus-enable ()
+  "Enable LTEX+ in the current buffer." 
+  (require 'lsp-ltex-plus)
+  ;; LTEX+ with `ltex.checkFrequency=edit` may not publish diagnostics until the
+  ;; first change. Trigger a first pass explicitly on open.
+  (add-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once nil t)
+  (lsp-deferred))
+
 (use-package lsp-ltex-plus
   :straight (lsp-ltex-plus
              :type git
@@ -36,58 +176,6 @@
                     (TeX-mode . "latex")))
       (add-to-list 'lsp-language-id-configuration pair)))
 
-  (defun my--lsp-ltex-plus-enable ()
-    "Enable LTEX+ in the current buffer." 
-    (require 'lsp-ltex-plus)
-    ;; LTEX+ with `ltex.checkFrequency=edit` may not publish diagnostics until
-    ;; the first change. Trigger a first pass explicitly on open.
-    (add-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once nil t)
-    (lsp-deferred))
-
-  (defun my--lsp-ltex-plus--eligible-buffer-p ()
-    "Return non-nil if the current buffer should be checked by LTEX+." 
-    (and (buffer-file-name)
-         (derived-mode-p 'markdown-mode 'gfm-mode
-                         'tex-mode 'plain-tex-mode 'TeX-mode
-                         'latex-mode 'LaTeX-mode)))
-
-  (defun my--lsp-ltex-plus--schedule-check (&optional attempts)
-    "Schedule an LTEX+ document check once LSP is ready.
-
-ATTEMPTS controls how many times we retry while waiting for LSP." 
-    (let ((attempts (or attempts 10)))
-      (run-at-time
-       0.2 nil
-       (lambda ()
-         (cond
-          ((not (my--lsp-ltex-plus--eligible-buffer-p))
-           nil)
-          ((and (bound-and-true-p lsp-mode)
-                (fboundp 'lsp-workspaces)
-                (lsp-workspaces))
-           (ignore-errors
-             (lsp-workspace-command-execute
-              "_ltex.checkDocument"
-              (vector (list :uri (lsp--buffer-uri)
-                            :codeLanguageId (lsp-buffer-language))))))
-          ((> attempts 0)
-           (my--lsp-ltex-plus--schedule-check (1- attempts))))))))
-
-  (defun my--lsp-ltex-plus--check-document-once ()
-    "Ask LTEX+ LS to check the current document once." 
-    (interactive)
-    (remove-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once t)
-    (when (and (fboundp 'lsp-workspace-command-execute)
-               (fboundp 'lsp--buffer-uri))
-      (my--lsp-ltex-plus--schedule-check)))
-
-  (defun my--lsp-ltex-plus--server-maybe-check ()
-    "When using emacsclient, ensure LTEX+ diagnostics are refreshed." 
-    (when (my--lsp-ltex-plus--eligible-buffer-p)
-      (require 'lsp-ltex-plus)
-      (lsp-deferred)
-      (my--lsp-ltex-plus--schedule-check)))
-
   ;; When reusing an existing buffer via emacsclient, `lsp-after-open-hook`
   ;; may not run again. Refresh diagnostics when the server visits/switches.
   (with-eval-after-load 'server
@@ -101,10 +189,13 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
   ;; Enable LTEX+ checks for the language IDs we use.
   (setq lsp-ltex-plus-enabled ["markdown" "latex"])
   :hook
-  ((markdown-mode gfm-mode
-                  tex-mode plain-tex-mode TeX-mode
-                  latex-mode LaTeX-mode) .
-   my--lsp-ltex-plus-enable))
+  ((markdown-mode . my--lsp-ltex-plus-enable)
+   (gfm-mode . my--lsp-ltex-plus-enable)
+   (tex-mode . my--lsp-ltex-plus-enable)
+   (plain-tex-mode . my--lsp-ltex-plus-enable)
+   (TeX-mode . my--lsp-ltex-plus-enable)
+   (latex-mode . my--lsp-ltex-plus-enable)
+   (LaTeX-mode . my--lsp-ltex-plus-enable)))
 
 (provide 'lsp-ltex-plus-config)
 
