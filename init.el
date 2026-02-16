@@ -29,17 +29,6 @@
   :config
   (which-key-mode 1))
 
-;; Avoid noisy errors on non-X/TTY frames when something calls `tooltip-hide`.
-(with-eval-after-load 'tooltip
-  (unless (fboundp 'x-hide-tip)
-    (defun x-hide-tip (&rest _)
-      "Compatibility shim for non-X builds." 
-      nil))
-  (unless (fboundp 'x-show-tip)
-    (defun x-show-tip (&rest _)
-      "Compatibility shim for non-X builds." 
-      nil)))
-
 ;; Save minibuffer history
 (savehist-mode 1)
 
