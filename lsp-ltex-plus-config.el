@@ -20,12 +20,23 @@
 (defvar-local my--lsp-ltex-plus--check-in-flight nil
   "Non-nil while an LTEX+ check request is in flight for this buffer.")
 
+(defun my--lsp-ltex-plus--ltex-workspace-p (ws)
+  "Return non-nil if WS is an LTEX+ workspace." 
+  (when (and ws
+             (fboundp 'lsp--workspace-client)
+             (fboundp 'lsp--client-server-id)
+             (fboundp 'lsp--workspace-status))
+    (let* ((client (lsp--workspace-client ws))
+           (sid (and client (lsp--client-server-id client))))
+      (and (eq 'initialized (lsp--workspace-status ws))
+           (memq sid '(ltex-ls-plus ltex-ls-plus-tramp))))))
+
 (defun my--lsp-ltex-plus--initialized-workspace ()
-  "Return an initialized workspace for the current buffer, or nil." 
+  "Return the initialized LTEX+ workspace for the current buffer, or nil." 
   (when (and (bound-and-true-p lsp-mode)
              (fboundp 'lsp-workspaces)
              (fboundp 'lsp--workspace-status))
-    (seq-find (lambda (ws) (eq 'initialized (lsp--workspace-status ws)))
+    (seq-find #'my--lsp-ltex-plus--ltex-workspace-p
               (lsp-workspaces))))
 
 (defun my--lsp-ltex-plus--eligible-buffer-p ()
