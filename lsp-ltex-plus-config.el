@@ -10,8 +10,8 @@
 
 ;;; Code:
 
-(defvar my--lsp-ltex-plus-debug t
-  "If non-nil, log when LTEX+ hooks run.")
+(defvar my--lsp-ltex-plus-debug nil
+  "If non-nil, log LTEX+ helper messages.")
 
 (defun my--lsp-ltex-plus--debug (fmt &rest args)
   (when my--lsp-ltex-plus-debug
@@ -55,12 +55,12 @@
       (setq my--lsp-ltex-plus--check-in-flight t)
       (cond
        ((fboundp 'lsp-request-async)
-       (lsp-request-async
+        (lsp-request-async
          "workspace/executeCommand"
          params
-         (lambda (res)
-           (when (buffer-live-p buf)
-             (with-current-buffer buf
+          (lambda (res)
+            (when (buffer-live-p buf)
+              (with-current-buffer buf
                (setq my--lsp-ltex-plus--check-in-flight nil)
                (my--lsp-ltex-plus--debug "check done: %s res=%S" (buffer-name) res)
                ;; Ensure flymake renders the latest diagnostics even if they
@@ -114,28 +114,21 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
     (run-at-time
      0.2 nil
      (lambda ()
-       (if (not (buffer-live-p buf))
-           (my--lsp-ltex-plus--debug "buffer dead; skipping")
+       (when (buffer-live-p buf)
          (with-current-buffer buf
            (cond
             ((not (my--lsp-ltex-plus--eligible-buffer-p))
-             (my--lsp-ltex-plus--debug "not eligible: %s (%S)" (buffer-name) major-mode)
              nil)
             (my--lsp-ltex-plus--check-in-flight
-             (my--lsp-ltex-plus--debug "check already in flight: %s" (buffer-name))
              nil)
-             ((let ((ws (my--lsp-ltex-plus--initialized-workspace)))
-                (when ws
-                  (my--lsp-ltex-plus--debug "checking %s (%S)" (buffer-name) major-mode)
-                  (ignore-errors
-                    (my--lsp-ltex-plus--execute-check-async (current-buffer) ws))
-                  t)))
+            ((let ((ws (my--lsp-ltex-plus--initialized-workspace)))
+               (when ws
+                 (ignore-errors
+                   (my--lsp-ltex-plus--execute-check-async (current-buffer) ws))
+                 t)))
             ((> attempts 0)
-             (my--lsp-ltex-plus--debug "waiting for lsp (%s)" (buffer-name))
              (my--lsp-ltex-plus--schedule-check buf (1- attempts)))
-             (t
-              (my--lsp-ltex-plus--debug "gave up waiting (%s)" (buffer-name))
-              nil))))))))
+            (t nil))))))))
 
 (defun my--lsp-ltex-plus--check-document-once ()
   "Ask LTEX+ LS to check the current document once." 
@@ -148,7 +141,6 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
 (defun my--lsp-ltex-plus--server-maybe-check ()
   "When using emacsclient, ensure LTEX+ diagnostics are refreshed." 
   (when (my--lsp-ltex-plus--eligible-buffer-p)
-    (my--lsp-ltex-plus--debug "server hook in %s (%S)" (buffer-name) major-mode)
     (require 'lsp-ltex-plus)
     (lsp-deferred)
     (my--lsp-ltex-plus--schedule-check (current-buffer))))
