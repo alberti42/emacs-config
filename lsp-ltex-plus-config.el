@@ -41,25 +41,58 @@
     (require 'lsp-ltex-plus)
     ;; LTEX+ with `ltex.checkFrequency=edit` may not publish diagnostics until
     ;; the first change. Trigger a first pass explicitly on open.
-    (add-hook 'lsp-managed-mode-hook #'my--lsp-ltex-plus--check-document-once nil t)
+    (add-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once nil t)
     (lsp-deferred))
 
-  (defun my--lsp-ltex-plus--check-document-once ()
-    "Ask LTEX+ LS to check the current document once." 
-    (remove-hook 'lsp-managed-mode-hook #'my--lsp-ltex-plus--check-document-once t)
-    (when (and (bound-and-true-p lsp-mode)
-               (fboundp 'lsp-workspace-command-execute)
-               (fboundp 'lsp--buffer-uri))
-      ;; Delay slightly to avoid racing server initialization.
+  (defun my--lsp-ltex-plus--eligible-buffer-p ()
+    "Return non-nil if the current buffer should be checked by LTEX+." 
+    (and (buffer-file-name)
+         (derived-mode-p 'markdown-mode 'gfm-mode
+                         'tex-mode 'plain-tex-mode 'TeX-mode
+                         'latex-mode 'LaTeX-mode)))
+
+  (defun my--lsp-ltex-plus--schedule-check (&optional attempts)
+    "Schedule an LTEX+ document check once LSP is ready.
+
+ATTEMPTS controls how many times we retry while waiting for LSP." 
+    (let ((attempts (or attempts 10)))
       (run-at-time
        0.2 nil
        (lambda ()
-         (when (bound-and-true-p lsp-mode)
+         (cond
+          ((not (my--lsp-ltex-plus--eligible-buffer-p))
+           nil)
+          ((and (bound-and-true-p lsp-mode)
+                (fboundp 'lsp-workspaces)
+                (lsp-workspaces))
            (ignore-errors
              (lsp-workspace-command-execute
               "_ltex.checkDocument"
               (vector (list :uri (lsp--buffer-uri)
-                            :codeLanguageId (lsp-buffer-language))))))))))
+                            :codeLanguageId (lsp-buffer-language))))))
+          ((> attempts 0)
+           (my--lsp-ltex-plus--schedule-check (1- attempts))))))))
+
+  (defun my--lsp-ltex-plus--check-document-once ()
+    "Ask LTEX+ LS to check the current document once." 
+    (interactive)
+    (remove-hook 'lsp-after-open-hook #'my--lsp-ltex-plus--check-document-once t)
+    (when (and (fboundp 'lsp-workspace-command-execute)
+               (fboundp 'lsp--buffer-uri))
+      (my--lsp-ltex-plus--schedule-check)))
+
+  (defun my--lsp-ltex-plus--server-maybe-check ()
+    "When using emacsclient, ensure LTEX+ diagnostics are refreshed." 
+    (when (my--lsp-ltex-plus--eligible-buffer-p)
+      (require 'lsp-ltex-plus)
+      (lsp-deferred)
+      (my--lsp-ltex-plus--schedule-check)))
+
+  ;; When reusing an existing buffer via emacsclient, `lsp-after-open-hook`
+  ;; may not run again. Refresh diagnostics when the server visits/switches.
+  (with-eval-after-load 'server
+    (add-hook 'server-visit-hook #'my--lsp-ltex-plus--server-maybe-check)
+    (add-hook 'server-switch-hook #'my--lsp-ltex-plus--server-maybe-check))
 
   (setq lsp-ltex-plus-language "en-US")
   (setq lsp-ltex-plus-check-frequency "edit")
