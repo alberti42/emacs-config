@@ -99,6 +99,11 @@
  'completion
  "Could not load completion.el; using default minibuffer completion.")
 
+;; In-buffer completion UI
+(emacs-config-load-module
+ 'corfu-config
+ "Could not load corfu-config.el; Corfu is disabled.")
+
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
  'nerd-icons-config
