@@ -104,6 +104,11 @@
  'corfu-config
  "Could not load corfu-config.el; Corfu is disabled.")
 
+;; CAPF sources
+(emacs-config-load-module
+ 'cape-config
+ "Could not load cape-config.el; Cape is disabled.")
+
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
  'nerd-icons-config
