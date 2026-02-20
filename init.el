@@ -99,6 +99,11 @@
  'completion
  "Could not load completion.el; using default minibuffer completion.")
 
+;; Nerd icons (Nerd Fonts)
+(emacs-config-load-module
+ 'nerd-icons-config
+ "Could not load nerd-icons-config.el; nerd icons are disabled.")
+
 ;; Line numbers
 (setq display-line-numbers-type 'relative)
 ;; Keep current line absolute while others are relative.
