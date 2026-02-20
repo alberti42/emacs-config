@@ -14,5 +14,10 @@
   (setq treemacs-width 35)
   (setq treemacs-no-png-images t))
 
+(use-package treemacs-nerd-icons
+  :after (treemacs nerd-icons)
+  :config
+  (treemacs-nerd-icons-config))
+
 (provide 'treemacs-config)
 ;;; treemacs-config.el ends here
