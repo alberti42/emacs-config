@@ -155,6 +155,11 @@
 ;; magit: Git porcelain inside Emacs.
 (use-package magit)
 
+;; Project tree (TTY-friendly)
+(emacs-config-load-module
+ 'treemacs-config
+ "Could not load treemacs-config.el; Treemacs is disabled.")
+
 ;; LSP modules
 (emacs-config-load-module
  'lsp-core
