@@ -48,6 +48,10 @@ Key files:
 Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
 - `completion.el`: minibuffer completion UI (Fido vertical / icomplete).
+- `corfu-config.el`: in-buffer completion UI (Corfu popup).
+- `cape-config.el`: extra CAPF sources via Cape (file, dabbrev, etc.).
+- `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
+- `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
 - `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`).
