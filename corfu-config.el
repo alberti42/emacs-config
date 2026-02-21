@@ -1,6 +1,17 @@
 ;;; corfu-config.el --- In-buffer completion UI (Corfu) -*- lexical-binding: t; -*-
 
 ;; Corfu is a completion-at-point UI (in-buffer), not a minibuffer completion UI.
+(use-package emacs
+  :straight nil
+  :init
+  ;; Emacs 30+: Disable Ispell's word completion CAPF in `text-mode' buffers.
+  ;;
+  ;; Without this, `ispell-completion-at-point' is often installed buffer-locally
+  ;; and can "win" completion-at-point in prose buffers, which prevents fallback
+  ;; CAPFs like `cape-file' from ever being reached when completing paths like
+  ;; "~/Documents/...".
+  (setq text-mode-ispell-word-completion nil))
+
 (use-package corfu
   :init
   (setq corfu-auto t
