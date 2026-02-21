@@ -61,11 +61,9 @@
                 (run-at-time 0 nil #'emacs-config-center-frame f)))))
 
 ;; Fonts
-(set-face-attribute 'default nil :font "MesloLGS NF" :height 120)
-(set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 120 :weight 'bold)
-(set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 120)
-(when (display-graphic-p)
-  (set-face-attribute 'default nil :font "MesloLGS NF" :height 180))
+(set-face-attribute 'default nil :font "MesloLGS NF" :height 160)
+(set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 160 :weight 'bold)
+(set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 160)
 
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 

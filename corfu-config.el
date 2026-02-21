@@ -17,9 +17,9 @@
   (setq corfu-auto t
         corfu-auto-delay 0.1
         corfu-auto-prefix 2
-        corfu-cycle t
-        corfu-preselect 'prompt
-        corfu-quit-no-match 'separator)
+        corfu-cycle t                    ;; Enable cycling for `corfu-next/previous'
+        corfu-preselect 'prompt          ;; Always preselect the prompt
+        corfu-quit-no-match 'separator)  ;; Never quit, even if there is no match
   :config
   (global-corfu-mode 1))
 
