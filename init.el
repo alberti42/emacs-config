@@ -7,6 +7,7 @@
 
 ;; UI chrome
 ;; Keep window UI minimal and consistent across GUI/TTY.
+(setq ring-bell-function 'ignore) ; disable all bells
 (menu-bar-mode -1) ; turn off menu bar
 (when (fboundp 'tool-bar-mode)
   (tool-bar-mode -1)) ; turn off tool bar icons
@@ -16,22 +17,22 @@
   (tooltip-mode -1)) ; turn off tooltips
 
 ;; Frame chrome
-;; On macOS, use a transparent titlebar for a more modern look.
-;; On other GUI builds, fall back to a frameless (undecorated) window.
-(when (display-graphic-p)
-  (cond
-   ((eq system-type 'darwin)
-    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
-   (t
-    (add-to-list 'default-frame-alist '(undecorated . t))
-    (add-to-list 'default-frame-alist '(internal-border-width . 10)))))
+(cond
+ ((eq system-type 'darwin)
+  ;; On macOS, use a transparent titlebar for a more modern look.
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
+ (t
+  ;; On other GUI builds, fall back to a frameless (undecorated) window.
+  (add-to-list 'default-frame-alist '(undecorated . t))
+  (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
-;; Default GUI frame size (columns/lines).
-(when (display-graphic-p)
-  (add-to-list 'default-frame-alist '(width . 160))
-  (add-to-list 'default-frame-alist '(height . 55)))
+;; Default frame size; TTY frames ignore these.
+(add-to-list 'default-frame-alist '(width . 160))
+(add-to-list 'default-frame-alist '(height . 75))
 
-;; Center GUI frames on their monitor (Retina-safe).
+;; Per-frame GUI setup: fonts and centering.
+;; Hooked to both emacs-startup-hook (direct GUI launch) and
+;; after-make-frame-functions (daemon/emacsclient GUI frame).
 (defun emacs-config-center-frame (&optional frame)
   "Center FRAME on its current monitor (GUI only)."
   (when (display-graphic-p)
@@ -49,21 +50,17 @@
                               (+ mx (/ (- mw fw) 2))
                               (+ my (/ (- mh fh) 2))))))))
 
-(when (display-graphic-p)
-  ;; Center the initial frame after startup.
-  (add-hook 'emacs-startup-hook
-            (lambda ()
-              (run-at-time 0 nil #'emacs-config-center-frame (selected-frame))))
-  ;; Center future frames (daemon/emacsclient, or M-x make-frame).
-  (add-hook 'after-make-frame-functions
-            (lambda (f)
-              (with-selected-frame f
-                (run-at-time 0 nil #'emacs-config-center-frame f)))))
+(defun emacs-config-setup-gui-frame (&optional frame)
+  "Apply GUI-only settings (fonts, centering) to FRAME."
+  (with-selected-frame (or frame (selected-frame))
+    (when (display-graphic-p)
+      (set-face-attribute 'default nil :font "MesloLGS NF" :height 160)
+      (set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 160 :weight 'bold)
+      (set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 160)
+      (run-at-time 0 nil #'emacs-config-center-frame (selected-frame)))))
 
-;; Fonts
-(set-face-attribute 'default nil :font "MesloLGS NF" :height 160)
-(set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 160 :weight 'bold)
-(set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 160)
+(add-hook 'emacs-startup-hook #'emacs-config-setup-gui-frame)
+(add-hook 'after-make-frame-functions #'emacs-config-setup-gui-frame)
 
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
