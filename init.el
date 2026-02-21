@@ -16,6 +16,24 @@
 (when (fboundp 'tooltip-mode)
   (tooltip-mode -1)) ; turn off tooltips
 
+;; Window dividers (GUI)
+;; The vertical divider between treemacs and the buffer is drawn by Emacs's
+;; window-divider-mode (right side).  Enable bottom-only dividers to get a
+;; matching 2px bar between the mode-line and the minibuffer.
+(setq window-divider-default-places 'bottom-only)
+(setq window-divider-default-bottom-width 2)
+(window-divider-mode 1)
+
+;; TTY mode-line separator
+;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
+;; which defaults to "%-" (fill with -).  Replace it with ─ (U+2500) by
+;; overriding that single variable after all themes have loaded.
+;; The :eval guard keeps GUI frames unaffected when running as a daemon.
+(defun emacs-config--tty-mode-line-separator ()
+  (setq-default mode-line-end-spaces
+                '(:eval (unless (display-graphic-p) (make-string 500 ?─)))))
+(add-hook 'after-init-hook #'emacs-config--tty-mode-line-separator)
+
 ;; Frame chrome
 (cond
  ((eq system-type 'darwin)
@@ -28,7 +46,7 @@
 
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
-(add-to-list 'default-frame-alist '(height . 75))
+(add-to-list 'default-frame-alist '(height . 100))
 
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
