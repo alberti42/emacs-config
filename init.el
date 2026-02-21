@@ -124,9 +124,25 @@
 ;; Configure indentation defaults
 (setq-default tab-width 4)
 (setq-default standard-indent 4)
-;; Indent/unindent region by tab stop (like Sublime's option-[ / option-])
-(global-set-key (kbd "M-[") #'indent-rigidly-left-to-tab-stop)
-(global-set-key (kbd "M-]") #'indent-rigidly-right-to-tab-stop)
+;; Indent/unindent region by tab-width (like Sublime's option-[ / option-])
+(defun emacs-config-indent-left ()
+  "Shift selected lines (or current line) left by `tab-width' columns."
+  (interactive)
+  (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
+        (end (if (use-region-p) (region-end) (line-end-position))))
+    (indent-rigidly beg end (- tab-width))
+    (setq deactivate-mark nil)))
+
+(defun emacs-config-indent-right ()
+  "Shift selected lines (or current line) right by `tab-width' columns."
+  (interactive)
+  (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
+        (end (if (use-region-p) (region-end) (line-end-position))))
+    (indent-rigidly beg end tab-width)
+    (setq deactivate-mark nil)))
+
+(bind-key* "C-," #'emacs-config-indent-left)
+(bind-key* "C-." #'emacs-config-indent-right)
 
 ;; Terminal key decoding (CSI u).
 (emacs-config-load-module
