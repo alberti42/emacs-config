@@ -254,4 +254,14 @@
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
+;; Pixel-precise scrolling (Emacs 29+); improves trackpad momentum on macOS.
+(when (>= emacs-major-version 29)
+  (pixel-scroll-precision-mode 1))
+
+;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
+(global-set-key (kbd "<C-wheel-up>") 'ignore)
+(global-set-key (kbd "<C-wheel-down>") 'ignore)
+(global-set-key (kbd "<C-mouse-4>") 'ignore)
+(global-set-key (kbd "<C-mouse-5>") 'ignore)
+
 ;; vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2 :
