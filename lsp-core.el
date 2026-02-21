@@ -11,6 +11,8 @@
   :commands (lsp lsp-deferred)
   :init
   (setq lsp-keymap-prefix "C-c l")
+  ;; Suppress "no server installed" popups for file types like plist/XML.
+  (setq lsp-warn-no-matched-clients nil)
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
   (setq read-process-output-max (* 1024 1024))
