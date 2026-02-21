@@ -28,7 +28,7 @@
 
 ;; Default GUI frame size (columns/lines).
 (when (display-graphic-p)
-  (add-to-list 'default-frame-alist '(width . 120))
+  (add-to-list 'default-frame-alist '(width . 160))
   (add-to-list 'default-frame-alist '(height . 55)))
 
 ;; Center GUI frames on their monitor (Retina-safe).
@@ -124,6 +124,9 @@
 ;; Configure indentation defaults
 (setq-default tab-width 4)
 (setq-default standard-indent 4)
+;; Indent/unindent region by tab stop (like Sublime's option-[ / option-])
+(global-set-key (kbd "M-[") #'indent-rigidly-left-to-tab-stop)
+(global-set-key (kbd "M-]") #'indent-rigidly-right-to-tab-stop)
 
 ;; Terminal key decoding (CSI u).
 (emacs-config-load-module
