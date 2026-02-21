@@ -57,7 +57,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
-- `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus`.
+- `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
 - `zac-theme-autodetection.el`: theme auto-switch based on external appearance.
 
 ## Boot Sequence (Mental Model)

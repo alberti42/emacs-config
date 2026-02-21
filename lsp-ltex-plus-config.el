@@ -5,7 +5,7 @@
 ;; Use the intended Emacs client `lsp-ltex-plus` and an externally installed
 ;; `ltex-ls-plus` server (provided on PATH, e.g. via zinit).
 ;;
-;; Scope: enable only in Markdown and TeX-ish modes.
+;; Scope: enable in Markdown, TeX-ish, plain text, Org, and reStructuredText modes.
 ;;
 ;; Why this file exists (non-obvious bits):
 ;;
@@ -69,9 +69,8 @@
   "Return non-nil if the current buffer should be checked by LTEX+."
   ;; Avoid running in scratch/temporary buffers.
   (and (buffer-file-name)
-       (derived-mode-p 'markdown-mode 'gfm-mode
-                       'tex-mode 'plain-tex-mode 'TeX-mode
-                       'latex-mode 'LaTeX-mode)))
+       (derived-mode-p 'markdown-mode 'tex-mode
+                       'text-mode 'org-mode 'rst-mode)))
 
 (defun my--lsp-ltex-plus--execute-check-async--in-current-workspace (buf)
   "Send an async `_ltex.checkDocument' for BUF using the current workspace." 
@@ -199,20 +198,18 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
   :defer t
   :init
   ;; Limit the client to the modes we care about.
-  ;; NOTE: `lsp-ltex-plus` ships with a broader default list (e.g. text-mode,
-  ;; org-mode, rst-mode, etc.).
   (setq lsp-ltex-plus-active-modes
         '(markdown-mode gfm-mode
-          latex-mode LaTeX-mode
-          tex-mode plain-tex-mode TeX-mode))
+          latex-mode tex-mode plain-tex-mode
+          text-mode org-mode rst-mode))
 
-  ;; Ensure TeX modes use a language id that LTEX+ enables/parses as LaTeX.
-  ;; (LTEX+ defaults to identifiers like "latex"/"markdown"; there is no
-  ;; standard "plaintex" identifier.)
+  ;; Map both TeX modes to the "latex" language id that LTEX+ understands.
+  ;; plain-tex-mode is what Emacs uses for .tex files without a preamble
+  ;; (e.g. sub-files sourced via \input); LTEX+ has no separate "plaintex" id,
+  ;; so we send those buffers as "latex" too.
   (with-eval-after-load 'lsp-mode
     (dolist (pair '((tex-mode . "latex")
-                    (plain-tex-mode . "latex")
-                    (TeX-mode . "latex")))
+                    (plain-tex-mode . "latex")))
       (add-to-list 'lsp-language-id-configuration pair)))
 
   ;; When reusing an existing buffer via emacsclient, `lsp-after-open-hook`
@@ -230,15 +227,13 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
   ;; Make diagnostics visible.
   (setq lsp-ltex-plus-diagnostic-severity "warning")
   ;; Enable LTEX+ checks for the language IDs we use.
-  (setq lsp-ltex-plus-enabled ["markdown" "latex"])
+  (setq lsp-ltex-plus-enabled ["markdown" "latex" "org" "plaintext" "restructuredtext"])
   :hook
   ((markdown-mode . my--lsp-ltex-plus-enable)
-   (gfm-mode . my--lsp-ltex-plus-enable)
-   (tex-mode . my--lsp-ltex-plus-enable)
-   (plain-tex-mode . my--lsp-ltex-plus-enable)
-   (TeX-mode . my--lsp-ltex-plus-enable)
-   (latex-mode . my--lsp-ltex-plus-enable)
-   (LaTeX-mode . my--lsp-ltex-plus-enable)))
+   (tex-mode . my--lsp-ltex-plus-enable)   ; latex-mode (preamble) and plain-tex-mode (\input sub-files) both derive from tex-mode
+   (text-mode . my--lsp-ltex-plus-enable)
+   (org-mode . my--lsp-ltex-plus-enable)
+   (rst-mode . my--lsp-ltex-plus-enable)))
 
 (provide 'lsp-ltex-plus-config)
 
