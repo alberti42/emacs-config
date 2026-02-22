@@ -162,31 +162,10 @@
 (setq display-line-numbers-current-absolute t)
 (global-display-line-numbers-mode 1)
 
-;; Editing Defaults
-;; Use spaces for indentation (never literal \t)
-(setq-default indent-tabs-mode nil)
-;; Configure indentation defaults
-(setq-default tab-width 4)
-(setq-default standard-indent 4)
-;; Indent/unindent region by tab-width (like Sublime's option-[ / option-])
-(defun emacs-config-indent-left ()
-  "Shift selected lines (or current line) left by `tab-width' columns."
-  (interactive)
-  (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
-        (end (if (use-region-p) (region-end) (line-end-position))))
-    (indent-rigidly beg end (- tab-width))
-    (setq deactivate-mark nil)))
-
-(defun emacs-config-indent-right ()
-  "Shift selected lines (or current line) right by `tab-width' columns."
-  (interactive)
-  (let ((beg (if (use-region-p) (region-beginning) (line-beginning-position)))
-        (end (if (use-region-p) (region-end) (line-end-position))))
-    (indent-rigidly beg end tab-width)
-    (setq deactivate-mark nil)))
-
-(bind-key* "C-," #'emacs-config-indent-left)
-(bind-key* "C-." #'emacs-config-indent-right)
+;; Per-syntax indentation settings
+(emacs-config-load-module
+ 'syntaxes
+ "Could not load syntaxes.el; per-syntax settings are disabled.")
 
 ;; External file change detection
 ;; When Emacs regains focus, check all file-visiting buffers for external
