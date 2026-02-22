@@ -218,6 +218,11 @@
 ;; magit: Git porcelain inside Emacs.
 (use-package magit)
 
+;; Fast project search (prefer ripgrep)
+(emacs-config-load-module
+ 'search-config
+ "Could not load search-config.el; using default project search backend.")
+
 ;; Project tree (TTY-friendly)
 (emacs-config-load-module
  'treemacs-config
