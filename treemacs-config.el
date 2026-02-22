@@ -19,5 +19,20 @@
   :config
   (treemacs-nerd-icons-config))
 
+;; Daemon warmup
+;; When running `emacs --daemon`, Treemacs is autoloaded and can feel slow on
+;; first use. Preload the package shortly after startup so the first interactive
+;; Treemacs command is snappy.
+(defun emacs-config--treemacs-warmup ()
+  "Preload Treemacs packages in the background."
+  (when (daemonp)
+    (run-at-time
+     1 nil
+     (lambda ()
+       (require 'treemacs nil t)
+       (require 'treemacs-nerd-icons nil t)))))
+
+(add-hook 'after-init-hook #'emacs-config--treemacs-warmup)
+
 (provide 'treemacs-config)
 ;;; treemacs-config.el ends here
