@@ -44,8 +44,8 @@
 ;; Frame chrome
 (cond
  ((eq system-type 'darwin)
-  ;; On macOS, use a transparent titlebar for a more modern look.
-  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
+   ;; On macOS, use a transparent titlebar for a more modern look.
+   (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
  (t
   ;; On other GUI builds, fall back to a frameless (undecorated) window.
   (add-to-list 'default-frame-alist '(undecorated . t))
@@ -54,6 +54,22 @@
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
 (add-to-list 'default-frame-alist '(height . 80))
+
+;; Ensure GUI Emacs creates/raises a frame.
+;; - Some macOS setups can start Emacs without presenting a visible window.
+;; - `emacsclient -c` can create a frame without activating the app.
+(defun emacs-config--activate-gui-frame (&optional frame)
+  "Raise FRAME and give it focus (best-effort)."
+  (let ((frame (or frame (selected-frame))))
+    (when (display-graphic-p frame)
+      (with-selected-frame frame
+        (run-at-time
+         0 nil
+         (lambda (f)
+           (when (frame-live-p f)
+             (select-frame-set-input-focus f)
+             (raise-frame f)))
+         frame)))))
 
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
@@ -86,6 +102,12 @@
 
 (add-hook 'emacs-startup-hook #'emacs-config-setup-gui-frame)
 (add-hook 'after-make-frame-functions #'emacs-config-setup-gui-frame)
+
+;; When running as a server, prefer focusing frames created by emacsclient.
+;; This is important to ensure that 'emacsclient -a= -n -c' brings emacs in foucs
+(with-eval-after-load 'server
+  (when (boundp 'server-after-make-frame-hook)
+    (add-hook 'server-after-make-frame-hook #'emacs-config--activate-gui-frame)))
 
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
