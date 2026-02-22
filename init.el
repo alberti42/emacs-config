@@ -5,6 +5,8 @@
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
 (setq create-lockfiles nil) ; stop lock files (.#filename)
 
+(setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
+
 ;; UI chrome
 ;; Keep window UI minimal and consistent across GUI/TTY.
 (setq ring-bell-function 'ignore) ; disable all bells
@@ -45,7 +47,7 @@
   (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
 ;; Default frame size; TTY frames ignore these.
-(add-to-list 'default-frame-alist '(width . 160))
+(add-to-list 'default-frame-alist '(width . 360))
 (add-to-list 'default-frame-alist '(height . 100))
 
 ;; Per-frame GUI setup: fonts and centering.
@@ -79,8 +81,6 @@
 
 (add-hook 'emacs-startup-hook #'emacs-config-setup-gui-frame)
 (add-hook 'after-make-frame-functions #'emacs-config-setup-gui-frame)
-
-(setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
