@@ -18,6 +18,11 @@
 (when (fboundp 'tooltip-mode)
   (tooltip-mode -1)) ; turn off tooltips
 
+;; Always use minibuffer prompts (no GUI dialog boxes).
+(setq use-dialog-box nil)
+;; Also avoid GUI file-picker dialogs
+(setq use-file-dialog nil)
+
 ;; Window dividers (GUI)
 ;; The vertical divider between treemacs and the buffer is drawn by Emacs's
 ;; window-divider-mode (right side).  Enable bottom-only dividers to get a
@@ -48,7 +53,7 @@
 
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
-(add-to-list 'default-frame-alist '(height . 100))
+(add-to-list 'default-frame-alist '(height . 80))
 
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
