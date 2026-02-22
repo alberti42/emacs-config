@@ -47,7 +47,7 @@
   (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
 ;; Default frame size; TTY frames ignore these.
-(add-to-list 'default-frame-alist '(width . 360))
+(add-to-list 'default-frame-alist '(width . 160))
 (add-to-list 'default-frame-alist '(height . 100))
 
 ;; Per-frame GUI setup: fonts and centering.
@@ -106,6 +106,11 @@
 
 ;; Save minibuffer history
 (savehist-mode 1)
+
+;; Recently visited files
+(emacs-config-load-module
+ 'recentf-config
+ "Could not load recentf-config.el; recent files list is disabled.")
 
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
