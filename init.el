@@ -107,20 +107,10 @@
 ;; Save minibuffer history
 (savehist-mode 1)
 
-;; Minibuffer completion UI
+;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
  'completion
- "Could not load completion.el; using default minibuffer completion.")
-
-;; In-buffer completion UI
-(emacs-config-load-module
- 'corfu-config
- "Could not load corfu-config.el; Corfu is disabled.")
-
-;; CAPF sources
-(emacs-config-load-module
- 'cape-config
- "Could not load cape-config.el; Cape is disabled.")
+ "Could not load completion.el; using default completion behavior.")
 
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
