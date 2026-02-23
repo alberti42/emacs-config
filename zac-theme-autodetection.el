@@ -53,11 +53,15 @@
       (setq catppuccin-flavor flavor)
       (mapc #'disable-theme custom-enabled-themes)
       (load-theme 'catppuccin t)
-       ;; Keep background transparent/unspecified for terminal + GUI consistency.
-       ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
-       ;; In GUI frames the string is treated as a color name and errors.
-       (set-face-attribute 'default nil :background 'unspecified)
-       (set-face-attribute 'mode-line nil :background 'unspecified)
+
+       ;; Cursor color override (GUI only).
+        (set-cursor-color "#cad3f5")
+
+        ;; Keep background transparent/unspecified for terminal + GUI consistency.
+        ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
+        ;; In GUI frames the string is treated as a color name and errors.
+        (set-face-attribute 'default nil :background 'unspecified)
+        (set-face-attribute 'mode-line nil :background 'unspecified)
        (set-face-attribute 'mode-line-inactive nil :background 'unspecified))))
 
 (defun zac-watch-start ()
