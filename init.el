@@ -162,6 +162,11 @@
 (setq display-line-numbers-current-absolute t)
 (global-display-line-numbers-mode 1)
 
+;; Wrapping helpers (soft wrap, visual only)
+(emacs-config-load-module
+ 'wrap
+ "Could not load wrap.el; wrapping helpers are disabled.")
+
 ;; Per-syntax indentation settings
 (emacs-config-load-module
  'syntaxes
