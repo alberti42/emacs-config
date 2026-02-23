@@ -47,7 +47,7 @@
     ;; On macOS, use a transparent titlebar for a more modern look.
     (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
     ;; Forces a light (white-ish) title bar regardless of your theme
-    (add-to-list 'default-frame-alist '(ns-appearance . light))
+    (add-to-list 'default-frame-alist '(ns-appearance . dark))
     )
   (t
     ;; On other GUI builds, fall back to a frameless (undecorated) window.
