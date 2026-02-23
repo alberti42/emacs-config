@@ -43,13 +43,16 @@
 
 ;; Frame chrome
 (cond
- ((eq system-type 'darwin)
-   ;; On macOS, use a transparent titlebar for a more modern look.
-   (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
- (t
-  ;; On other GUI builds, fall back to a frameless (undecorated) window.
-  (add-to-list 'default-frame-alist '(undecorated . t))
-  (add-to-list 'default-frame-alist '(internal-border-width . 10))))
+  ((eq system-type 'darwin)
+    ;; On macOS, use a transparent titlebar for a more modern look.
+    (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+    ;; Forces a light (white-ish) title bar regardless of your theme
+    (add-to-list 'default-frame-alist '(ns-appearance . light))
+    )
+  (t
+    ;; On other GUI builds, fall back to a frameless (undecorated) window.
+    (add-to-list 'default-frame-alist '(undecorated . t))
+    (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
