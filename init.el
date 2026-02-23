@@ -1,4 +1,4 @@
-;;; init.el -*- lexical-binding: t; -*-
+;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
@@ -38,7 +38,7 @@
 ;; The :eval guard keeps GUI frames unaffected when running as a daemon.
 (defun emacs-config--tty-mode-line-separator ()
   (setq-default mode-line-end-spaces
-                '(:eval (unless (display-graphic-p) (make-string 500 ?─)))))
+    '(:eval (unless (display-graphic-p) (make-string 500 ?─)))))
 (add-hook 'after-init-hook #'emacs-config--tty-mode-line-separator)
 
 ;; Frame chrome
@@ -67,12 +67,12 @@
     (when (display-graphic-p frame)
       (with-selected-frame frame
         (run-at-time
-         0 nil
-         (lambda (f)
-           (when (frame-live-p f)
-             (select-frame-set-input-focus f)
-             (raise-frame f)))
-         frame)))))
+          0 nil
+          (lambda (f)
+            (when (frame-live-p f)
+              (select-frame-set-input-focus f)
+              (raise-frame f)))
+          frame)))))
 
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
@@ -81,18 +81,18 @@
   "Center FRAME on its current monitor (GUI only)."
   (when (display-graphic-p)
     (let* ((frame (or frame (selected-frame)))
-           (wa (and (fboundp 'frame-monitor-workarea)
-                    (frame-monitor-workarea frame))))
+            (wa (and (fboundp 'frame-monitor-workarea)
+                  (frame-monitor-workarea frame))))
       (when (and wa (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
         (let* ((mx (nth 0 wa))
-               (my (nth 1 wa))
-               (mw (nth 2 wa))
-               (mh (nth 3 wa))
-               (fw (frame-outer-width frame))
-               (fh (frame-outer-height frame)))
+                (my (nth 1 wa))
+                (mw (nth 2 wa))
+                (mh (nth 3 wa))
+                (fw (frame-outer-width frame))
+                (fh (frame-outer-height frame)))
           (set-frame-position frame
-                              (+ mx (/ (- mw fw) 2))
-                              (+ my (/ (- mh fh) 2))))))))
+            (+ mx (/ (- mw fw) 2))
+            (+ my (/ (- mh fh) 2))))))))
 
 (defun emacs-config-setup-gui-frame (&optional frame)
   "Apply GUI-only settings (fonts, centering) to FRAME."
@@ -117,12 +117,12 @@
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
 (let ((init-path (or load-file-name
-                     user-init-file
-                     (expand-file-name "init.el" user-emacs-directory))))
+                   user-init-file
+                   (expand-file-name "init.el" user-emacs-directory))))
   (load (expand-file-name
-         "emacs-config-core"
-         (file-name-directory (file-truename init-path)))
-        nil 'nomessage))
+          "emacs-config-core"
+          (file-name-directory (file-truename init-path)))
+    nil 'nomessage))
 
 ;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
@@ -140,26 +140,26 @@
 ;; Keep Dock icon + menu functional after closing the last GUI frame when using
 ;; emacs in server/daemon style workflows.
 (emacs-config-load-module
- 'mac-pseudo-daemon-config
- "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
+  'mac-pseudo-daemon-config
+  "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
 ;; Save minibuffer history
 (savehist-mode 1)
 
 ;; Recently visited files
 (emacs-config-load-module
- 'recentf-config
- "Could not load recentf-config.el; recent files list is disabled.")
+  'recentf-config
+  "Could not load recentf-config.el; recent files list is disabled.")
 
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
- 'completion
- "Could not load completion.el; using default completion behavior.")
+  'completion
+  "Could not load completion.el; using default completion behavior.")
 
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
- 'nerd-icons-config
- "Could not load nerd-icons-config.el; nerd icons are disabled.")
+  'nerd-icons-config
+  "Could not load nerd-icons-config.el; nerd icons are disabled.")
 
 ;; Line numbers
 (setq display-line-numbers-type 'relative)
@@ -169,25 +169,25 @@
 
 ;; Wrapping helpers (soft wrap, visual only)
 (emacs-config-load-module
- 'wrap
- "Could not load wrap.el; wrapping helpers are disabled.")
+  'wrap
+  "Could not load wrap.el; wrapping helpers are disabled.")
 
 ;; Per-syntax indentation settings
 (emacs-config-load-module
- 'syntaxes
- "Could not load syntaxes.el; per-syntax settings are disabled.")
+  'syntaxes
+  "Could not load syntaxes.el; per-syntax settings are disabled.")
 
 ;; Terminal key decoding (CSI u).
 (emacs-config-load-module
- 'csi-u-keys
- "Could not load csi-u-keys.el; CSI-u key decoding is disabled.")
+  'csi-u-keys
+  "Could not load csi-u-keys.el; CSI-u key decoding is disabled.")
 
 ;; vim-file-locals: parse Vim modelines/file-local settings in files.
 (use-package vim-file-locals
   :straight (vim-file-locals
-             :type git
-             :host github
-             :repo "abougouffa/emacs-vim-file-locals")
+              :type git
+              :host github
+              :repo "abougouffa/emacs-vim-file-locals")
   ;; Enable globally after startup; it adds `vim-file-locals-apply` to
   ;; `find-file-hook` for newly opened files.
   :hook (after-init . vim-file-locals-mode))
@@ -217,35 +217,35 @@
 
 ;; Fast project search (prefer ripgrep)
 (emacs-config-load-module
- 'search-config
- "Could not load search-config.el; using default project search backend.")
+  'search-config
+  "Could not load search-config.el; using default project search backend.")
 
 ;; Project tree (TTY-friendly)
 (emacs-config-load-module
- 'treemacs-config
- "Could not load treemacs-config.el; Treemacs is disabled.")
+  'treemacs-config
+  "Could not load treemacs-config.el; Treemacs is disabled.")
 
 ;; LSP modules
 (emacs-config-load-module
- 'lsp-core
- "Could not load lsp-core.el; LSP is disabled.")
+  'lsp-core
+  "Could not load lsp-core.el; LSP is disabled.")
 
 (emacs-config-load-module
- 'lsp-python
- "Could not load lsp-python.el; Python LSP is disabled.")
+  'lsp-python
+  "Could not load lsp-python.el; Python LSP is disabled.")
 
 (emacs-config-load-module
- 'lsp-web
- "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
+  'lsp-web
+  "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
- 'lsp-ltex-plus-config
- "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
+  'lsp-ltex-plus-config
+  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 ;; VCS gutter (TTY)
 (emacs-config-load-module
- 'git-gutter-tty
- "Could not load git-gutter-tty.el; VCS gutter is disabled.")
+  'git-gutter-tty
+  "Could not load git-gutter-tty.el; VCS gutter is disabled.")
 
 ;; Languages
 ;; lua-mode: major mode for editing Lua.
@@ -260,8 +260,8 @@
 
 ;; Theme auto-detection via zsh-appearance-control.
 (emacs-config-load-module
- 'zac-theme-autodetection
- "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
+  'zac-theme-autodetection
+  "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
 
 ;; Terminal UX
 ;; Mouse support in terminal Emacs.
@@ -304,5 +304,3 @@
 (global-set-key (kbd "<C-wheel-down>") 'ignore)
 (global-set-key (kbd "<C-mouse-4>") 'ignore)
 (global-set-key (kbd "<C-mouse-5>") 'ignore)
-
-;; vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2 :
