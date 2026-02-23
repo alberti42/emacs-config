@@ -67,6 +67,15 @@ Per-major-mode settings (`syntaxes/`):
 - Each file should be small and self-contained (typically one hook form).
 - Each file may be toggled by setting a single variable at the top of the file,
   e.g. `emacs-config-syntaxes-enable-markdown`.
+- Syntax toggles default to enabled (`t`). To disable a syntax module, set its
+  `emacs-config-syntaxes-enable-...` variable to `nil` in that syntax file.
+
+Wrapping:
+
+- `wrap.el` provides `emacs-config-soft-wrap-enable` / `...-disable` /
+  `...-toggle` for visual-only wrapping.
+- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted).
+- Markdown list wrap alignment uses `adaptive-wrap`.
 
 Completion submodules (loaded by `completion.el`):
 
