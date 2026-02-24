@@ -256,21 +256,21 @@
 
 ;; Theme
 ;; catppuccin-theme: Catppuccin theme collection.
-;; (use-package catppuccin-theme)
+(use-package catppuccin-theme)
 
 ;; apropospriate-theme: A Sublime Text-inspired color theme.
-(use-package apropospriate-theme
-  :straight (apropospriate-theme
-              :type git
-              :host github
-              :repo "waymondo/apropospriate-theme")
-  :config
-  (load-theme 'apropospriate-dark t))
+;; (use-package apropospriate-theme
+;;   :straight (apropospriate-theme
+;;               :type git
+;;               :host github
+;;               :repo "waymondo/apropospriate-theme")
+;;   :config
+;;   (load-theme 'apropospriate-dark t))
 
 ;; Theme auto-detection via zsh-appearance-control.
-;; (emacs-config-load-module
-;;   'zac-theme-autodetection
-;;   "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
+(emacs-config-load-module
+  'zac-theme-autodetection
+  "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
 
 ;; Terminal UX
 ;; Mouse support in terminal Emacs.
