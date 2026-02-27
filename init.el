@@ -129,6 +129,12 @@
 (use-package cl-lib
   :straight nil) ; use built-in cl-lib (Emacs 24+), don't fetch via straight
 
+;; Smart auto-revert: silently revert clean buffers on external change,
+;; prompt when the buffer has unsaved local edits.
+(emacs-config-load-module
+  'auto-revert-config
+  "Could not load auto-revert-config.el; smart auto-revert is disabled.")
+
 ;; UI & Convenience
 ;; which-key: display available keybindings in popup.
 (use-package which-key
