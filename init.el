@@ -218,8 +218,10 @@
   (xclip-mode 1))
 
 ;; Development
-;; magit: Git porcelain inside Emacs.
-(use-package magit)
+;; magit: Git porcelain, forge (GitHub/GitLab), and nerd-icons integration.
+(emacs-config-load-module
+  'magit-config
+  "Could not load magit-config.el; Magit is disabled.")
 
 ;; Fast project search (prefer ripgrep)
 (emacs-config-load-module
