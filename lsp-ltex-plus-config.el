@@ -228,6 +228,15 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
 
   (setq lsp-ltex-plus-language "en-US")
   (setq lsp-ltex-plus-check-frequency "edit")
+  ;; LanguageTool Premium — credentials are loaded from ~/.local/envs/LanguageTools.sh
+  ;; (sourced from ~/.config/envs/LanguageTools.sh; not committed to dotfiles):
+  ;;   export LANGUAGETOOL_USERNAME='a.alberti82@gmail.com'
+  ;;   export LANGUAGETOOL_API_KEY='<mykey>'
+  (setq lsp-ltex-plus-language-tool-http-server-uri "https://api.languagetoolplus.com/v2")
+  (setq lsp-ltex-plus-language-tool-org-username
+        (or (getenv "LANGUAGETOOL_USERNAME") ""))
+  (setq lsp-ltex-plus-language-tool-org-api-key
+        (or (getenv "LANGUAGETOOL_API_KEY") ""))
   ;; JVM heap size for the underlying LTEX+ Java process (in MB).
   ;; Tune this if you see OOMs or excessive memory use.
   (setq lsp-ltex-plus-java-initial-heap-size 64)
