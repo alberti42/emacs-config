@@ -303,18 +303,23 @@
   (global-set-key [wheel-up] #'emacs-config--scroll-down-1)
   (global-set-key [wheel-down] #'emacs-config--scroll-up-1))
 
-;; Prevent sudden recentering / keep point away from window edges
-(setq scroll-margin 2)
+;; Scrolling
+;; ultra-scroll requires scroll-margin 0 and works best with a low
+;; scroll-conservatively value; it handles pixel-precise scrolling itself.
+(setq scroll-margin 0)
 (setq scroll-conservatively 101)
 (setq scroll-step 1)
+(setq scroll-preserve-screen-position t)
 
 ;; Smoother horizontal scrolling too
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
-;; Pixel-precise scrolling (Emacs 29+); improves trackpad momentum on macOS.
-(when (>= emacs-major-version 29)
-  (pixel-scroll-precision-mode 1))
+;; Pixel-precise, glitch-free smooth scrolling.
+;; Replaces pixel-scroll-precision-mode (ultra-scroll activates it internally).
+(use-package ultra-scroll
+  :config
+  (ultra-scroll-mode 1))
 
 ;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
