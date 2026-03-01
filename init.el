@@ -98,9 +98,9 @@
   "Apply GUI-only settings (fonts, centering) to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
-      (set-face-attribute 'default nil :font "MesloLGS NF" :height 160)
-      (set-face-attribute 'mode-line nil :font "MesloLGS NF" :height 160 :weight 'bold)
-      (set-face-attribute 'mode-line-inactive nil :font "MesloLGS NF" :height 160)
+      (set-face-attribute 'default nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160)
+      (set-face-attribute 'mode-line nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160 :weight 'bold)
+      (set-face-attribute 'mode-line-inactive nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160)
       (blink-cursor-mode 1)
       (set-frame-parameter nil 'cursor-type 'bar)
       (run-at-time 0 nil #'emacs-config-center-frame (selected-frame)))))
