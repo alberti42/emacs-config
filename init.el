@@ -172,6 +172,9 @@
 ;; Keep current line absolute while others are relative.
 (setq display-line-numbers-current-absolute t)
 (global-display-line-numbers-mode 1)
+;; Disable line numbers in terminal/shell buffers.
+(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook))
+  (add-hook hook (lambda () (display-line-numbers-mode -1))))
 
 ;; Wrapping helpers (soft wrap, visual only)
 (emacs-config-load-module
