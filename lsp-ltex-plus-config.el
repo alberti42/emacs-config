@@ -228,7 +228,7 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
 
   (setq lsp-ltex-plus-language "en-US")
   (setq lsp-ltex-plus-check-frequency "edit")
-  ;; LanguageTool Premium — credentials are loaded from ~/.local/envs/LanguageTools.sh
+  ;; LanguageTool Premium — credentials are loaded from ~/.config/envs/LanguageTools.sh
   ;; (sourced from ~/.config/envs/LanguageTools.sh; not committed to dotfiles):
   ;;   export LANGUAGETOOL_USERNAME='a.alberti82@gmail.com'
   ;;   export LANGUAGETOOL_API_KEY='<mykey>'
