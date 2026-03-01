@@ -221,6 +221,14 @@
   (xclip-mode 1))
 
 ;; Development
+;; multiple-cursors: Sublime Text-style multiple cursors.
+(use-package multiple-cursors
+  :bind (("C->"         . mc/mark-next-like-this)
+         ("C-<"         . mc/mark-previous-like-this)
+         ("C-c C-<"     . mc/mark-all-like-this)
+         ("C-S-<down>"  . mc/add-cursor-on-click)  ; fallback: mouse click
+         ("C-S-c C-S-c" . mc/edit-lines)))
+
 ;; magit: Git porcelain, forge (GitHub/GitLab), and nerd-icons integration.
 (emacs-config-load-module
   'magit-config
