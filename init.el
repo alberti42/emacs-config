@@ -220,6 +220,11 @@
   :config
   (xclip-mode 1))
 
+;; Dired and file manager
+(emacs-config-load-module
+  'dired-config
+  "Could not load dired-config.el; dired customizations are disabled.")
+
 ;; Development
 ;; multiple-cursors: Sublime Text-style multiple cursors.
 (use-package multiple-cursors
