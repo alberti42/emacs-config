@@ -47,19 +47,38 @@ Key files:
 
 Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
+- `gui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator.
+- `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits.
+- `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame.
+- `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
-- `search-config.el`: prefer ripgrep for project/xref search.
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
-- `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
-- `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
-- `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `wrap.el`: soft-wrap helpers (visual only) used by text/Markdown configs.
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
+- `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
+- `dired-config.el`: Dired customizations (`dired-preview`, `dired-narrow`).
+- `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration.
+- `search-config.el`: prefer ripgrep for project/xref search.
+- `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
+- `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
+- `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `zac-theme-autodetection.el`: theme auto-switch based on external appearance.
+
+Packages configured directly in `init.el` (not extracted into modules):
+
+- `cl-lib` (built-in): Common Lisp compatibility helpers.
+- `which-key` (built-in, Emacs 30+): display available keybindings in popup.
+- `vim-file-locals`: parse Vim modelines/file-local settings.
+- `pbcopy` (macOS TTY only): sync kill ring with system clipboard.
+- `xclip` (Linux TTY only): sync kill ring with system clipboard.
+- `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
+- `catppuccin-theme`: Catppuccin theme collection.
+- `lua-mode`: major mode for Lua.
+- `ssh-config-mode`: major mode for `~/.ssh/config`.
 
 Per-major-mode settings (`syntaxes/`):
 
@@ -69,6 +88,15 @@ Per-major-mode settings (`syntaxes/`):
   e.g. `emacs-config-syntaxes-enable-markdown`.
 - Syntax toggles default to enabled (`t`). To disable a syntax module, set its
   `emacs-config-syntaxes-enable-...` variable to `nil` in that syntax file.
+
+Current syntax modules:
+
+- `syntaxes/js.el`: JS/TS indentation settings.
+- `syntaxes/json.el`: JSON indentation (supports `js-json-mode`, `json-mode`, `json-ts-mode`).
+- `syntaxes/markdown.el`: Markdown settings.
+- `syntaxes/python.el`: Python indentation settings.
+- `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
+- `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
 
 Wrapping:
 
@@ -193,6 +221,8 @@ macOS / Linux:
 
 - Theme auto-detection (`zac-theme-autodetection.el`) reads a state file written
   by an external tool and uses file notification APIs when available.
+- `mac-pseudo-daemon-config.el` (macOS only): keeps a hidden GUI frame alive so
+  the Dock icon and menu bar stay functional when no visible frame exists.
 
 ## External Dependencies (Non-ELisp)
 
