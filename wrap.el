@@ -1,8 +1,16 @@
 ;;; wrap.el --- Soft and hard wrap helpers -*- lexical-binding: t; -*-
 
 ;; Packages
+;; Use a patched fork of visual-fill-column that preserves the left margin
+;; instead of zeroing it on every redisplay.  Without the patch, TTY modes
+;; that reserve a left-margin column (e.g., git-gutter) lose their gutter
+;; whenever visual-fill-column adjusts the window.
 (use-package visual-fill-column
-  :defer t)
+    :straight (visual-fill-column
+               :type git
+               :host codeberg
+               :repo "alberti42/fork-visual-fill-column")
+    :defer t)
 
 (use-package adaptive-wrap
   :defer t)
