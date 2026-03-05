@@ -58,7 +58,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
 - `dired-config.el`: Dired customizations (`dired-preview`, `dired-narrow`).
 - `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration.
-- `search-config.el`: prefer ripgrep for project/xref search; isearch cursor centering.
+- `search-config.el`: prefer ripgrep for project/xref search; isearch edge-triggered context scrolling (scrolls the minimum amount to keep `search-recenter-context-lines` of context visible when the match lands within `search-recenter-edge-threshold` lines of the window edge).
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
