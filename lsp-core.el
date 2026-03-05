@@ -17,6 +17,12 @@
   ;; download or auto-install them via lsp-mode.  This also prevents lsp-mode
   ;; from creating empty store directories that confuse server-present? checks.
   (setq lsp-enable-suggest-server-download nil)
+  ;; Completion is handled by corfu+cape, not company-mode.
+  ;; The command below prevents lsp-mode from trying to configure
+  ;; company-mode for completion. Without it, lsp-mode assumes
+  ;; company-mode is the completion frontend and tries to set it up
+  ;; automatically — printing a warning when it's not found.  
+  (setq lsp-completion-provider :none)
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
   (setq read-process-output-max (* 1024 1024))
