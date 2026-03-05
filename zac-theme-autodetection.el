@@ -64,7 +64,7 @@
 
       ;; Keep background transparent/unspecified for terminal + GUI consistency.
       ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
-      ;; In GUI frames the string is treated as a color name and errors.
+      ;; In GUI frames the string is treated as a color name and produces an error.
       (set-face-attribute 'default nil :background 'unspecified)
       (set-face-attribute 'mode-line nil :background 'unspecified)
       (set-face-attribute 'mode-line-inactive nil :background 'unspecified))))

@@ -190,7 +190,12 @@
 
 ;; Theme
 ;; catppuccin-theme: Catppuccin theme collection.
-(use-package catppuccin-theme)
+;; Using a fork that fixes :background nil on line-number faces.
+(use-package catppuccin-theme
+  :straight (catppuccin-theme
+             :type git
+             :host github
+             :repo "alberti42/fork-catppuccin-emacs"))
 
 ;; apropospriate-theme: A Sublime Text-inspired color theme.
 ;; (use-package apropospriate-theme
