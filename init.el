@@ -1,5 +1,20 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
+;; Emacs daemon startup (startup.el) resets TERM=dumb so that subprocesses
+;; (shells, compile commands, etc.) do not inherit a terminal type they cannot
+;; use.  TTY client frames are unaffected: emacsclient passes terminal
+;; capabilities through its own protocol, independently of $TERM.
+;;
+;; The problem is init-time: catppuccin reads (getenv "TERM") when loading to
+;; decide how to initialise its color tables.  With TERM=dumb it assumes no
+;; color support and defines faces incorrectly.  Those broken face definitions
+;; then persist for all subsequent frames, including TTY clients.
+;;
+;; Fix: set a capable TERM before the theme loads.  Emacs will reset it to
+;; "dumb" for subprocesses after init anyway.
+(when (daemonp)
+  (setenv "TERM" "xterm-256color"))
+
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
