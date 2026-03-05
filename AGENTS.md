@@ -58,9 +58,9 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
 - `dired-config.el`: Dired customizations (`dired-preview`, `dired-narrow`).
 - `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration.
-- `search-config.el`: prefer ripgrep for project/xref search.
+- `search-config.el`: prefer ripgrep for project/xref search; isearch cursor centering.
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
-- `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`).
+- `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
@@ -76,7 +76,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `pbcopy` (macOS TTY only): sync kill ring with system clipboard.
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
-- `catppuccin-theme`: Catppuccin theme collection.
+- `catppuccin-theme`: Catppuccin theme collection (pinned to a fork that fixes `:background nil` on line-number faces).
 - `lua-mode`: major mode for Lua.
 - `ssh-config-mode`: major mode for `~/.ssh/config`.
 
@@ -102,7 +102,7 @@ Wrapping:
 
 - `wrap.el` provides `emacs-config-soft-wrap-enable` / `...-disable` /
   `...-toggle` for visual-only wrapping.
-- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted).
+- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted; pinned to a fork that preserves the left margin so TTY gutters like git-gutter are not zeroed on redisplay).
 - Markdown list wrap alignment uses `adaptive-wrap`.
 
 Completion submodules (loaded by `completion.el`):
