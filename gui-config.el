@@ -58,7 +58,7 @@
 
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
-(add-to-list 'default-frame-alist '(height . 80))
+(add-to-list 'default-frame-alist '(height . 60))
 
 ;; Ensure GUI Emacs creates/raises a frame.
 ;; - Some macOS setups can start Emacs without presenting a visible window.
@@ -100,9 +100,9 @@
   "Apply GUI-only settings (fonts, centering) to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
-      (set-face-attribute 'default nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160)
-      (set-face-attribute 'mode-line nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160 :weight 'bold)
-      (set-face-attribute 'mode-line-inactive nil :font "JetBrainsMonoNL Nerd Font Mono" :height 160)
+      (set-face-attribute 'default nil :font "JetBrainsMonoNL Nerd Font Mono" :height 175)
+      (set-face-attribute 'mode-line nil :font "JetBrainsMonoNL Nerd Font Mono" :height 175 :weight 'bold)
+      (set-face-attribute 'mode-line-inactive nil :font "JetBrainsMonoNL Nerd Font Mono" :height 175)
       (blink-cursor-mode 1)
       (set-frame-parameter nil 'cursor-type 'bar)
       (run-at-time 0 nil #'emacs-config-center-frame (selected-frame)))))
