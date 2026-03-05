@@ -11,6 +11,10 @@
   :commands (lsp lsp-deferred)
   :init
   (setq lsp-keymap-prefix "C-c l")
+  ;; Disable flymake's margin/fringe indicator column so it doesn't
+  ;; appear and disappear with diagnostics, causing layout jitter.
+  ;; Diagnostics remain visible via the modeline and lsp-ui sideline.
+  (setq flymake-fringe-indicator-position nil)
   ;; Suppress "no server installed" popups for file types like plist/XML.
   (setq lsp-warn-no-matched-clients nil)
   ;; All servers are managed externally (zinit/system); never prompt to
