@@ -33,6 +33,15 @@
   (add-hook 'lsp-mode-hook #'lsp-ui-mode)
   (setq lsp-ui-doc-position 'at-point))
 
+;; yasnippet: snippet expansion used by LSP to render completion candidates
+;; that have placeholders (e.g. function signatures where you fill in the
+;; arguments by tabbing through them).  Without it, completions still work
+;; but the whole text is inserted at once with no tab-stop navigation.
+;; corfu shows the candidates; yasnippet handles the expansion of the
+;; selected one.
+(use-package yasnippet
+  :hook (lsp-mode . yas-minor-mode))
+
 (provide 'lsp-core)
 
 ;;; lsp-core.el ends here
