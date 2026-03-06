@@ -22,15 +22,13 @@ Scrolls the minimum amount needed rather than recentering, to avoid distraction.
 Uses (sit-for 0) to flush pending display before measuring, mirroring the
 pattern used by isearch-lazy-highlight-new-loop."
   (when (sit-for 0)   ; flush display; returns nil (skip) if input is pending
-    (cond
-     (isearch-forward
-      (let ((lines-to-end (count-lines (point) (window-end nil))))
-        (when (< lines-to-end search-recenter-edge-threshold)
-          (scroll-up (- search-recenter-context-lines lines-to-end)))))
-     (t
+    (if isearch-forward
+        (let ((lines-to-end (count-lines (point) (window-end nil))))
+          (when (< lines-to-end search-recenter-edge-threshold)
+            (scroll-up (- search-recenter-context-lines lines-to-end))))
       (let ((lines-to-top (count-lines (window-start) (point))))
         (when (< lines-to-top search-recenter-edge-threshold)
-          (scroll-down (- search-recenter-context-lines lines-to-top))))))))
+          (scroll-down (- search-recenter-context-lines lines-to-top)))))))
 
 (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
 (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
