@@ -76,7 +76,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `pbcopy` (macOS TTY only): sync kill ring with system clipboard.
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
-- `catppuccin-theme`: Catppuccin theme collection (pinned to a fork that fixes `:background nil` on line-number faces).
+- `catppuccin-theme`: Catppuccin theme collection.
 - `lua-mode`: major mode for Lua.
 - `ssh-config-mode`: major mode for `~/.ssh/config`.
 
