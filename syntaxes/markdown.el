@@ -4,6 +4,8 @@
   "Whether to enable Markdown settings from syntaxes/markdown.el.")
 
 (when emacs-config-syntaxes-enable-markdown
+  (setq markdown-fontify-code-blocks-natively t)
+
   (dolist (hook '(markdown-mode-hook gfm-mode-hook))
     (add-hook hook
               (lambda ()
