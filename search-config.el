@@ -15,13 +15,12 @@
   "Number of lines to expose beyond the isearch match after scrolling.")
 
 (defun search--recenter-if-near-edge ()
-  "Scroll to maintain `search-recenter-context-lines' of context when point is
-within `search-recenter-edge-threshold' lines of the window edge.
-For forward search (C-s) checks the bottom; for reverse (C-r) checks the top.
-Scrolls the minimum amount needed rather than recentering, to avoid distraction.
-Uses (sit-for 0) to flush pending display before measuring, mirroring the
-pattern used by isearch-lazy-highlight-new-loop."
-  (when (sit-for 0)   ; flush display; returns nil (skip) if input is pending
+  "Scroll minimally to keep the current search match in context.
+  When the match is within `search-recenter-edge-threshold' lines of the window
+  edge, scroll just enough to show `search-recenter-context-lines' lines beyond
+  it — checking the bottom edge for forward search (C-s), top for reverse (C-r)."
+  (while-no-input
+    (redisplay)
     (if isearch-forward
         (let ((lines-to-end (count-lines (point) (window-end nil))))
           (when (< lines-to-end search-recenter-edge-threshold)
