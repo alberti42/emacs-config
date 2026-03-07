@@ -183,12 +183,14 @@
 
 ;; tmux open-file bridge: open files in Emacs from tmux via IPC.
 ;; Requires Emacs 29+ for server-after-make-frame-hook.
-(when (>= emacs-major-version 29)
-  (emacs-config-load-module
-    'tmux-openfile
-    "Could not load tmux-openfile.el; tmux open-file bridge is disabled.")
-  (when (featurep 'tmux-openfile)
-    (tmux-openfile-enable)))
+(use-package tmux-openfile
+  :if (>= emacs-major-version 29)
+  :straight (tmux-openfile
+              :type git
+              :host github
+              :repo "alberti42/emacs-tmux-openfile")
+  :config
+  (tmux-openfile-enable))
 
 ;; Languages
 ;; lua-mode: major mode for editing Lua.
