@@ -21,13 +21,14 @@
   it — checking the bottom edge for forward search (C-s), top for reverse (C-r)."
   (while-no-input
     (redisplay)
-    (if isearch-forward
-        (let ((lines-to-end (count-lines (point) (window-end nil))))
-          (when (< lines-to-end search-recenter-edge-threshold)
-            (scroll-up (- search-recenter-context-lines lines-to-end))))
-      (let ((lines-to-top (count-lines (window-start) (point))))
-        (when (< lines-to-top search-recenter-edge-threshold)
-          (scroll-down (- search-recenter-context-lines lines-to-top)))))))
+    (let ((check-bottom (if isearch-wrapped (not isearch-forward) isearch-forward)))
+      (if check-bottom
+          (let ((lines-to-end (count-lines (point) (window-end nil))))
+            (when (< lines-to-end search-recenter-edge-threshold)
+              (scroll-up (- search-recenter-context-lines lines-to-end))))
+        (let ((lines-to-top (count-lines (window-start) (point))))
+          (when (< lines-to-top search-recenter-edge-threshold)
+            (scroll-down (- search-recenter-context-lines lines-to-top))))))))
 
 (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
 (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
