@@ -70,6 +70,11 @@
   'recentf-config
   "Could not load recentf-config.el; recent files list is disabled.")
 
+;; Fast project search (prefer ripgrep)
+(emacs-config-load-module
+  'search-config
+  "Could not load search-config.el; using default project search backend.")
+
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
   'completion
@@ -148,11 +153,6 @@
 (emacs-config-load-module
   'magit-config
   "Could not load magit-config.el; Magit is disabled.")
-
-;; Fast project search (prefer ripgrep)
-(emacs-config-load-module
-  'search-config
-  "Could not load search-config.el; using default project search backend.")
 
 ;; Project tree (TTY-friendly)
 (emacs-config-load-module
