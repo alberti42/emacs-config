@@ -62,12 +62,17 @@
       ;; Cursor color override (GUI only).
       (zac--apply-cursor-color)
 
-      ;; Keep background transparent/unspecified for terminal + GUI consistency.
+      ;; Keep default background transparent/unspecified for terminal + GUI consistency.
       ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
       ;; In GUI frames the string is treated as a color name and produces an error.
       (set-face-attribute 'default nil :background 'unspecified)
-      (set-face-attribute 'mode-line nil :background 'unspecified)
-      (set-face-attribute 'mode-line-inactive nil :background 'unspecified))))
+      ;; Note: mode-line backgrounds are intentionally left at theme defaults to
+      ;; preserve contrast between the mode-line and surrounding buffers.
+      ;; Keep the next two lines commented out
+      ;; (set-face-attribute 'mode-line nil :background 'unspecified)
+      ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)))
+      )
+
 
 (defun zac-watch-start ()
   "Start watching zsh-appearance-control's appearance file."
