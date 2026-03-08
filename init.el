@@ -173,6 +173,10 @@
   "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
+  'lsp-json
+  "Could not load lsp-json.el; JSON LSP is disabled.")
+
+(emacs-config-load-module
   'lsp-ltex-plus-config
   "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
