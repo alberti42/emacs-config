@@ -191,10 +191,6 @@
               :repo "alberti42/emacs-tmux-tandem")
   :config
   (tmux-tandem-enable))
-;; (emacs-config-load-module
-;;   'tmux-tandem
-;;   "Could not load tmux-openfile.el; tmux-openfile is disabled.")
-;; (tmux-tandem-enable)
 
 ;; Languages
 ;; lua-mode: major mode for editing Lua.
