@@ -70,8 +70,8 @@
       ;; preserve contrast between the mode-line and surrounding buffers.
       ;; Keep the next two lines commented out
       ;; (set-face-attribute 'mode-line nil :background 'unspecified)
-      ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)))
-      )
+      ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)
+      )))
 
 
 (defun zac-watch-start ()

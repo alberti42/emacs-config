@@ -49,6 +49,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
 - `gui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator.
 - `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits.
+- `mac-clipboard.el`: macOS TTY clipboard sync — wires kill-ring writes to `pbcopy`; deliberately omits the paste direction to avoid spawning a `pbpaste` subprocess on every `C-y`.
 - `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame.
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
@@ -73,7 +74,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `cl-lib` (built-in): Common Lisp compatibility helpers.
 - `which-key` (built-in, Emacs 30+): display available keybindings in popup.
 - `vim-file-locals`: parse Vim modelines/file-local settings.
-- `pbcopy` (macOS TTY only): sync kill ring with system clipboard.
+- `mac-clipboard.el` (macOS TTY only): sync kill ring write direction with system clipboard (local module, no external package).
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
 - `catppuccin-theme`: Catppuccin theme collection.
@@ -212,7 +213,7 @@ subdirectories:
 TTY vs GUI:
 
 - Clipboard helpers are conditional:
-  - macOS terminal Emacs uses `pbcopy` package to sync clipboard.
+  - macOS terminal Emacs uses `mac-clipboard.el` (local module wrapping `pbcopy`) to sync clipboard writes.
   - Linux terminal Emacs uses `xclip` package.
 - `git-gutter-tty.el` is explicitly for terminal frames (`(not window-system)`).
 - Mouse wheel support in TTY is enabled via built-in `mouse` / `xterm-mouse-mode`.

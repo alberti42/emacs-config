@@ -124,12 +124,11 @@
 (setq select-enable-clipboard t)
 (setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
 
-;; pbcopy: sync clipboard in terminal on macOS.
-;; Only needed when running Emacs in a terminal on macOS.
-(use-package pbcopy
-  :if (and (eq system-type 'darwin) (not window-system))
-  :config
-  (turn-on-pbcopy))
+;; macOS clipboard sync for TTY Emacs (kill → pbcopy, no pbpaste on yank).
+(when (and (eq system-type 'darwin) (not window-system))
+  (emacs-config-load-module
+    'mac-clipboard
+    "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
 
 ;; xclip: sync clipboard in terminal on Linux.
 ;; Only needed when running Emacs in a terminal on Linux.
