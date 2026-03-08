@@ -1,4 +1,4 @@
-;;; zac-theme-autodetection.el --- Auto-switch Catppuccin via zsh-appearance-control -*- lexical-binding: t; -*-
+;;; zac-theme-autodetection.el --- Appearance sync via zsh-appearance-control -*- lexical-binding: t; -*-
 
 ;; This module integrates Emacs with zsh-appearance-control:
 ;; https://github.com/alberti42/zsh-appearance-control
@@ -8,16 +8,17 @@
 ;; - "1" => dark
 ;; - "0" => light
 ;;
-;; We watch that file via Emacs file notifications, and when it changes we
-;; reload the Catppuccin theme with the corresponding flavour:
-;; - dark  => macchiato
-;; - light => frappe
+;; We watch that file via Emacs file notifications.  When it changes, apply
+;; any registered appearance hooks (cursor color, transparent background, etc.)
+;;
+;; Theme loading is intentionally omitted here while a replacement for
+;; Catppuccin is being evaluated.  Add a `zac--apply-theme` call or a
+;; `zac-appearance-change-hook` handler once a theme is chosen.
 
 ;;; Commentary:
 ;;
 ;; Usage:
 ;; - Load this file from init.el.
-;; - Ensure the Catppuccin theme package is installed.
 ;; - The watcher starts automatically on load.
 ;;
 ;; Environment:
@@ -29,7 +30,6 @@
 (require 'subr-x)
 
 (defvar zac--watch nil)
-(defvar zac--last-catppuccin-flavor nil)
 
 (defun zac--appearance-file ()
   (expand-file-name
@@ -51,27 +51,18 @@
     (set-cursor-color "#cad3f5")))
 
 (defun zac--apply-appearance ()
-  (let* ((v (zac--read-appearance))
-         (flavor (if (string= v "1") 'macchiato 'frappe)))
-    (unless (eq zac--last-catppuccin-flavor flavor)
-      (setq zac--last-catppuccin-flavor flavor)
-      (setq catppuccin-flavor flavor)
-      (mapc #'disable-theme custom-enabled-themes)
-      (load-theme 'catppuccin t)
+  ;; Keep default background transparent/unspecified for terminal + GUI consistency.
+  ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
+  ;; In GUI frames the string is treated as a color name and produces an error.
+  ;; (set-face-attribute 'default nil :background 'unspecified)
+  ;; Note: mode-line backgrounds are intentionally left at theme defaults to
+  ;; preserve contrast between the mode-line and surrounding buffers.
+  ;; Keep the next two lines commented out
+  ;; (set-face-attribute 'mode-line nil :background 'unspecified)
+  ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)
 
-      ;; Cursor color override (GUI only).
-      (zac--apply-cursor-color)
-
-      ;; Keep default background transparent/unspecified for terminal + GUI consistency.
-      ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
-      ;; In GUI frames the string is treated as a color name and produces an error.
-      (set-face-attribute 'default nil :background 'unspecified)
-      ;; Note: mode-line backgrounds are intentionally left at theme defaults to
-      ;; preserve contrast between the mode-line and surrounding buffers.
-      ;; Keep the next two lines commented out
-      ;; (set-face-attribute 'mode-line nil :background 'unspecified)
-      ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)
-      )))
+  ;; Cursor color override (GUI only).
+  (zac--apply-cursor-color))
 
 
 (defun zac-watch-start ()
@@ -87,11 +78,11 @@
   ;; startup: display-graphic-p may be nil or frame parameters not yet
   ;; final when init.el runs).
   (add-hook 'window-setup-hook #'zac--apply-cursor-color)
-  ;; Re-apply cursor color for any new frame (emacsclient / daemon mode).
+  ;; Re-apply appearance settings for any new frame (emacsclient / daemon mode).
   (add-hook 'after-make-frame-functions
             (lambda (frame)
               (with-selected-frame frame
-                (zac--apply-cursor-color))))
+                (zac--apply-appearance))))
   (when (fboundp 'file-notify-add-watch)
     (unless zac--watch
       (setq zac--watch

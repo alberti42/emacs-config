@@ -5,15 +5,11 @@
 ;; use.  TTY client frames are unaffected: emacsclient passes terminal
 ;; capabilities through its own protocol, independently of $TERM.
 ;;
-;; The problem is init-time: catppuccin reads (getenv "TERM") when loading to
-;; decide how to initialise its color tables.  With TERM=dumb it assumes no
-;; color support and defines faces incorrectly.  Those broken face definitions
-;; then persist for all subsequent frames, including TTY clients.
-;;
-;; Fix: set a capable TERM before the theme loads.  Emacs will reset it to
-;; "dumb" for subprocesses after init anyway.
-(when (daemonp)
-  (setenv "TERM" "xterm-256color"))
+;; NOTE: catppuccin used to require setting TERM before loading (it reads
+;; (getenv "TERM") to initialise color tables).  Catppuccin is currently
+;; disabled; re-enable this if a theme with the same issue is introduced.
+;; (when (daemonp)
+;;   (setenv "TERM" "xterm-256color"))
 
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
@@ -202,18 +198,18 @@
 ;; ssh-config-mode: major mode for ~/.ssh/config.
 (use-package ssh-config-mode)
 
-;; Theme
-;; catppuccin-theme: Catppuccin theme collection.
-(use-package catppuccin-theme)
+;; Themes
 
-;; apropospriate-theme: A Sublime Text-inspired color theme.
-;; (use-package apropospriate-theme
-;;   :straight (apropospriate-theme
-;;               :type git
-;;               :host github
-;;               :repo "waymondo/apropospriate-theme")
-;;   :config
-;;   (load-theme 'apropospriate-dark t))
+;; catppuccin-theme: Catppuccin theme collection.
+;; Disabled: too little contrast; keeping the package declaration for easy
+;; re-enable when a replacement is chosen.
+;; (use-package catppuccin-theme)
+
+;; modus-vivendi-tinted: high-contrast, WCAG AAA. Built-in since Emacs 28.
+;; (setq modus-themes-common-palette-overrides
+;;       '((bg-line-number-inactive unspecified)
+;;         (bg-line-number-active unspecified)))
+(load-theme 'modus-vivendi-tinted t)
 
 ;; Theme auto-detection via zsh-appearance-control.
 (emacs-config-load-module
