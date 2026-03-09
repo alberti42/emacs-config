@@ -199,28 +199,11 @@
 (use-package ssh-config-mode)
 
 ;; Themes
-
-;; Module ensuring harmonization between Emacs components
-;; when switching between themes / appearances
+;; Load order within themes-config: theme-harmonize → load-theme → zac-theme-autodetection.
+;; See themes-config.el for the rationale.
 (emacs-config-load-module
-  'theme-harmonize
-  "Could not load theme-harmonize.el; theme face harmonization is disabled.")
-
-;; catppuccin-theme: Catppuccin theme collection.
-;; Disabled: too little contrast; keeping the package declaration for easy
-;; re-enable when a replacement is chosen.
-;; (use-package catppuccin-theme)
-
-;; modus-vivendi-tinted: high-contrast, WCAG AAA. Built-in since Emacs 28.
-;; (setq modus-themes-common-palette-overrides
-;;       '((bg-line-number-inactive unspecified)
-;;         (bg-line-number-active unspecified)))
-(load-theme 'modus-vivendi-tinted t)
-
-;; Theme auto-detection via zsh-appearance-control.
-(emacs-config-load-module
-  'zac-theme-autodetection
-  "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
+  'themes-config
+  "Could not load themes-config.el; theme and appearance settings are disabled.")
 
 ;; Terminal UX
 ;; Mouse support in terminal Emacs.
