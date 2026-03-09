@@ -25,6 +25,12 @@
   :config
   (ultra-scroll-mode 1))
 
+;; Scroll by half a window instead of a full window.
+(global-set-key (kbd "C-v")
+                (lambda () (interactive) (scroll-up (/ (window-height) 2))))
+(global-set-key (kbd "M-v")
+                (lambda () (interactive) (scroll-down (/ (window-height) 2))))
+
 ;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
 (global-set-key (kbd "<C-wheel-down>") 'ignore)
