@@ -33,6 +33,13 @@
 (setq window-divider-default-bottom-width 2)
 (window-divider-mode 1)
 
+;; Vertical border character between side-by-side windows.
+;; The default `|` leaves gaps with most monospace fonts; `█` (FULL BLOCK)
+;; renders as a solid continuous bar.
+(or standard-display-table
+    (setq standard-display-table (make-display-table)))
+(set-display-table-slot standard-display-table 'vertical-border (make-glyph-code ?█))
+
 ;; TTY mode-line separator
 ;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
 ;; which defaults to "%-" (fill with -).  Replace it with ─ (U+2500) by

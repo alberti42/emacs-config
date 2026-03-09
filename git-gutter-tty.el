@@ -25,9 +25,9 @@
   (setq git-gutter:update-interval 0.5)
 
   ;; One glyph, colored by face.
-  (setq git-gutter:modified-sign "▎")
-  (setq git-gutter:added-sign "▎")
-  (setq git-gutter:deleted-sign "▎")
+  (setq git-gutter:modified-sign "█")
+  (setq git-gutter:added-sign "█")
+  (setq git-gutter:deleted-sign "█")
   (setq git-gutter:window-width 1)
 
   ;; Keep the gutter column reserved in Git buffers to avoid text shifting.
