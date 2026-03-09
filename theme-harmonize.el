@@ -21,8 +21,5 @@ Add face propagation here as new packages need harmonizing."
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'emacs-config-harmonize-theme)
 
-;; Apply immediately for the theme already loaded at startup.
-(emacs-config-harmonize-theme)
-
 (provide 'theme-harmonize)
 ;;; theme-harmonize.el ends here
