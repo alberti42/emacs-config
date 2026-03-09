@@ -17,6 +17,9 @@
 
 (use-package git-gutter
   :if (not window-system)
+  :straight (git-gutter
+             :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
+             :files ("git-gutter.el"))
   :config
   ;; Live-ish updates (idle timer). Increase if it feels too chatty.
   (setq git-gutter:update-interval 0.5)
@@ -28,20 +31,34 @@
   (setq git-gutter:window-width 1)
 
   ;; Keep the gutter column reserved in Git buffers to avoid text shifting.
-  (setq git-gutter:separator-sign "│")
+  ;; A space reserves the column without showing a visible stripe.
+  (setq git-gutter:separator-sign " ")
   (setq git-gutter:always-show-separator t)
+  (setq git-gutter:unchanged-sign " ")
 
-  ;; Faces: keep simple; theme can override if desired.
   (set-face-foreground 'git-gutter:added "green")
   (set-face-foreground 'git-gutter:modified "yellow")
   (set-face-foreground 'git-gutter:deleted "red")
-  (set-face-foreground 'git-gutter:separator "brightblack")
 
   (global-git-gutter-mode 1)
 
   ;; Keep gutter in sync after Magit refreshes.
   (with-eval-after-load 'magit
     (add-hook 'magit-post-refresh-hook #'git-gutter:update-all-windows)))
+
+;; Override git-gutter:tty-face to always use the line-number column
+;; background so the gutter blends in seamlessly.  Read at render time
+;; to avoid theme-loading timing issues.
+(with-eval-after-load 'git-gutter
+  (advice-add 'git-gutter:tty-face :override
+              (lambda (face)
+                (if (or (display-graphic-p) (not (symbolp face)))
+                    face
+                  (let ((bg (face-background 'line-number nil))
+                        (fg (face-foreground face nil t)))
+                    (if bg
+                        `(:foreground ,fg :background ,bg)
+                      face))))))
 
 (provide 'git-gutter-tty)
 
