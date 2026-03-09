@@ -33,6 +33,7 @@
 ;; (setq modus-themes-common-palette-overrides
 ;;       '((bg-line-number-inactive unspecified)
 ;;         (bg-line-number-active unspecified)))
+;; (load-theme 'modus-operandi t)
 (load-theme 'modus-vivendi-tinted t)
 
 ;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
