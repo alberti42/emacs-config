@@ -200,6 +200,12 @@
 
 ;; Themes
 
+;; Module ensuring harmonization between Emacs components
+;; when switching between themes / appearances
+(emacs-config-load-module
+  'theme-harmonize
+  "Could not load theme-harmonize.el; theme face harmonization is disabled.")
+
 ;; catppuccin-theme: Catppuccin theme collection.
 ;; Disabled: too little contrast; keeping the package declaration for easy
 ;; re-enable when a replacement is chosen.

@@ -46,19 +46,6 @@
   (with-eval-after-load 'magit
     (add-hook 'magit-post-refresh-hook #'git-gutter:update-all-windows)))
 
-;; Override git-gutter:tty-face to always use the line-number column
-;; background so the gutter blends in seamlessly.  Read at render time
-;; to avoid theme-loading timing issues.
-(with-eval-after-load 'git-gutter
-  (advice-add 'git-gutter:tty-face :override
-              (lambda (face)
-                (if (or (display-graphic-p) (not (symbolp face)))
-                    face
-                  (let ((bg (face-background 'line-number nil))
-                        (fg (face-foreground face nil t)))
-                    (if bg
-                        `(:foreground ,fg :background ,bg)
-                      face))))))
 
 (provide 'git-gutter-tty)
 
