@@ -3,6 +3,9 @@
 ;;; Code:
 
 (use-package magit
+  :bind
+  ("C-c g" . magit-status)
+  ("C-c M-g" . magit-dispatch)
   :config
   ;; Show fine-grained word-level diffs within a hunk.
   (setq magit-diff-refine-hunk 'all)
