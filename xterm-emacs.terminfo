@@ -1,0 +1,17 @@
+# xterm-emacs: xterm-256color extended with setf24/setb24 for Emacs 24-bit color.
+#
+# Emacs bug #70941: even in 24-bit mode, Emacs maps face colors that exactly
+# match ANSI indices 0-15 to ANSI escape codes rather than 24-bit RGB.
+# Terminal color schemes like Catppuccin remap those indices, producing
+# near-zero contrast (e.g. Catppuccin Latte maps index 0 / #000000 to #bcc0cc).
+#
+# The fix: setf24/setb24 tell Emacs to use 24-bit RGB escapes for ALL colors,
+# bypassing the ANSI palette entirely.
+#
+# Install: tic -x xterm-emacs.terminfo
+# Use:     TERM=xterm-emacs emacsclient -nw
+#
+xterm-emacs|xterm-256color extended with Emacs 24-bit direct-color fix,
+	use=xterm-256color,
+	setf24=\E[38;2;%p1%{65536}%/%d;%p1%{256}%/%{255}%&%d;%p1%{255}%&%dm,
+	setb24=\E[48;2;%p1%{65536}%/%d;%p1%{256}%/%{255}%&%d;%p1%{255}%&%dm,
