@@ -1,15 +1,5 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
-;; Emacs daemon startup (startup.el) resets TERM=dumb so that subprocesses
-;; (shells, compile commands, etc.) do not inherit a terminal type they cannot
-;; use.  TTY client frames are unaffected: emacsclient passes terminal
-;; capabilities through its own protocol, independently of $TERM.
-;;
-;; NOTE: catppuccin used to require setting TERM before loading (it reads
-;; (getenv "TERM") to initialise color tables).  Catppuccin is currently
-;; disabled; re-enable this if a theme with the same issue is introduced.
-;; (when (daemonp)
-;;   (setenv "TERM" "xterm-256color"))
 
 (setq backup-inhibited t) ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
