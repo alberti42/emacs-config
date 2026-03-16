@@ -64,14 +64,18 @@
   ;; Cursor color override (GUI only).
   (zac--apply-cursor-color)
 
+  ;; Load the appropriate Modus theme based on OS appearance.
+  (let ((appearance (zac--read-appearance)))
+    (load-theme (if (equal appearance "0") 'modus-operandi 'modus-vivendi-tinted) t))
+
   ;; Match line-number background to WezTerm's padding color for the current
   ;; appearance, so the gutter column blends with the terminal border.
   (when (not (display-graphic-p))
     (let ((appearance (zac--read-appearance)))
       (set-face-background 'line-number
                            (if (equal appearance "0")
-                               "#303446"  ; light (Catppuccin Latte)
-                             "#24273a")))) ; dark (Catppuccin Macchiato)
+                               "#eff1f5"  ; light (Catppuccin Latte)
+                             "#303446")))) ; dark (Catppuccin Frappe)
 
   ;; Propagate the updated line-number background to git-gutter and any other
   ;; package faces registered in theme-harmonize.

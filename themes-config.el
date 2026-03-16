@@ -29,12 +29,18 @@
 ;; re-enable when a replacement is chosen.
 ;; (use-package catppuccin-theme)
 
-;; modus-vivendi-tinted: high-contrast, WCAG AAA. Built-in since Emacs 28.
-;; (setq modus-themes-common-palette-overrides
-;;       '((bg-line-number-inactive unspecified)
-;;         (bg-line-number-active unspecified)))
-;; (load-theme 'modus-operandi t)
-(load-theme 'modus-vivendi-tinted t)
+;; modus-themes: high-contrast, WCAG AAA. Built-in since Emacs 28; installing
+;; the package here to get the latest version from Protesilaos.
+(use-package modus-themes
+  :ensure t
+  :demand t
+  :config
+  (setq modus-themes-italic-constructs t
+        modus-themes-bold-constructs t
+        modus-themes-mixed-fonts t)
+  ;; Theme selection is delegated to zac-theme-autodetection, which picks
+  ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
+  )
 
 ;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
 ;; state file, applies face overrides (including line-number background), and
