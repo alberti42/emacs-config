@@ -42,12 +42,14 @@
 
 ;; TTY mode-line separator
 ;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
-;; which defaults to "%-" (fill with -).  Replace it with ─ (U+2500) by
-;; overriding that single variable after all themes have loaded.
+;; which defaults to "%-" (fill with dashes).  Override it after all themes load.
 ;; The :eval guard keeps GUI frames unaffected when running as a daemon.
+;; Use (make-string 500 ?─) instead of "" to fill with ─ (U+2500), drawing a
+;; continuous horizontal line across the mode-line (500 chars gets truncated to
+;; window width).
 (defun emacs-config--tty-mode-line-separator ()
   (setq-default mode-line-end-spaces
-    '(:eval (unless (display-graphic-p) (make-string 500 ?─)))))
+    '(:eval (unless (display-graphic-p) ""))))
 (add-hook 'after-init-hook #'emacs-config--tty-mode-line-separator)
 
 ;; Frame chrome
