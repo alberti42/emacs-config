@@ -71,6 +71,18 @@ On success, return non-nil."
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
 
+;; Guard against stale .elc files in straight-managed packages.
+;; This config uses native compilation (Emacs 29+), so personal .el modules are
+;; compiled to .eln files in eln-cache — no .elc files are produced for them.
+;; However, straight packages do have .elc files which can go stale after updates.
+;; auto-compile-on-load-mode recompiles a stale .elc before loading it;
+;; auto-compile-on-save-mode recompiles when a .el file is saved.
+;; Both complement load-prefer-newer set in early-init.el.
+(straight-use-package 'auto-compile)
+(require 'auto-compile)
+(auto-compile-on-load-mode)
+(auto-compile-on-save-mode)
+
 (provide 'emacs-config-core)
 
 ;;; emacs-config-core.el ends here
