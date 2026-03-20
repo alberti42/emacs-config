@@ -41,6 +41,11 @@
   :config
   (which-key-mode 1))
 
+;; vundo: visual undo tree, navigate undo history as a tree diagram.
+(use-package vundo
+  :straight t
+  :bind ("C-x u" . vundo))
+
 ;; macOS pseudo-daemon
 ;; Keep Dock icon + menu functional after closing the last GUI frame when using
 ;; emacs in server/daemon style workflows.
