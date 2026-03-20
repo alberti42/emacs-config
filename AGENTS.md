@@ -28,6 +28,10 @@ Non-goals:
 
 Key files:
 
+- `early-init.el`
+  - Loaded by Emacs before the package system and GUI init.
+  - Sets `load-prefer-newer t` so Emacs always uses source files newer than their byte-compiled counterparts.
+
 - `init.el`
   - User entrypoint.
   - Sets basic, early globals (no backups/autosaves, menu bar off, etc.).
@@ -64,10 +68,12 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
+- `lsp-json.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
 - `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
-- `zac-theme-autodetection.el`: theme auto-switch based on external appearance.
+- `themes-config.el`: theme loading pipeline — loads `theme-harmonize.el`, installs and configures `modus-themes`, then loads `zac-theme-autodetection.el` last.
+- `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; applies cursor color and other per-appearance hooks. Theme selection is delegated here once a theme variant is finalized.
 
 Packages configured directly in `init.el` (not extracted into modules):
 
@@ -77,7 +83,8 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `mac-clipboard.el` (macOS TTY only): sync kill ring write direction with system clipboard (local module, no external package).
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
-- `catppuccin-theme`: Catppuccin theme collection.
+- `tmux-tandem`: tmux open-file bridge — opens files in Emacs from tmux via IPC (Emacs 29+).
+- `mouse` (built-in, TTY only): `xterm-mouse-mode` + mouse wheel bindings for terminal frames.
 - `lua-mode`: major mode for Lua.
 - `ssh-config-mode`: major mode for `~/.ssh/config`.
 
@@ -98,6 +105,7 @@ Current syntax modules:
 - `syntaxes/python.el`: Python indentation settings.
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
+- `syntaxes/yaml.el`: YAML indentation settings.
 
 Wrapping:
 
@@ -236,6 +244,9 @@ These modules expect external programs on `PATH`:
   - `typescript-language-server`
   - `tsserver` (typically from `typescript` npm package)
 
+- JSON LSP (`lsp-json.el`):
+  - `vscode-json-language-server` (from `vscode-langservers-extracted` npm package)
+
 - LTEX+ (`lsp-ltex-plus-config.el`):
   - `ltex-ls-plus` (Java-based server)
 
@@ -250,8 +261,8 @@ not work; the intent is graceful degradation.
 
 It watches an `appearance` file that contains:
 
-- `"1"` => dark -> Catppuccin `macchiato`
-- `"0"` => light -> Catppuccin `frappe`
+- `"1"` => dark
+- `"0"` => light
 
 Paths:
 
@@ -259,10 +270,19 @@ Paths:
 - else `$XDG_CACHE_HOME/zac/appearance`
 - else `~/.cache/zac/appearance`
 
+Current theme setup (via `themes-config.el`):
+
+- `modus-themes` package is installed and configured (italic/bold constructs, mixed fonts).
+- Theme variant selection (e.g. `modus-vivendi-tinted` for dark, `modus-operandi` for light) is
+  intended to be driven by `zac-theme-autodetection.el` hooks, but is in transition — the previous
+  Catppuccin integration was removed and a new handler is pending.
+- `catppuccin-theme` is installed but disabled (commented out).
+
 Design choice:
 
-- It disables any currently enabled themes and reloads Catppuccin.
-- It sets some faces to `unspecified-bg` for terminal/GUI consistency.
+- The watcher applies cursor colors and other per-appearance hooks immediately on appearance change.
+- Theme loading should be added to `zac-appearance-change-hook` or a `zac--apply-theme` call once
+  the target variant per appearance is decided.
 
 ## LTEX+ Module Notes
 

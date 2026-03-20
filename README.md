@@ -14,6 +14,7 @@ both GUI and terminal (TTY) Emacs.
 **Language support (LSP)**
 - Python via [basedpyright](https://github.com/DetachHead/basedpyright)
 - TypeScript / JavaScript via `typescript-language-server`
+- JSON via `vscode-json-language-server` with SchemaStore auto-detection
 - Grammar and spell checking via [LTEX+](https://github.com/ltex-plus/ltex-ls-plus) (Markdown, LaTeX, Org, plain text)
 - Snippet expansion via [yasnippet](https://github.com/joaotavora/yasnippet) (enabled in LSP buffers)
 
@@ -22,11 +23,12 @@ both GUI and terminal (TTY) Emacs.
 - Git gutter indicators in terminal frames
 
 **UI**
-- [Catppuccin](https://github.com/catppuccin/emacs) theme with automatic dark/light switching
+- [Modus Themes](https://protesilaos.com/emacs/modus-themes) with automatic dark/light switching
 - [Treemacs](https://github.com/Alexander-Miller/treemacs) file tree (TTY-friendly)
 - [Nerd Fonts](https://www.nerdfonts.com/) icons via `nerd-icons`
 - Relative line numbers with absolute current line
 - Pixel-precise scrolling in GUI (`ultra-scroll`)
+- Frameless window style on macOS GUI
 
 **Editor**
 - Multiple cursors (`C->` / `C-<`)
@@ -34,6 +36,7 @@ both GUI and terminal (TTY) Emacs.
 - Dired with preview and narrowing
 - Vim modeline support
 - CSI-u terminal key decoding for richer key bindings in TTY
+- tmux open-file bridge via [tmux-tandem](https://github.com/alberti42/emacs-tmux-tandem) (open files in Emacs from tmux)
 
 ## Requirements
 
@@ -42,6 +45,7 @@ both GUI and terminal (TTY) Emacs.
 - External LSP servers on `PATH` as needed:
   - `basedpyright` (Python)
   - `typescript-language-server` (TypeScript/JavaScript)
+  - `vscode-json-language-server` from `vscode-langservers-extracted` (JSON)
   - `ltex-ls-plus` (grammar/spell checking)
 - `ripgrep` for fast project search
 - macOS or Linux (tested on both)
@@ -66,6 +70,7 @@ will bootstrap itself and download all packages automatically.
 ## Structure
 
 ```
+early-init.el            # Pre-GUI init (load-prefer-newer)
 init.el                  # Entry point; loads core and all modules
 emacs-config-core.el     # Bootstrapping, straight.el, use-package
 completion.el            # Completion orchestration
@@ -74,12 +79,15 @@ syntaxes/                # Per-language indentation and settings
 lsp-core.el              # Shared LSP configuration
 lsp-python.el            # Python LSP
 lsp-web.el               # TypeScript / JavaScript LSP
+lsp-json.el              # JSON LSP (SchemaStore)
 lsp-ltex-plus-config.el  # Grammar / spell checking
 gui-config.el            # Fonts, frame chrome, window dividers
 scroll-config.el         # Scrolling (pixel-precise GUI, TTY mouse)
+themes-config.el         # Theme loading (modus-themes + appearance sync)
 magit-config.el          # Magit + Forge
 treemacs-config.el       # File tree
 wrap.el                  # Soft-wrap helpers
+xterm-emacs.terminfo     # Custom terminfo for 24-bit color in terminals
 …
 ```
 
@@ -92,8 +100,10 @@ Dark/light switching is driven by
 [zsh-appearance-control](https://github.com/alberti42/zsh-appearance-control),
 which writes a state file read by `zac-theme-autodetection.el`.
 
-- Dark  → Catppuccin Macchiato
-- Light → Catppuccin Frappé
+The active theme package is [Modus Themes](https://protesilaos.com/emacs/modus-themes) — high-contrast, WCAG AAA compliant:
+
+- Dark  → Modus Vivendi Tinted
+- Light → Modus Operandi
 
 ## License
 
