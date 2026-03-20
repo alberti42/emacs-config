@@ -10,6 +10,9 @@
   ;; Show fine-grained word-level diffs within a hunk.
   (setq magit-diff-refine-hunk 'all)
 
+  ;; Set location of git executable to speed up magit
+  (setq magit-git-executable (executable-find "git"))
+
   ;; Ask before saving modified repository buffers.
   (setq magit-save-repository-buffers t)
 
