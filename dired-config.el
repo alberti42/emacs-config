@@ -13,7 +13,7 @@
 (use-package dired-preview
   :hook (dired-mode . dired-preview-mode)
   :custom
-  (dired-preview-delay 0.005)
+  (dired-preview-delay 0.05)
   (dired-preview-max-size (* 10 1024 1024))
   (dired-preview-ignored-extensions-regexp
     (concat "\\."
