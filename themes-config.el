@@ -10,10 +10,11 @@
 ;;
 ;;  2. load-theme       — activates the base theme.
 ;;
-;;  3. zac-theme-autodetection — reads the OS appearance, sets face colors, and
-;;                        calls `emacs-config-harmonize-theme` to propagate them.
-;;                        Must come last so all faces and packages it touches are
-;;                        already defined.
+;;  3. zac-theme-autodetection — reads the OS appearance and invokes
+;;                        `zac-load-theme-function'.  `emacs-config-harmonize-theme'
+;;                        fires automatically via `enable-theme-functions' inside
+;;                        `load-theme'.  Must come last so all faces and packages
+;;                        it touches are already defined.
 
 ;;; Code:
 
@@ -42,6 +43,11 @@
   ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
   )
 
+;; TTY line-number background colors to match WezTerm's padding (Catppuccin),
+;; so the gutter column blends with the terminal border in both appearances.
+(setq emacs-config-harmonize-tty-line-number-light "#eff1f5"   ; Catppuccin Latte
+      emacs-config-harmonize-tty-line-number-dark  "#303446")  ; Catppuccin Frappe
+
 ;; Theme selection callback for zac-theme-autodetection.  Set before loading
 ;; the module so the watcher picks it up on first application.
 (setq zac-load-theme-function
@@ -51,9 +57,8 @@
                       'modus-vivendi-tinted) t)))
 
 ;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
-;; state file, applies face overrides (including line-number background), and
-;; calls `emacs-config-harmonize-theme`.  Loaded last so every face and package
-;; it touches is already initialized.
+;; state file and invokes `zac-load-theme-function'.  Loaded last so every
+;; face and package it touches is already initialized.
 (emacs-config-load-module
   'zac-theme-autodetection
   "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")

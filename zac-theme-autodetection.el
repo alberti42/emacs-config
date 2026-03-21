@@ -75,23 +75,11 @@ Example:
   (zac--apply-cursor-color)
 
   ;; Load the appropriate theme based on OS appearance via user-supplied callback.
+  ;; emacs-config-harmonize-theme fires automatically via enable-theme-functions
+  ;; inside load-theme, so no explicit call is needed here.
   (let ((appearance (zac--read-appearance)))
     (when zac-load-theme-function
-      (funcall zac-load-theme-function appearance)))
-
-  ;; Match line-number background to WezTerm's padding color for the current
-  ;; appearance, so the gutter column blends with the terminal border.
-  (when (not (display-graphic-p))
-    (let ((appearance (zac--read-appearance)))
-      (set-face-background 'line-number
-                           (if (equal appearance "0")
-                               "#eff1f5"  ; light (Catppuccin Latte)
-                             "#303446")))) ; dark (Catppuccin Frappe)
-
-  ;; Propagate the updated line-number background to git-gutter and any other
-  ;; package faces registered in theme-harmonize.
-  (when (fboundp 'emacs-config-harmonize-theme)
-    (emacs-config-harmonize-theme)))
+      (funcall zac-load-theme-function appearance))))
 
 
 (defun zac-watch-start ()
