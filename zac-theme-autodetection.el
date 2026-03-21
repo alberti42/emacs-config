@@ -1,24 +1,21 @@
 ;;; zac-theme-autodetection.el --- Appearance sync via zsh-appearance-control -*- lexical-binding: t; -*-
 
-;; This module integrates Emacs with zsh-appearance-control:
-;; https://github.com/alberti42/zsh-appearance-control
+;; Generic module for reacting to OS appearance changes signalled by
+;; zsh-appearance-control: https://github.com/alberti42/zsh-appearance-control
 ;;
-;; zsh-appearance-control writes a single-character state file named
-;; "appearance" in a cache directory:
+;; zsh-appearance-control writes a single-character state file:
 ;; - "1" => dark
 ;; - "0" => light
 ;;
-;; We watch that file via Emacs file notifications.  When it changes, apply
-;; any registered appearance hooks (cursor color, transparent background, etc.)
-;;
-;; Theme loading is delegated to `zac-load-theme-function', a user-supplied
-;; callback set externally (e.g. in themes-config.el).  This keeps theme
-;; selection decoupled from the appearance-detection machinery.
+;; This module watches that file and invokes `zac-load-theme-function' when the
+;; appearance changes.  All color and theme choices live in that callback; this
+;; module contains none.
 
 ;;; Commentary:
 ;;
 ;; Usage:
-;; - Load this file from init.el.
+;; - Set `zac-load-theme-function' to a function (lambda (appearance) ...) before
+;;   loading this module.
 ;; - The watcher starts automatically on load.
 ;;
 ;; Environment:
