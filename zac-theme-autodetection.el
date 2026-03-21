@@ -67,25 +67,22 @@ function `zac-load-theme-function'."
 (defun zac-watch-start ()
   "Start watching zsh-appearance-control's appearance file."
   (interactive)
-  (unless (fboundp 'file-notify-add-watch)
-    (message "zac: file notifications not supported; applying once")
-    (setq zac--watch nil)
-    (zac--apply-appearance)
-    nil)
   (zac--apply-appearance)
   ;; Re-apply appearance settings for any new frame (emacsclient / daemon mode).
   (add-hook 'after-make-frame-functions
             (lambda (frame)
               (with-selected-frame frame
                 (zac--apply-appearance))))
-  (when (fboundp 'file-notify-add-watch)
-    (unless zac--watch
-      (setq zac--watch
-            (file-notify-add-watch
-             (zac--appearance-file)
-             '(change)
-             (lambda (_event)
-               (zac--apply-appearance))))))
+  (if (fboundp 'file-notify-add-watch)
+      (unless zac--watch
+        (setq zac--watch
+              (file-notify-add-watch
+               (zac--appearance-file)
+               '(change)
+               (lambda (_event)
+                 (zac--apply-appearance)))))
+    (message "zac: file notifications not supported. Appearance is applied once, \
+but there is no automatic mechanism to synchronize it with the OS appearance."))
   nil)
 
 (defun zac-watch-stop ()
