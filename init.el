@@ -49,9 +49,9 @@
 ;; macOS pseudo-daemon
 ;; Keep Dock icon + menu functional after closing the last GUI frame when using
 ;; emacs in server/daemon style workflows.
-(emacs-config-load-module
-  'mac-pseudo-daemon-config
-  "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
+;; (emacs-config-load-module
+;;   'mac-pseudo-daemon-config
+;;   "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
 ;; Save minibuffer history
 (savehist-mode 1)
