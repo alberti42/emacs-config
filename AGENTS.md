@@ -73,8 +73,8 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
 - `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
-- `themes-config.el`: theme loading pipeline — loads `theme-harmonize.el`, installs and configures `modus-themes`, then loads `zac-theme-autodetection.el` last.
-- `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; applies cursor color and other per-appearance hooks. Theme selection is delegated here once a theme variant is finalized.
+- `themes-config.el`: theme loading pipeline — loads `theme-harmonize.el`, sets TTY line-number colors and `zac-load-theme-function`, installs and configures `modus-themes`, then loads `zac-theme-autodetection.el` last.
+- `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; applies cursor color and invokes `zac-load-theme-function` (user-supplied callback). Contains no theme or color choices itself.
 
 Packages configured directly in `init.el` (not extracted into modules):
 
@@ -274,16 +274,20 @@ Paths:
 Current theme setup (via `themes-config.el`):
 
 - `modus-themes` package is installed and configured (italic/bold constructs, mixed fonts).
-- Theme variant selection (e.g. `modus-vivendi-tinted` for dark, `modus-operandi` for light) is
-  intended to be driven by `zac-theme-autodetection.el` hooks, but is in transition — the previous
-  Catppuccin integration was removed and a new handler is pending.
+- Theme variant selection: `modus-operandi` (light) / `modus-vivendi-tinted` (dark), set via
+  `zac-load-theme-function` in `themes-config.el`.
 - `catppuccin-theme` is installed but disabled (commented out).
+- TTY line-number background is overridden to match WezTerm's Catppuccin padding color
+  (`#eff1f5` Latte / `#303446` Frappe), set via `emacs-config-harmonize-tty-line-number-light/dark`
+  in `themes-config.el`.
 
 Design choice:
 
-- The watcher applies cursor colors and other per-appearance hooks immediately on appearance change.
-- Theme loading should be added to `zac-appearance-change-hook` or a `zac--apply-theme` call once
-  the target variant per appearance is decided.
+- `zac-theme-autodetection.el` is a generic module: no color or theme choices live inside it.
+- All customization (`zac-load-theme-function`, line-number colors) is set in `themes-config.el`
+  before the module loads.
+- `emacs-config-harmonize-theme` fires automatically via `enable-theme-functions` inside
+  `load-theme`, handling line-number overrides and git-gutter propagation without an explicit call.
 
 ## LTEX+ Module Notes
 
