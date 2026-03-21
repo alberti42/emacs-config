@@ -24,9 +24,8 @@
 
 ;;; Code:
 
-(require 'subr-x)
-
-(defvar zac--watch nil)
+(defvar zac--watch nil
+  "File notification descriptor for the appearance state file, or nil if inactive.")
 
 (defvar zac-load-theme-function nil
   "Function called by `zac--apply-appearance' to load the appropriate theme.
@@ -39,6 +38,7 @@ Example:
                         \\='modus-vivendi-tinted) t)))")
 
 (defun zac--appearance-file ()
+  "Return the path to zsh-appearance-control's appearance state file."
   (expand-file-name
    "appearance"
    (or (getenv "ZAC_CACHE_DIR")
@@ -46,6 +46,7 @@ Example:
                                    (expand-file-name "~/.cache"))))))
 
 (defun zac--read-appearance ()
+  "Read and return the current appearance string (\"0\" or \"1\"), or nil."
   (when (file-readable-p (zac--appearance-file))
     (string-trim
      (with-temp-buffer
@@ -53,16 +54,8 @@ Example:
        (buffer-string)))))
 
 (defun zac--apply-appearance ()
-  ;; Keep default background transparent/unspecified for terminal + GUI consistency.
-  ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
-  ;; In GUI frames the string is treated as a color name and produces an error.
-  ;; (set-face-attribute 'default nil :background 'unspecified)
-  ;; Note: mode-line backgrounds are intentionally left at theme defaults to
-  ;; preserve contrast between the mode-line and surrounding buffers.
-  ;; Keep the next two lines commented out
-  ;; (set-face-attribute 'mode-line nil :background 'unspecified)
-  ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)
-
+  "Read the current appearance and invoke the user-supplied callback
+function `zac-load-theme-function'."
   ;; Load the appropriate theme based on OS appearance via user-supplied callback.
   ;; emacs-config-harmonize-theme fires automatically via enable-theme-functions
   ;; inside load-theme, so no explicit call is needed here.
