@@ -15,17 +15,24 @@
            (buf  (find-buffer-visiting file)))
       (when (buffer-live-p buf)
         (with-current-buffer buf
-          ;; `verify-visited-file-modtime' returns t when Emacs already
-          ;; knows about this mtime (e.g. right after a save by Emacs
-          ;; itself).  Only act when the file genuinely changed externally.
+          ;; `verify-visited-file-modtime' returns t when Emacs
+          ;; already knows about this mtime. This avoids reverting the
+          ;; buffer when the change to the file is caused by Emacs
+          ;; itself through a save operation. Only act when the file
+          ;; genuinely changed externally.
           (unless (verify-visited-file-modtime buf)
+            ;; `buffer-modified-p` is an internal flag that Emacs sets
+            ;; when the buffer is changed and clears when the buffer
+            ;; is saved.
             (if (buffer-modified-p)
                 ;; Unsaved local edits — ask before discarding them.
                 (when (yes-or-no-p
                        (format "File '%s' modified externally. Revert and lose your changes? "
                                (buffer-name)))
                   (revert-buffer t t t))
-              ;; Clean buffer — silently sync to disk.
+              ;; The buffer did not contain any changes in Emacs, but
+              ;; it has been changed externally. In this case, we
+              ;; silently revert to the changed version on disk.
               (revert-buffer t t t))))))))
 
 (defun emacs-config--setup-file-watcher ()
