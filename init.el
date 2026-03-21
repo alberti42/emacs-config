@@ -85,6 +85,10 @@
 (dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook))
   (add-hook hook (lambda () (display-line-numbers-mode -1))))
 
+;; Use xterm-256color instead of eterm-color for better terminal compatibility.
+(setq term-term-name "xterm-256color")
+(setq eshell-term-name "xterm-256color")
+
 ;; Wrapping helpers (soft wrap, visual only)
 (emacs-config-load-module
   'wrap
