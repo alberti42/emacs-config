@@ -82,12 +82,13 @@
 (setq display-line-numbers-current-absolute t)
 (global-display-line-numbers-mode 1)
 ;; Disable line numbers in terminal/shell buffers.
-(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook))
+(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook))
   (add-hook hook (lambda () (display-line-numbers-mode -1))))
 
-;; Use xterm-256color instead of eterm-color for better terminal compatibility.
-(setq term-term-name "xterm-256color")
-(setq eshell-term-name "xterm-256color")
+;; Terminal emulators (term, eshell, vterm)
+(emacs-config-load-module
+  'terminal-config
+  "Could not load terminal-config.el; terminal settings are disabled.")
 
 ;; Wrapping helpers (soft wrap, visual only)
 (emacs-config-load-module
