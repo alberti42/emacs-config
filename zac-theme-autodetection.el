@@ -11,9 +11,9 @@
 ;; We watch that file via Emacs file notifications.  When it changes, apply
 ;; any registered appearance hooks (cursor color, transparent background, etc.)
 ;;
-;; Theme loading is intentionally omitted here while a replacement for
-;; Catppuccin is being evaluated.  Add a `zac--apply-theme` call or a
-;; `zac-appearance-change-hook` handler once a theme is chosen.
+;; Theme loading is delegated to `zac-load-theme-function', a user-supplied
+;; callback set externally (e.g. in themes-config.el).  This keeps theme
+;; selection decoupled from the appearance-detection machinery.
 
 ;;; Commentary:
 ;;
@@ -30,6 +30,16 @@
 (require 'subr-x)
 
 (defvar zac--watch nil)
+
+(defvar zac-load-theme-function nil
+  "Function called by `zac--apply-appearance' to load the appropriate theme.
+It receives one argument: the appearance string (\"0\" = light, \"1\" = dark).
+Example:
+  (setq zac-load-theme-function
+        (lambda (appearance)
+          (load-theme (if (equal appearance \"0\")
+                          \\='modus-operandi
+                        \\='modus-vivendi-tinted) t)))")
 
 (defun zac--appearance-file ()
   (expand-file-name
@@ -64,9 +74,10 @@
   ;; Cursor color override (GUI only).
   (zac--apply-cursor-color)
 
-  ;; Load the appropriate Modus theme based on OS appearance.
+  ;; Load the appropriate theme based on OS appearance via user-supplied callback.
   (let ((appearance (zac--read-appearance)))
-    (load-theme (if (equal appearance "0") 'modus-operandi 'modus-vivendi-tinted) t))
+    (when zac-load-theme-function
+      (funcall zac-load-theme-function appearance)))
 
   ;; Match line-number background to WezTerm's padding color for the current
   ;; appearance, so the gutter column blends with the terminal border.

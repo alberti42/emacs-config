@@ -42,6 +42,14 @@
   ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
   )
 
+;; Theme selection callback for zac-theme-autodetection.  Set before loading
+;; the module so the watcher picks it up on first application.
+(setq zac-load-theme-function
+      (lambda (appearance)
+        (load-theme (if (equal appearance "0")
+                        'modus-operandi
+                      'modus-vivendi-tinted) t)))
+
 ;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
 ;; state file, applies face overrides (including line-number background), and
 ;; calls `emacs-config-harmonize-theme`.  Loaded last so every face and package
