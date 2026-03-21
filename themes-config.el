@@ -54,7 +54,9 @@
       (lambda (appearance)
         (load-theme (if (equal appearance "0")
                         'modus-operandi
-                      'modus-vivendi-tinted) t)))
+                      'modus-vivendi-tinted) t)
+        (when (display-graphic-p)
+          (set-cursor-color "#cad3f5"))))
 
 ;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
 ;; state file and invokes `zac-load-theme-function'.  Loaded last so every

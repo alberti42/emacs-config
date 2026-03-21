@@ -55,11 +55,6 @@ Example:
        (insert-file-contents (zac--appearance-file))
        (buffer-string)))))
 
-(defun zac--apply-cursor-color ()
-  "Set cursor color for GUI frames. Safe to call from hooks."
-  (when (display-graphic-p)
-    (set-cursor-color "#cad3f5")))
-
 (defun zac--apply-appearance ()
   ;; Keep default background transparent/unspecified for terminal + GUI consistency.
   ;; IMPORTANT: use the symbol `unspecified` (not the string "unspecified-bg").
@@ -70,9 +65,6 @@ Example:
   ;; Keep the next two lines commented out
   ;; (set-face-attribute 'mode-line nil :background 'unspecified)
   ;; (set-face-attribute 'mode-line-inactive nil :background 'unspecified)
-
-  ;; Cursor color override (GUI only).
-  (zac--apply-cursor-color)
 
   ;; Load the appropriate theme based on OS appearance via user-supplied callback.
   ;; emacs-config-harmonize-theme fires automatically via enable-theme-functions
@@ -91,10 +83,6 @@ Example:
     (zac--apply-appearance)
     nil)
   (zac--apply-appearance)
-  ;; Re-apply cursor color after the initial frame is fully set up (GUI
-  ;; startup: display-graphic-p may be nil or frame parameters not yet
-  ;; final when init.el runs).
-  (add-hook 'window-setup-hook #'zac--apply-cursor-color)
   ;; Re-apply appearance settings for any new frame (emacsclient / daemon mode).
   (add-hook 'after-make-frame-functions
             (lambda (frame)
