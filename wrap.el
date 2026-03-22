@@ -32,6 +32,10 @@
 
 ;;; Code
 
+(defvar-local wrap--saved-auto-fill nil
+  "Value of `auto-fill-function' before soft wrap was enabled.
+Used by `soft-wrap-disable' to restore hard-wrap state.")
+
 (use-package visual-fill-column
     :straight (visual-fill-column
                :type git
@@ -48,6 +52,8 @@
 WIDTH, when non-nil, is the target wrap column (defaults to `fill-column').
 Disables hard wrapping (`auto-fill-mode') if it is active."
   (interactive "P")
+  ;; Save hard-wrap state so soft-wrap-disable can restore it
+  (setq-local wrap--saved-auto-fill auto-fill-function)
   ;; Disable complementary mode auto-fill-mode by providing a negative argument
   (auto-fill-mode -1)
   (require 'visual-fill-column)
@@ -73,7 +79,11 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   ;; Remove local variables
   (dolist (var '(word-wrap truncate-lines visual-fill-column-width))
     (when (local-variable-p var)
-      (kill-local-variable var))))
+      (kill-local-variable var)))
+  ;; Restore hard-wrap state if it was active before soft wrap was enabled
+  (when wrap--saved-auto-fill
+    (auto-fill-mode 1))
+  (kill-local-variable 'wrap--saved-auto-fill))
 
 (defun soft-wrap-toggle (&optional width)
   "Toggle visual soft wrapping in the current buffer.
