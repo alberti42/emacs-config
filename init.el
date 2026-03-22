@@ -83,6 +83,11 @@
 (setq display-line-numbers-type 'relative)
 ;; Keep current line absolute while others are relative.
 (setq display-line-numbers-current-absolute t)
+;; If this option is non-nil, ‘display-line-numbers-width’ is set up
+;; from the start to a width necessary to display all line numbers in
+;; the buffer.
+(setq display-line-numbers-width-start t)
+;; display-line-numbers mode is enabled in all buffers where
 (global-display-line-numbers-mode 1)
 ;; Disable line numbers in terminal/shell buffers.
 (dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook))
