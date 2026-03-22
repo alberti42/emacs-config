@@ -15,6 +15,14 @@
 (defun emacs-config--file-changed (event)
   "Handle a file change EVENT."
   (let ((action (nth 1 event)))
+    (message "file-changed event: %S" event)
+    (when (eq action 'deleted)
+      (let ((buf (find-buffer-visiting (nth 2 event))))
+        (when (buffer-live-p buf)
+          (with-current-buffer buf
+            (emacs-config--teardown-file-watcher)
+            (message "Warning: file '%s' was deleted or moved to a different directory."
+                     (buffer-name))))))
     (when (memq action '(changed created renamed))
       (let* ((old-file (nth 2 event))
              (new-file (if (eq action 'renamed) (nth 3 event) (nth 2 event)))
@@ -28,8 +36,11 @@
             (if (and (eq action 'renamed)
                      (equal buffer-file-name (file-truename old-file)))
                 ;; The file this buffer was visiting got renamed — update the
-                ;; buffer's path to track it.
+                ;; buffer's path to track it, then re-attach the watcher to
+                ;; the new directory (the file may have moved out of the old one).
                 (set-visited-file-name new-file t t)
+                (emacs-config--teardown-file-watcher)
+                (emacs-config--setup-file-watcher)
               ;; Content change or atomic overwrite — revert if the mtime is
               ;; new.  `verify-visited-file-modtime' returns t when Emacs
               ;; already knows about this mtime. This avoids reverting the
