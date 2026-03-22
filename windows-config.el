@@ -57,17 +57,61 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 ;; Window resizing: grow the current window in the given direction.
 ;; Uses repeat-mode: after the initial C-c C-<arrow>, keep pressing C-<arrow>
 ;; to continue resizing (timeout controlled by `repeat-exit-timeout').
-(global-set-key (kbd "C-c C-<right>") #'enlarge-window-horizontally)
-(global-set-key (kbd "C-c C-<left>")  #'shrink-window-horizontally)
-(global-set-key (kbd "C-c C-<up>")    #'enlarge-window)
-(global-set-key (kbd "C-c C-<down>")  #'shrink-window)
+;; Horizontal: arrow direction = which way the shared border moves (tmux convention).
+;; When a window exists to the right, the right border is moved:
+;;   C-RIGHT → right border moves right → current window grows,   window to the right shrinks.
+;;   C-LEFT  → right border moves left  → current window shrinks, window to the right grows.
+;; At the right edge (no window to the right), the left border is moved instead,
+;; so the operations are swapped to keep arrow semantics consistent:
+;;   C-RIGHT → left border moves right → current window shrinks, window to the left grows.
+;;   C-LEFT  → left border moves left  → current window grows,   window to the left shrinks.
+(defun windows-config-resize-right ()
+  "Move the active horizontal border rightward, consistent with tmux resize-pane -R."
+  (interactive)
+  (if (window-in-direction 'right)
+      (enlarge-window-horizontally 1)
+    (shrink-window-horizontally 1)))
+
+(defun windows-config-resize-left ()
+  "Move the active horizontal border leftward, consistent with tmux resize-pane -L."
+  (interactive)
+  (if (window-in-direction 'right)
+      (shrink-window-horizontally 1)
+    (enlarge-window-horizontally 1)))
+
+(global-set-key (kbd "C-c C-<right>") #'windows-config-resize-right)
+(global-set-key (kbd "C-c C-<left>")  #'windows-config-resize-left)
+
+;; Vertical: arrow direction = which way the shared border moves (tmux convention).
+;; When a window exists below, the bottom border is moved:
+;;   C-UP   → bottom border moves up   → current window shrinks, window below grows.
+;;   C-DOWN → bottom border moves down → current window grows,   window below shrinks.
+;; At the bottom edge (no window below), the top border is moved instead,
+;; so the operations are swapped to keep arrow semantics consistent:
+;;   C-UP   → top border moves up   → current window grows,   window above shrinks.
+;;   C-DOWN → top border moves down → current window shrinks, window above grows.
+(defun windows-config-resize-up ()
+  "Move the active vertical border upward, consistent with tmux resize-pane -U."
+  (interactive)
+  (if (window-in-direction 'below)
+      (shrink-window 1)
+    (enlarge-window 1)))
+(defun windows-config-resize-down ()
+  "Move the active vertical border downward, consistent with tmux resize-pane -D."
+  (interactive)
+  (if (window-in-direction 'below)
+      (enlarge-window 1)
+    (shrink-window 1)))
+
+(global-set-key (kbd "C-c C-<up>")   #'windows-config-resize-up)
+(global-set-key (kbd "C-c C-<down>") #'windows-config-resize-down)
 
 (defvar-keymap window-resize-repeat-map
   :repeat t
-  "C-<right>" #'enlarge-window-horizontally
-  "C-<left>"  #'shrink-window-horizontally
-  "C-<up>"    #'enlarge-window
-  "C-<down>"  #'shrink-window)
+  "C-<right>" #'windows-config-resize-right
+  "C-<left>"  #'windows-config-resize-left
+  "C-<up>"    #'windows-config-resize-up
+  "C-<down>"  #'windows-config-resize-down)
 
 (repeat-mode 1)
 
