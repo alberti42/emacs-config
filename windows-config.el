@@ -115,5 +115,54 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 
 (repeat-mode 1)
 
+;; Window joining: move the current window to be a split adjacent to another window.
+;; Follows tmux move-pane convention:
+;;   S-LEFT / S-RIGHT → vertical split (stacked) with the window in that column.
+;;   S-UP   / S-DOWN  → horizontal split (side by side) with the window in that row.
+(defun windows-config-join-left ()
+  "Join current window with the window to the left as a vertical split."
+  (interactive)
+  (when-let ((target (window-in-direction 'left)))
+    (let ((source (selected-window))
+          (new-win (split-window target nil 'below)))
+      (set-window-buffer new-win (window-buffer source))
+      (delete-window source)
+      (select-window new-win))))
+
+(defun windows-config-join-right ()
+  "Join current window with the window to the right as a vertical split."
+  (interactive)
+  (when-let ((target (window-in-direction 'right)))
+    (let ((source (selected-window))
+          (new-win (split-window target nil 'below)))
+      (set-window-buffer new-win (window-buffer source))
+      (delete-window source)
+      (select-window new-win))))
+
+(defun windows-config-join-up ()
+  "Join current window with the window above as a horizontal split."
+  (interactive)
+  (when-let ((target (window-in-direction 'above)))
+    (let ((source (selected-window))
+          (new-win (split-window target nil 'right)))
+      (set-window-buffer new-win (window-buffer source))
+      (delete-window source)
+      (select-window new-win))))
+
+(defun windows-config-join-down ()
+  "Join current window with the window below as a horizontal split."
+  (interactive)
+  (when-let ((target (window-in-direction 'below)))
+    (let ((source (selected-window))
+          (new-win (split-window target nil 'right)))
+      (set-window-buffer new-win (window-buffer source))
+      (delete-window source)
+      (select-window new-win))))
+
+(global-set-key (kbd "C-c S-<left>")  #'windows-config-join-left)
+(global-set-key (kbd "C-c S-<right>") #'windows-config-join-right)
+(global-set-key (kbd "C-c S-<up>")    #'windows-config-join-up)
+(global-set-key (kbd "C-c S-<down>")  #'windows-config-join-down)
+
 (provide 'windows-config)
 ;;; windows-config.el ends here
