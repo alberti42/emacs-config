@@ -1,6 +1,18 @@
 ;;; wrap.el --- Soft and hard wrap helpers -*- lexical-binding: t; -*-
 
-;; Packages
+;; Code
+
+;;; Packages:
+;;
+;; There are two mutually exclusive approaches to the same goal of managing long lines:
+;;
+;; - auto-fill-mode — hard wrap: inserts actual newlines as you type past fill-column. The line break becomes part of the file content.
+;; - visual-line-mode — built-in mode for soft/visual wrap: no newlines inserted, text just appears wrapped on screen.
+;;   The file content is unchanged. The built-in mode wraps lines at the window edge.
+;; - visual-fill-column-mode — adds margins to the window so that visual-line-mode wraps at a specific column rather than the window edge
+
+;;; Commentary on patched visual-fill-column
+;;
 ;; Use a patched fork of visual-fill-column to fix a conflict with git-gutter
 ;; in TTY frames.
 ;;
@@ -17,6 +29,9 @@
 ;;
 ;; The fork fixes this by reading the current left margin first and adding to
 ;; it, so both packages can coexist.  See Emacs bug #70941.
+
+;;; Code
+
 (use-package visual-fill-column
     :straight (visual-fill-column
                :type git
@@ -27,32 +42,40 @@
 (use-package adaptive-wrap
   :defer t)
 
-(defun emacs-config-soft-wrap-enable (&optional width)
+(defun soft-wrap-enable (&optional width)
   "Enable visual soft wrapping in the current buffer.
 
 WIDTH, when non-nil, is the target wrap column (defaults to `fill-column').
 Disables hard wrapping (`auto-fill-mode') if it is active."
   (interactive "P")
+  ;; Disable complementary mode auto-fill-mode by providing a negative argument
   (auto-fill-mode -1)
   (require 'visual-fill-column)
-  (let ((width (if width (prefix-numeric-value width) fill-column)))
-    (visual-line-mode 1)
-    (setq-local word-wrap t)
-    (setq-local truncate-lines nil)
+  (let ((width (if width
+                   (prefix-numeric-value width) ; convert width to a number if not nil
+                 fill-column                    ; choose fill-column if width is nil
+                 )))
+    (visual-line-mode 1) ; enable built-in visual-line-mode required by visual-fill-column-mode
+    (setq-local word-wrap t) ; makes visual line breaks happen only at word boundaries (spaces, hyphens) rather than mid-word
+    (setq-local truncate-lines nil) ; must be set to nil when visual-line-mode is enabled (per doc)
     (setq-local visual-fill-column-width width)
     (visual-fill-column-mode 1)))
 
-(defun emacs-config-soft-wrap-disable ()
+(defun soft-wrap-disable ()
   "Disable visual soft wrapping in the current buffer."
   (interactive)
+  ;; Check that the mode visual-fill-column is available
   (when (fboundp 'visual-fill-column-mode)
+    ;; Disable complementary mode auto-fill-mode by providing a negative argument
     (visual-fill-column-mode -1))
+  ;; Disable the built-in visual-line-mode
   (visual-line-mode -1)
+  ;; Remove local variables
   (dolist (var '(word-wrap truncate-lines visual-fill-column-width))
     (when (local-variable-p var)
       (kill-local-variable var))))
 
-(defun emacs-config-soft-wrap-toggle (&optional width)
+(defun soft-wrap-toggle (&optional width)
   "Toggle visual soft wrapping in the current buffer.
 
 If enabling, WIDTH is passed to `emacs-config-soft-wrap-enable'."
@@ -63,7 +86,7 @@ If enabling, WIDTH is passed to `emacs-config-soft-wrap-enable'."
 
 ;;; Hard wrap (auto-fill-mode) — uses fill-column as the wrap column.
 
-(defun emacs-config-hard-wrap-enable ()
+(defun hard-wrap-enable ()
   "Enable hard wrapping (auto-fill-mode) in the current buffer.
 
 Disables soft wrapping if it is active.  The wrap column is `fill-column'."
@@ -71,12 +94,12 @@ Disables soft wrapping if it is active.  The wrap column is `fill-column'."
   (emacs-config-soft-wrap-disable)
   (auto-fill-mode 1))
 
-(defun emacs-config-hard-wrap-disable ()
+(defun hard-wrap-disable ()
   "Disable hard wrapping (auto-fill-mode) in the current buffer."
   (interactive)
   (auto-fill-mode -1))
 
-(defun emacs-config-hard-wrap-toggle ()
+(defun hard-wrap-toggle ()
   "Toggle hard wrapping (auto-fill-mode) in the current buffer."
   (interactive)
   (if auto-fill-function
