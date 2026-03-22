@@ -6,6 +6,14 @@
 (when emacs-config-syntaxes-enable-markdown
   (setq markdown-fontify-code-blocks-natively t)
 
+  ;; Free C-c <left>/<right> for global windmove navigation (windows-config.el).
+  ;; Rebind markdown-promote/markdown-demote to C-c M-< / C-c M->.
+  (with-eval-after-load 'markdown-mode
+    (define-key markdown-mode-map (kbd "C-c <left>")  nil)
+    (define-key markdown-mode-map (kbd "C-c <right>") nil)
+    (define-key markdown-mode-map (kbd "C-c M-<") #'markdown-promote)
+    (define-key markdown-mode-map (kbd "C-c M->") #'markdown-demote))
+
   (dolist (hook '(markdown-mode-hook gfm-mode-hook))
     (add-hook hook
               (lambda ()

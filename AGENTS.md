@@ -73,7 +73,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
 - `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
-- `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses.
+- `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
 - `themes-config.el`: theme loading pipeline — loads `theme-harmonize` and `zac-theme-autodetection` via `use-package` (`:straight nil`, `:load-path emacs-config-dir`), sets `theme-harmonize-tty-line-number` and `zac-load-theme-callback`, installs and configures `modus-themes`, then loads `zac-theme-autodetection` last.
 - `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; invokes `zac-load-theme-callback` (user-supplied callback). Contains no theme or color choices itself. Loaded via `use-package` (`:straight nil`) with `zac-load-theme-callback` set in `:init` so the watcher picks it up on first application.
 
@@ -103,7 +103,7 @@ Current syntax modules:
 
 - `syntaxes/js.el`: JS/TS indentation settings.
 - `syntaxes/json.el`: JSON indentation (supports `js-json-mode`, `json-mode`, `json-ts-mode`).
-- `syntaxes/markdown.el`: Markdown settings.
+- `syntaxes/markdown.el`: Markdown settings. Unbinds `C-c <left>`/`C-c <right>` from `markdown-mode-map` and rebinds `markdown-promote`/`markdown-demote` to `C-c M-<` / `C-c M->`.
 - `syntaxes/python.el`: Python indentation settings.
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
