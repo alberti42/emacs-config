@@ -41,7 +41,11 @@ Used by `soft-wrap-disable' to restore hard-wrap state.")
                :type git
                :host codeberg
                :repo "alberti42/fork-visual-fill-column")
-    :defer t)
+    ;; :commands implies deferral. It's equivalent to :defer t plus registering
+    ;; autoloads for the listed commands. In our case, it registers
+    ;; an autoload `visual-fill-column-mode', which loads the package on demand,
+    ;; without a manual `require'.
+    :commands visual-fill-column-mode)
 
 ;; Forward declaration so the native compiler knows the function exists at
 ;; compile time (analogous to a C header).  The real definition is loaded at
@@ -49,7 +53,7 @@ Used by `soft-wrap-disable' to restore hard-wrap state.")
 (declare-function visual-fill-column-mode "visual-fill-column")
 
 (use-package adaptive-wrap
-  :defer t)
+  :commands adaptive-wrap-prefix-mode)
 
 (defun soft-wrap-enable (&optional width)
   "Enable visual soft wrapping in the current buffer.
@@ -61,7 +65,6 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (setq-local wrap--saved-auto-fill auto-fill-function)
   ;; Disable complementary mode auto-fill-mode by providing a negative argument
   (auto-fill-mode -1)
-  (require 'visual-fill-column)
   (let ((width (if width
                    (prefix-numeric-value width) ; convert width to a number if not nil
                  fill-column                    ; choose fill-column if width is nil

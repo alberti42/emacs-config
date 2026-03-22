@@ -20,7 +20,6 @@
                 ;; Visual soft wrap at 100 columns.
                 (setq-local fill-column 100)
                 (soft-wrap-enable)
-                (require 'adaptive-wrap)
                 (adaptive-wrap-prefix-mode 1)))))
 
 (provide 'syntaxes-markdown)
