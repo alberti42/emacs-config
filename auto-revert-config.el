@@ -2,6 +2,10 @@
 
 ;; Smart file watching: silently revert unmodified buffers when the file changes
 ;; on disk; prompt before reverting buffers that have unsaved local edits.
+;;
+;; The watcher is placed on the parent directory rather than the file itself so
+;; that atomic writes — which replace the file via rename(2) and would not fire
+;; a `changed' event on the original path — are also detected.
 
 (require 'filenotify)
 
@@ -10,42 +14,49 @@
 
 (defun emacs-config--file-changed (event)
   "Handle a file change EVENT."
-  (when (eq (nth 1 event) 'changed)
-    (let* ((file (nth 2 event))
-           (buf  (find-buffer-visiting file)))
-      (when (buffer-live-p buf)
-        (with-current-buffer buf
-          ;; `verify-visited-file-modtime' returns t when Emacs
-          ;; already knows about this mtime. This avoids reverting the
-          ;; buffer when the change to the file is caused by Emacs
-          ;; itself through a save operation. Only act when the file
-          ;; genuinely changed externally.
-          (unless (verify-visited-file-modtime buf)
-            ;; `buffer-modified-p` is an internal flag that Emacs sets
-            ;; when the buffer is changed and clears when the buffer
-            ;; is saved.
-            (if (buffer-modified-p)
-                ;; Unsaved local edits — ask before discarding them.
-                (when (yes-or-no-p
-                       (format "File '%s' modified externally. Revert and lose your changes? "
-                               (buffer-name)))
-                  (revert-buffer t t t))
-              ;; The buffer did not contain any changes in Emacs, but
-              ;; it has been changed externally. In this case, we
-              ;; silently revert to the changed version on disk.
-              (revert-buffer t t t))))))))
+  (let ((action (nth 1 event)))
+    (when (memq action '(changed created renamed))
+      ;; Atomic writes (rename-based) deliver a `renamed' event; the destination
+      ;; path is in slot 3.  Plain in-place writes deliver `changed' with the
+      ;; path in slot 2.
+      (let* ((file (if (eq action 'renamed) (nth 3 event) (nth 2 event)))
+             (buf  (find-buffer-visiting file)))
+        (when (buffer-live-p buf) ; if the buffer is alive (not killed)
+          (with-current-buffer buf
+            ;; `verify-visited-file-modtime' returns t when Emacs
+            ;; already knows about this mtime. This avoids reverting the
+            ;; buffer when the change to the file is caused by Emacs
+            ;; itself through a save operation. Only act when the file
+            ;; genuinely changed externally.
+            (unless (verify-visited-file-modtime buf)
+              ;; `buffer-modified-p` is an internal flag that Emacs sets
+              ;; when the buffer is changed and clears when the buffer
+              ;; is saved.
+              (if (buffer-modified-p)
+                  ;; Unsaved local edits — ask before discarding them.
+                  (when (yes-or-no-p
+                         (format "File '%s' modified externally. Revert and lose your changes? "
+                                 (buffer-name)))
+                    (revert-buffer t t t))
+                ;; The buffer did not contain any changes in Emacs, but
+                ;; it has been changed externally. In this case, we
+                ;; silently revert to the changed version on disk.
+                (revert-buffer t t t)))))))))
 
 (defun emacs-config--setup-file-watcher ()
-  "Attach a file-system watcher to the current buffer's file."
+  "Attach a file-system watcher to the current buffer's file's directory.
+Watching the directory (rather than the file itself) ensures that atomic
+writes — which replace the file via rename(2) — are also detected."
   (when (and buffer-file-name (file-exists-p buffer-file-name))
-    (condition-case err
-        (setq-local emacs-config--file-watcher
-                    (file-notify-add-watch buffer-file-name
-                                           '(change)
-                                           #'emacs-config--file-changed))
-      (error
-       (message "auto-revert-config: could not watch %s: %s"
-                buffer-file-name err)))))
+    (let ((dir (file-name-directory (file-truename buffer-file-name))))
+      (condition-case err
+          (setq-local emacs-config--file-watcher
+                      (file-notify-add-watch dir
+                                             '(change)
+                                             #'emacs-config--file-changed))
+        (error
+         (message "auto-revert-config: could not watch %s: %s"
+                  buffer-file-name err))))))
 
 (defun emacs-config--teardown-file-watcher ()
   "Remove the file-system watcher when the buffer is killed."
