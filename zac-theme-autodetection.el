@@ -3,18 +3,18 @@
 ;; Generic module for reacting to OS appearance changes signalled by
 ;; zsh-appearance-control: https://github.com/alberti42/zsh-appearance-control
 ;;
-;; zsh-appearance-control writes a single-character state file:
+;; zsh-appearance-control plugin writes a single-character state file:
 ;; - "1" => dark
 ;; - "0" => light
 ;;
-;; This module watches that file and invokes `zac-load-theme-function' when the
+;; This module watches that file and invokes `zac-load-theme-callback' when the
 ;; appearance changes.  All color and theme choices live in that callback; this
 ;; module contains none.
 
 ;;; Commentary:
 ;;
 ;; Usage:
-;; - Set `zac-load-theme-function' to a function (lambda (appearance) ...) before
+;; - Set `zac-load-theme-callback' to a function (lambda (appearance) ...) before
 ;;   loading this module.
 ;; - The watcher starts automatically on load.
 ;;
@@ -27,15 +27,16 @@
 (defvar zac--watch nil
   "File notification descriptor for the appearance state file, or nil if inactive.")
 
-(defvar zac-load-theme-function nil
+(defvar zac-load-theme-callback nil
   "Function called by `zac--apply-appearance' to load the appropriate theme.
-It receives one argument: the appearance string (\"0\" = light, \"1\" = dark).
+It receives :light or :dark for the respective appearance.
 Example:
-  (setq zac-load-theme-function
+  (setq zac-load-theme-callback
         (lambda (appearance)
-          (load-theme (if (equal appearance \"0\")
-                          \\='modus-operandi
-                        \\='modus-vivendi-tinted) t)))")
+          (load-theme (if (eq appearance :light)
+                          'modus-operandi
+                        'modus-vivendi-tinted) t)
+          ))")
 
 (defun zac--appearance-file ()
   "Return the path to zsh-appearance-control's appearance state file."
@@ -46,22 +47,21 @@ Example:
                                    (expand-file-name "~/.cache"))))))
 
 (defun zac--read-appearance ()
-  "Read and return the current appearance string (\"0\" or \"1\"), or nil."
+  "Read the appearance state file and return :dark, :light, or nil."
   (when (file-readable-p (zac--appearance-file))
-    (string-trim
      (with-temp-buffer
        (insert-file-contents (zac--appearance-file))
-       (buffer-string)))))
+       (if (equal (string-trim (buffer-string)) "1") :dark :light))))
 
 (defun zac--apply-appearance ()
   "Read the current appearance and invoke the user-supplied callback
-function `zac-load-theme-function'."
+function `zac-load-theme-callback'."
   ;; Load the appropriate theme based on OS appearance via user-supplied callback.
-  ;; emacs-config-harmonize-theme fires automatically via enable-theme-functions
+  ;; theme-harmonize-theme fires automatically via enable-theme-functions
   ;; inside load-theme, so no explicit call is needed here.
   (let ((appearance (zac--read-appearance)))
-    (when zac-load-theme-function
-      (funcall zac-load-theme-function appearance))))
+    (when zac-load-theme-callback
+      (funcall zac-load-theme-callback appearance))))
 
 
 (defun zac-watch-start ()

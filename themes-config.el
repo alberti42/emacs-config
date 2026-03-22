@@ -4,26 +4,18 @@
 ;;
 ;; Load order within this module is intentional and must be preserved:
 ;;
-;;  1. theme-harmonize  — defines `emacs-config-harmonize-theme`.  Must be
-;;                        loaded first so the function exists before anything
-;;                        calls it.
+;;  1. theme-harmonize  — defines `theme-harmonize-theme'.  Must be loaded
+;;                        first so the function exists before anything calls it.
 ;;
 ;;  2. load-theme       — activates the base theme.
 ;;
 ;;  3. zac-theme-autodetection — reads the OS appearance and invokes
-;;                        `zac-load-theme-function'.  `emacs-config-harmonize-theme'
+;;                        `zac-load-theme-callback'.  `theme-harmonize-theme'
 ;;                        fires automatically via `enable-theme-functions' inside
 ;;                        `load-theme'.  Must come last so all faces and packages
 ;;                        it touches are already defined.
 
 ;;; Code:
-
-;; Propagate theme face values to packages that need harmonizing (e.g.
-;; git-gutter background matching the line-number column).  Defined here so
-;; it is ready before zac-theme-autodetection calls it.
-(emacs-config-load-module
-  'theme-harmonize
-  "Could not load theme-harmonize.el; theme face harmonization is disabled.")
 
 ;; modus-themes: high-contrast, WCAG AAA. Built-in since Emacs 28; installing
 ;; the package here to get the latest version from Protesilaos.
@@ -38,24 +30,32 @@
   ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
   )
 
+;; Propagate theme face values to packages that need harmonizing (e.g.
+;; git-gutter background matching the line-number column).  Defined here so
+;; it is ready before zac-theme-autodetection calls it.
+(emacs-config-load-module
+  'theme-harmonize
+  "Could not load theme-harmonize.el; theme face harmonization is disabled.")
+
 ;; TTY line-number background colors to match WezTerm's padding (Catppuccin),
 ;; so the gutter column blends with the terminal border in both appearances.
-(setq emacs-config-harmonize-tty-line-number-light "#eff1f5"   ; Catppuccin Latte
-      emacs-config-harmonize-tty-line-number-dark  "#303446")  ; Catppuccin Frappe
+(setq theme-harmonize-tty-line-number
+      (list :light "#eff1f5"    ; Catppuccin Latte
+            :dark "#303446"))   ; Catppuccin Frappe
 
 ;; Theme selection callback for zac-theme-autodetection.  Set before loading
 ;; the module so the watcher picks it up on first application.
-(setq zac-load-theme-function
+(setq zac-load-theme-callback
       (lambda (appearance)
-        (load-theme (if (equal appearance "0")
+        (load-theme (if (eq appearance :light)
                         'modus-operandi
                       'modus-vivendi-tinted) t)
-        (when (display-graphic-p)
-          (set-cursor-color "#cad3f5"))))
+        ))
 
-;; Theme auto-detection via zsh-appearance-control.  Reads the OS appearance
-;; state file and invokes `zac-load-theme-function'.  Loaded last so every
-;; face and package it touches is already initialized.
+;; Theme auto-detection via zac-theme-autodetection provided by
+;; zsh-appearance-control plugin.  Reads the OS appearance state file
+;; and invokes `zac-load-theme-callback'.  Loaded last so every face
+;; and package it touches is already initialized.
 (emacs-config-load-module
   'zac-theme-autodetection
   "Could not load zac-theme-autodetection.el; theme auto-switching is disabled.")
