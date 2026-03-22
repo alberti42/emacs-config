@@ -28,7 +28,7 @@
 ;; every redisplay, making the gutter disappear.
 ;;
 ;; The fork fixes this by reading the current left margin first and adding to
-;; it, so both packages can coexist.  See Emacs bug #70941.
+;; it, so both packages can coexist.
 
 ;;; Code
 

@@ -113,7 +113,7 @@ Wrapping:
 
 - `wrap.el` provides `emacs-config-soft-wrap-enable` / `...-disable` /
   `...-toggle` for visual-only wrapping.
-- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted; pinned to a fork that fixes a conflict with git-gutter in TTY frames — upstream resets the left margin to 0 before writing its own value, wiping git-gutter's reservation on every redisplay; the fork reads the existing left margin first and adds to it; see Emacs bug #70941).
+- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted; pinned to a fork that fixes a conflict with git-gutter in TTY frames — upstream resets the left margin to 0 before writing its own value, wiping git-gutter's reservation on every redisplay; the fork reads the existing left margin first and adds to it).
 - Markdown list wrap alignment uses `adaptive-wrap`.
 
 Completion submodules (loaded by `completion.el`):
