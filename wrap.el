@@ -73,6 +73,15 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
     (setq-local word-wrap t) ; makes visual line breaks happen only at word boundaries (spaces, hyphens) rather than mid-word
     (setq-local truncate-lines nil) ; must be set to nil when visual-line-mode is enabled (per doc)
     (setq-local visual-fill-column-width width)
+    ;; Line numbers take up columns that visual-fill-column counts toward the
+    ;; wrap width, shrinking the actual content area.  Subtracting their width
+    ;; from the right margin compensates, so text wraps at exactly WIDTH columns.
+    (setq-local visual-fill-column-extra-text-width
+                ;; Check whether display-line-numbers-mode is enabled
+                (when (bound-and-true-p display-line-numbers-mode)
+                  ;; Create a pair to be subtracted from the left and right margin
+                  (cons 0 (round (line-number-display-width 'columns)))))
+    ;; Enable visual-fill-column-mode
     (visual-fill-column-mode 1)))
 
 (defun soft-wrap-disable ()
