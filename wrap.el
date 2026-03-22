@@ -43,6 +43,11 @@ Used by `soft-wrap-disable' to restore hard-wrap state.")
                :repo "alberti42/fork-visual-fill-column")
     :defer t)
 
+;; Forward declaration so the native compiler knows the function exists at
+;; compile time (analogous to a C header).  The real definition is loaded at
+;; runtime via `require' inside `soft-wrap-enable'.
+(declare-function visual-fill-column-mode "visual-fill-column")
+
 (use-package adaptive-wrap
   :defer t)
 
