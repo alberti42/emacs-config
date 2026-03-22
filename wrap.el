@@ -78,11 +78,12 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
 (defun soft-wrap-toggle (&optional width)
   "Toggle visual soft wrapping in the current buffer.
 
-If enabling, WIDTH is passed to `emacs-config-soft-wrap-enable'."
+If enabling, WIDTH is passed to `soft-wrap-enable'."
   (interactive "P")
+  ;; Check that the mode visual-fill-column exists and is active
   (if (bound-and-true-p visual-fill-column-mode)
-      (emacs-config-soft-wrap-disable)
-    (emacs-config-soft-wrap-enable width)))
+      (soft-wrap-disable)
+    (soft-wrap-enable width)))
 
 ;;; Hard wrap (auto-fill-mode) — uses fill-column as the wrap column.
 
@@ -91,20 +92,24 @@ If enabling, WIDTH is passed to `emacs-config-soft-wrap-enable'."
 
 Disables soft wrapping if it is active.  The wrap column is `fill-column'."
   (interactive)
-  (emacs-config-soft-wrap-disable)
+  ;; Disables the complementary visual-fill-column-mode
+  (soft-wrap-disable)
+  ;; Enable hard wrap mode
   (auto-fill-mode 1))
 
 (defun hard-wrap-disable ()
   "Disable hard wrapping (auto-fill-mode) in the current buffer."
   (interactive)
+  ;; Disable hard wrapping
   (auto-fill-mode -1))
 
 (defun hard-wrap-toggle ()
   "Toggle hard wrapping (auto-fill-mode) in the current buffer."
   (interactive)
+  ;; Check if hard wrapping is enabled 
   (if auto-fill-function
-      (emacs-config-hard-wrap-disable)
-    (emacs-config-hard-wrap-enable)))
+      (hard-wrap-disable)
+    (hard-wrap-enable)))
 
 (provide 'wrap)
 ;;; wrap.el ends here
