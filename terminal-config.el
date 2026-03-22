@@ -22,7 +22,10 @@
 
 ;; vterm: fast, accurate terminal emulator backed by libvterm.
 (use-package vterm
-  :straight t)
+  :straight t
+  :custom
+  ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
+  (vterm-shell shell-file-name))
 
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
