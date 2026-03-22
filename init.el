@@ -141,6 +141,11 @@
   'dired-config
   "Could not load dired-config.el; dired customizations are disabled.")
 
+;; Window navigation (C-c <arrow>) and resizing (C-c C-<arrow>)
+(emacs-config-load-module
+  'windows-config
+  "Could not load windows-config.el; windmove and window resizing are disabled.")
+
 ;; Development
 ;; multiple-cursors: Sublime Text-style multiple cursors.
 (use-package multiple-cursors
