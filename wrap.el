@@ -1,10 +1,22 @@
 ;;; wrap.el --- Soft and hard wrap helpers -*- lexical-binding: t; -*-
 
 ;; Packages
-;; Use a patched fork of visual-fill-column that preserves the left margin
-;; instead of zeroing it on every redisplay.  Without the patch, TTY modes
-;; that reserve a left-margin column (e.g., git-gutter) lose their gutter
-;; whenever visual-fill-column adjusts the window.
+;; Use a patched fork of visual-fill-column to fix a conflict with git-gutter
+;; in TTY frames.
+;;
+;; visual-fill-column constrains text to a column width by adding fake margins
+;; to the window (e.g. left margin = 20 cols to center 80 cols in a 120-col
+;; window).  It recomputes these margins on every redisplay.
+;;
+;; git-gutter (TTY mode) displays +/-/~ indicators by reserving a left-margin
+;; column.  Both packages therefore write to the same window left-margin slot.
+;;
+;; The upstream bug: visual-fill-column resets the left margin to 0 before
+;; writing its own value.  That zero-reset wiped git-gutter's reservation on
+;; every redisplay, making the gutter disappear.
+;;
+;; The fork fixes this by reading the current left margin first and adding to
+;; it, so both packages can coexist.  See Emacs bug #70941.
 (use-package visual-fill-column
     :straight (visual-fill-column
                :type git
