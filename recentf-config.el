@@ -13,6 +13,7 @@
 
 (use-package recentf
   :straight nil
+  :demand t
   :init
   (let* ((cache-home (or (getenv "XDG_CACHE_HOME")
                          (expand-file-name "~/.cache")))
@@ -25,6 +26,10 @@
   :bind ("C-c r" . recentf-open)
   :config
   (recentf-mode 1)
+  ;; recentf hooks into find-file-hook, which does not fire when emacsclient
+  ;; visits a file whose buffer is already open.  server-visit-hook fires on
+  ;; every emacsclient visit regardless, so hook recentf into that as well.
+  (add-hook 'server-visit-hook #'recentf-track-opened-file)
   ;; Forces saving recentf cache file every 5 minutes
   ;; Otherwise, it would only save after 'kill-emacs
   ;; (run-at-time nil (* 5 60) #'recentf-save-list)
