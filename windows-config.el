@@ -43,10 +43,21 @@
     (global-set-key (kbd "C-c <down>")  (if in-tmux #'windmove-down-or-tmux  #'windmove-down))))
 
 ;; Window resizing: grow the current window in the given direction.
-(bind-keys ("C-c C-<right>" . enlarge-window-horizontally)
-           ("C-c C-<left>"  . shrink-window-horizontally)
-           ("C-c C-<up>"    . enlarge-window)
-           ("C-c C-<down>"  . shrink-window))
+;; Uses repeat-mode: after the initial C-c C-<arrow>, keep pressing C-<arrow>
+;; to continue resizing (timeout controlled by `repeat-exit-timeout').
+(global-set-key (kbd "C-c C-<right>") #'enlarge-window-horizontally)
+(global-set-key (kbd "C-c C-<left>")  #'shrink-window-horizontally)
+(global-set-key (kbd "C-c C-<up>")    #'enlarge-window)
+(global-set-key (kbd "C-c C-<down>")  #'shrink-window)
+
+(defvar-keymap window-resize-repeat-map
+  :repeat t
+  "C-<right>" #'enlarge-window-horizontally
+  "C-<left>"  #'shrink-window-horizontally
+  "C-<up>"    #'enlarge-window
+  "C-<down>"  #'shrink-window)
+
+(repeat-mode 1)
 
 (provide 'windows-config)
 ;;; windows-config.el ends here

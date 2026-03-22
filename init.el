@@ -142,6 +142,8 @@
   "Could not load dired-config.el; dired customizations are disabled.")
 
 ;; Window navigation (C-c <arrow>) and resizing (C-c C-<arrow>)
+;; Match tmux's repeat-time default (500ms) for consistent feel.
+(setq repeat-exit-timeout 0.5)
 (emacs-config-load-module
   'windows-config
   "Could not load windows-config.el; windmove and window resizing are disabled.")
