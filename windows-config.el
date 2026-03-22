@@ -164,5 +164,12 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (global-set-key (kbd "C-c S-<up>")    #'windows-config-join-up)
 (global-set-key (kbd "C-c S-<down>")  #'windows-config-join-down)
 
+;; Window swapping: swap the current window's buffer with an adjacent window,
+;; equivalent to tmux swap-pane.  Uses windmove-swap-states-* (Emacs 28+).
+(global-set-key (kbd "C-c M-<left>")  #'windmove-swap-states-left)
+(global-set-key (kbd "C-c M-<right>") #'windmove-swap-states-right)
+(global-set-key (kbd "C-c M-<up>")    #'windmove-swap-states-up)
+(global-set-key (kbd "C-c M-<down>")  #'windmove-swap-states-down)
+
 (provide 'windows-config)
 ;;; windows-config.el ends here
