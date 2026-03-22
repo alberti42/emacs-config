@@ -136,6 +136,16 @@
   :config
   (xclip-mode 1))
 
+;; Copy the current buffer's file path to the kill ring.
+(defun copy-buffer-file-name ()
+  "Copy the absolute path of the current buffer's file to the kill ring.
+When called from the minibuffer, resolves the buffer that was active
+before entering it.  Does nothing if the buffer does not visit a file."
+  (interactive)
+  (if-let ((name (buffer-file-name (window-buffer (minibuffer-selected-window)))))
+      (progn (kill-new name) (message "%s" name))
+    (message "Buffer has no file name")))
+
 ;; Dired and file manager
 (emacs-config-load-module
   'dired-config
