@@ -16,32 +16,40 @@
   "Handle a file change EVENT."
   (let ((action (nth 1 event)))
     (when (memq action '(changed created renamed))
-      ;; Atomic writes (rename-based) deliver a `renamed' event; the destination
-      ;; path is in slot 3.  Plain in-place writes deliver `changed' with the
-      ;; path in slot 2.
-      (let* ((file (if (eq action 'renamed) (nth 3 event) (nth 2 event)))
-             (buf  (find-buffer-visiting file)))
+      (let* ((old-file (nth 2 event))
+             (new-file (if (eq action 'renamed) (nth 3 event) (nth 2 event)))
+             ;; For a rename: check slot-3 first (atomic overwrite of an open
+             ;; file), then slot-2 (the open file itself was renamed).
+             (buf (or (find-buffer-visiting new-file)
+                      (and (eq action 'renamed)
+                           (find-buffer-visiting old-file)))))
         (when (buffer-live-p buf) ; if the buffer is alive (not killed)
           (with-current-buffer buf
-            ;; `verify-visited-file-modtime' returns t when Emacs
-            ;; already knows about this mtime. This avoids reverting the
-            ;; buffer when the change to the file is caused by Emacs
-            ;; itself through a save operation. Only act when the file
-            ;; genuinely changed externally.
-            (unless (verify-visited-file-modtime buf)
-              ;; `buffer-modified-p` is an internal flag that Emacs sets
-              ;; when the buffer is changed and clears when the buffer
-              ;; is saved.
-              (if (buffer-modified-p)
-                  ;; Unsaved local edits — ask before discarding them.
-                  (when (yes-or-no-p
-                         (format "File '%s' modified externally. Revert and lose your changes? "
-                                 (buffer-name)))
-                    (revert-buffer t t t))
-                ;; The buffer did not contain any changes in Emacs, but
-                ;; it has been changed externally. In this case, we
-                ;; silently revert to the changed version on disk.
-                (revert-buffer t t t)))))))))
+            (if (and (eq action 'renamed)
+                     (equal buffer-file-name (file-truename old-file)))
+                ;; The file this buffer was visiting got renamed — update the
+                ;; buffer's path to track it.
+                (set-visited-file-name new-file t t)
+              ;; Content change or atomic overwrite — revert if the mtime is
+              ;; new.  `verify-visited-file-modtime' returns t when Emacs
+              ;; already knows about this mtime. This avoids reverting the
+              ;; buffer when the change to the file is caused by Emacs
+              ;; itself through a save operation. Only act when the file
+              ;; genuinely changed externally.
+              (unless (verify-visited-file-modtime buf)
+                ;; `buffer-modified-p' is an internal flag that Emacs sets
+                ;; when the buffer is changed and clears when the buffer
+                ;; is saved.
+                (if (buffer-modified-p)
+                    ;; Unsaved local edits — ask before discarding them.
+                    (when (yes-or-no-p
+                           (format "File '%s' modified externally. Revert and lose your changes? "
+                                   (buffer-name)))
+                      (revert-buffer t t t))
+                  ;; The buffer did not contain any changes in Emacs, but
+                  ;; it has been changed externally. In this case, we
+                  ;; silently revert to the changed version on disk.
+                  (revert-buffer t t t))))))))))
 
 (defun emacs-config--setup-file-watcher ()
   "Attach a file-system watcher to the current buffer's file's directory.
