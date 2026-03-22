@@ -25,11 +25,6 @@
   'theme-harmonize
   "Could not load theme-harmonize.el; theme face harmonization is disabled.")
 
-;; catppuccin-theme: Catppuccin theme collection.
-;; Disabled: too little contrast; keeping the package declaration for easy
-;; re-enable when a replacement is chosen.
-;; (use-package catppuccin-theme)
-
 ;; modus-themes: high-contrast, WCAG AAA. Built-in since Emacs 28; installing
 ;; the package here to get the latest version from Protesilaos.
 (use-package modus-themes
