@@ -53,6 +53,9 @@
 ;;   'mac-pseudo-daemon-config
 ;;   "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
+;; electric-pair-mode: auto-close brackets, parens, quotes.
+(electric-pair-mode 1)
+
 ;; Save minibuffer history
 (savehist-mode 1)
 
