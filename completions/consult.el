@@ -10,6 +10,8 @@
 
 (use-package consult
   :bind (
+         ;; Replace default switch-to-buffer with consult-buffer.
+         ("C-x b" . consult-buffer)
          ;; A small, mnemonic prefix for search/navigation.
          ("C-c s b" . consult-buffer)
          ("C-c s l" . consult-line)
