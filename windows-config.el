@@ -122,7 +122,7 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (defun windows-config-join-left ()
   "Join current window with the window to the left as a vertical split."
   (interactive)
-  (when-let ((target (window-in-direction 'left)))
+  (when-let* ((target (window-in-direction 'left)))
     (let ((source (selected-window))
           (new-win (split-window target nil 'below)))
       (set-window-buffer new-win (window-buffer source))
@@ -132,7 +132,7 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (defun windows-config-join-right ()
   "Join current window with the window to the right as a vertical split."
   (interactive)
-  (when-let ((target (window-in-direction 'right)))
+  (when-let* ((target (window-in-direction 'right)))
     (let ((source (selected-window))
           (new-win (split-window target nil 'below)))
       (set-window-buffer new-win (window-buffer source))
@@ -142,7 +142,7 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (defun windows-config-join-up ()
   "Join current window with the window above as a horizontal split."
   (interactive)
-  (when-let ((target (window-in-direction 'above)))
+  (when-let* ((target (window-in-direction 'above)))
     (let ((source (selected-window))
           (new-win (split-window target nil 'right)))
       (set-window-buffer new-win (window-buffer source))
@@ -152,7 +152,7 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (defun windows-config-join-down ()
   "Join current window with the window below as a horizontal split."
   (interactive)
-  (when-let ((target (window-in-direction 'below)))
+  (when-let* ((target (window-in-direction 'below)))
     (let ((source (selected-window))
           (new-win (split-window target nil 'right)))
       (set-window-buffer new-win (window-buffer source))
