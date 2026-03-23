@@ -15,7 +15,6 @@
 (defun emacs-config--file-changed (event)
   "Handle a file change EVENT."
   (let ((action (nth 1 event)))
-    (message "file-changed event: %S" event)
     (when (eq action 'deleted)
       (let ((buf (find-buffer-visiting (nth 2 event))))
         (when (buffer-live-p buf)
