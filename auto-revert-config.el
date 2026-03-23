@@ -86,4 +86,36 @@ writes — which replace the file via rename(2) — are also detected."
 (add-hook 'find-file-hook  #'emacs-config--setup-file-watcher)
 (add-hook 'kill-buffer-hook #'emacs-config--teardown-file-watcher)
 
+;;; Dired directory watching
+
+(defvar-local emacs-config--dired-watcher nil
+  "File notification watcher descriptor for the current Dired buffer.")
+
+(defun emacs-config--dired-setup-watcher ()
+  "Attach a file-system watcher to the current Dired buffer's directory.
+Uses a closure to capture the buffer so no global lookup is needed.
+Fires on created/deleted/renamed events and reverts the Dired listing."
+  (let ((dir (file-truename default-directory))
+        (buf (current-buffer)))
+    (condition-case err
+        (setq-local emacs-config--dired-watcher
+                    (file-notify-add-watch
+                     dir '(change)
+                     (lambda (event)
+                       (when (buffer-live-p buf)
+                         (when (memq (nth 1 event) '(created deleted renamed))
+                           (with-current-buffer buf
+                             (revert-buffer)))))))
+      (error
+       (message "auto-revert-config: could not watch directory %s: %s" dir err)))))
+
+(defun emacs-config--dired-teardown-watcher ()
+  "Remove the file-system watcher for the current Dired buffer."
+  (when emacs-config--dired-watcher
+    (file-notify-rm-watch emacs-config--dired-watcher)
+    (setq emacs-config--dired-watcher nil)))
+
+(add-hook 'dired-mode-hook  #'emacs-config--dired-setup-watcher)
+(add-hook 'kill-buffer-hook #'emacs-config--dired-teardown-watcher)
+
 (provide 'auto-revert-config)
