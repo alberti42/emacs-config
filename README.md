@@ -88,7 +88,7 @@ magit-config.el          # Magit + Forge
 treemacs-config.el       # File tree
 wrap.el                  # Soft-wrap helpers
 goodies/                 # Non-Elisp companion files
-  ev.zsh                 #   Shell helper: open files in Emacs from vterm
+  ev                     #   Script: open files in Emacs from vterm (use as $EDITOR)
   xterm-emacs.terminfo   #   Custom terminfo for 24-bit color in terminals
 …
 ```
