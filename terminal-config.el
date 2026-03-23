@@ -39,5 +39,32 @@
          ;; so yielding this binding is safe.
          ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g")))))
 
+;; ev: blocking "open in Emacs" for use as $EDITOR from vterm.
+;;
+;; The shell `ev` function calls `vterm_cmd ev-open-file FILE SEMAPHORE`, then
+;; polls until SEMAPHORE exists.  `ev-open-file` opens the file and binds
+;; C-c C-c to `ev-done`, which creates SEMAPHORE and buries the buffer —
+;; unblocking the shell process without involving the Emacs server at all.
+(defvar-local ev--semaphore nil
+  "Semaphore path used by `ev-done' to signal editing is complete.")
+
+(defun ev-open-file (file semaphore)
+  "Open FILE for editing; C-c C-c creates SEMAPHORE to unblock the shell."
+  (find-file file)
+  (setq ev--semaphore semaphore)
+  (local-set-key (kbd "C-c C-c") #'ev-done)
+  (message "ev: edit buffer, then C-c C-c when done"))
+
+(defun ev-done ()
+  "Signal editing complete (ev EDITOR integration); bury the buffer."
+  (interactive)
+  (when ev--semaphore
+    (write-region "" nil ev--semaphore)
+    (setq ev--semaphore nil))
+  (bury-buffer))
+
+(with-eval-after-load 'vterm
+  (add-to-list 'vterm-eval-cmds '("ev-open-file" ev-open-file)))
+
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
