@@ -147,7 +147,7 @@
 When called from the minibuffer, resolves the buffer that was active
 before entering it.  Does nothing if the buffer does not visit a file."
   (interactive)
-  (if-let ((name (buffer-file-name (window-buffer (minibuffer-selected-window)))))
+  (if-let* ((name (buffer-file-name (window-buffer (minibuffer-selected-window)))))
       (progn (kill-new name) (message "%s" name))
     (message "Buffer has no file name")))
 
