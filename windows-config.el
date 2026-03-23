@@ -44,6 +44,24 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
     (when (windows-config--in-tmux-p)
       (call-process-shell-command "tmux if -F '#{pane_at_bottom}' '' 'select-pane -D'" nil nil))))
 
+;; Split windows and switch to the other buffer instead of mirroring the current one.
+(defun windows-config-split-right ()
+  "Split window right and show the other buffer in the new window."
+  (interactive)
+  (split-window-right)
+  (other-window 1)
+  (switch-to-buffer (other-buffer)))
+
+(defun windows-config-split-below ()
+  "Split window below and show the other buffer in the new window."
+  (interactive)
+  (split-window-below)
+  (other-window 1)
+  (switch-to-buffer (other-buffer)))
+
+(keymap-global-set "C-x 3" #'windows-config-split-right)
+(keymap-global-set "C-x 2" #'windows-config-split-below)
+
 ;; windmove: navigate between windows with C-c <arrow>.
 ;; Always bind to the -or-tmux variants; they check the terminal environment
 ;; at call time so the tmux fallback only fires when actually inside tmux.
