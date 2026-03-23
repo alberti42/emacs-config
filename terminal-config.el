@@ -8,15 +8,8 @@
 ;; Initialize ESHELL to shell-file-name (which in turn is initialized to $SHELL)
 (setenv "ESHELL" shell-file-name)
 
-;; Override term to skip the prompt, using shell-file-name
-;; Lazy-loading of term
+;; Close the window (and kill the buffer) when the terminal process exits
 (with-eval-after-load 'term
-  (fset 'term--original (symbol-function 'term))
-  (defun term (program)
-    (interactive (list shell-file-name))
-    (term--original program))
-
-  ;; Close the window (and kill the buffer) when the terminal process exits
   (advice-add 'term-handle-exit :after
     (lambda (&rest _) (quit-window t))))
 
