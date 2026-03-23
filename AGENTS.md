@@ -108,6 +108,7 @@ Current syntax modules:
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
 - `syntaxes/yaml.el`: YAML indentation settings.
+- `syntaxes/dired.el`: disables line numbers in Dired mode.
 
 Wrapping:
 
@@ -129,8 +130,7 @@ Completion submodules (loaded by `completion.el`):
 
 Notes:
 
-- `corfu-config.el` and `cape-config.el` remain as compatibility shims; `init.el`
-  no longer loads them directly.
+- `corfu-config.el` remains as a compatibility shim; `init.el` no longer loads it directly.
 - `completion.el` exposes toggles you can set before it loads:
   - `emacs-config-completions-enable-marginalia`
   - `emacs-config-completions-enable-consult`
