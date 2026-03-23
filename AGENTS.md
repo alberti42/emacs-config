@@ -62,7 +62,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences.
 - `dired-config.el`: Dired customizations (`dired-narrow`).
-- `terminal-config.el`: terminal emulator settings — sets `xterm-256color` for `term` and `eshell`, configures `vterm` (fast libvterm-backed terminal), and enables `find-file` via `vterm-eval-cmds` for shell-side `vterm_cmd find-file` integration.
+- `terminal-config.el`: terminal emulator settings — sets `xterm-256color` for `term` and `eshell`, configures `vterm` (fast libvterm-backed terminal), and enables `find-file` via `vterm-eval-cmds` for shell-side `vterm_cmd find-file` integration. Binds `C-@` (= C-SPC) and `M-<return>`/`C-M-m` using `vterm-send-string` with raw bytes (`\C-@` and `\e\r`) instead of `vterm-send-key`, which re-encodes keys through the C module and produces CSI-u sequences when an app like Claude Code has enabled that mode. `C-SPC` cannot be used as the bind key — Emacs resolves it to `set-mark-command` from `global-map` before `vterm-mode-map` is consulted; `C-@` must be used instead.
 - `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration.
 - `search-config.el`: prefer ripgrep for project/xref search; isearch edge-triggered context scrolling (scrolls the minimum amount to keep `search-recenter-context-lines` of context visible when the match lands within `search-recenter-edge-threshold` lines of the window edge).
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.

@@ -14,18 +14,26 @@
     (lambda (&rest _) (quit-window t))))
 
 ;; vterm: fast, accurate terminal emulator backed by libvterm.
+;; To open a new session use C-u M-x vterm (or C-u M-x vterm-other-window).
+;; Without the prefix, both commands reuse the existing *vterm* buffer.
 (use-package vterm
   :straight t
   :custom
   ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
   (vterm-shell shell-file-name)
   :bind (:map vterm-mode-map
-         ;; Pass C-SPC to the terminal (set mark in ZLE) instead of Emacs set-mark-command
-         ("C-SPC" . (lambda () (interactive) (vterm-send-key " " nil nil t)))
-         ;; Send plain newline for Shift+Enter (remapped to Alt+Enter by WezTerm) —
-         ;; Claude Code enables CSI-u mode and then mishandles the resulting sequences
-         ;; (e.g. \e[13;3u), so we bypass that here.
-         ("M-<return>" . (lambda () (interactive) (vterm-send-string "\n")))))
+         ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
+         ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
+         ;; Emacs resolves it to set-mark-command from global-map before reaching it.
+         ;; Also, vterm-send-key must be avoided: it goes through vterm--update in the
+         ;; C module which re-encodes using the active escape mode, producing CSI-u
+         ;; sequences (^[[64;5u).
+         ("C-@"        . (lambda () (interactive) (vterm-send-string "\C-@")))
+         ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r),
+         ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
+         ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
+         ;; entirely and sends raw bytes, so we send the escape sequence directly.
+         ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))))
 
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
