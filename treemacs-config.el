@@ -17,7 +17,8 @@
   :config
   ;; Keep this light; avoid enabling optional modes by default.
   (setq treemacs-width 35)
-  (setq treemacs-no-png-images t))
+  (setq treemacs-width-is-initially-locked nil)
+  (setq treemacs-no-png-images t)
 
 (use-package treemacs-nerd-icons
   :after (treemacs nerd-icons)
