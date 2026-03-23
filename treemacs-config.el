@@ -19,6 +19,7 @@
   (setq treemacs-width 35)
   (setq treemacs-width-is-initially-locked nil)
   (setq treemacs-no-png-images t)
+  (treemacs-filewatch-mode 1))
 
 (use-package treemacs-nerd-icons
   :after (treemacs nerd-icons)
