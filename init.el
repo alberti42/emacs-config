@@ -223,6 +223,11 @@ before entering it.  Does nothing if the buffer does not visit a file."
 ;; ssh-config-mode: major mode for ~/.ssh/config.
 (use-package ssh-config-mode)
 
+;; AI agent shell (Claude Code, Gemini CLI, etc. via ACP)
+(emacs-config-load-module
+  'agent-shell-config
+  "Could not load agent-shell-config.el; agent-shell is disabled.")
+
 ;; Themes
 ;; Load order within themes-config: theme-harmonize → load-theme → zac-theme-autodetection.
 ;; See themes-config.el for the rationale.
