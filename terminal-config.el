@@ -33,7 +33,11 @@
          ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
          ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
          ;; entirely and sends raw bytes, so we send the escape sequence directly.
-         ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))))
+         ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))
+         ;; Forward C-g as BEL (\C-g = ASCII 7) so terminal apps (e.g. Claude
+         ;; Code) receive it.  In vterm-mode keyboard-quit has nothing to quit,
+         ;; so yielding this binding is safe.
+         ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g")))))
 
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
