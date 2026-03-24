@@ -97,11 +97,6 @@
   'search-config
   "Could not load search-config.el; using default project search backend.")
 
-;; Jump history (forward/backward across xref/LSP/search jumps)
-(emacs-config-load-module
-  'navigation-config
-  "Could not load navigation-config.el; jump history navigation is disabled.")
-
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
   'completion
