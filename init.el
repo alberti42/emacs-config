@@ -34,6 +34,12 @@
   'auto-revert-config
   "Could not load auto-revert-config.el; smart auto-revert is disabled.")
 
+;; Suppress kill prompt when the buffer content matches the file on disk
+;; (i.e. edits were made and then fully undone).
+(emacs-config-load-module
+  'buffer-kill-config
+  "Could not load buffer-kill-config.el; kill-buffer prompt suppression is disabled.")
+
 ;; UI & Convenience
 ;; which-key: display available keybindings in popup.
 (use-package which-key
