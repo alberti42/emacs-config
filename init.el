@@ -76,6 +76,9 @@
 ;; electric-pair-mode: auto-close brackets, parens, quotes.
 (electric-pair-mode 1)
 
+;; Accept y/n instead of typing yes/no in full.
+(setq use-short-answers t)
+
 ;; Save minibuffer history
 (savehist-mode 1)
 
