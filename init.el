@@ -8,6 +8,20 @@
 
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 
+;; Emacs supports per-file settings embedded directly in source files, either as
+;; a first-line header (e.g. -*- coding: utf-8-unix -*-) or a footer block:
+;;
+;;   Local Variables:
+;;   buffer-file-coding-system: utf-8-unix
+;;   End:
+;;
+;; Emacs applies such settings silently if the variable declares itself safe via
+;; a safe-local-variable property (e.g. a predicate like #'stringp). Since
+;; buffer-file-coding-system lacks that property, Emacs prompts for confirmation
+;; instead. This entry is a workaround: it pre-approves this specific pair so
+;; Emacs skips the prompt.
+(add-to-list 'safe-local-variable-values '(buffer-file-coding-system . utf-8-unix))
+
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
 (let ((init-path (or load-file-name
