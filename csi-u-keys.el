@@ -35,7 +35,7 @@
 ;; It deliberately does not translate key events or bind editing commands, so
 ;; existing Emacs defaults (and user custom keybindings) continue to apply.
 ;;
-;; This module implements that approach for Backspace variants and Ctrl+Tab.
+;; This module implements that approach for Backspace variants, Ctrl+Tab, and Shift+Enter.
 
 ;;; Code:
 
@@ -43,7 +43,11 @@
   '(("\e[127;2u" . [S-backspace])     ; Shift+Backspace: ESC [ 127 ; 2 u
     ("\e[8;6u"   . [C-backspace])     ; Ctrl+Backspace: ESC [ 8 ; 6 u
     ("\e[8;5u"   . [C-S-backspace])   ; Ctrl+Shift+Backspace: ESC [ 8 ; 5 u
-    ("\e[9;5;1~" . [C-tab]))          ; Ctrl+Tab: ESC [ 9 ; 5 ; 1 ~
+    ("\e[9;5;1~" . [C-tab])           ; Ctrl+Tab: ESC [ 9 ; 5 ; 1 ~
+    ("\e[13;2;1~" . [S-return]))      ; Shift+Enter: ESC [ 13 ; 2 ; 1 ~
+                                      ;   Non-standard sequence emitted via WezTerm SendString.
+                                      ;   The canonical CSI-u form (ESC [ 13 ; 2 u) is avoided
+                                      ;   for the same reason as Ctrl+Tab above.
                                       ;   Non-standard sequence emitted via WezTerm SendString.
                                       ;   The canonical CSI-u form (ESC [ 9 ; 5 u) cannot be used
                                       ;   because WezTerm intercepts it and re-encodes it as a
