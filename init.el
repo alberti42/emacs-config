@@ -162,6 +162,7 @@
     "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
 
 ;; Linux: sync clipboard via xclip; also enable X11 primary selection.
+(declare-function xclip-mode "xclip")
 (when (eq system-type 'gnu/linux)
   (use-package xclip
     :if (not window-system)
