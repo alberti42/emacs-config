@@ -18,7 +18,7 @@
 
   ;; Open the status buffer in a dedicated full-frame window.
   (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
-
+  
   ;; Nerd icons for file entries (native support since magit 223461b).
   (when (fboundp 'magit-format-file-nerd-icons)
     (setq magit-format-file-function #'magit-format-file-nerd-icons))
@@ -29,6 +29,11 @@
 ;; Disable line numbers in commit and rebase editing buffers.
 (add-hook 'git-commit-mode-hook (lambda () (display-line-numbers-mode -1)))
 (add-hook 'git-rebase-mode-hook (lambda () (display-line-numbers-mode -1)))
+
+;; Side-by-side diff viewer.
+(use-package vdiff
+  :config
+  (define-key vdiff-mode-map (kbd "C-c v") vdiff-mode-prefix-map))
 
 ;; Forge: GitHub/GitLab integration (PRs, issues, reviews).
 (use-package forge
