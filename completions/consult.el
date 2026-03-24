@@ -28,6 +28,10 @@
   (setq xref-show-xrefs-function #'consult-xref
         xref-show-definitions-function #'consult-xref)
 
+  ;; Navigate minibuffer history with M-up/M-down (mirrors M-p/M-n).
+  (define-key minibuffer-local-map (kbd "M-<up>") #'previous-history-element)
+  (define-key minibuffer-local-map (kbd "M-<down>") #'next-history-element)
+
   ;; Persist search histories across sessions using built-in savehist.
   (dolist (var '(consult--grep-history
                  consult--find-history
