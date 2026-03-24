@@ -109,6 +109,7 @@ Current syntax modules:
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
 - `syntaxes/yaml.el`: YAML indentation settings.
 - `syntaxes/dired.el`: disables line numbers in Dired mode.
+- `syntaxes/agent-shell.el`: disables line numbers in `agent-shell-mode`.
 
 Wrapping:
 
