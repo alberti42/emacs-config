@@ -64,6 +64,11 @@
   'recentf-config
   "Could not load recentf-config.el; recent files list is disabled.")
 
+;; Project management (submodule-aware root detection)
+(emacs-config-load-module
+  'project-config
+  "Could not load project-config.el; project root detection uses default behavior.")
+
 ;; Fast project search (prefer ripgrep)
 (emacs-config-load-module
   'search-config
