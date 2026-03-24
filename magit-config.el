@@ -35,6 +35,22 @@
   :config
   (define-key vdiff-mode-map (kbd "C-c v") vdiff-mode-prefix-map))
 
+;; Magit integration for vdiff (replaces ediff bindings with vdiff).
+;; Local copy of unmaintained upstream (https://github.com/justbur/emacs-vdiff-magit,
+;; last commit 2022) with a patch for magit-get-revision-buffer removal.
+;; See local/vdiff-magit.el for details.
+(use-package vdiff-magit
+  :straight nil
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
+  :after (vdiff magit)
+  :config
+  (transient-suffix-put 'magit-dispatch "e" :description "vdiff (dwim)")
+  (transient-suffix-put 'magit-dispatch "e" :command 'vdiff-magit-dwim)
+  (transient-suffix-put 'magit-dispatch "E" :description "vdiff")
+  (transient-suffix-put 'magit-dispatch "E" :command 'vdiff-magit)
+  (define-key magit-mode-map "e" #'vdiff-magit-dwim)
+  (define-key magit-mode-map "E" #'vdiff-magit))
+
 ;; Forge: GitHub/GitLab integration (PRs, issues, reviews).
 (use-package forge
   :after magit)
