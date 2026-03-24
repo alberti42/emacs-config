@@ -27,6 +27,13 @@
   ;; Use Consult for xref UI when available.
   (setq xref-show-xrefs-function #'consult-xref
         xref-show-definitions-function #'consult-xref)
+
+  ;; Persist search histories across sessions using built-in savehist.
+  (dolist (var '(consult--grep-history
+                 consult--find-history
+                 consult--line-history))
+    (add-to-list 'savehist-additional-variables var))
+  
   ;; Include hidden directories in fd search, but exclude .git.
   (setq consult-fd-args '("fd" "--hidden" "--exclude" ".git" "--color=never" "--full-path")))
 
