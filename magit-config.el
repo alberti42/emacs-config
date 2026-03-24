@@ -33,7 +33,8 @@
 ;; Side-by-side diff viewer.
 (use-package vdiff
   :config
-  (define-key vdiff-mode-map (kbd "C-c v") vdiff-mode-prefix-map))
+  (define-key vdiff-mode-map (kbd "C-c v") vdiff-mode-prefix-map)
+  (define-key vdiff-3way-mode-map (kbd "C-c v") vdiff-mode-prefix-map))
 
 ;; Magit integration for vdiff (replaces ediff bindings with vdiff).
 ;; Local copy of unmaintained upstream (https://github.com/justbur/emacs-vdiff-magit,
