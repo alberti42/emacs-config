@@ -157,22 +157,21 @@
   :hook (after-init . vim-file-locals-mode))
 
 ;; Clipboard
-;; Always sync kill ring <-> system clipboard
 (setq select-enable-clipboard t)
-(setq select-enable-primary t)   ; use the X11 primary selection too (Linux/Unix)
 
-;; macOS clipboard sync for TTY Emacs (kill → pbcopy, no pbpaste on yank).
-(when (and (eq system-type 'darwin) (not window-system))
+;; macOS: sync kill ring → clipboard via pbcopy (TTY and GUI).
+(when (eq system-type 'darwin)
   (emacs-config-load-module
     'mac-clipboard
     "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
 
-;; xclip: sync clipboard in terminal on Linux.
-;; Only needed when running Emacs in a terminal on Linux.
-(use-package xclip
-  :if (and (eq system-type 'gnu/linux) (not window-system))
-  :config
-  (xclip-mode 1))
+;; Linux: sync clipboard via xclip; also enable X11 primary selection.
+(when (eq system-type 'gnu/linux)
+  (use-package xclip
+    :if (not window-system)
+    :config
+    (setq select-enable-primary t)
+    (xclip-mode 1)))
 
 ;; Copy the current buffer's file path to the kill ring.
 (defun copy-buffer-file-name ()
