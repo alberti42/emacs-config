@@ -5,7 +5,9 @@
 ;; Requires shell-maker and acp as dependencies.
 
 (use-package agent-shell
-  :straight t)
+  :straight t
+  :bind (:map agent-shell-mode-map
+         ("M-RET" . newline)))
 
 (provide 'agent-shell-config)
 ;;; agent-shell-config.el ends here
