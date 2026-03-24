@@ -37,9 +37,10 @@
                 ;; The file this buffer was visiting got renamed — update the
                 ;; buffer's path to track it, then re-attach the watcher to
                 ;; the new directory (the file may have moved out of the old one).
-                (set-visited-file-name new-file t t)
-                (emacs-config--teardown-file-watcher)
-                (emacs-config--setup-file-watcher)
+                (progn
+                  (set-visited-file-name new-file t t)
+                  (emacs-config--teardown-file-watcher)
+                  (emacs-config--setup-file-watcher))
               ;; Content change or atomic overwrite — revert if the mtime is
               ;; new.  `verify-visited-file-modtime' returns t when Emacs
               ;; already knows about this mtime. This avoids reverting the
