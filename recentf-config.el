@@ -30,9 +30,16 @@
   ;; visits a file whose buffer is already open.  server-visit-hook fires on
   ;; every emacsclient visit regardless, so hook recentf into that as well.
   (add-hook 'server-visit-hook #'recentf-track-opened-file)
-  ;; Forces saving recentf cache file every 5 minutes
-  ;; Otherwise, it would only save after 'kill-emacs
-  ;; (run-at-time nil (* 5 60) #'recentf-save-list)
+  ;; Debounced save: schedule a save 5 seconds after the last file visit
+  ;; rather than waiting for kill-emacs.
+  (defvar recentf--save-timer nil)
+  (defun recentf-save-debounced ()
+    (when (timerp recentf--save-timer)
+      (cancel-timer recentf--save-timer))
+    (setq recentf--save-timer
+          (run-with-idle-timer 5 nil #'recentf-save-list)))
+  (add-hook 'find-file-hook #'recentf-save-debounced)
+  (add-hook 'server-visit-hook #'recentf-save-debounced)
   )
 
 (provide 'recentf-config)
