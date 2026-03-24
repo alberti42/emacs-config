@@ -35,14 +35,19 @@
 ;; It deliberately does not translate key events or bind editing commands, so
 ;; existing Emacs defaults (and user custom keybindings) continue to apply.
 ;;
-;; This module implements that approach for Backspace variants.
+;; This module implements that approach for Backspace variants and Ctrl+Tab.
 
 ;;; Code:
 
 (defconst csi-u-keys-decode-alist
   '(("\e[127;2u" . [S-backspace])     ; Shift+Backspace: ESC [ 127 ; 2 u
     ("\e[8;6u"   . [C-backspace])     ; Ctrl+Backspace: ESC [ 8 ; 6 u
-    ("\e[8;5u"   . [C-S-backspace]))  ; Ctrl+Shift+Backspace: ESC [ 8 ; 5 u
+    ("\e[8;5u"   . [C-S-backspace])   ; Ctrl+Shift+Backspace: ESC [ 8 ; 5 u
+    ("\e[9;5;1~" . [C-tab]))          ; Ctrl+Tab: ESC [ 9 ; 5 ; 1 ~
+                                      ;   Non-standard sequence emitted via WezTerm SendString.
+                                      ;   The canonical CSI-u form (ESC [ 9 ; 5 u) cannot be used
+                                      ;   because WezTerm intercepts it and re-encodes it as a
+                                      ;   legacy Tab (0x09).
   "Alist mapping terminal escape sequences (CSI u) to Emacs key events.")
 
 ;; Decode the observed CSI-u sequences into Emacs key events.
