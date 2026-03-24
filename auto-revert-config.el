@@ -9,6 +9,12 @@
 
 (require 'filenotify)
 
+;; File locking (`.#filename' symlinks) is redundant: this module already
+;; detects external changes and prompts before overwriting them.  Lock files
+;; are also meaningless for `emacsclient' where all frames share the same
+;; buffer.
+(setq create-lockfiles nil)
+
 (defvar-local emacs-config--file-watcher nil
   "File notification watcher descriptor for the current buffer.")
 
