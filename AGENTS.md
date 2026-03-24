@@ -55,7 +55,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits. Watches the parent **directory** (not the file itself) so that atomic writes via `rename(2)` are detected. Handles `renamed` events by updating `buffer-file-name` and re-attaching the watcher to the new path; handles `deleted` events by emitting a warning and tearing down the watcher.
 - `buffer-kill-config.el`: smart kill-buffer behaviour — suppresses the "Buffer modified; kill anyway?" prompt when the buffer content is identical to the file on disk (edits were made and then fully undone). Hooks into `kill-buffer-query-functions` and clears the modified flag before the prompt fires.
 - `mac-clipboard.el`: macOS TTY clipboard sync — wires kill-ring writes to `pbcopy`; deliberately omits the paste direction to avoid spawning a `pbpaste` subprocess on every `C-y`.
-- `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame.
+- `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame. (Currently **commented out** in `init.el`; kept but not loaded.)
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
@@ -88,7 +88,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `cl-lib` (built-in): Common Lisp compatibility helpers.
 - `which-key` (built-in, Emacs 30+): display available keybindings in popup.
 - `vim-file-locals`: parse Vim modelines/file-local settings.
-- `mac-clipboard.el` (macOS TTY only): sync kill ring write direction with system clipboard (local module, no external package).
+- `mac-clipboard.el` (macOS TTY only): sync kill ring write direction with system clipboard (local module, no external package). Loaded conditionally in `init.el`.
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
 - `tmux-tandem`: tmux open-file bridge — opens files in Emacs from tmux via IPC (Emacs 29+).
@@ -137,7 +137,6 @@ Completion submodules (loaded by `completion.el`):
 
 Notes:
 
-- `corfu-config.el` remains as a compatibility shim; `init.el` no longer loads it directly.
 - `completion.el` exposes toggles you can set before it loads:
   - `emacs-config-completions-enable-marginalia`
   - `emacs-config-completions-enable-consult`
