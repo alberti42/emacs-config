@@ -287,6 +287,11 @@ before entering it.  Does nothing if the buffer does not visit a file."
   (global-set-key [wheel-up] #'emacs-config--scroll-down-1)
   (global-set-key [wheel-down] #'emacs-config--scroll-up-1))
 
+;; Cursor navigation (smart Home/End)
+(emacs-config-load-module
+  'navigation-config
+  "Could not load navigation-config.el; smart Home/End keys are disabled.")
+
 ;; Scrolling
 (emacs-config-load-module
   'scroll-config
