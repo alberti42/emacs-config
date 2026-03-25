@@ -10,7 +10,12 @@
 (use-package vertico
   :init
   (setq vertico-cycle t)
-  (vertico-mode 1))
+  (setq vertico-count 20)
+  (setq vertico-resize 'grow-only)
+  (vertico-mode 1)
+  (setq vertico-multiform-commands
+        '((find-file (vertico-count . 20))))
+  (vertico-multiform-mode 1))
 
 (provide 'completions-minibuffer-vertico)
 ;;; minibuffer-vertico.el ends here
