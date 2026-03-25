@@ -21,8 +21,8 @@
          ("C-c s m" . consult-mark)
          ("C-c s k" . consult-keep-lines)
          ;; Replace project-find-file with fd-backed consult-fd.
-         ("C-x p f" . consult-fd)
-         ("C-x p F" . consult-fd-here))
+         ("C-c s f" . consult-fd)
+         ("C-c s F" . consult-fd-here))
   :init
   ;; Use Consult for xref UI when available.
   (setq xref-show-xrefs-function #'consult-xref
