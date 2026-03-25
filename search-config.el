@@ -33,12 +33,12 @@
 (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
 (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
 
-(defun emacs-config-find-file-here ()
+(defun consult-fd-here ()
   "Like `consult-fd' but rooted at `default-directory' instead of the project root."
   (interactive)
   (consult-fd default-directory))
 
-(defun emacs-config-ripgrep-here ()
+(defun consult-ripgrep-here ()
   "Like `consult-ripgrep' but rooted at `default-directory' instead of the project root."
   (interactive)
   (consult-ripgrep default-directory))
