@@ -26,8 +26,22 @@
   ;; Show the unpushed commits section expanded by default.
   (setf (alist-get 'unpushed magit-section-initial-visibility-alist) 'show))
 
-;; Disable line numbers in commit and rebase editing buffers.
-(add-hook 'git-commit-mode-hook (lambda () (display-line-numbers-mode -1)))
+;; Disable line numbers and which-key in commit and rebase editing buffers.
+(add-hook 'git-commit-mode-hook (lambda ()
+                                  ;; hide line-numbers in editing buffers
+                                  (display-line-numbers-mode -1)
+                                  ;; which-key intercepts key
+                                  ;; sequences to display its popup,
+                                  ;; and in the commit buffer there
+                                  ;; seems to be a conflict with how
+                                  ;; certain prefix keys (like C-x)
+                                  ;; are handled — likely an
+                                  ;; interaction with
+                                  ;; git-commit-mode's keymap
+                                  ;; overrides. The exact bug depends
+                                  ;; on which-key's timer firing
+                                  ;; mid-sequence.
+                                  (setq-local which-key-inhibit t)))
 (add-hook 'git-rebase-mode-hook (lambda () (display-line-numbers-mode -1)))
 
 ;; Side-by-side diff viewer.
