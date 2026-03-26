@@ -163,6 +163,67 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
              (my--lsp-ltex-plus--schedule-check buf (1- attempts)))
             (t nil))))))))
 
+(defun my--lsp-ltex-plus--dispatch-code-actions (buf params)
+  "Send a textDocument/codeAction request for BUF using PARAMS and present results."
+  (when (buffer-live-p buf)
+    (with-current-buffer buf
+      (let ((ws (my--lsp-ltex-plus--initialized-workspace)))
+        (when ws
+          (with-lsp-workspace ws
+            (lsp-request-async
+             "textDocument/codeAction"
+             params
+             (lambda (actions)
+               (when (buffer-live-p buf)
+                 (with-current-buffer buf
+                   (if (seq-empty-p actions)
+                       (message "[LTEX+] No code actions at point")
+                     (let ((action (lsp--select-action (seq-into actions 'vector))))
+                       (when action
+                         (lsp--execute-code-action action)))))))
+             :error-handler (lambda (err)
+                              (message "[LTEX+] Code action error: %S" err))
+             :mode 'detached)))))))
+
+(defun my--lsp-ltex-plus-execute-code-action ()
+  "Execute LTEX+ code action in Magit commit buffers.
+
+`lsp-execute-code-action' uses a synchronous `lsp-request' that blocks Emacs.
+While it blocks, Magit timers and Corfu completion fire new `lsp-request' calls
+with the same `:sync-request' cancel token, immediately cancelling the pending
+code action request before LTEX+ can respond.
+
+This function works around both problems:
+1. It is async (non-blocking), so the user is not stuck waiting.
+2. It captures the code-action params (cursor position + diagnostics) immediately
+   on invocation, before any async delay, so they cannot drift.
+3. It pre-runs `_ltex.checkDocument' so LTEX+ has fresh diagnostics and can
+   respond to codeAction without being interrupted by an ongoing grammar check."
+  (interactive)
+  (let* ((buf (current-buffer))
+         (ws (my--lsp-ltex-plus--initialized-workspace))
+         ;; Capture params NOW, while point is on the diagnostic.
+         ;; Do NOT defer this to the async callback — point may have moved.
+         (params (lsp--text-document-code-action-params)))
+    (unless ws
+      (user-error "[LTEX+] No active LTEX+ workspace in this buffer"))
+    (when (seq-empty-p (plist-get (plist-get params :context) :diagnostics))
+      (user-error "[LTEX+] No diagnostics at point — move cursor onto the underlined text"))
+    (message "[LTEX+] Checking document…")
+    (with-lsp-workspace ws
+      (lsp-request-async
+       "workspace/executeCommand"
+       (list :command "_ltex.checkDocument"
+             :arguments (vector (list :uri (lsp--buffer-uri)
+                                      :codeLanguageId (lsp-buffer-language))))
+       (lambda (_res)
+         ;; Wait briefly for LTEX+ to publish updated diagnostics, then fire.
+         (run-at-time 0.3 nil #'my--lsp-ltex-plus--dispatch-code-actions buf params))
+       :error-handler (lambda (_err)
+                        ;; Check failed; try code actions with the params we already have.
+                        (my--lsp-ltex-plus--dispatch-code-actions buf params))
+       :mode 'detached))))
+
 (defun my--lsp-ltex-plus--check-document-once ()
   "Ask LTEX+ LS to check the current document once." 
   (interactive)
@@ -194,6 +255,21 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
   ;; tree (e.g. $HOME for a loose file sitting there).
   (setq-local lsp-auto-guess-root t)
   (setq-local lsp-enable-file-watchers nil)
+  ;; Override `lsp-execute-code-action' (C-c l a a) with our async wrapper for
+  ;; all LTEX+ buffers.  The standard implementation uses a synchronous
+  ;; `lsp-request' that can be silently cancelled by other lsp-mode features
+  ;; (Corfu completion, modeline checks) sharing the same :sync-request cancel
+  ;; token.  Our wrapper is non-blocking and pre-runs `_ltex.checkDocument'.
+  ;;
+  ;; We use `minor-mode-overriding-map-alist' rather than `local-set-key'
+  ;; because minor mode keymaps (where lsp-mode-map lives) have higher lookup
+  ;; priority than the buffer-local keymap, so `local-set-key' would lose.
+  ;; `minor-mode-overriding-map-alist' is checked before `minor-mode-map-alist'
+  ;; and therefore wins.  The entry is keyed on `lsp-mode' so it only activates
+  ;; once lsp-mode is running in the buffer.
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c l a a") #'my--lsp-ltex-plus-execute-code-action)
+    (push (cons 'lsp-mode map) minor-mode-overriding-map-alist))
   (lsp-deferred))
 
 (use-package lsp-ltex-plus
@@ -209,15 +285,20 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
   (setq lsp-ltex-plus-active-modes
         '(markdown-mode gfm-mode
           latex-mode tex-mode plain-tex-mode
-          text-mode org-mode rst-mode))
+          text-mode org-mode rst-mode
+          git-commit-mode))
 
   ;; Map both TeX modes to the "latex" language id that LTEX+ understands.
   ;; plain-tex-mode is what Emacs uses for .tex files without a preamble
   ;; (e.g. sub-files sourced via \input); LTEX+ has no separate "plaintex" id,
   ;; so we send those buffers as "latex" too.
+  ;; git-commit-mode derives from text-mode but lsp-mode uses exact eq matching
+  ;; for both :major-modes and lsp-language-id-configuration, so we need an
+  ;; explicit "plaintext" entry for it.
   (with-eval-after-load 'lsp-mode
     (dolist (pair '((tex-mode . "latex")
-                    (plain-tex-mode . "latex")))
+                    (plain-tex-mode . "latex")
+                    (git-commit-mode . "plaintext")))
       (add-to-list 'lsp-language-id-configuration pair)))
 
   ;; When reusing an existing buffer via emacsclient, `lsp-after-open-hook`
@@ -250,7 +331,8 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
    (tex-mode . my--lsp-ltex-plus-enable)   ; latex-mode (preamble) and plain-tex-mode (\input sub-files) both derive from tex-mode
    (text-mode . my--lsp-ltex-plus-enable)
    (org-mode . my--lsp-ltex-plus-enable)
-   (rst-mode . my--lsp-ltex-plus-enable)))
+   (rst-mode . my--lsp-ltex-plus-enable)
+   (git-commit-mode . my--lsp-ltex-plus-enable)))
 
 (provide 'lsp-ltex-plus-config)
 

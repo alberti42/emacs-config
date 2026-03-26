@@ -41,7 +41,8 @@
                                   ;; overrides. The exact bug depends
                                   ;; on which-key's timer firing
                                   ;; mid-sequence.
-                                  (setq-local which-key-inhibit t)))
+                                  (setq-local which-key-inhibit t)
+                                  ))
 (add-hook 'git-rebase-mode-hook (lambda () (display-line-numbers-mode -1)))
 
 ;; Side-by-side diff viewer.
