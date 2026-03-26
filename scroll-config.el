@@ -23,6 +23,9 @@
 ;; Replaces pixel-scroll-precision-mode (ultra-scroll activates it internally).
 (use-package ultra-scroll
   :config
+  ;; Whether to hide the cursor while scrolling and restore it afterwards (default: t).
+  (setq ultra-scroll-hide-cursor t)
+  (setq ultra-scroll-preserve-column t)
   (ultra-scroll-mode 1))
 
 ;; Scroll by half a window instead of a full window.
