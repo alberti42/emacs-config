@@ -109,8 +109,8 @@
   "Could not load nerd-icons-config.el; nerd icons are disabled.")
 
 ;; Line numbers
-(setq display-line-numbers-type 'relative)
-;; Keep current line absolute while others are relative.
+(setq display-line-numbers-type t) ; (t displays absolute line numbers; alternatives: 'relative or 'visual)
+;; Non-nil keeps current line absolute while others are relative.
 (setq display-line-numbers-current-absolute t)
 ;; If this option is non-nil, ‘display-line-numbers-width’ is set up
 ;; from the start to a width necessary to display all line numbers in
