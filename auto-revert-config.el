@@ -18,6 +18,11 @@
 (defvar-local emacs-config--file-watcher nil
   "File notification watcher descriptor for the current buffer.")
 
+(defvar-local emacs-config--revert-prompt-active nil
+  "Non-nil while the external-change revert prompt is displayed.
+Prevents a second prompt from appearing if further filesystem events arrive
+before the user has answered the first one.")
+
 (defun emacs-config--file-changed (event)
   "Handle a file change EVENT."
   (let ((action (nth 1 event)))
@@ -54,19 +59,27 @@
               ;; itself through a save operation. Only act when the file
               ;; genuinely changed externally.
               (unless (verify-visited-file-modtime buf)
-                ;; `buffer-modified-p' is an internal flag that Emacs sets
-                ;; when the buffer is changed and clears when the buffer
-                ;; is saved.
-                (if (buffer-modified-p)
-                    ;; Unsaved local edits — ask before discarding them.
-                    (when (yes-or-no-p
-                           (format "File '%s' modified externally. Revert and lose your changes? "
-                                   (buffer-name)))
-                      (revert-buffer t t t))
-                  ;; The buffer did not contain any changes in Emacs, but
-                  ;; it has been changed externally. In this case, we
-                  ;; silently revert to the changed version on disk.
-                  (revert-buffer t t t))))))))))
+                (emacs-config--maybe-revert buf)))))))))
+
+(defun emacs-config--maybe-revert (buf)
+  "Revert BUF after an external change, prompting if it has unsaved edits.
+If a prompt is already visible for BUF (from an earlier event in the same
+burst), silently skip so the user is never asked twice."
+  (with-current-buffer buf
+    (if (buffer-modified-p)
+        ;; Unsaved local edits — ask before discarding them.  The flag
+        ;; prevents re-entry: further filesystem events while the
+        ;; yes-or-no-p dialogue is open are ignored.
+        (unless emacs-config--revert-prompt-active
+          (setq emacs-config--revert-prompt-active t)
+          (unwind-protect
+              (when (yes-or-no-p
+                     (format "File '%s' modified externally. Revert and lose your changes? "
+                             (buffer-name)))
+                (revert-buffer t t t))
+            (setq emacs-config--revert-prompt-active nil)))
+      ;; No unsaved edits — silently revert to the new on-disk content.
+      (revert-buffer t t t))))
 
 (defun emacs-config--setup-file-watcher ()
   "Attach a file-system watcher to the current buffer's file's directory.
