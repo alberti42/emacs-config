@@ -162,13 +162,13 @@
     "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
 
 ;; Linux: sync clipboard via xclip; also enable X11 primary selection.
-(declare-function xclip-mode "xclip")
-(when (eq system-type 'gnu/linux)
-  (use-package xclip
-    :if (not window-system)
-    :config
-    (setq select-enable-primary t)
-    (xclip-mode 1)))
+;; (declare-function xclip-mode "xclip")
+;; (when (eq system-type 'gnu/linux)
+;;   (use-package xclip
+;;     :if (not window-system)
+;;     :config
+;;     (setq select-enable-primary t)
+;;     (xclip-mode 1)))
 
 ;; Copy the current buffer's file path to the kill ring.
 (defun copy-buffer-file-name ()
