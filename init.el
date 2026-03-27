@@ -1,10 +1,10 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
 
-(setq backup-inhibited t) ; disable backup
+(setq backup-inhibited t)    ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
-(setq create-lockfiles nil) ; stop lock files (.#filename)
+(setq create-lockfiles nil)  ; stop lock files (.#filename)
 
 (setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
 

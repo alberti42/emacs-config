@@ -22,7 +22,8 @@
     (setq recentf-save-file (expand-file-name "recentf" dir)))
   (setq recentf-max-saved-items 200
         recentf-max-menu-items 50
-        recentf-auto-cleanup 'mode)
+        recentf-auto-cleanup 'mode
+        recentf-show-messages nil) ; requires Emacs 31+
   :bind ("C-c r" . recentf-open)
   :config
   (recentf-mode 1)
@@ -30,17 +31,16 @@
   ;; visits a file whose buffer is already open.  server-visit-hook fires on
   ;; every emacsclient visit regardless, so hook recentf into that as well.
   (add-hook 'server-visit-hook #'recentf-track-opened-file)
-  ;; Debounced save: schedule a save 5 seconds after the last file visit
+  ;; Debounced save: schedule a save 1 second after the last file visit
   ;; rather than waiting for kill-emacs.
   (defvar recentf--save-timer nil)
   (defun recentf-save-debounced ()
     (when (timerp recentf--save-timer)
       (cancel-timer recentf--save-timer))
     (setq recentf--save-timer
-          (run-with-idle-timer 5 nil #'recentf-save-list)))
+          (run-with-idle-timer 1 nil #'recentf-save-list)))
   (add-hook 'find-file-hook #'recentf-save-debounced)
-  (add-hook 'server-visit-hook #'recentf-save-debounced)
-  )
+  (add-hook 'server-visit-hook #'recentf-save-debounced))
 
 (provide 'recentf-config)
 ;;; recentf-config.el ends here
