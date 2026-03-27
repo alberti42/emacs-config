@@ -1,23 +1,68 @@
-;;; soft-wrap.el --- Soft wrap implementation -*- lexical-binding: t; -*-
+;;; soft-wrap.el --- Soft wrap at fill-column -*- lexical-binding: t; -*-
 
-;; Code
+;;; Commentary:
+;;
+;; This module provides a "soft wrap" feature that aims to visually match hard
+;; wrapping (M-q / fill-paragraph) without modifying buffer contents.
+;;
+;; Public entry points:
+;; - `soft-wrap-enable'       Enable soft wrapping in the current buffer.
+;; - `soft-wrap-disable'      Disable soft wrapping in the current buffer.
+;; - `soft-wrap-debug-dump'   Write a debug plist to *Soft Wrap Debug*.
+;;
+;; Implementation notes:
+;; - Soft wrapping is implemented using `visual-line-mode' and a window right
+;;   margin so that the window's effective text width equals the target column.
+;; - Continuation indentation is handled by built-in `visual-wrap-prefix-mode'
+;;   when available (Emacs 30+).
+;; - Margins are per-window. This module installs hooks to keep margins correct
+;;   across resizes and buffer switches.
+;; - The left margin is preserved by default so TTY gutters that reserve it
+;;   (e.g. git-gutter) keep working. This module only manages the right margin.
 
-;; Soft wrap implementation.
-;;
-;; Goals:
-;; - Constrain visual wrapping to a target column (defaults to `fill-column').
-;; - Preserve indentation on continuation lines using built-in
-;;   `visual-wrap-prefix-mode' (Emacs 30+).
-;; - Keep compatibility with TTY gutters that reserve the left margin by
-;;   preserving the existing left margin and only managing the right margin.
-;; - Make enable/disable safe to call from major-mode hooks.
-;;
-;; Approach:
-;; - Margins are per-window, so we adjust when windows change buffers and when
-;;   window configuration changes (e.g. line-number width settling).
-;; - Right margin is computed deterministically (mirrors the logic of
-;;   `window-max-chars-per-line'); we verify with `window-max-chars-per-line'
-;;   and warn once per buffer if Emacs cannot reach the requested width.
+;;; Code:
+
+(require 'pp)
+
+(defgroup soft-wrap nil
+  "Soft wrap at a target column using window margins."
+  :group 'convenience)
+
+(defcustom soft-wrap-default-width nil
+  "Default wrap column for `soft-wrap-enable'.
+
+If nil, use `fill-column'. If an integer, that value is used when
+`soft-wrap-enable' is called without an explicit WIDTH." 
+  :type '(choice (const :tag "Use fill-column" nil)
+                 (integer :tag "Column" 100))
+  :group 'soft-wrap)
+
+(defcustom soft-wrap-preserve-left-margin t
+  "Whether to preserve the existing left window margin.
+
+When non-nil, soft-wrap keeps the current left margin and only changes the
+right margin. This is useful in TTY where other packages may reserve the left
+margin for gutters. When nil, soft-wrap uses a left margin of 0." 
+  :type 'boolean
+  :group 'soft-wrap)
+
+(defcustom soft-wrap-enable-wrap-prefix t
+  "Whether to enable `visual-wrap-prefix-mode' when available." 
+  :type 'boolean
+  :group 'soft-wrap)
+
+(defcustom soft-wrap-verify-width t
+  "Whether to verify the resulting wrap width and warn on mismatch." 
+  :type 'boolean
+  :group 'soft-wrap)
+
+(defcustom soft-wrap-reset-right-margin-in-non-soft-wrap-buffers t
+  "Whether to reset a window's right margin for non-soft-wrap buffers.
+
+This prevents right margins set for one buffer from leaking into other buffers
+when a window is reused." 
+  :type 'boolean
+  :group 'soft-wrap)
 
 (defvar-local soft-wrap--saved-auto-fill nil
   "Value of `auto-fill-function' before soft wrap was enabled.")
@@ -32,6 +77,14 @@ When nil, the current value of `fill-column' is used when enabling.")
 
 (defvar-local soft-wrap--warned-mismatch nil
   "Non-nil once we've warned about a wrap-width mismatch.")
+
+(defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
+  "Saved `visual-wrap-prefix-mode' state before enabling soft wrap.
+
+Value is one of:
+- t   : mode was enabled
+- nil : mode was disabled
+- 'unavailable : function not available in this Emacs")
 
 (defvar soft-wrap--hooks-installed nil
   "Whether global soft-wrap hooks are installed.")
@@ -116,34 +169,35 @@ font metrics."
           (when soft-wrap--enabled
             (let* ((target (soft-wrap--window-target-width window))
                    (margins (window-margins window))
-                   (left (or (car margins) 0))
+                   (left (if soft-wrap-preserve-left-margin (or (car margins) 0) 0))
                    (right (or (cdr margins) 0))
                    (cur (soft-wrap--computed-max-chars-per-line window))
                    (delta (- cur target))
                    (new-right (max 0 (+ right delta))))
               (unless (= new-right right)
                 (set-window-margins window left new-right))
-              ;; Verify against Emacs' computed value and apply a single
-              ;; corrective adjustment if needed.
-              (let* ((after (window-max-chars-per-line window))
-                     (cur-right (or (cdr (window-margins window)) 0)))
-                (when (/= after target)
-                  (let* ((correction (- after target))
-                         (corrected-right (max 0 (+ cur-right correction))))
-                    (unless (= corrected-right cur-right)
-                      (set-window-margins window left corrected-right)
-                      (setq after (window-max-chars-per-line window)))))
-                (when (and (not soft-wrap--warned-mismatch)
-                           (/= after target))
-                  (setq-local soft-wrap--warned-mismatch t)
-                  (display-warning
-                   'soft-wrap
-                   (concat
-                    "soft-wrap: could not reach target width.\n"
-                    (format "target=%s computed-cur=%s after=%s margins=%S\n"
-                            target cur after (window-margins window))
-                    (pp-to-string (soft-wrap--debug-data window)))
-                   :warning))))))))))
+              (when soft-wrap-verify-width
+                ;; Verify against Emacs' computed value and apply a single
+                ;; corrective adjustment if needed.
+                (let* ((after (window-max-chars-per-line window))
+                       (cur-right (or (cdr (window-margins window)) 0)))
+                  (when (/= after target)
+                    (let* ((correction (- after target))
+                           (corrected-right (max 0 (+ cur-right correction))))
+                      (unless (= corrected-right cur-right)
+                        (set-window-margins window left corrected-right)
+                        (setq after (window-max-chars-per-line window)))))
+                  (when (and (not soft-wrap--warned-mismatch)
+                             (/= after target))
+                    (setq-local soft-wrap--warned-mismatch t)
+                    (display-warning
+                     'soft-wrap
+                     (concat
+                      "soft-wrap: could not reach target width.\n"
+                      (format "target=%s computed-cur=%s after=%s margins=%S\n"
+                              target cur after (window-margins window))
+                      (pp-to-string (soft-wrap--debug-data window)))
+                     :warning)))))))))))
 
 (defun soft-wrap--refresh-buffer-windows ()
   "Refresh margins for all windows showing the current buffer." 
@@ -166,27 +220,35 @@ font metrics."
                   (visual-line-mode 1))
                 (setq-local word-wrap t)
                 (setq-local truncate-lines nil)
-                (when (fboundp 'visual-wrap-prefix-mode)
+                (when (and soft-wrap-enable-wrap-prefix
+                           (fboundp 'visual-wrap-prefix-mode))
                   (visual-wrap-prefix-mode 1))
                 (soft-wrap--adjust-window-margins window))
             ;; Not a soft-wrap buffer: ensure we don't leak right margins.
-            (let* ((m (window-margins window))
-                   (left (or (car m) 0))
-                   (right (or (cdr m) 0)))
-              (when (> right 0)
-                (set-window-margins window left 0)))))))))
+            (when soft-wrap-reset-right-margin-in-non-soft-wrap-buffers
+              (let* ((m (window-margins window))
+                     (left (if soft-wrap-preserve-left-margin (or (car m) 0) 0))
+                     (right (or (cdr m) 0)))
+                (when (> right 0)
+                  (set-window-margins window left 0))))))))))
 
 (defun soft-wrap--install-hooks ()
   "Install global hooks used by soft wrap." 
   (unless soft-wrap--hooks-installed
     (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-    (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)
+    (when (boundp 'window-buffer-change-functions)
+      (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change))
     (setq soft-wrap--hooks-installed t)))
 
+;;;###autoload
 (defun soft-wrap-enable (&optional width)
   "Enable visual soft wrapping in the current buffer.
 
-WIDTH, when non-nil, is the target wrap column (defaults to `fill-column').
+WIDTH, when non-nil, is the target wrap column.
+
+When WIDTH is nil, use `soft-wrap-default-width' if non-nil, otherwise use
+`fill-column'.
+
 Disables hard wrapping (`auto-fill-mode') if it is active." 
   (interactive "P")
   (soft-wrap--install-hooks)
@@ -194,15 +256,22 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (auto-fill-mode -1)
 
   (setq-local soft-wrap--target-width
-              (if width (prefix-numeric-value width) fill-column))
+              (if width
+                  (prefix-numeric-value width)
+                (or soft-wrap-default-width fill-column)))
   (setq-local soft-wrap--enabled t)
   (setq-local soft-wrap--warned-mismatch nil)
 
   (visual-line-mode 1)
   (setq-local word-wrap t)
   (setq-local truncate-lines nil)
-  (when (fboundp 'visual-wrap-prefix-mode)
-    (visual-wrap-prefix-mode 1))
+  (if (fboundp 'visual-wrap-prefix-mode)
+      (progn
+        (setq-local soft-wrap--saved-visual-wrap-prefix-mode
+                    (bound-and-true-p visual-wrap-prefix-mode))
+        (when soft-wrap-enable-wrap-prefix
+          (visual-wrap-prefix-mode 1)))
+    (setq-local soft-wrap--saved-visual-wrap-prefix-mode 'unavailable))
 
   ;; Keep margins correct as line-number width settles during find-file.
   (add-hook 'window-configuration-change-hook
@@ -215,6 +284,7 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (soft-wrap--refresh-buffer-windows)
   nil)
 
+;;;###autoload
 (defun soft-wrap-disable ()
   "Disable visual soft wrapping in the current buffer." 
   (interactive)
@@ -227,7 +297,10 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
                'local)
 
   (when (fboundp 'visual-wrap-prefix-mode)
-    (visual-wrap-prefix-mode -1))
+    (pcase soft-wrap--saved-visual-wrap-prefix-mode
+      ('unavailable nil)
+      ('t (visual-wrap-prefix-mode 1))
+      (_ (visual-wrap-prefix-mode -1))))
   (visual-line-mode -1)
 
   ;; Restore right margin to 0 while preserving any reserved left margin.
@@ -245,8 +318,10 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (when soft-wrap--saved-auto-fill
     (auto-fill-mode 1))
   (kill-local-variable 'soft-wrap--saved-auto-fill)
+  (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode)
   nil)
 
+;;;###autoload
 (defun soft-wrap-debug-dump (&optional window)
   "Pretty-print soft-wrap state for debugging.
 
@@ -261,6 +336,6 @@ that window; otherwise report all windows showing the current buffer."
         (pp data (current-buffer))))
     (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
 
-(provide 'soft-wrap)
 (soft-wrap--install-hooks)
+(provide 'soft-wrap)
 ;;; soft-wrap.el ends here
