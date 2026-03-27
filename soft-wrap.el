@@ -79,12 +79,7 @@ When nil, the current value of `fill-column' is used when enabling.")
   "Non-nil once we've warned about a wrap-width mismatch.")
 
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
-  "Saved `visual-wrap-prefix-mode' state before enabling soft wrap.
-
-Value is one of:
-- t   : mode was enabled
-- nil : mode was disabled
-- 'unavailable : function not available in this Emacs")
+  "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
 (defvar soft-wrap--hooks-installed nil
   "Whether global soft-wrap hooks are installed.")
@@ -265,13 +260,11 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (visual-line-mode 1)
   (setq-local word-wrap t)
   (setq-local truncate-lines nil)
-  (if (fboundp 'visual-wrap-prefix-mode)
-      (progn
-        (setq-local soft-wrap--saved-visual-wrap-prefix-mode
-                    (bound-and-true-p visual-wrap-prefix-mode))
-        (when soft-wrap-enable-wrap-prefix
-          (visual-wrap-prefix-mode 1)))
-    (setq-local soft-wrap--saved-visual-wrap-prefix-mode 'unavailable))
+  (when (fboundp 'visual-wrap-prefix-mode)
+    (setq-local soft-wrap--saved-visual-wrap-prefix-mode
+                (bound-and-true-p visual-wrap-prefix-mode))
+    (when soft-wrap-enable-wrap-prefix
+      (visual-wrap-prefix-mode 1)))
 
   ;; Keep margins correct as line-number width settles during find-file.
   (add-hook 'window-configuration-change-hook
@@ -297,10 +290,7 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
                'local)
 
   (when (fboundp 'visual-wrap-prefix-mode)
-    (pcase soft-wrap--saved-visual-wrap-prefix-mode
-      ('unavailable nil)
-      ('t (visual-wrap-prefix-mode 1))
-      (_ (visual-wrap-prefix-mode -1))))
+    (visual-wrap-prefix-mode (if soft-wrap--saved-visual-wrap-prefix-mode 1 -1)))
   (visual-line-mode -1)
 
   ;; Restore right margin to 0 while preserving any reserved left margin.
