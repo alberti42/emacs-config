@@ -131,7 +131,7 @@
 (use-package soft-wrap
   :straight nil
   :load-path emacs-config-dir
-  :commands (soft-wrap-enable soft-wrap-disable soft-wrap-debug-dump))
+  :commands (soft-wrap-enable soft-wrap-disable))
 
 ;; Per-syntax indentation settings
 (emacs-config-load-module

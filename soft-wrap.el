@@ -321,14 +321,12 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode)
   nil)
 
-;;;###autoload
 (defun soft-wrap-debug-dump (&optional window)
   "Pretty-print soft-wrap state for debugging.
 
-When WINDOW is non-nil (interactively: with prefix arg), include details for
-that window; otherwise report all windows showing the current buffer." 
-  (interactive "P")
-  (let* ((w (when window (selected-window)))
+When WINDOW is non-nil, include details for that window; otherwise report all
+windows showing the current buffer."
+  (let* ((w (when window (window-normalize-window window t)))
          (data (soft-wrap--debug-data w)))
     (with-current-buffer (get-buffer-create "*Soft Wrap Debug*")
       (let ((inhibit-read-only t))
