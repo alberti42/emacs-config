@@ -74,44 +74,29 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 (global-set-key (kbd "C-b <up>")    'windmove-up-or-tmux)
 (global-set-key (kbd "C-b <down>")  'windmove-down-or-tmux)
 
-(defun windows-config-tmux-split-h ()
-  "Split the current tmux pane horizontally (equivalent to prefix %)."
+;; Look-up table between bindings and tmux commands
+;; that directly supported in Emacs
+(defconst windows-config-tmux-key-commands
+  '((?c  "new-window")
+    (?n  "next-window")
+    (?p  "previous-window")
+    (?d  "detach-client")
+    (?%  "split-window" "-h" "-c" "#{pane_current_path}")
+    (?\" "split-window" "-v" "-c" "#{pane_current_path}"))
+  "Mapping from C-b key character to tmux command arguments.")
+
+(defun windows-config-tmux-forward-key ()
+  "Dispatch the pressed key to the corresponding tmux command."
   (interactive)
   (when (windows-config--in-tmux-p)
-    (call-process "tmux" nil nil nil "split-window" "-h" "-c" "#{pane_current_path}")))
+    (when-let* ((entry (assq last-command-event windows-config-tmux-key-commands)))
+      (apply #'call-process "tmux" nil nil nil (cdr entry)))))
 
-(defun windows-config-tmux-split-v ()
-  "Split the current tmux pane vertically (equivalent to prefix \")."
-  (interactive)
-  (when (windows-config--in-tmux-p)
-    (call-process "tmux" nil nil nil "split-window" "-v" "-c" "#{pane_current_path}")))
+;; Bind each key in the dispatch table explicitly (avoids [t] catch-all
+;; which interferes with arrow key escape sequence assembly in terminals).
+(dolist (entry windows-config-tmux-key-commands)
+  (define-key tmux-map (vector (car entry)) #'windows-config-tmux-forward-key))
 
-(defun windows-config-tmux-next-window ()
-  "Switch to the next tmux window."
-  (interactive)
-  (when (windows-config--in-tmux-p)
-    (call-process "tmux" nil nil nil "next-window")))
-
-(defun windows-config-tmux-prev-window ()
-  "Switch to the previous tmux window."
-  (interactive)
-  (when (windows-config--in-tmux-p)
-    (call-process "tmux" nil nil nil "previous-window")))
-
-(global-set-key (kbd "C-b %") #'windows-config-tmux-split-h)
-(global-set-key (kbd "C-b \"") #'windows-config-tmux-split-v)
-(global-set-key (kbd "C-b n") #'windows-config-tmux-next-window)
-(global-set-key (kbd "C-b p") #'windows-config-tmux-prev-window)
-
-;; windmove: navigate between windows with C-c <arrow>.
-;; Always bind to the -or-tmux variants; they check the terminal environment
-;; at call time so the tmux fallback only fires when actually inside tmux.
-(use-package windmove
-  :straight nil
-  :bind (("C-b <left>"  . windmove-left-or-tmux)
-         ("C-c <right>" . windmove-right-or-tmux)
-         ("C-c <up>"    . windmove-up-or-tmux)
-         ("C-c <down>"  . windmove-down-or-tmux)))
 
 ;; Window resizing: grow the current window in the given direction.
 ;; Uses repeat-mode: after the initial C-c C-<arrow>, keep pressing C-<arrow>
