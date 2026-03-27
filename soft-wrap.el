@@ -81,8 +81,22 @@ When nil, the current value of `fill-column' is used when enabling.")
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
-(defvar soft-wrap--hooks-installed nil
-  "Whether global soft-wrap hooks are installed.")
+(define-minor-mode soft-wrap-global-mode
+  "Global mode that keeps soft-wrap window margins correct.
+
+Installs hooks on `window-state-change-functions' and
+`window-buffer-change-functions' to adjust right margins as windows are
+resized or switch buffers.  Enabling this mode is a prerequisite for
+`soft-wrap-enable' to work correctly."
+  :global t
+  :group 'soft-wrap
+  (if soft-wrap-global-mode
+      (progn
+        (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
+        (when (boundp 'window-buffer-change-functions)
+          (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)))
+    (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)
+    (remove-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)))
 
 (defun soft-wrap--window-target-width (_window)
   "Return the target wrap width for the current buffer." 
@@ -227,13 +241,6 @@ font metrics."
                 (when (> right 0)
                   (set-window-margins window left 0))))))))))
 
-(defun soft-wrap--install-hooks ()
-  "Install global hooks used by soft wrap." 
-  (unless soft-wrap--hooks-installed
-    (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-    (when (boundp 'window-buffer-change-functions)
-      (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change))
-    (setq soft-wrap--hooks-installed t)))
 
 ;;;###autoload
 (defun soft-wrap-enable (&optional width)
@@ -246,7 +253,7 @@ When WIDTH is nil, use `soft-wrap-default-width' if non-nil, otherwise use
 
 Disables hard wrapping (`auto-fill-mode') if it is active." 
   (interactive "P")
-  (soft-wrap--install-hooks)
+  (soft-wrap-global-mode 1)
   (setq-local soft-wrap--saved-auto-fill auto-fill-function)
   (auto-fill-mode -1)
 
@@ -324,6 +331,6 @@ windows showing the current buffer."
         (pp data (current-buffer))))
     (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
 
-(soft-wrap--install-hooks)
+(soft-wrap-global-mode 1)
 (provide 'soft-wrap)
 ;;; soft-wrap.el ends here
