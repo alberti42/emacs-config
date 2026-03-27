@@ -11,6 +11,8 @@
   (with-eval-after-load 'markdown-mode
     (define-key markdown-mode-map (kbd "C-c <left>")  nil)
     (define-key markdown-mode-map (kbd "C-c <right>") nil)
+    (define-key markdown-mode-map (kbd "C-c <up>") nil)
+    (define-key markdown-mode-map (kbd "C-c <down>") nil)
     (define-key markdown-mode-map (kbd "C-c M-<") #'markdown-promote)
     (define-key markdown-mode-map (kbd "C-c M->") #'markdown-demote))
 
