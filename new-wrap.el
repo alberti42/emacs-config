@@ -31,12 +31,6 @@ When nil, the current value of `fill-column' is used when enabling." )
 (defvar-local soft-wrap--warned-mismatch nil
   "Non-nil once we've warned about a wrap-width mismatch.")
 
-(defvar-local soft-wrap--pending-apply nil
-  "Non-nil when soft wrap is enabled but not yet applied to a window.")
-
-(defvar-local soft-wrap--apply-timer nil
-  "Idle timer used to apply soft wrap after buffer becomes visible.")
-
 (defvar soft-wrap--hooks-installed nil
   "Whether global soft-wrap hooks are installed.")
 
@@ -127,8 +121,16 @@ font metrics."
                    (new-right (max 0 (+ right delta))))
               (unless (= new-right right)
                 (set-window-margins window left new-right))
-              ;; Verify against Emacs' computed value.
-              (let ((after (window-max-chars-per-line window)))
+              ;; Verify against Emacs' computed value and apply a single
+              ;; corrective adjustment if needed.
+              (let* ((after (window-max-chars-per-line window))
+                     (cur-right (or (cdr (window-margins window)) 0)))
+                (when (/= after target)
+                  (let* ((correction (- after target))
+                         (corrected-right (max 0 (+ cur-right correction))))
+                    (unless (= corrected-right cur-right)
+                      (set-window-margins window left corrected-right)
+                      (setq after (window-max-chars-per-line window)))))
                 (when (and (not soft-wrap--warned-mismatch)
                            (/= after target))
                   (setq-local soft-wrap--warned-mismatch t)
@@ -146,38 +148,36 @@ font metrics."
   (dolist (w (get-buffer-window-list (current-buffer) nil t))
     (soft-wrap--adjust-window-margins w)))
 
-(defun soft-wrap--apply-now ()
-  "Apply soft wrap settings and margins for the current buffer." 
-  (when soft-wrap--apply-timer
-    (cancel-timer soft-wrap--apply-timer)
-    (setq soft-wrap--apply-timer nil))
-  (setq soft-wrap--pending-apply nil)
-  (when soft-wrap--enabled
-    (visual-line-mode 1)
-    (setq-local word-wrap t)
-    (setq-local truncate-lines nil)
-    (when (fboundp 'visual-wrap-prefix-mode)
-      (visual-wrap-prefix-mode 1))
-    (soft-wrap--refresh-buffer-windows)))
-
-(defun soft-wrap--window-buffer-change (window &rest _args)
-  "Hook: adjust margins when WINDOW changes buffers." 
-  (let ((buf (window-buffer window)))
-    (when (buffer-live-p buf)
-      (with-current-buffer buf
-        (when (and soft-wrap--enabled soft-wrap--pending-apply)
-          (soft-wrap--apply-now))
-        (soft-wrap--adjust-window-margins window)))))
-
 (defun soft-wrap--window-state-change (window)
   "Hook: keep soft-wrap margins correct for WINDOW." 
   (soft-wrap--adjust-window-margins window))
+
+(defun soft-wrap--window-buffer-change (window &rest _args)
+  "Hook: keep margins correct when WINDOW changes buffers." 
+  (when (window-live-p window)
+    (let ((buf (window-buffer window)))
+      (when (buffer-live-p buf)
+        (with-current-buffer buf
+          (if soft-wrap--enabled
+              (progn
+                (unless (bound-and-true-p visual-line-mode)
+                  (visual-line-mode 1))
+                (setq-local word-wrap t)
+                (setq-local truncate-lines nil)
+                (when (fboundp 'visual-wrap-prefix-mode)
+                  (visual-wrap-prefix-mode 1))
+                (soft-wrap--adjust-window-margins window))
+            ;; Not a soft-wrap buffer: ensure we don't leak right margins.
+            (let* ((m (window-margins window))
+                   (left (or (car m) 0))
+                   (right (or (cdr m) 0)))
+              (when (> right 0)
+                (set-window-margins window left 0)))))))))
 
 (defun soft-wrap--install-hooks ()
   "Install global hooks used by soft wrap." 
   (unless soft-wrap--hooks-installed
     (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-    ;; Ensure newly displayed buffers get their margins adjusted on first show.
     (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)
     (setq soft-wrap--hooks-installed t)))
 
@@ -196,36 +196,33 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (setq-local soft-wrap--enabled t)
   (setq-local soft-wrap--warned-mismatch nil)
 
-  ;; Apply immediately if the buffer is already visible in a window; otherwise,
-  ;; defer until it becomes visible (no guessing, avoids adjusting the wrong
-  ;; window during `find-file').
-  (if (get-buffer-window (current-buffer) 0)
-      (soft-wrap--apply-now)
-    (setq-local soft-wrap--pending-apply t)
-    (when soft-wrap--apply-timer
-      (cancel-timer soft-wrap--apply-timer))
-    (setq-local soft-wrap--apply-timer
-                (run-with-idle-timer
-                 0 nil
-                 (lambda (buf)
-                   (when (buffer-live-p buf)
-                     (with-current-buffer buf
-                       (when soft-wrap--enabled
-                         (soft-wrap--apply-now)))))
-                 (current-buffer))))
+  (visual-line-mode 1)
+  (setq-local word-wrap t)
+  (setq-local truncate-lines nil)
+  (when (fboundp 'visual-wrap-prefix-mode)
+    (visual-wrap-prefix-mode 1))
+
+  ;; Keep margins correct as line-number width settles during find-file.
+  (add-hook 'window-configuration-change-hook
+            #'soft-wrap--refresh-buffer-windows
+            'append
+            'local)
+
+  ;; Adjust immediately if already displayed; otherwise window-buffer-change
+  ;; will handle the first display.
+  (soft-wrap--refresh-buffer-windows)
   nil)
 
 (defun soft-wrap-disable ()
   "Disable visual soft wrapping in the current buffer."
   (interactive)
-  (when soft-wrap--apply-timer
-    (cancel-timer soft-wrap--apply-timer)
-    (setq soft-wrap--apply-timer nil))
-
   (setq-local soft-wrap--enabled nil)
   (setq-local soft-wrap--target-width nil)
   (setq-local soft-wrap--warned-mismatch nil)
-  (setq-local soft-wrap--pending-apply nil)
+
+  (remove-hook 'window-configuration-change-hook
+               #'soft-wrap--refresh-buffer-windows
+               'local)
 
   (when (fboundp 'visual-wrap-prefix-mode)
     (visual-wrap-prefix-mode -1))
@@ -256,8 +253,11 @@ that window; otherwise report all windows showing the current buffer."
   (interactive "P")
   (let* ((w (when window (selected-window)))
          (data (soft-wrap--debug-data w)))
-    (with-output-to-temp-buffer "*Soft Wrap Debug*"
-      (pp data))))
+    (with-current-buffer (get-buffer-create "*Soft Wrap Debug*")
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (pp data (current-buffer))))
+    (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
 
 ;; Markdown config enables this; provide a stub until the real dependency is
 ;; restored.
