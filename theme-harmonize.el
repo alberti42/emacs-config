@@ -20,14 +20,14 @@ Add face propagation here as new packages need harmonizing."
     ;; Override line-number background to match the terminal emulator's padding
     ;; color, so the gutter column blends with the terminal border.
     (let* ((dark-p (eq (frame-parameter nil 'background-mode) 'dark))
-      (line-number-bg-color (if theme-harmonize-tty-line-number
-                  (if dark-p
-                       (plist-get theme-harmonize-tty-line-number :dark)
-                    (plist-get theme-harmonize-tty-line-number :light))
-               nil)))
+           (line-number-bg-color (if theme-harmonize-tty-line-number
+                                     (if dark-p
+                                         (plist-get theme-harmonize-tty-line-number :dark)
+                                       (plist-get theme-harmonize-tty-line-number :light))
+                                   nil)))
       (when line-number-bg-color
-        (set-face-background 'line-number line-number-bg-color))))
-  
+        (set-face-background 'line-number line-number-bg-color)))
+
     ;; git-gutter: blend gutter column with line-number background.
     (let ((line-number-bg-color (face-background 'line-number nil t)))
       (when line-number-bg-color
@@ -37,7 +37,7 @@ Add face propagation here as new packages need harmonizing."
                         git-gutter:unchanged
                         git-gutter:separator))
           (when (facep face)
-            (set-face-background face line-number-bg-color))))))
+            (set-face-background face line-number-bg-color)))))))
 
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'theme-harmonize-theme)
