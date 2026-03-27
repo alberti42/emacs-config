@@ -331,6 +331,5 @@ windows showing the current buffer."
         (pp data (current-buffer))))
     (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
 
-(soft-wrap-global-mode 1)
 (provide 'soft-wrap)
 ;;; soft-wrap.el ends here
