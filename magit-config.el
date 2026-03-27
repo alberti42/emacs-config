@@ -42,10 +42,7 @@
                                   ;; on which-key's timer firing
                                   ;; mid-sequence.
                                   (setq-local which-key-inhibit t)
-                                  ;; text-mode-hook enables soft-wrap (visual-fill-column-mode)
-                                  ;; with fill-column=100.  When the commit window is narrower
-                                  ;; than 100 columns, visual-fill-column computes a negative
-                                  ;; margin and throws (args-out-of-range -1 …) on every edit.
+                                  ;; text-mode-hook enables soft-wrap with fill-column=100.
                                   ;; Disable it here; git-commit-mode enforces its own 72-column
                                   ;; hard-wrap convention via auto-fill-mode anyway.
                                   (when (fboundp 'soft-wrap-disable)
