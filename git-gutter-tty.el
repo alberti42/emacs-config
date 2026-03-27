@@ -24,21 +24,17 @@
   ;; Live-ish updates (idle timer). Increase if it feels too chatty.
   (setq git-gutter:update-interval 0.5)
 
-  ;; One glyph, colored by face.
+  ;; One glyph, colored by face.  Appearance is handled by theme-harmonize.
   (setq git-gutter:modified-sign "▐")
   (setq git-gutter:added-sign "▐")
   (setq git-gutter:deleted-sign "▐")
   (setq git-gutter:window-width 1)
 
-  ;; Keep the gutter column reserved in Git buffers to avoid text shifting.
+  ;; Keep the gutter column reserved in all buffers to avoid text shifting.
   ;; A space reserves the column without showing a visible stripe.
   (setq git-gutter:separator-sign " ")
   (setq git-gutter:always-show-separator t)
   (setq git-gutter:unchanged-sign " ")
-
-  (set-face-foreground 'git-gutter:added "green")
-  (set-face-foreground 'git-gutter:modified "yellow")
-  (set-face-foreground 'git-gutter:deleted "red")
 
   (global-git-gutter-mode 1)
 

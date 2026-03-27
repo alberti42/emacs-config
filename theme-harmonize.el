@@ -28,16 +28,27 @@ Add face propagation here as new packages need harmonizing."
       (when line-number-bg-color
         (set-face-background 'line-number line-number-bg-color)))
 
-    ;; git-gutter: blend gutter column with line-number background.
-    (let ((line-number-bg-color (face-background 'line-number nil t)))
-      (when line-number-bg-color
-        (dolist (face '(git-gutter:added
-                        git-gutter:modified
-                        git-gutter:deleted
-                        git-gutter:unchanged
-                        git-gutter:separator))
+    ;; git-gutter: blend gutter with line-number column; derive indicator colors
+    ;; from the active theme's diff-indicator faces so appearance tracks the theme.
+    (let ((bg (face-background 'line-number nil t)))
+      (when bg
+        ;; Background: match line-number so the gutter blends with the border.
+        (dolist (face '(git-gutter:added git-gutter:modified git-gutter:deleted
+                        git-gutter:unchanged git-gutter:separator))
           (when (facep face)
-            (set-face-background face line-number-bg-color)))))))
+            (set-face-background face bg)))
+        ;; Foreground for indicators: derived from standard diff-indicator faces.
+        (dolist (pair '((git-gutter:added    . diff-indicator-added)
+                        (git-gutter:modified . diff-indicator-changed)
+                        (git-gutter:deleted  . diff-indicator-removed)))
+          (when (and (facep (car pair)) (facep (cdr pair)))
+            (let ((fg (face-foreground (cdr pair) nil t)))
+              (when fg
+                (set-face-foreground (car pair) fg)))))
+        ;; Foreground for invisible spaces: match background so no artifact shows.
+        (dolist (face '(git-gutter:unchanged git-gutter:separator))
+          (when (facep face)
+            (set-face-foreground face bg)))))))
 
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'theme-harmonize-theme)
