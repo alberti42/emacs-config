@@ -4,10 +4,14 @@
 
 (use-package dired
   :straight nil
+  :init
+  (when (eq system-type 'darwin)
+    (setq insert-directory-program "gls"))
   :custom
   ;; reuse single dired buffer when navigating instead
   ;; of opening new buffer for each directory
-  (dired-kill-when-opening-new-dired-buffer t)) 
+  (dired-kill-when-opening-new-dired-buffer t)
+  (dired-use-ls-dired t))
 
 ;; dired-narrow: live-filter the dired listing as you type.
 (use-package dired-narrow
