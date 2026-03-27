@@ -128,9 +128,10 @@
   "Could not load terminal-config.el; terminal settings are disabled.")
 
 ;; Wrapping helpers (soft wrap, visual only)
-(emacs-config-load-module
-  'new-wrap
-  "Could not load new-wrap.el; wrapping helpers are disabled.")
+(use-package soft-wrap
+  :straight nil
+  :load-path emacs-config-dir
+  :commands (soft-wrap-enable soft-wrap-disable soft-wrap-debug-dump))
 
 ;; Per-syntax indentation settings
 (emacs-config-load-module
