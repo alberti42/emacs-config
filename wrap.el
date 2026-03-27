@@ -36,6 +36,9 @@
   "Value of `auto-fill-function' before soft wrap was enabled.
 Used by `soft-wrap-disable' to restore hard-wrap state.")
 
+(defvar-local wrap--vfc-refresh-timer nil
+  "Idle timer used to refresh visual-fill-column width compensation.")
+
 (use-package visual-fill-column
     :straight (visual-fill-column
                :type git
@@ -55,6 +58,49 @@ Used by `soft-wrap-disable' to restore hard-wrap state.")
 (use-package adaptive-wrap
   :commands adaptive-wrap-prefix-mode)
 
+(defun wrap--continuation-glyph-reserved-cols (&optional window)
+  "Return columns reserved for continuation/truncation glyphs.
+
+In most cases (including TTY frames), Emacs reserves the last column for
+continuation/truncation glyphs, effectively reducing the maximum number of
+buffer characters that can be displayed per visual line by 1.
+
+In GUI frames when `overflow-newline-into-fringe' is non-nil and both fringes
+are non-zero, Emacs can draw the glyphs in the fringes, reserving 0 columns." 
+  (let* ((w (window-normalize-window (or window (selected-window)) t))
+         (fringes (window-fringes w))
+         (lfringe (car fringes))
+         (rfringe (nth 1 fringes)))
+    (if (and (display-graphic-p (window-frame w))
+             overflow-newline-into-fringe
+             (not (eq lfringe 0))
+             (not (eq rfringe 0)))
+        0
+      1)))
+
+(defun wrap--refresh-visual-fill-column-extra-text-width (&optional window)
+  "Refresh `visual-fill-column-extra-text-width' for WINDOW.
+
+This compensates for the line-number area and the continuation/truncation glyph
+column (usually 1 in TTY).  WINDOW defaults to the window currently displaying
+the buffer; if the buffer is not displayed, fall back to the selected window." 
+  (let* ((w (window-normalize-window
+             (or window
+                 (get-buffer-window (current-buffer) 0)
+                 (selected-window))
+             t))
+         (line-number-cols
+          (when (fboundp 'line-number-display-width)
+            ;; `line-number-display-width' returns 0 when line numbers are not
+            ;; displayed.  Do not gate this on `display-line-numbers-mode'
+            ;; because mode activation order during find-file can vary.
+            (ceiling (line-number-display-width w))))
+         (reserved-cols (wrap--continuation-glyph-reserved-cols w))
+         (extra-right (+ reserved-cols (or line-number-cols 0))))
+    (setq-local visual-fill-column-extra-text-width
+                (when (> extra-right 0)
+                  (cons 0 extra-right)))))
+
 (defun soft-wrap-enable (&optional width)
   "Enable visual soft wrapping in the current buffer.
 
@@ -66,27 +112,41 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   ;; Disable complementary mode auto-fill-mode by providing a negative argument
   (auto-fill-mode -1)
   (let ((width (if width
-                   (prefix-numeric-value width) ; convert width to a number if not nil
-                 fill-column                    ; choose fill-column if width is nil
-                 )))
+                    (prefix-numeric-value width) ; convert width to a number if not nil
+                  fill-column                    ; choose fill-column if width is nil
+                  )))
     (visual-line-mode 1) ; enable built-in visual-line-mode required by visual-fill-column-mode
     (setq-local word-wrap t) ; makes visual line breaks happen only at word boundaries (spaces, hyphens) rather than mid-word
     (setq-local truncate-lines nil) ; must be set to nil when visual-line-mode is enabled (per doc)
     (setq-local visual-fill-column-width width)
-    ;; Line numbers take up columns that visual-fill-column counts toward the
-    ;; wrap width, shrinking the actual content area.  Subtracting their width
-    ;; from the right margin compensates, so text wraps at exactly WIDTH columns.
-    (setq-local visual-fill-column-extra-text-width
-                ;; Check whether display-line-numbers-mode is enabled
-                (when (bound-and-true-p display-line-numbers-mode)
-                  ;; Create a pair to be subtracted from the left and right margin
-                  (cons 0 (round (line-number-display-width 'columns)))))
+    ;; Compensate for line-number and continuation/truncation glyph columns.
+    (wrap--refresh-visual-fill-column-extra-text-width)
     ;; Enable visual-fill-column-mode
-    (visual-fill-column-mode 1)))
+    (visual-fill-column-mode 1)
+    ;; During `find-file', line numbers and window state can settle after major
+    ;; mode hooks run.  Refresh once on idle so the compensation matches the
+    ;; final displayed window.
+    (when wrap--vfc-refresh-timer
+      (cancel-timer wrap--vfc-refresh-timer))
+    (setq-local wrap--vfc-refresh-timer
+                (run-with-idle-timer
+                 0 nil
+                 (lambda (buf)
+                   (when (buffer-live-p buf)
+                     (with-current-buffer buf
+                       (setq wrap--vfc-refresh-timer nil)
+                       (when (bound-and-true-p visual-fill-column-mode)
+                         (wrap--refresh-visual-fill-column-extra-text-width)
+                         (when (fboundp 'visual-fill-column-adjust)
+                           (visual-fill-column-adjust))))))
+                 (current-buffer)))))
 
 (defun soft-wrap-disable ()
   "Disable visual soft wrapping in the current buffer."
   (interactive)
+  (when wrap--vfc-refresh-timer
+    (cancel-timer wrap--vfc-refresh-timer)
+    (setq wrap--vfc-refresh-timer nil))
   ;; Check that the mode visual-fill-column is available
   (when (fboundp 'visual-fill-column-mode)
     ;; Disable complementary mode auto-fill-mode by providing a negative argument
@@ -94,7 +154,7 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   ;; Disable the built-in visual-line-mode
   (visual-line-mode -1)
   ;; Remove local variables
-  (dolist (var '(word-wrap truncate-lines visual-fill-column-width))
+  (dolist (var '(word-wrap truncate-lines visual-fill-column-width visual-fill-column-extra-text-width))
     (when (local-variable-p var)
       (kill-local-variable var)))
   ;; Restore hard-wrap state if it was active before soft wrap was enabled
