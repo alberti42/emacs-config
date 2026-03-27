@@ -59,15 +59,56 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
   (other-window 1)
   (switch-to-buffer (other-buffer)))
 
+;; Change default behavior when splitting windows
 (keymap-global-set "C-x 3" #'windows-config-split-right)
 (keymap-global-set "C-x 2" #'windows-config-split-below)
+
+;; Bind C-b (originally: backward-char) for tmux-map
+(define-prefix-command 'tmux-map)
+(global-set-key (kbd "C-b") 'tmux-map)
+(with-eval-after-load 'which-key
+  (add-to-list 'which-key-inhibit-regexps "^C-b$"))
+
+(global-set-key (kbd "C-b <left>")  'windmove-left-or-tmux)
+(global-set-key (kbd "C-b <right>") 'windmove-right-or-tmux)
+(global-set-key (kbd "C-b <up>")    'windmove-up-or-tmux)
+(global-set-key (kbd "C-b <down>")  'windmove-down-or-tmux)
+
+(defun windows-config-tmux-split-h ()
+  "Split the current tmux pane horizontally (equivalent to prefix %)."
+  (interactive)
+  (when (windows-config--in-tmux-p)
+    (call-process "tmux" nil nil nil "split-window" "-h" "-c" "#{pane_current_path}")))
+
+(defun windows-config-tmux-split-v ()
+  "Split the current tmux pane vertically (equivalent to prefix \")."
+  (interactive)
+  (when (windows-config--in-tmux-p)
+    (call-process "tmux" nil nil nil "split-window" "-v" "-c" "#{pane_current_path}")))
+
+(defun windows-config-tmux-next-window ()
+  "Switch to the next tmux window."
+  (interactive)
+  (when (windows-config--in-tmux-p)
+    (call-process "tmux" nil nil nil "next-window")))
+
+(defun windows-config-tmux-prev-window ()
+  "Switch to the previous tmux window."
+  (interactive)
+  (when (windows-config--in-tmux-p)
+    (call-process "tmux" nil nil nil "previous-window")))
+
+(global-set-key (kbd "C-b %") #'windows-config-tmux-split-h)
+(global-set-key (kbd "C-b \"") #'windows-config-tmux-split-v)
+(global-set-key (kbd "C-b n") #'windows-config-tmux-next-window)
+(global-set-key (kbd "C-b p") #'windows-config-tmux-prev-window)
 
 ;; windmove: navigate between windows with C-c <arrow>.
 ;; Always bind to the -or-tmux variants; they check the terminal environment
 ;; at call time so the tmux fallback only fires when actually inside tmux.
 (use-package windmove
   :straight nil
-  :bind (("C-c <left>"  . windmove-left-or-tmux)
+  :bind (("C-b <left>"  . windmove-left-or-tmux)
          ("C-c <right>" . windmove-right-or-tmux)
          ("C-c <up>"    . windmove-up-or-tmux)
          ("C-c <down>"  . windmove-down-or-tmux)))
