@@ -259,13 +259,6 @@ that window; otherwise report all windows showing the current buffer."
         (pp data (current-buffer))))
     (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
 
-;; Markdown config enables this; provide a stub until the real dependency is
-;; restored.
-(defun adaptive-wrap-prefix-mode (&optional _arg)
-  "Stopgap: no-op adaptive wrap prefix mode." 
-  (interactive "P")
-  nil)
-
 (provide 'new-wrap)
 (soft-wrap--install-hooks)
 ;;; new-wrap.el ends here
