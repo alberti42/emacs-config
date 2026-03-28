@@ -8,7 +8,7 @@
 ;; - In GUI Emacs, packages can draw indicators in the fringe (a bitmap area
 ;;   outside the text). Terminal frames have no fringe; indicators must be
 ;;   rendered as ordinary characters.
-;; - The goal here is a clean, low-noise TTY gutter: one thin glyph, colored by
+;; - The goal here is a clean, low-noise Git gutter: one thin glyph, colored by
 ;;   face, with stable layout (reserve the column in Git buffers).
 ;;
 ;; `git-gutter` is used instead of fringe-only variants like git-gutter-fringe.
@@ -16,14 +16,13 @@
 ;;; Code:
 
 (use-package git-gutter
-  :if (not window-system)
   :straight nil
   :load-path emacs-config-dir
   ;; :straight (git-gutter
   ;;            :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
   ;;            :files ("git-gutter.el"))
   :config
-  ;; Live-ish updates (idle timer). Increase if it feels too chatty.
+  ;; Live-ish updates (idle timer).
   (setq git-gutter:update-interval 0.5)
 
   ;; One glyph, colored by face.  Appearance is handled by theme-harmonize.
@@ -36,8 +35,7 @@
   ;; setting a fixed width of 1.
   (setq git-gutter:window-width 1)
   ;; Separator sign following the change sign; it is appended, but will be
-  ;; clipped unless window-width >= 2; thus it is effectively only displayed if
-  ;; we reserved a larger window-width than 1; it can be used to separate the
+  ;; clipped unless window-width >= 2; thus it is effectively only displayed if we reserved a larger window-width than 1; it can be used to separate the
   ;; change signs from the rest.
   (setq git-gutter:separator-sign " ")
   ;; Determines whether to show the separator-sign and the unchanged-sign for
