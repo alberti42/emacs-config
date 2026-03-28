@@ -1,179 +1,42 @@
-# Git-gutter TTY + visual-line wrapping: investigation and fix
+# Git-gutter TTY: visual-line wrapping and beyond-EOB gutter fill
 
-This note documents a debugging session about `git-gutter` in terminal Emacs, specifically when `git-gutter:visual-line` is enabled and the buffer is soft-wrapped (narrow window / `visual-line-mode`).
+This note documents two separate fixes made to improve `git-gutter` in terminal
+Emacs.
 
-The user-visible symptom was:
+---
 
-- On a single *buffer line* that is displayed as multiple *visual lines* (screen rows), the TTY git-gutter indicator (a vertical bar `▐` in the margin, configured as `"▐"`) appears *interrupted* on the wrapped continuation row.
-- Where the bar is interrupted, the left margin shows the *buffer background* instead of the gutter background (because nothing is being rendered there).
+## Part 1 — Visual-line continuation rows
 
-The initial hypothesis was "soft wrap creates a continuation row that does not inherit git-gutter's background". Over the course of the investigation, we proved that the root cause is *overlay placement*, not face propagation.
+### Symptom
 
+On a single *buffer line* displayed as multiple *visual lines* (soft-wrap),
+the TTY git-gutter indicator (`▐`) appeared only on the first visual row. The
+continuation rows showed the buffer background instead of the gutter background.
 
-## Environment and relevant configuration
+### Root cause: overlay placement
 
-### Emacs
+Git-gutter places zero-length overlays at each buffer line start with a
+`before-string` that puts a sign in the left margin.  A zero-length overlay
+only fires at one point; it has no way to inject content on continuation rows.
 
-- Emacs version: `31.0.50`
+Attempts to enumerate visual row starts with `vertical-motion` are unreliable:
+`vertical-motion` lands at the last character of the current screen row, not
+the start of the next one, and `visual-wrap-prefix-mode` shifts row boundaries
+in ways `vertical-motion` does not account for.
 
-### Repository setup
+### Fix: `wrap-prefix` on a spanning overlay
 
-The user moved `git-gutter.el` into this Emacs config repo so it can be loaded without `straight.el` recompilation friction:
+The `wrap-prefix` overlay property is fired by the Emacs display engine at the
+start of every continuation row for the overlay's extent.  By making the
+overlay span from `bol` to `eol` (instead of being zero-length), and setting
+`wrap-prefix` to the same margin string as `before-string`, the sign appears on
+every visual row of a hunk line with a single overlay.
 
-- `git-gutter-tty.el` uses `use-package` with `:straight nil` and `:load-path emacs-config-dir`.
+**Changes to `git-gutter.el`:**
 
-`git-gutter-tty.el` (relevant excerpt):
-
-```elisp
-(use-package git-gutter
-  :if (not window-system)
-  :straight nil
-  :load-path emacs-config-dir
-  :config
-  (setq git-gutter:update-interval 0.5)
-  (setq git-gutter:modified-sign "▐")
-  (setq git-gutter:added-sign "▐")
-  (setq git-gutter:deleted-sign "▐")
-  (setq git-gutter:visual-line t)
-  (setq git-gutter:window-width 1)
-  (setq git-gutter:separator-sign " ")
-  (setq git-gutter:always-show-separator t)
-  (setq git-gutter:unchanged-sign " ")
-  (global-git-gutter-mode 1))
-```
-
-### Gutter rendering mechanism
-
-In TTY, `git-gutter` renders by attaching a `before-string` to zero-length overlays, and uses a `display` property to place text in the left margin:
-
-```elisp
-(defun git-gutter:before-string (sign)
-  (let ((gutter-sep (concat sign (git-gutter:gutter-seperator))))
-    (propertize " " 'display `((margin left-margin) ,gutter-sep))))
-
-(defun git-gutter:put-signs (sign points)
-  (dolist (pos points)
-    (let ((ov (make-overlay pos pos))
-          (gutter-sign (git-gutter:before-string sign)))
-      (overlay-put ov 'before-string gutter-sign)
-      (overlay-put ov 'git-gutter t))))
-```
-
-Key implication:
-
-- If there is *no overlay* at the start of a given visual row, there is no margin string, so the margin background falls back to the buffer/window background. This produces the "white hole".
-
-
-## Evidence collected
-
-### 1) The symptom is a missing margin string on continuation rows
-
-The user inspected the left margin at column 0 across consecutive visual rows and saw one entry with `string=nil`, indicating nothing was drawn in the left margin for that row.
-
-This established that the "hole" is explained by absence of any left-margin rendering for that specific visual row.
-
-
-### 2) The problem is not "left-margin face"
-
-We confirmed that `left-margin` in `((margin left-margin) ...)` is a margin identifier, not a face, so `(facep 'left-margin)` returning nil is normal.
-
-This matters because "just set the `left-margin` face background" is not a direct fix in this setup.
-
-
-### 3) Root cause: overlays cannot target continuation row starts reliably
-
-The original approach (and the first attempted fix) walked the buffer with `vertical-motion` to find the buffer position of each visual row start, placing one zero-length overlay per row. This is fundamentally unreliable:
-
-- `vertical-motion` lands at the last character of the current screen row, not at the start of the next one.
-- `visual-wrap-prefix-mode` (Emacs 30+) adds continuation indentation via `wrap-prefix` *text properties*, which shifts where visual rows begin in a way that `vertical-motion` does not account for.
-- Evidence: two overlays were found with the same `y` screen coordinate, meaning the "second" overlay was placed on the first visual row rather than the start of the continuation row.
-
-This is the same problem `display-line-numbers` solves by running *inside the C display loop* (once per screen row, with direct access to `continuation_lines_width`). From Lisp, there is no equivalent hook.
-
-
-### 4) `wrap-prefix` on a spanning overlay is the correct solution
-
-The key insight: the `wrap-prefix` overlay property is exactly what Emacs uses internally to render content at the start of continuation rows. It is what `visual-wrap-prefix-mode` uses for indentation. We can piggyback on the same mechanism.
-
-**Proof-of-concept tests run (with `git-gutter-mode` disabled to avoid interference):**
-
-Test 1 — does `wrap-prefix` on a non-zero overlay render in the left margin on continuation rows?
-
-```elisp
-(let* ((bol (line-beginning-position))
-       (eol (line-end-position))
-       (ov  (make-overlay bol eol)))
-  (overlay-put ov 'wrap-prefix
-               (propertize " " 'display
-                           `((margin left-margin)
-                             ,(propertize " " 'face 'git-gutter:modified))))
-  ov)
-```
-
-Result: colored blank appeared on the continuation row. Mechanism confirmed.
-
-Test 2 — where is the `wrap-prefix` text property from `visual-wrap-prefix-mode`?
-
-```elisp
-(get-text-property (line-beginning-position) 'wrap-prefix)
-```
-
-Result: `#("  ;; " ...)` — present at `bol`, same throughout the line. Safe to read once from `bol` and prepend to.
-
-Test 3 — combined gutter blank + existing wrap-prefix:
-
-```elisp
-(let* ((bol (line-beginning-position))
-       (eol (line-end-position))
-       (existing (get-text-property bol 'wrap-prefix))
-       (gutter-blank (propertize " " 'display
-                                 `((margin left-margin)
-                                   ,(propertize " " 'face 'git-gutter:modified))))
-       (combined (concat gutter-blank (or existing "")))
-       (ov (make-overlay bol eol)))
-  (overlay-put ov 'wrap-prefix combined)
-  ov)
-```
-
-Result: colored blank on continuation row, indentation preserved.
-
-Test 4 — sign on continuation rows (not just blank):
-
-```elisp
-(let* ((bol (line-beginning-position))
-       (eol (line-end-position))
-       (existing (get-text-property bol 'wrap-prefix))
-       (sign (propertize "▐ " 'face 'git-gutter:modified))
-       (gutter (propertize " " 'display `((margin left-margin) ,sign)))
-       (combined (concat gutter (or existing "")))
-       (ov (make-overlay bol eol)))
-  (overlay-put ov 'before-string
-               (propertize " " 'display `((margin left-margin) ,sign)))
-  (overlay-put ov 'wrap-prefix combined)
-  ov)
-```
-
-Result: `▐` on both the first visual row and every continuation row, with correct indentation. Single overlay, no zero-length hack needed.
-
-**Important testing note:** early tests appeared to fail because git-gutter's own zero-length overlay at `bol` was masking the test overlay's `before-string`. Disabling `git-gutter-mode` before testing is essential to get clean results.
-
-
-## Design rationale
-
-The correct behavior is: the gutter sign repeats on every visual row of a hunk line. This is consistent with how Emacs presents visual lines to the user:
-
-- `display-line-numbers`: shows the number on the first visual row, blank on continuation rows — the non-advancing line number signals "same logical line".
-- `visual-wrap-prefix-mode`: repeats the indentation prefix on every continuation row so the text looks like multiple indented lines.
-- git-gutter (after fix): repeats `▐` on every visual row — the change spans the entire visible extent of the logical line.
-
-
-## The fix
-
-Three changes to `git-gutter.el`:
-
-### 1. `git-gutter:wrap-prefix-for-sign`
-
-Removed the `(stringp existing)` guard. The function now always returns a wrap-prefix string, falling back to `""` when no text property exists:
+`git-gutter:wrap-prefix-for-sign` — removed the `(stringp existing)` guard;
+always returns a wrap-prefix string, prepending the gutter sign to any existing
+`wrap-prefix` text property (from `visual-wrap-prefix-mode`):
 
 ```elisp
 (defun git-gutter:wrap-prefix-for-sign (sign pos)
@@ -181,25 +44,122 @@ Removed the `(stringp existing)` guard. The function now always returns a wrap-p
     (concat (git-gutter:before-string sign) (or existing ""))))
 ```
 
-### 2. `git-gutter:put-signs`
-
-Overlay now spans `pos` to `eol` (instead of zero-length) in TTY + `visual-line` mode, so `wrap-prefix` fires on every continuation row:
+`git-gutter:put-signs` — overlay spans `pos` to `eol` in TTY + visual-line
+mode, so `wrap-prefix` fires on every continuation row:
 
 ```elisp
 (let* ((eol (when (and git-gutter:visual-line (not (display-graphic-p)))
               (save-excursion (goto-char pos) (line-end-position))))
-       (ov (make-overlay pos (or eol pos))))
+       (ov (make-overlay pos (or eol pos)))
+       (gutter-sign (git-gutter:before-string sign)))
   (overlay-put ov 'before-string gutter-sign)
   (when eol
-    (overlay-put ov 'wrap-prefix (git-gutter:wrap-prefix-for-sign sign pos))))
+    (overlay-put ov 'wrap-prefix (git-gutter:wrap-prefix-for-sign sign pos)))
+  (overlay-put ov 'git-gutter t))
 ```
 
-### 3. `view-set-overlays` and `view-for-unchanged`
+`view-set-overlays` and `view-for-unchanged` — removed the `move-fn` selection;
+both always walk with `forward-line`.  Visual row enumeration is no longer
+needed because the display engine handles continuation rows via `wrap-prefix`.
+`git-gutter:next-visual-line` was removed entirely.
 
-Dropped `git-gutter:next-visual-line`; both functions now always walk with `forward-line`. Visual row enumeration is no longer needed — the display engine handles continuation rows via `wrap-prefix`. `git-gutter:next-visual-line` was removed entirely.
+### Design rationale
 
+The gutter sign repeats on every visual row of a hunk line, consistent with how
+Emacs presents visual lines:
 
-## Appendix: key debug snippets used
+- `display-line-numbers`: shows the number on the first row, blank on
+  continuations.
+- `visual-wrap-prefix-mode`: repeats the indentation prefix on every
+  continuation row.
+- git-gutter (after fix): repeats `▐` on every visual row — the change spans
+  the entire visible extent of the logical line.
+
+---
+
+## Part 2 — Beyond-end-of-buffer gutter strip
+
+### Symptom
+
+The left-margin column (gutter) had the correct background on rows with buffer
+content, but showed the raw terminal background on all rows beyond the end of
+the buffer.
+
+### Root cause: two separate issues
+
+**A. `extend_face_to_end_of_line` not called for beyond-EOB rows**
+
+In `display_line` (`xdisp.c`), when `get_next_display_element` returns false
+(iterator at ZV), the code sets `row->ends_at_zv_p = true` and calls
+`extend_face_to_end_of_line` only for RTL rows or rows with a remapped default
+face.  For normal LTR rows with the default face, `extend_face_to_end_of_line`
+was skipped — so the left margin was never filled for those rows.
+
+**B. `extend_face_to_end_of_line` did not fill the left margin with the right color**
+
+Even when called, the function did not fill the left-margin area with the gutter
+background.
+
+### Fix: patch `xdisp.c`
+
+Two changes to `display_line` in `xdisp.c`:
+
+**1. Call `extend_face_to_end_of_line` for any row with a left margin**
+
+```c
+if (row->reversed_p
+    || lookup_basic_face (it->w, it->f, DEFAULT_FACE_ID) != DEFAULT_FACE_ID
+    || WINDOW_LEFT_MARGIN_WIDTH (it->w) > 0)
+  extend_face_to_end_of_line (it);
+```
+
+**2. Fill empty left-margin columns using the `line-number` face**
+
+In `extend_face_to_end_of_line` (TTY path), when the left margin has fewer
+glyphs than its declared width, fill the remaining columns with the `line-number`
+face:
+
+```c
+int margin_fill_face_id =
+    merge_faces (it->w, Qline_number, 0, DEFAULT_FACE_ID);
+
+if (WINDOW_LEFT_MARGIN_WIDTH (it->w) > 0
+    && it->glyph_row->used[LEFT_MARGIN_AREA] < WINDOW_LEFT_MARGIN_WIDTH (it->w)
+    && !it->glyph_row->mode_line_p
+    && (face->background != FRAME_BACKGROUND_PIXEL (f)
+        || FACE_FROM_ID (f, margin_fill_face_id)->background
+           != FRAME_BACKGROUND_PIXEL (f)))
+  { /* fill left margin with margin_fill_face_id */ }
+```
+
+### Why `line-number` face and not a separate variable
+
+`display-line-numbers` fills every screen row (including beyond-EOB) via
+`maybe_produce_line_number`, which runs inside the C display loop and actively
+produces glyphs with the `line-number` face.  Git-gutter, being Lisp overlays
+tied to buffer positions, cannot do the same — beyond-EOB rows have no buffer
+positions, so no overlay fires there.
+
+The `line-number` face is already the semantic owner of "gutter column
+background": users set its background to match the terminal border color
+(e.g. WezTerm's Catppuccin padding), which is exactly the color needed to fill
+empty beyond-EOB margin cells.  Using `line-number` here is automatic and
+requires no user-visible variable — if the user has not customized the face, its
+background equals the frame background and the fill is a no-op.
+
+A dedicated `left-margin-face` variable was considered and implemented
+initially, but discarded: the `line-number` face already carries the correct
+semantic and value, so a separate variable would just be redundant configuration.
+
+### Effect on `theme-harmonize.el`
+
+No change needed.  `theme-harmonize.el` already sets the `line-number`
+background to match the terminal border color.  The Emacs patch picks that up
+automatically for beyond-EOB rows.
+
+---
+
+## Appendix: key debug snippets
 
 Count visual rows for the current buffer line:
 
@@ -219,20 +179,6 @@ List git-gutter overlay starts on the current buffer line:
         #'<))
 ```
 
-Check whether two buffer positions are on the same screen row:
-
-```elisp
-(list (posn-x-y (posn-at-point p0))
-      (posn-x-y (posn-at-point p1)))
-```
-
-Inspect wrap indentation applied via text properties:
-
-```elisp
-(list (get-text-property (point) 'wrap-prefix)
-      (get-text-property (point) 'line-prefix))
-```
-
 Inspect what a git-gutter overlay draws in the margin:
 
 ```elisp
@@ -246,4 +192,11 @@ Inspect what a git-gutter overlay draws in the margin:
                     :before-string bs
                     :display disp)))
           ovs))
+```
+
+Inspect wrap indentation applied via text properties:
+
+```elisp
+(list (get-text-property (point) 'wrap-prefix)
+      (get-text-property (point) 'line-prefix))
 ```
