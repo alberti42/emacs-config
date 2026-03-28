@@ -81,7 +81,7 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
     (?n  "next-window")
     (?p  "previous-window")
     (?d  "detach-client")
-    (?b  "switch-client" "-T" "prefix" ";" "")
+    (?b  "switch-client" "-T" "prefix")
     (?%  "split-window" "-h" "-c" "#{pane_current_path}")
     (?\" "split-window" "-v" "-c" "#{pane_current_path}"))
   "Mapping from C-b key character to tmux command arguments.")
