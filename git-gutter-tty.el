@@ -17,9 +17,11 @@
 
 (use-package git-gutter
   :if (not window-system)
-  :straight (git-gutter
-             :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
-             :files ("git-gutter.el"))
+  :straight nil
+  :load-path emacs-config-dir
+  ;; :straight (git-gutter
+  ;;            :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
+  ;;            :files ("git-gutter.el"))
   :config
   ;; Live-ish updates (idle timer). Increase if it feels too chatty.
   (setq git-gutter:update-interval 0.5)
@@ -29,12 +31,13 @@
   (setq git-gutter:added-sign "▐")
   (setq git-gutter:deleted-sign "▐")
   (setq git-gutter:window-width 1)
+  (setq git-gutter:visual-line t)
 
   ;; Keep the gutter column reserved in all buffers to avoid text shifting.
   ;; A space reserves the column without showing a visible stripe.
-  (setq git-gutter:separator-sign " ")
+  (setq git-gutter:separator-sign "x")
   (setq git-gutter:always-show-separator t)
-  (setq git-gutter:unchanged-sign " ")
+  (setq git-gutter:unchanged-sign "o")
 
   (global-git-gutter-mode 1)
 
