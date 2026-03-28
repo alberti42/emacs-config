@@ -30,14 +30,20 @@
   (setq git-gutter:modified-sign "▐")
   (setq git-gutter:added-sign "▐")
   (setq git-gutter:deleted-sign "▐")
-  (setq git-gutter:window-width 1)
   (setq git-gutter:visual-line t)
 
-  ;; Keep the gutter column reserved in all buffers to avoid text shifting.
-  ;; A space reserves the column without showing a visible stripe.
-  (setq git-gutter:separator-sign "x")
+  ;; Keep the gutter column reserved in all buffers to avoid text shifting by
+  ;; setting a fixed width of 1.
+  (setq git-gutter:window-width 1)
+  ;; Separator sign following the change sign; it is appended, but will be
+  ;; clipped unless window-width >= 2; thus it is effectively only displayed if
+  ;; we reserved a larger window-width than 1; it can be used to separate the
+  ;; change signs from the rest.
+  (setq git-gutter:separator-sign " ")
+  ;; Determines whether to show the separator-sign and the unchanged-sign for
+  ;; buffers with no modifications yet (no 'diffinfos).
   (setq git-gutter:always-show-separator t)
-  (setq git-gutter:unchanged-sign "o")
+  (setq git-gutter:unchanged-sign " ")
 
   (global-git-gutter-mode 1)
 
