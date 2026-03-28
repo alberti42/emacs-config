@@ -10,7 +10,7 @@
 (use-package vertico
   :init
   (setq vertico-cycle t)
-  (setq vertico-count 20)
+  (setq vertico-count 10)
   (setq vertico-resize 'grow-only)
   (vertico-mode 1)
   (setq vertico-multiform-commands
