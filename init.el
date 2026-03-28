@@ -5,8 +5,12 @@
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
 (setq create-lockfiles nil)  ; stop lock files (.#filename)
+(setq vc-follow-symlinks t)  ; do not ask confirmation before following symbolic links
 
-(setq vc-follow-symlinks t) ; do not ask confirmation before following symbolic links
+;; Add reference to Emacs C source files
+(let ((src "~/Documents/Programming/Others/fork-emacs"))
+  (when (file-directory-p src)
+    (setq source-directory src)))
 
 ;; Emacs supports per-file settings embedded directly in source files,
 ;; either as a first-line header (e.g. -*- coding: utf-8-unix -*-) or
