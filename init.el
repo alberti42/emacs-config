@@ -26,7 +26,9 @@
 ;; property, Emacs prompts for confirmation instead. This entry is a
 ;; workaround: it pre-approves this specific pair so Emacs skips the
 ;; prompt.
-(add-to-list 'safe-local-variable-values '(buffer-file-coding-system . utf-8-unix))
+(setq safe-local-variable-values
+      '((elisp-lint-indent-specs (git-gutter:awhen . 1))
+        (buffer-file-coding-system . utf-8-unix)))
 
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
