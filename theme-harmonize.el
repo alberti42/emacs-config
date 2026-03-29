@@ -28,6 +28,15 @@ Add face propagation here as new packages need harmonizing."
       (when line-number-bg-color
         (set-face-background 'line-number line-number-bg-color))))
 
+  ;; flymake margin indicators: set background to match the line-number face so
+  ;; the indicator characters blend with the left-margin column background.
+  ;; The three faces cover error, warning, and note severity levels.
+  (let ((bg (face-background 'line-number nil t)))
+    (when bg
+      (dolist (face '(compilation-error compilation-warning compilation-info))
+        (when (facep face)
+          (set-face-background face bg)))))
+
   ;; git-gutter: blend gutter with line-number column; derive indicator colors
   ;; from the active theme's diff-indicator faces so appearance tracks the theme.
   ;; Runs for both TTY and GUI frames.
