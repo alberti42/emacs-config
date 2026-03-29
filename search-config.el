@@ -33,6 +33,10 @@
 (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
 (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
 
+;; DEL deletes one character from the search string instead of undoing the
+;; last input action (which would remove an entire yank in one keystroke).
+(define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
+
 (defun consult-fd-here ()
   "Like `consult-fd' but rooted at `default-directory' instead of the project root."
   (interactive)
