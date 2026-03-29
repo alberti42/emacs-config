@@ -74,7 +74,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
-- `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
+- `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
 - `theme-harmonize.el`: synchronizes package faces with the active theme after every theme change. Sets `line-number` background (TTY only, via `theme-harmonize-tty-line-number`) to match the terminal emulator's padding color. Propagates the `line-number` background to git-gutter faces so the gutter column blends uniformly. Sets the background of `compilation-error`, `compilation-warning`, and `compilation-info` to match `line-number` so flymake left-margin indicators blend with the gutter column. Hooks into `enable-theme-functions` (Emacs 29+).
@@ -232,7 +232,7 @@ TTY vs GUI:
 - Clipboard helpers are conditional:
   - macOS terminal Emacs uses `mac-clipboard.el` (local module wrapping `pbcopy`) to sync clipboard writes.
   - Linux terminal Emacs uses `xclip` package.
-- `git-gutter-tty.el` is explicitly for terminal frames (`(not window-system)`).
+- `git-gutter-config.el` loads a local patched `git-gutter.el` and runs in both TTY and GUI frames.
 - Mouse wheel support in TTY is enabled via built-in `mouse` / `xterm-mouse-mode`.
 
 macOS / Linux:

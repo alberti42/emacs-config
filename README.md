@@ -20,7 +20,7 @@ both GUI and terminal (TTY) Emacs.
 
 **Git**
 - [Magit](https://magit.vc/) with [Forge](https://magit.vc/manual/forge/) (GitHub/GitLab)
-- Git gutter indicators in terminal frames
+- Git gutter indicators in both TTY and GUI frames
 
 **UI**
 - [Modus Themes](https://protesilaos.com/emacs/modus-themes) with automatic dark/light switching
@@ -84,6 +84,8 @@ lsp-ltex-plus-config.el  # Grammar / spell checking
 gui-config.el            # Fonts, frame chrome, window dividers
 scroll-config.el         # Scrolling (pixel-precise GUI, TTY mouse)
 themes-config.el         # Theme loading (modus-themes + appearance sync)
+git-gutter-config.el     # VCS gutter (patched local git-gutter.el, TTY + GUI)
+theme-harmonize.el       # Face synchronization after theme changes (git-gutter, flymake, line-number)
 magit-config.el          # Magit + Forge
 treemacs-config.el       # File tree
 soft-wrap.el             # Soft-wrap helpers (margin-based, no external deps)

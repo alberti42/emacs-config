@@ -1,4 +1,4 @@
-;;; git-gutter-config.el --- Git gutter in terminal Emacs -*- lexical-binding: t; -*-
+;;; git-gutter-config.el --- Git gutter in Emacs -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
