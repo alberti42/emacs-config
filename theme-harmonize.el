@@ -12,6 +12,12 @@ When nil, this theme customization is ignored.
 
 Example: (:light \"#eff1f5\" :dark \"#303446\") for Catppuccin.")
 
+(defvar theme-harmonize-git-gutter-colors nil
+  "Plist of git-gutter indicator colors for :light and :dark appearance.
+  Each value is a plist with :added, :modified, :deleted keys.
+  Example: (:light (:added \"#00aa00\" :modified \"#aaaa00\" :deleted \"#aa0000\")
+            :dark  (:added \"#00ff00\" :modified \"#ffff00\" :deleted \"#ff0000\"))")
+
 (defun theme-harmonize-theme (&rest _)
   "Synchronize package faces with the active theme.
 Called after every theme change and once at startup.
@@ -44,17 +50,23 @@ Add face propagation here as new packages need harmonizing."
     (when bg
       ;; Background: match line-number so the gutter blends with the border.
       (dolist (face '(git-gutter:added git-gutter:modified git-gutter:deleted
-                      git-gutter:unchanged git-gutter:separator))
+                                       git-gutter:unchanged git-gutter:separator))
         (when (facep face)
           (set-face-background face bg)))
-      ;; Foreground for indicators: derived from standard diff-indicator faces.
-      (dolist (pair '((git-gutter:added    . diff-indicator-added)
-                      (git-gutter:modified . diff-indicator-changed)
-                      (git-gutter:deleted  . diff-indicator-removed)))
-        (when (and (facep (car pair)) (facep (cdr pair)))
-          (let ((fg (face-foreground (cdr pair) nil t)))
-            (when fg
-              (set-face-foreground (car pair) fg)))))
+      ;; Foreground for indicators
+      (when theme-harmonize-git-gutter-colors
+        (let* ((dark-p (eq (frame-parameter nil 'background-mode) 'dark))
+               (palette (if dark-p
+                            (plist-get theme-harmonize-git-gutter-colors :dark)
+                          (plist-get theme-harmonize-git-gutter-colors :light))))
+          (dolist (pair '((git-gutter:added    . :added)
+                          (git-gutter:modified . :modified)
+                          (git-gutter:deleted  . :deleted)))
+            (let ((color (plist-get palette (cdr pair)))
+                  (face (car pair)))
+              ;; Set the foreground face based to 'color
+              (when (and color (facep face))
+                (set-face-foreground face color))))))      
       ;; Foreground for invisible spaces: match background so no artifact shows.
       (dolist (face '(git-gutter:unchanged git-gutter:separator))
         (when (facep face)

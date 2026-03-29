@@ -35,14 +35,17 @@
 ;; it is ready before zac-theme-autodetection calls it.
 (use-package theme-harmonize
   :straight nil
+  :demand t
   :load-path emacs-config-dir
   :config
   ;; TTY line-number background colors to match WezTerm's padding (Catppuccin),
   ;; so the gutter column blends with the terminal border in both appearances.
   (setq theme-harmonize-tty-line-number
         (list :light "#eff1f5"    ; Catppuccin Latte
-              :dark "#303446")))  ; Catppuccin Frappe
-
+              :dark "#303446"))   ; Catppuccin Frappe
+  (setq theme-harmonize-git-gutter-colors
+        '(:light (:added "#01e002" :modified "#fae500" :deleted "#cf222e")
+          :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149"))))
 
 ;; Theme auto-detection via zac-theme-autodetection provided by
 ;; zsh-appearance-control plugin.  Reads the OS appearance state file
@@ -50,6 +53,7 @@
 ;; and package it touches is already initialized.
 (use-package zac-theme-autodetection
   :straight nil
+  :after theme-harmonize
   :load-path emacs-config-dir
   :init
   ;; Theme selection callback for zac-theme-autodetection.  Set before loading
