@@ -67,7 +67,7 @@
 (use-package which-key
   :straight nil  ; use built-in which-key (Emacs 30+), don't fetch via straight
   :config
-  (setq which-key-idle-delay 0.200)
+  (setq which-key-idle-delay 1.0)
   (which-key-mode 1))
 
 ;; vundo: visual undo tree, navigate undo history as a tree diagram.
