@@ -44,7 +44,7 @@
         (list :light "#eff1f5"    ; Catppuccin Latte
               :dark "#303446"))   ; Catppuccin Frappe
   (setq theme-harmonize-git-gutter-colors
-        '(:light (:added "#01e002" :modified "#fae500" :deleted "#cf222e")
+        '(:light (:added "#01e002" :modified "#ffb500" :deleted "#cf222e")
           :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149"))))
 
 ;; Theme auto-detection via zac-theme-autodetection provided by
