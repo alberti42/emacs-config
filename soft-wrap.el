@@ -6,9 +6,8 @@
 ;; wrapping (M-q / fill-paragraph) without modifying buffer contents.
 ;;
 ;; Public entry points:
-;; - `soft-wrap-enable'       Enable soft wrapping in the current buffer.
-;; - `soft-wrap-disable'      Disable soft wrapping in the current buffer.
-;; - `soft-wrap-debug-dump'   Write a debug plist to *Soft Wrap Debug*.
+;; - `soft-wrap-mode'         Buffer-local minor mode; toggles soft wrapping.
+;; - `global-soft-wrap-mode'  Global minor mode; enables soft-wrap-mode everywhere.
 ;;
 ;; Implementation notes:
 ;; - Soft wrapping is implemented using `visual-line-mode' and a window right
@@ -29,46 +28,47 @@
   :group 'convenience)
 
 (defcustom soft-wrap-default-width nil
-  "Default wrap column for `soft-wrap-enable'.
+  "Default wrap column for `soft-wrap-mode'.
 
 If nil, use `fill-column'. If an integer, that value is used when
-`soft-wrap-enable' is called without an explicit WIDTH." 
+`soft-wrap-mode' is enabled."
   :type '(choice (const :tag "Use fill-column" nil)
                  (integer :tag "Column" 100))
   :group 'soft-wrap)
 
+;; Andrea not clear what it does; what does it mean that it keeps the current left margin? Otherwise? We change it arbitrarily?
 (defcustom soft-wrap-preserve-left-margin t
   "Whether to preserve the existing left window margin.
 
-When non-nil, soft-wrap keeps the current left margin and only changes the
-right margin. This is useful in TTY where other packages may reserve the left
-margin for gutters. When nil, soft-wrap uses a left margin of 0." 
+When non-nil, soft-wrap keeps the current left margin and only changes
+the right margin. This is useful in TTY where other packages may reserve
+the left margin for gutters. When nil, soft-wrap uses a left margin of
+0."
   :type 'boolean
   :group 'soft-wrap)
 
 (defcustom soft-wrap-enable-wrap-prefix t
-  "Whether to enable `visual-wrap-prefix-mode' when available." 
+  "Whether to enable `visual-wrap-prefix-mode' when available."
   :type 'boolean
   :group 'soft-wrap)
 
 (defcustom soft-wrap-verify-width t
-  "Whether to verify the resulting wrap width and warn on mismatch." 
+  "Whether to verify the resulting wrap width and warn on mismatch."
   :type 'boolean
   :group 'soft-wrap)
 
+;; Andrea: the nane is ridicolously long
 (defcustom soft-wrap-reset-right-margin-in-non-soft-wrap-buffers t
   "Whether to reset a window's right margin for non-soft-wrap buffers.
 
 This prevents right margins set for one buffer from leaking into other buffers
-when a window is reused." 
+when a window is reused."
   :type 'boolean
   :group 'soft-wrap)
 
+;; Andrea: what is the default? I think we should save it by default.
 (defvar-local soft-wrap--saved-auto-fill nil
   "Value of `auto-fill-function' before soft wrap was enabled.")
-
-(defvar-local soft-wrap--enabled nil
-  "Non-nil when soft wrapping is enabled in the current buffer.")
 
 (defvar-local soft-wrap--target-width nil
   "Target wrap width for the current buffer.
@@ -76,21 +76,35 @@ when a window is reused."
 When nil, the current value of `fill-column' is used when enabling.")
 
 (defvar-local soft-wrap--warned-mismatch nil
-  "Non-nil once we've warned about a wrap-width mismatch.")
+  "Automatically set to non-nil after first warning about a wrap-width mismatch.")
 
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
-(define-minor-mode soft-wrap-global-mode
-  "Global mode that keeps soft-wrap window margins correct.
+;;;###autoload
+(define-minor-mode soft-wrap-mode
+  "Buffer-local minor mode for visual soft wrapping at a target column.
 
-Installs hooks on `window-state-change-functions' and
-`window-buffer-change-functions' to adjust right margins as windows are
-resized or switch buffers.  Enabling this mode is a prerequisite for
-`soft-wrap-enable' to work correctly."
+The target column is taken from `soft-wrap-default-width' if non-nil,
+otherwise from `fill-column'."
+  :lighter (:eval (format " (Wrap %d)" (or soft-wrap--target-width fill-column)))
+  :group 'soft-wrap
+  (if soft-wrap-mode
+      (soft-wrap--do-enable)
+    (soft-wrap--do-disable)))
+
+;;;###autoload
+(define-globalized-minor-mode global-soft-wrap-mode
+  soft-wrap-mode soft-wrap-mode
+  :group 'soft-wrap)
+
+(define-minor-mode soft-wrap--hooks-mode
+  "Internal mode that installs window hooks needed by `soft-wrap-mode'.
+
+Not intended for direct use — `soft-wrap-mode' activates this automatically."
   :global t
   :group 'soft-wrap
-  (if soft-wrap-global-mode
+  (if soft-wrap--hooks-mode
       (progn
         (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
         (when (boundp 'window-buffer-change-functions)
@@ -99,11 +113,11 @@ resized or switch buffers.  Enabling this mode is a prerequisite for
     (remove-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)))
 
 (defun soft-wrap--window-target-width (_window)
-  "Return the target wrap width for the current buffer." 
+  "Return the target wrap width for the current buffer."
   (or soft-wrap--target-width fill-column))
 
 (defun soft-wrap--reserved-continuation-cols (window)
-  "Return columns reserved for continuation/truncation glyphs in WINDOW." 
+  "Return columns reserved for continuation/truncation glyphs in WINDOW."
   (let* ((fringes (window-fringes window))
          (lfringe (car fringes))
          (rfringe (nth 1 fringes)))
@@ -119,7 +133,7 @@ resized or switch buffers.  Enabling this mode is a prerequisite for
 
 Mirrors the logic of Emacs' `window-max-chars-per-line' (but does not call it).
 This accounts for line numbers, continuation/truncation glyph reservation, and
-font metrics." 
+font metrics."
   (with-selected-window (window-normalize-window window t)
     (let* ((window-width (window-body-width window t))
            (font-width (or (window-font-width window nil)
@@ -133,7 +147,7 @@ font metrics."
       (- ncols (soft-wrap--reserved-continuation-cols window)))))
 
 (defun soft-wrap--debug-data (&optional window)
-  "Return a plist of soft-wrap state for debugging." 
+  "Return a plist of soft-wrap state for debugging."
   (let* ((buf (current-buffer))
          (wins (if (and window (window-live-p window))
                    (list window)
@@ -143,7 +157,7 @@ font metrics."
      :major-mode major-mode
      :window-system window-system
      :fill-column fill-column
-     :soft-wrap-enabled soft-wrap--enabled
+     :soft-wrap-mode soft-wrap-mode
      :soft-wrap-target soft-wrap--target-width
      :visual-line-mode (bound-and-true-p visual-line-mode)
      :visual-wrap-prefix-mode (and (fboundp 'visual-wrap-prefix-mode)
@@ -170,12 +184,12 @@ font metrics."
       wins))))
 
 (defun soft-wrap--adjust-window-margins (window)
-  "Adjust WINDOW's right margin to hit the target wrap width." 
+  "Adjust WINDOW's right margin to hit the target wrap width."
   (when (window-live-p window)
     (let ((buf (window-buffer window)))
       (when (buffer-live-p buf)
         (with-current-buffer buf
-          (when soft-wrap--enabled
+          (when soft-wrap-mode
             (let* ((target (soft-wrap--window-target-width window))
                    (margins (window-margins window))
                    (left (if soft-wrap-preserve-left-margin (or (car margins) 0) 0))
@@ -209,21 +223,21 @@ font metrics."
                      :warning)))))))))))
 
 (defun soft-wrap--refresh-buffer-windows ()
-  "Refresh margins for all windows showing the current buffer." 
+  "Refresh margins for all windows showing the current buffer."
   (dolist (w (get-buffer-window-list (current-buffer) nil t))
     (soft-wrap--adjust-window-margins w)))
 
 (defun soft-wrap--window-state-change (window)
-  "Hook: keep soft-wrap margins correct for WINDOW." 
+  "Hook: keep soft-wrap margins correct for WINDOW."
   (soft-wrap--adjust-window-margins window))
 
 (defun soft-wrap--window-buffer-change (window &rest _args)
-  "Hook: keep margins correct when WINDOW changes buffers." 
+  "Hook: keep margins correct when WINDOW changes buffers."
   (when (window-live-p window)
     (let ((buf (window-buffer window)))
       (when (buffer-live-p buf)
         (with-current-buffer buf
-          (if soft-wrap--enabled
+          (if soft-wrap-mode
               (progn
                 (unless (bound-and-true-p visual-line-mode)
                   (visual-line-mode 1))
@@ -241,27 +255,14 @@ font metrics."
                 (when (> right 0)
                   (set-window-margins window left 0))))))))))
 
-
-;;;###autoload
-(defun soft-wrap-enable (&optional width)
-  "Enable visual soft wrapping in the current buffer.
-
-WIDTH, when non-nil, is the target wrap column.
-
-When WIDTH is nil, use `soft-wrap-default-width' if non-nil, otherwise use
-`fill-column'.
-
-Disables hard wrapping (`auto-fill-mode') if it is active." 
-  (interactive "P")
-  (soft-wrap-global-mode 1)
+(defun soft-wrap--do-enable ()
+  "Enable soft wrapping in the current buffer (internal helper)."
+  (soft-wrap--hooks-mode 1)
   (setq-local soft-wrap--saved-auto-fill auto-fill-function)
   (auto-fill-mode -1)
 
   (setq-local soft-wrap--target-width
-              (if width
-                  (prefix-numeric-value width)
-                (or soft-wrap-default-width fill-column)))
-  (setq-local soft-wrap--enabled t)
+              (or soft-wrap-default-width fill-column))
   (setq-local soft-wrap--warned-mismatch nil)
 
   (visual-line-mode 1)
@@ -281,14 +282,10 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
 
   ;; Adjust immediately if already displayed; otherwise window-buffer-change
   ;; will handle the first display.
-  (soft-wrap--refresh-buffer-windows)
-  nil)
+  (soft-wrap--refresh-buffer-windows))
 
-;;;###autoload
-(defun soft-wrap-disable ()
-  "Disable visual soft wrapping in the current buffer." 
-  (interactive)
-  (setq-local soft-wrap--enabled nil)
+(defun soft-wrap--do-disable ()
+  "Disable soft wrapping in the current buffer (internal helper)."
   (setq-local soft-wrap--target-width nil)
   (setq-local soft-wrap--warned-mismatch nil)
 
@@ -315,10 +312,9 @@ Disables hard wrapping (`auto-fill-mode') if it is active."
   (when soft-wrap--saved-auto-fill
     (auto-fill-mode 1))
   (kill-local-variable 'soft-wrap--saved-auto-fill)
-  (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode)
-  nil)
+  (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode))
 
-(defun soft-wrap-debug-dump (&optional window)
+(defun soft-wrap--debug-dump (&optional window)
   "Pretty-print soft-wrap state for debugging.
 
 When WINDOW is non-nil, include details for that window; otherwise report all
