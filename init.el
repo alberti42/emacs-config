@@ -238,9 +238,9 @@ before entering it.  Does nothing if the buffer does not visit a file."
   'lsp-ltex-plus-config
   "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
-;; VCS gutter (TTY)
+; ;; VCS gutter (TTY)
 (emacs-config-load-module
-  'git-gutter-tty
+  'git-gutter-config
   "Could not load git-gutter-tty.el; VCS gutter is disabled.")
 
 ;; tmux open-file bridge: open files in Emacs from tmux via IPC.

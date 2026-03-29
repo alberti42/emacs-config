@@ -1,4 +1,4 @@
-;;; git-gutter-tty.el --- Git gutter in terminal Emacs -*- lexical-binding: t; -*-
+;;; git-gutter-config.el --- Git gutter in terminal Emacs -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -50,6 +50,6 @@
     (add-hook 'magit-post-refresh-hook #'git-gutter:update-all-windows)))
 
 
-(provide 'git-gutter-tty)
+(provide 'git-gutter-config)
 
-;;; git-gutter-tty.el ends here
+;;; git-gutter-config.el ends here
