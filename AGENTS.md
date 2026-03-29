@@ -59,7 +59,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
-- `wrap.el`: soft-wrap helpers (visual only) used by text/Markdown configs.
+- `soft-wrap.el`: soft-wrap helpers (visual only) used by text/Markdown configs.
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences. Adds explicit decoders for Backspace variants (`S-backspace`, `C-backspace`, `C-S-backspace`), Ctrl+Tab (`\e[9;5u`), and Shift+Enter (`\e[13;2u`). Requires the application to opt in to CSI-u mode via `printf '\e[>4;1m'` (sent from zsh on startup); without this, tmux and terminals correctly fall back to legacy encoding.
 - `dired-config.el`: Dired customizations (`dired-narrow`).
@@ -77,6 +77,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `git-gutter-tty.el`: VCS gutter indicators in terminal frames.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
+- `theme-harmonize.el`: synchronizes package faces with the active theme after every theme change. Sets `line-number` background (TTY only, via `theme-harmonize-tty-line-number`) to match the terminal emulator's padding color. Propagates the `line-number` background to git-gutter faces so the gutter column blends uniformly. Sets the background of `compilation-error`, `compilation-warning`, and `compilation-info` to match `line-number` so flymake left-margin indicators blend with the gutter column. Hooks into `enable-theme-functions` (Emacs 29+).
 - `themes-config.el`: theme loading pipeline — loads `theme-harmonize` and `zac-theme-autodetection` via `use-package` (`:straight nil`, `:load-path emacs-config-dir`), sets `theme-harmonize-tty-line-number` and `zac-load-theme-callback`, installs and configures `modus-themes`, then loads `zac-theme-autodetection` last.
 - `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; invokes `zac-load-theme-callback` (user-supplied callback). Contains no theme or color choices itself. Loaded via `use-package` (`:straight nil`) with `zac-load-theme-callback` set in `:init` so the watcher picks it up on first application.
 
@@ -120,10 +121,9 @@ Current syntax modules:
 
 Wrapping:
 
-- `wrap.el` provides `soft-wrap-enable` / `...-disable` /
-  `...-toggle` for visual-only wrapping.
-- Visual wrap-at-column uses `visual-fill-column` (no newlines inserted; pinned to a fork that fixes a conflict with git-gutter in TTY frames — upstream resets the left margin to 0 before writing its own value, wiping git-gutter's reservation on every redisplay; the fork reads the existing left margin first and adds to it).
-- Markdown list wrap alignment uses `adaptive-wrap`.
+- `soft-wrap.el` provides `soft-wrap-enable` / `...-disable` for visual-only wrapping. `soft-wrap-debug-dump` is a non-interactive helper for debugging.
+- Wrap-at-column is implemented with a window right margin (no newlines inserted). The left margin is preserved so TTY gutters (e.g. git-gutter) keep working.
+- Continuation indentation uses built-in `visual-wrap-prefix-mode` (Emacs 30+). No external packages required.
 
 Completion submodules (loaded by `completion.el`):
 
@@ -295,7 +295,8 @@ Design choice:
 - Theme selection (`zac-load-theme-callback`) is set in the `:init` block of `use-package zac-theme-autodetection` in `themes-config.el`, so it is always set before the package activates.
 - Line-number colors are set via `theme-harmonize-tty-line-number` in `themes-config.el`.
 - `theme-harmonize-theme` fires automatically via `enable-theme-functions` inside `load-theme`,
-  handling line-number overrides and git-gutter propagation without an explicit call.
+  handling line-number overrides, git-gutter propagation, and flymake margin indicator
+  background synchronization without an explicit call.
 
 ## LTEX+ Module Notes
 
