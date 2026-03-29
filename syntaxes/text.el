@@ -8,7 +8,7 @@
             (lambda ()
               ;; Visual soft wrap at 100 columns.
               (setq-local fill-column 100)
-              (soft-wrap-enable))))
+              (soft-wrap-mode 1))))
 
 (provide 'syntaxes-text)
 ;;; syntaxes/text.el ends here

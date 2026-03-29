@@ -59,7 +59,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
-- `soft-wrap.el`: soft-wrap helpers (visual only) used by text/Markdown configs.
+- `soft-wrap.el`: `soft-wrap-mode` (buffer-local minor mode) and `global-soft-wrap-mode` for visual-only soft wrapping. Used by text/Markdown configs.
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences. Adds explicit decoders for Backspace variants (`S-backspace`, `C-backspace`, `C-S-backspace`), Ctrl+Tab (`\e[9;5u`), and Shift+Enter (`\e[13;2u`). Requires the application to opt in to CSI-u mode via `printf '\e[>4;1m'` (sent from zsh on startup); without this, tmux and terminals correctly fall back to legacy encoding.
 - `dired-config.el`: Dired customizations (`dired-narrow`).
@@ -121,7 +121,7 @@ Current syntax modules:
 
 Wrapping:
 
-- `soft-wrap.el` provides `soft-wrap-enable` / `...-disable` for visual-only wrapping. `soft-wrap-debug-dump` is a non-interactive helper for debugging.
+- `soft-wrap.el` provides `soft-wrap-mode` (buffer-local) and `global-soft-wrap-mode` for visual-only wrapping. The target column is controlled via `soft-wrap-default-width` (defcustom) or `fill-column`. `soft-wrap--debug-dump` is an internal helper for debugging.
 - Wrap-at-column is implemented with a window right margin (no newlines inserted). The left margin is preserved so TTY gutters (e.g. git-gutter) keep working.
 - Continuation indentation uses built-in `visual-wrap-prefix-mode` (Emacs 30+). No external packages required.
 

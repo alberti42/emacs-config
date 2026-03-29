@@ -45,8 +45,8 @@
                                   ;; text-mode-hook enables soft-wrap with fill-column=100.
                                   ;; Disable it here; git-commit-mode enforces its own 72-column
                                   ;; hard-wrap convention via auto-fill-mode anyway.
-                                  (when (fboundp 'soft-wrap-disable)
-                                    (soft-wrap-disable))))
+                                  (when (fboundp 'soft-wrap-mode)
+                                    (soft-wrap-mode -1))))
 (add-hook 'git-rebase-mode-hook (lambda () (display-line-numbers-mode -1)))
 
 ;; Side-by-side diff viewer.

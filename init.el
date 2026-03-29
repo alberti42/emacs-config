@@ -139,7 +139,7 @@
 (use-package soft-wrap
   :straight nil
   :load-path emacs-config-dir
-  :commands (soft-wrap-mode global-soft-wrap-mode soft-wrap-enable soft-wrap-disable))
+  :commands (soft-wrap-mode global-soft-wrap-mode))
 
 ;; Per-syntax indentation settings
 (emacs-config-load-module
