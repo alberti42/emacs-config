@@ -413,24 +413,9 @@ Argument TEST is the case before BODY execution."
                (setq git-gutter:enabled t)))
            (kill-buffer proc-buf)))))))
 
-(defun git-gutter:tty-face (face)
-  "Resolve FACE for TTY left-margin rendering.
-In TTY frames, named face symbols passed to `propertize' do not have their
-background attribute applied when the text is rendered inside the left margin
-via a `display' property.  Return an inline face plist that includes the
-resolved background explicitly so TTY terminals render it correctly.
-In GUI frames FACE is returned unchanged."
-  (if (or (display-graphic-p) (not (symbolp face)))
-      face
-    (let ((bg (face-background face nil))
-          (fg (face-foreground face nil t)))
-      (if bg
-          `(:foreground ,fg :background ,bg)
-        face))))
-
-(defun git-gutter:gutter-seperator ()
+(defsubst git-gutter:gutter-seperator ()
   (when git-gutter:separator-sign
-    (propertize git-gutter:separator-sign 'face (git-gutter:tty-face 'git-gutter:separator))))
+    (propertize git-gutter:separator-sign 'face 'git-gutter:separator)))
 
 (defun git-gutter:before-string (sign)
   (let ((gutter-sep (concat sign (git-gutter:gutter-seperator))))
@@ -449,7 +434,7 @@ In GUI frames FACE is returned unchanged."
       (setq face (append
                   (get-text-property 0 'face sign)
                   `(:inherit ,face))))
-    (propertize sign 'face (git-gutter:tty-face face))))
+    (propertize sign 'face face)))
 
 (defsubst git-gutter:linum-get-overlay (pos)
   (cl-loop for ov in (overlays-in pos pos)
@@ -468,7 +453,7 @@ In GUI frames FACE is returned unchanged."
       (let ((raw (substring-no-properties sign)))
         (when (string-match-p "\\S-" raw)
           (overlay-put it 'priority 10)))
-      (when (and git-gutter:visual-line (not (display-graphic-p)))
+      (when git-gutter:visual-line
         (let ((wp (git-gutter:wrap-prefix-for-sign sign pos)))
             (overlay-put it 'wrap-prefix wp))))))
 
@@ -484,9 +469,9 @@ preserved on wrapped rows."
   (if git-gutter:linum-enabled
       (git-gutter:put-signs-linum sign points)
     (dolist (pos points)
-      (let* ((eol (when (and git-gutter:visual-line (not (display-graphic-p)))
+      (let* ((eol (when git-gutter:visual-line
                     (save-excursion (goto-char pos) (line-end-position))))
-             ;; Span to eol so `wrap-prefix' fires on continuation rows.
+             ;; Span to eol so `wrap-prefix' fires on every continuation row.
              (ov (make-overlay pos (or eol pos)))
              (gutter-sign (git-gutter:before-string sign)))
         (overlay-put ov 'before-string gutter-sign)
@@ -521,7 +506,7 @@ preserved on wrapped rows."
   (save-excursion
     (let ((sign (if git-gutter:unchanged-sign
                     (propertize git-gutter:unchanged-sign
-                                'face (git-gutter:tty-face 'git-gutter:unchanged))
+                                'face 'git-gutter:unchanged)
                   " "))
           points)
       (goto-char (point-min))
