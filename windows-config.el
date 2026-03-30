@@ -124,8 +124,8 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
       (shrink-window-horizontally 1)
     (enlarge-window-horizontally 1)))
 
-(global-set-key (kbd "C-c C-<right>") #'windows-config-resize-right)
-(global-set-key (kbd "C-c C-<left>")  #'windows-config-resize-left)
+(global-set-key (kbd "C-b C-<right>") #'windows-config-resize-right)
+(global-set-key (kbd "C-b C-<left>")  #'windows-config-resize-left)
 
 ;; Vertical: arrow direction = which way the shared border moves (tmux convention).
 ;; When a window exists below, the bottom border is moved:
@@ -148,8 +148,8 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
       (enlarge-window 1)
     (shrink-window 1)))
 
-(global-set-key (kbd "C-c C-<up>")   #'windows-config-resize-up)
-(global-set-key (kbd "C-c C-<down>") #'windows-config-resize-down)
+(global-set-key (kbd "C-b C-<up>")   #'windows-config-resize-up)
+(global-set-key (kbd "C-b C-<down>") #'windows-config-resize-down)
 
 (defvar-keymap window-resize-repeat-map
   :repeat t
@@ -204,17 +204,17 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
       (delete-window source)
       (select-window new-win))))
 
-(global-set-key (kbd "C-c S-<left>")  #'windows-config-join-left)
-(global-set-key (kbd "C-c S-<right>") #'windows-config-join-right)
-(global-set-key (kbd "C-c S-<up>")    #'windows-config-join-up)
-(global-set-key (kbd "C-c S-<down>")  #'windows-config-join-down)
+(global-set-key (kbd "C-b S-<left>")  #'windows-config-join-left)
+(global-set-key (kbd "C-b S-<right>") #'windows-config-join-right)
+(global-set-key (kbd "C-b S-<up>")    #'windows-config-join-up)
+(global-set-key (kbd "C-b S-<down>")  #'windows-config-join-down)
 
 ;; Window swapping: swap the current window's buffer with an adjacent window,
 ;; equivalent to tmux swap-pane.  Uses windmove-swap-states-* (Emacs 28+).
-(global-set-key (kbd "C-c M-<left>")  #'windmove-swap-states-left)
-(global-set-key (kbd "C-c M-<right>") #'windmove-swap-states-right)
-(global-set-key (kbd "C-c M-<up>")    #'windmove-swap-states-up)
-(global-set-key (kbd "C-c M-<down>")  #'windmove-swap-states-down)
+(global-set-key (kbd "C-b M-<left>")  #'windmove-swap-states-left)
+(global-set-key (kbd "C-b M-<right>") #'windmove-swap-states-right)
+(global-set-key (kbd "C-b M-<up>")    #'windmove-swap-states-up)
+(global-set-key (kbd "C-b M-<down>")  #'windmove-swap-states-down)
 
 (provide 'windows-config)
 ;;; windows-config.el ends here
