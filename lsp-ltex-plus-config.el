@@ -203,11 +203,12 @@ This function works around both problems:
 3. It pre-runs `_ltex.checkDocument' so LTEX+ has fresh internal state before
    responding to the codeAction request.
 
-Note: we do NOT guard on empty diagnostics at invocation time.  After a
-correction is applied, LTEX+ clears its publishDiagnostics before re-analyzing,
-temporarily emptying lsp-mode's cache.  Guarding here would make the command
-appear broken while LTEX+ is rechecking.  LTEX+ ignores the client's diagnostic
-context anyway — it uses its own LanguageToolRuleMatch cache filtered by range."
+Note on the diagnostic guard: we do NOT guard on empty diagnostics at invocation
+time.  After a correction is applied, LTEX+ clears its old publishDiagnostics
+before re-analyzing, which temporarily empties lsp-mode's cache.  Guarding here
+would make the command appear broken while LTEX+ is still rechecking.  Instead we
+always proceed: if the cursor is not on an error, `_ltex.checkDocument' will
+confirm that and `textDocument/codeAction' will return an empty list."
   (interactive)
   (let* ((buf (current-buffer))
          (ws (my--lsp-ltex-plus--initialized-workspace))
@@ -225,8 +226,10 @@ context anyway — it uses its own LanguageToolRuleMatch cache filtered by range
              :arguments (vector (list :uri (lsp--buffer-uri)
                                       :codeLanguageId (lsp-buffer-language))))
        (lambda (_res)
+         ;; Wait briefly for LTEX+ to publish the updated diagnostics, then fire.
          (run-at-time 0.3 nil #'my--lsp-ltex-plus--dispatch-code-actions buf params))
        :error-handler (lambda (_err)
+                        ;; checkDocument failed; try code actions with the params we already have.
                         (my--lsp-ltex-plus--dispatch-code-actions buf params))
        :mode 'detached))))
 
