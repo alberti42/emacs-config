@@ -463,7 +463,7 @@ Prepends the gutter sign to any existing `wrap-prefix' text property at POS
 so that continuation indentation (e.g. from `visual-wrap-prefix-mode') is
 preserved on wrapped rows."
   (let ((existing (get-text-property pos 'wrap-prefix)))
-    (concat (git-gutter:before-string sign) (or existing ""))))
+    (concat (git-gutter:before-string sign) (if (stringp existing) existing ""))))
 
 (defun git-gutter:put-signs (sign points)
   (if git-gutter:linum-enabled
