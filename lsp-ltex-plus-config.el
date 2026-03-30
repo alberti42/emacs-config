@@ -178,18 +178,15 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
                  (with-current-buffer buf
                    (if (seq-empty-p actions)
                        (message "[LTEX+] No code actions at point")
-                     (condition-case err
-                         (let ((action (lsp--select-action (seq-into actions 'vector))))
-                           (when action
-                             (lsp--execute-code-action action)))
-                       (quit nil)
-                       (error (message "[LTEX+] Failed to apply action: %S" err)))))))
+                     (let ((action (lsp--select-action (seq-into actions 'vector))))
+                       (when action
+                         (lsp--execute-code-action action)))))))
              :error-handler (lambda (err)
                               (message "[LTEX+] Code action error: %S" err))
              :mode 'detached)))))))
 
 (defun my--lsp-ltex-plus-execute-code-action ()
-  "Execute LTEX+ code action asynchronously.
+  "Execute LTEX+ code action in Magit commit buffers.
 
 `lsp-execute-code-action' uses a synchronous `lsp-request' that blocks Emacs.
 While it blocks, Magit timers and Corfu completion fire new `lsp-request' calls
@@ -198,26 +195,20 @@ code action request before LTEX+ can respond.
 
 This function works around both problems:
 1. It is async (non-blocking), so the user is not stuck waiting.
-2. It captures the code-action params (cursor position + diagnostics) at
-   invocation time, before any async delay, so the range is always correct.
-3. It pre-runs `_ltex.checkDocument' so LTEX+ has fresh internal state before
-   responding to the codeAction request.
-
-Note on the diagnostic guard: we do NOT guard on empty diagnostics at invocation
-time.  After a correction is applied, LTEX+ clears its old publishDiagnostics
-before re-analyzing, which temporarily empties lsp-mode's cache.  Guarding here
-would make the command appear broken while LTEX+ is still rechecking.  Instead we
-always proceed: if the cursor is not on an error, `_ltex.checkDocument' will
-confirm that and `textDocument/codeAction' will return an empty list."
+2. It captures the code-action params (cursor position + diagnostics) immediately
+   on invocation, before any async delay, so they cannot drift.
+3. It pre-runs `_ltex.checkDocument' so LTEX+ has fresh diagnostics and can
+   respond to codeAction without being interrupted by an ongoing grammar check."
   (interactive)
   (let* ((buf (current-buffer))
          (ws (my--lsp-ltex-plus--initialized-workspace))
          ;; Capture params NOW, while point is on the diagnostic.
-         ;; The range is computed from the current diagnostics (if any) or falls
-         ;; back to the cursor position — both work with LTEX+.
+         ;; Do NOT defer this to the async callback — point may have moved.
          (params (lsp--text-document-code-action-params)))
     (unless ws
       (user-error "[LTEX+] No active LTEX+ workspace in this buffer"))
+    (when (seq-empty-p (plist-get (plist-get params :context) :diagnostics))
+      (user-error "[LTEX+] No diagnostics at point — move cursor onto the underlined text"))
     (message "[LTEX+] Checking document…")
     (with-lsp-workspace ws
       (lsp-request-async
@@ -226,10 +217,10 @@ confirm that and `textDocument/codeAction' will return an empty list."
              :arguments (vector (list :uri (lsp--buffer-uri)
                                       :codeLanguageId (lsp-buffer-language))))
        (lambda (_res)
-         ;; Wait briefly for LTEX+ to publish the updated diagnostics, then fire.
+         ;; Wait briefly for LTEX+ to publish updated diagnostics, then fire.
          (run-at-time 0.3 nil #'my--lsp-ltex-plus--dispatch-code-actions buf params))
        :error-handler (lambda (_err)
-                        ;; checkDocument failed; try code actions with the params we already have.
+                        ;; Check failed; try code actions with the params we already have.
                         (my--lsp-ltex-plus--dispatch-code-actions buf params))
        :mode 'detached))))
 
