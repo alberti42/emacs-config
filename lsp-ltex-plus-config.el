@@ -163,27 +163,33 @@ ATTEMPTS controls how many times we retry while waiting for LSP."
              (my--lsp-ltex-plus--schedule-check buf (1- attempts)))
             (t nil))))))))
 
-(defun my--lsp-ltex-plus--dispatch-code-actions (buf params)
-  "Send a textDocument/codeAction request for BUF using PARAMS and present results."
+(defun my--lsp-ltex-plus--dispatch-code-actions (buf params ws)
+  "Send a textDocument/codeAction request for BUF using PARAMS and present results.
+WS is the LTEX+ workspace captured at invocation time — do not re-fetch it here,
+as the workspace status may fluctuate briefly after `_ltex.checkDocument'."
   (when (buffer-live-p buf)
     (with-current-buffer buf
-      (let ((ws (my--lsp-ltex-plus--initialized-workspace)))
-        (when ws
-          (with-lsp-workspace ws
-            (lsp-request-async
-             "textDocument/codeAction"
-             params
-             (lambda (actions)
-               (when (buffer-live-p buf)
-                 (with-current-buffer buf
-                   (if (seq-empty-p actions)
-                       (message "[LTEX+] No code actions at point")
-                     (let ((action (lsp--select-action (seq-into actions 'vector))))
-                       (when action
-                         (lsp--execute-code-action action)))))))
-             :error-handler (lambda (err)
-                              (message "[LTEX+] Code action error: %S" err))
-             :mode 'detached)))))))
+      (if (not ws)
+          (message "[LTEX+] Workspace not available for code actions")
+        (with-lsp-workspace ws
+          (lsp-request-async
+           "textDocument/codeAction"
+           params
+           (lambda (actions)
+             (when (buffer-live-p buf)
+               (with-current-buffer buf
+                 (if (seq-empty-p actions)
+                     (message "[LTEX+] No code actions at point")
+                   (let ((action (lsp--select-action (seq-into actions 'vector))))
+                     (when action
+                       ;; Execute in the LTEX+ workspace — lsp--execute-code-action
+                       ;; dispatches workspace/executeCommand which must go to LTEX+,
+                       ;; not to another attached server.
+                       (with-lsp-workspace ws
+                         (lsp--execute-code-action action))))))))
+           :error-handler (lambda (err)
+                            (message "[LTEX+] Code action error: %S" err))
+           :mode 'detached))))))
 
 (defun my--lsp-ltex-plus-execute-code-action ()
   "Execute LTEX+ code action in Magit commit buffers.
@@ -207,8 +213,11 @@ This function works around both problems:
          (params (lsp--text-document-code-action-params)))
     (unless ws
       (user-error "[LTEX+] No active LTEX+ workspace in this buffer"))
-    (when (seq-empty-p (plist-get (plist-get params :context) :diagnostics))
-      (user-error "[LTEX+] No diagnostics at point — move cursor onto the underlined text"))
+    ;; Do NOT guard on empty diagnostics: LTEX+ uses its own server-side cache,
+    ;; not the client diagnostic context, to generate code actions.  After
+    ;; applying a correction, LTEX+ briefly clears diagnostics before
+    ;; republishing — guarding here causes spurious "No diagnostics at point"
+    ;; errors during that window, making the command appear broken.
     (message "[LTEX+] Checking document…")
     (with-lsp-workspace ws
       (lsp-request-async
@@ -218,10 +227,12 @@ This function works around both problems:
                                       :codeLanguageId (lsp-buffer-language))))
        (lambda (_res)
          ;; Wait briefly for LTEX+ to publish updated diagnostics, then fire.
-         (run-at-time 0.3 nil #'my--lsp-ltex-plus--dispatch-code-actions buf params))
+         ;; Pass ws explicitly — re-fetching it here risks a nil return if
+         ;; the workspace status briefly changes after the check completes.
+         (run-at-time 0.3 nil #'my--lsp-ltex-plus--dispatch-code-actions buf params ws))
        :error-handler (lambda (_err)
                         ;; Check failed; try code actions with the params we already have.
-                        (my--lsp-ltex-plus--dispatch-code-actions buf params))
+                        (my--lsp-ltex-plus--dispatch-code-actions buf params ws))
        :mode 'detached))))
 
 (defun my--lsp-ltex-plus--check-document-once ()
