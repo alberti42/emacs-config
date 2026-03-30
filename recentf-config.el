@@ -38,7 +38,7 @@
     (when (timerp recentf--save-timer)
       (cancel-timer recentf--save-timer))
     (setq recentf--save-timer
-          (run-with-idle-timer 1 nil #'recentf-save-list)))
+          (run-with-idle-timer 0.500 nil #'recentf-save-list)))
   (add-hook 'find-file-hook #'recentf-save-debounced)
   (add-hook 'server-visit-hook #'recentf-save-debounced))
 
