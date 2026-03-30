@@ -311,6 +311,27 @@ Design choice:
 If you change this module, preserve those invariants unless explicitly
 requested.
 
+### `my--lsp-ltex-plus-execute-code-action` — invariants (do not regress)
+
+**No diagnostics guard.** Do NOT add a guard like
+`(when (seq-empty-p diagnostics) (user-error "No diagnostics at point"))`.
+LTEX+ generates code actions from its own server-side cache, not from the
+`context.diagnostics` field in the codeAction request. After applying a
+correction, LTEX+ briefly sends `publishDiagnostics []` before republishing
+fresh ones, so the client diagnostic list is transiently empty. A guard during
+this window makes the command appear permanently broken.
+
+**Capture workspace at invocation; pass it through all callbacks.** Do NOT
+re-fetch the workspace inside `dispatch-code-actions` or its async callback.
+After `_ltex.checkDocument` completes, the workspace status can briefly
+fluctuate, causing `my--lsp-ltex-plus--initialized-workspace` to return nil
+and dispatch to silently do nothing.
+
+**Wrap `lsp--execute-code-action` in `(with-lsp-workspace ws ...)`.** The
+action-execution callback runs outside any workspace binding; without this,
+`workspace/applyEdit` or `workspace/executeCommand` can target the wrong
+attached server.
+
 ## Common Tasks
 
 Add a new optional module:
