@@ -81,13 +81,46 @@ When nil, the current value of `fill-column' is used when enabling.")
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
+(defvar soft-wrap-mode-map (make-sparse-keymap)
+  "Keymap for `soft-wrap-mode'.")
+
+(easy-menu-define soft-wrap-mode-menu soft-wrap-mode-map
+  "Menu for `soft-wrap-mode'."
+  '("Soft Wrap Mode"
+    ["Set wrap width..." soft-wrap-set-width]
+    "---"
+    ["Turn off minor mode" (soft-wrap-mode -1)]
+    ["Help for minor mode" (describe-function 'soft-wrap-mode)]))
+
+(defun soft-wrap-set-width ()
+  "Interactively set the wrap width for the current buffer.
+
+Offers `fill-column' as a choice (which makes the width track `fill-column'
+dynamically) or accepts any integer."
+  (interactive)
+  (let* ((fc fill-column)
+         (fc-choice (format "fill-column (%d)" fc))
+         (input (completing-read
+                 "Wrap width: "
+                 (list fc-choice)
+                 nil nil nil nil fc-choice))
+         (new-width (if (equal input fc-choice)
+                        nil
+                      (let ((n (string-to-number input)))
+                        (if (> n 0) n
+                          (user-error "Invalid wrap width: %s" input))))))
+    (setq-local soft-wrap--target-width new-width)
+    (setq-local soft-wrap--warned-mismatch nil)
+    (soft-wrap--refresh-buffer-windows)))
+
 ;;;###autoload
 (define-minor-mode soft-wrap-mode
   "Buffer-local minor mode for visual soft wrapping at a target column.
 
 The target column is taken from `soft-wrap-default-width' if non-nil,
 otherwise from `fill-column'."
-  :lighter (:eval (format " (Wrap %d)" (or soft-wrap--target-width fill-column)))
+  :lighter (:eval (format " Wrap:%d" (or soft-wrap--target-width fill-column)))
+  :keymap soft-wrap-mode-map
   :group 'soft-wrap
   (if soft-wrap-mode
       (soft-wrap--do-enable)
@@ -195,11 +228,12 @@ font metrics."
                    (left (if soft-wrap-preserve-left-margin (or (car margins) 0) 0))
                    (right (or (cdr margins) 0))
                    (cur (soft-wrap--computed-max-chars-per-line window))
+                   (window-too-narrow (< cur target))
                    (delta (- cur target))
                    (new-right (max 0 (+ right delta))))
               (unless (= new-right right)
                 (set-window-margins window left new-right))
-              (when soft-wrap-verify-width
+              (when (and soft-wrap-verify-width (not window-too-narrow))
                 ;; Verify against Emacs' computed value and apply a single
                 ;; corrective adjustment if needed.
                 (let* ((after (window-max-chars-per-line window))
