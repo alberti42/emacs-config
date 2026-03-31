@@ -26,18 +26,29 @@
   "Background color used for the gutter column in the reproduction buffer.
 Change this to any color that contrasts clearly with the frame background.")
 
-(defun debug-left-margin--annotate-line (buf line)
-  "Place a '!' annotation in the left margin of LINE in BUF."
+(defun debug-left-margin--make-sign (sign)
+  "Return a propertized margin string displaying SIGN."
+  (propertize " "
+              'display
+              `((margin left-margin)
+                ,(propertize sign 'face `(:foreground "white" :background ,debug-left-margin-gutter-background)))))
+
+(defun debug-left-margin--annotate-all (buf)
+  "Annotate every line in BUF: '$' on odd lines, ' ' on even lines.
+
+This simulates the best a package can do without the xdisp.c patch:
+every text line gets a margin character so the background is uniform,
+but rows below the last line of text remain uncolored."
   (with-current-buffer buf
     (save-excursion
       (goto-char (point-min))
-      (forward-line (1- line))
-      (let ((ov (make-overlay (point) (1+ (point)))))
-        (overlay-put ov 'before-string
-                     (propertize " "
-                                 'display
-                                 `((margin left-margin)
-                                   ,(propertize "!" 'face `(:foreground "white" :background ,debug-left-margin-gutter-background)))))))))
+      (let ((line 1))
+        (while (not (eobp))
+          (let* ((sign (if (= (% line 2) 1) "$" " "))
+                 (ov (make-overlay (point) (1+ (point)))))
+            (overlay-put ov 'before-string (debug-left-margin--make-sign sign)))
+          (setq line (1+ line))
+          (forward-line 1))))))
 
 (defun debug-left-margin-show ()
   "Reproduce the left-margin background stripe in a scratch buffer.
@@ -78,9 +89,9 @@ to make the stripe clearly visible below it.
       (set-window-buffer (selected-window) buf)
       (set-window-margins (selected-window) 1)
 
-      ;; Annotate lines 1 and 3 to simulate per-line gutter annotations.
-      (debug-left-margin--annotate-line buf 1)
-      (debug-left-margin--annotate-line buf 3)
+      ;; Annotate all lines to simulate the best workaround possible
+      ;; without the xdisp.c patch.
+      (debug-left-margin--annotate-all buf)
 
       ;; Enable line numbers.
       (display-line-numbers-mode 1)
