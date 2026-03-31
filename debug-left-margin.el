@@ -16,8 +16,8 @@
 ;; Usage:
 ;;   M-x debug-left-margin-show
 ;;
-;; This command can be run from "emacs -Q" after loading this file:
-;;   emacs -Q --load /path/to/debug-left-margin.el
+;; This command can be run from "emacs -Q":
+;;   emacs -Q --load /path/to/debug-left-margin.el --eval "(debug-left-margin-show)"
 
 ;;; Code:
 
