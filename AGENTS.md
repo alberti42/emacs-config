@@ -31,6 +31,7 @@ Key files:
 - `early-init.el`
   - Loaded by Emacs before the package system and GUI init.
   - Sets `load-prefer-newer t` so Emacs always uses source files newer than their byte-compiled counterparts.
+  - Loads `env-config.el` so PATH and other env vars are set before `straight.el` runs.
 
 - `init.el`
   - User entrypoint.
@@ -51,6 +52,7 @@ Key files:
 
 Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
+- `env-config.el`: shell environment import for non-daemon GUI Emacs. When `(not (daemonp))`, parses `export KEY='VALUE'` lines from `$XDG_CACHE_HOME/zsh/interactive-shell-env.sh` and `$XDG_CONFIG_HOME/envs/LanguageTools.sh`, sets them via `setenv` (updates `exec-path` for PATH), and sets `COLORTERM=truecolor` + `TERM=xterm-256color`. Skipped when running as a daemon (the launcher already set up the environment). Loaded from `early-init.el` so PATH is correct before `straight.el` and any package lookups run.
 - `ui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator, truncation/continuation glyphs.
 - `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits. Watches the parent **directory** (not the file itself) so that atomic writes via `rename(2)` are detected. Handles `renamed` events by updating `buffer-file-name` and re-attaching the watcher to the new path; handles `deleted` events by emitting a warning and tearing down the watcher.
 - `buffer-kill-config.el`: smart kill-buffer behaviour — suppresses the "Buffer modified; kill anyway?" prompt when the buffer content is identical to the file on disk (edits were made and then fully undone). Hooks into `kill-buffer-query-functions` and clears the modified flag before the prompt fires.
