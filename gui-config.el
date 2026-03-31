@@ -40,6 +40,19 @@
     (setq standard-display-table (make-display-table)))
 (set-display-table-slot standard-display-table 'vertical-border (make-glyph-code ?█))
 
+;; Truncation and continuation glyphs.
+;; In GUI, Emacs uses fringe bitmaps for these; the display-table slots are
+;; only visible in TTY frames.  Setting them here is harmless in GUI.
+(defface special-glyphs
+  '((t :inherit (shadow default)))
+  "Face for truncation and continuation glyphs."
+  :group 'basic-faces)
+
+(set-display-table-slot standard-display-table 0
+  (make-glyph-code ?… 'special-glyphs))  ; truncation sign
+(set-display-table-slot standard-display-table 1
+  (make-glyph-code ?↲ 'special-glyphs)) ; continuation sign
+
 ;; TTY mode-line separator
 ;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
 ;; which defaults to "%-" (fill with dashes).  Override it after all themes load.
