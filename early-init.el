@@ -1,4 +1,6 @@
 ;;; early-init.el --- Early init -*- no-byte-compile: t; lexical-binding: t; -*-
+
+;; Prefer loading newest version of a file (typically the non-compiled version)
 (setq load-prefer-newer t)
 
 ;; Import shell environment before straight.el and package lookups run,
