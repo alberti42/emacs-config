@@ -1,4 +1,4 @@
-;;; gui-config.el --- GUI frame chrome, fonts, and visual settings -*- lexical-binding: t; -*-
+;;; ui-config.el --- UI chrome, fonts, and visual settings -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -135,6 +135,6 @@
   (when (boundp 'server-after-make-frame-hook)
     (add-hook 'server-after-make-frame-hook #'emacs-config--activate-gui-frame)))
 
-(provide 'gui-config)
+(provide 'ui-config)
 
-;;; gui-config.el ends here
+;;; ui-config.el ends here

@@ -40,10 +40,10 @@
           (file-name-directory (file-truename init-path)))
     nil 'nomessage))
 
-;; GUI chrome, fonts, frame setup, and TTY mode-line separator.
+;; UI chrome, fonts, frame setup, and TTY mode-line separator.
 (emacs-config-load-module
-  'gui-config
-  "Could not load gui-config.el; GUI/frame settings are disabled.")
+  'ui-config
+  "Could not load ui-config.el; UI settings are disabled.")
 
 ;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.

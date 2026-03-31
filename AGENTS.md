@@ -51,7 +51,7 @@ Key files:
 
 Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
-- `gui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator.
+- `ui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator, truncation/continuation glyphs.
 - `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits. Watches the parent **directory** (not the file itself) so that atomic writes via `rename(2)` are detected. Handles `renamed` events by updating `buffer-file-name` and re-attaching the watcher to the new path; handles `deleted` events by emitting a warning and tearing down the watcher.
 - `buffer-kill-config.el`: smart kill-buffer behaviour — suppresses the "Buffer modified; kill anyway?" prompt when the buffer content is identical to the file on disk (edits were made and then fully undone). Hooks into `kill-buffer-query-functions` and clears the modified flag before the prompt fires.
 - `mac-clipboard.el`: macOS TTY clipboard sync — wires kill-ring writes to `pbcopy`; deliberately omits the paste direction to avoid spawning a `pbpaste` subprocess on every `C-y`.
