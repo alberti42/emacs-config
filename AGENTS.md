@@ -74,6 +74,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
+- `lsp-swift.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
@@ -116,6 +117,7 @@ Current syntax modules:
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
 - `syntaxes/yaml.el`: YAML indentation settings.
+- `syntaxes/swift.el`: Swift indentation (`swift-mode:basic-offset 4`).
 - `syntaxes/dired.el`: disables line numbers in Dired mode.
 - `syntaxes/agent-shell.el`: disables line numbers in `agent-shell-mode`.
 
@@ -258,6 +260,9 @@ These modules expect external programs on `PATH`:
 
 - LTEX+ (`lsp-ltex-plus-config.el`):
   - `ltex-ls-plus` (Java-based server)
+
+- Swift LSP (`lsp-swift.el`):
+  - `sourcekit-lsp` (ships with the Swift toolchain; on macOS located via `xcrun`)
 
 If any of these are missing, Emacs may still start but language features will
 not work; the intent is graceful degradation.
