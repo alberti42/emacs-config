@@ -35,19 +35,19 @@ will prompt at compile time."
   (setq-default TeX-master nil)
   ;; Show the compilation output buffer only on errors.
   (setq TeX-show-compilation nil)
-  ;; Enable SyncTeX so forward and backward search work between source and PDF.
+  ;; Enable SyncTeX so forward search (C-c C-v) embeds position information.
   ;; TeX-source-correlate-mode adds -synctex=1 to the compilation command.
-  ;; TeX-source-correlate-start-server ensures the Emacs server is running so
-  ;; that Skim's emacsclient call for backward search can reach Emacs.
   (TeX-source-correlate-mode 1)
   (setq TeX-source-correlate-method 'synctex)
-  (setq TeX-source-correlate-start-server t)
-  ;; Use Skim on macOS. Skim's displayline script supports SyncTeX forward
-  ;; search (jump from source line to the corresponding PDF location).
+  ;; macOS: use Skim as the PDF viewer.
+  ;; Skim's displayline script drives SyncTeX forward search (Emacs → Skim).
   ;; Flags: -b activates Skim without stealing focus; -g opens in background.
+  ;; TeX-source-correlate-start-server is set here because it is only needed
+  ;; for Skim's emacsclient callback (backward search: Skim → Emacs).
   (when (eq system-type 'darwin)
+    (setq TeX-source-correlate-start-server t) ; always start server for inverse search
     (setq TeX-view-program-list
-          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -b -g %n %o %b")))
+          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -g %n %o %b")))
     (setq TeX-view-program-selection '((output-pdf "Skim")))))
 
 (provide 'latex-config)
