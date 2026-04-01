@@ -64,13 +64,14 @@ will prompt at compile time."
 
   ;; macOS: use Skim as the PDF viewer.
   ;; Skim's displayline script drives SyncTeX forward search (Emacs → Skim).
-  ;; Flags: -b activates Skim without stealing focus; -g opens in background.
+  ;; Flags: -b shows the reading bar to indicate the target line in the PDF;
+  ;;        -g keeps Skim in the background (does not bring it to the foreground).
   ;; TeX-source-correlate-start-server is set here because it is only needed
   ;; for Skim's emacsclient callback (backward search: Skim → Emacs).
   (when (eq system-type 'darwin)
     (setq TeX-source-correlate-start-server t) ; always start server for inverse search
     (setq TeX-view-program-list
-          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -g %n %o %b")))
+          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -b %n %o %b")))
     (setq TeX-view-program-selection '((output-pdf "Skim")))))
 
 (provide 'latex-config)
