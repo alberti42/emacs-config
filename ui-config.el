@@ -119,7 +119,6 @@
   "Apply GUI-only settings (fonts, centering) to FRAME."
   (with-selected-frame (or frame (selected-frame))
     (when (display-graphic-p)
-      (set-face-attribute 'default nil :height 180)
       (blink-cursor-mode 1)
       (set-frame-parameter nil 'cursor-type 'box)
       (run-at-time 0 nil #'emacs-config-center-frame (selected-frame)))))
