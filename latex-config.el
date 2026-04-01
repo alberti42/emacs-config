@@ -35,6 +35,12 @@ will prompt at compile time."
   (setq-default TeX-master nil)
   ;; Show the compilation output buffer only on errors.
   (setq TeX-show-compilation nil)
+  ;; The "View" entry in TeX-command-list has its confirm flag set to t by
+  ;; default, causing AUCTeX to show the expanded viewer command and wait for
+  ;; confirmation before running it.  Clear the flag so the viewer launches
+  ;; immediately without prompting.
+  (let ((entry (assoc "View" TeX-command-list)))
+    (when entry (setf (nth 3 entry) nil)))
   ;; Enable SyncTeX so forward search (C-c C-v) embeds position information.
   ;; TeX-source-correlate-mode adds -synctex=1 to the compilation command.
   (TeX-source-correlate-mode 1)
