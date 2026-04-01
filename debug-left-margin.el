@@ -6,134 +6,165 @@
 ;; (bug#80693).  Each test creates a dedicated buffer and configures specific
 ;; conditions so the reviewer can verify the expected visual outcome.
 ;;
-;; All tests are callable from "emacs -Q" with the patched build:
+;; All tests use the built-in 'modus-vivendi' theme (included with Emacs since
+;; Emacs 28).  That theme gives the 'line-number' face a non-default background
+;; out of the box, making it possible to demonstrate the inconsistency using
+;; only components that ship with Emacs — no external packages or custom colors
+;; are required.
+;;
+;; Tests are callable from "emacs -Q" with the patched build:
 ;;
 ;;   emacs -Q --load /path/to/debug-left-margin.el \
 ;;             --eval "(face-margin-test-NNN)"
 ;;
 ;; Replace NNN with the test number (001 through 008).
 ;;
-;; Tests 003–008 describe their expected outcome in the buffer text so
-;; you know what to look for.
+;; Tests 001 and 002 are paired: 001 shows the stripe bug using only built-in
+;; components; 002 shows the fix by setting the 'margin' face background to
+;; match 'line-number'.  Tests 003–008 cover additional scenarios and describe
+;; their expected outcome in the buffer text.
 
 ;;; Code:
 
-(defvar face-margin-test-gutter-color "#2257a0"
-  "Blue used by the test suite to color the margin and line-number areas.
-Change this to any color that contrasts clearly with your frame background.")
-
 ;;; Helpers
 
-(defun face-margin-test--make-sign (sign color)
-  "Return a propertized margin string showing SIGN in COLOR."
+(defun face-margin-test--make-sign (sign face-spec)
+  "Return a propertized margin string showing SIGN styled with FACE-SPEC."
   (propertize " "
               'display
               `((margin left-margin)
-                ,(propertize sign
-                             'face `(:foreground "white"
-                                     :background ,color)))))
+                ,(propertize sign 'face face-spec))))
 
-(defun face-margin-test--annotate (buf color &optional fill)
-  "Annotate lines in BUF with COLOR.
-Odd lines receive \"!\" ; even lines receive \" \" when FILL is non-nil."
+(defun face-margin-test--annotate (buf &optional fill)
+  "Annotate lines in BUF with git-gutter-style indicators.
+Odd lines receive a green \"+\" ; even lines receive a blank filler if
+FILL is non-nil.  Colors are taken from the active theme via 'diff-added'
+and 'line-number' faces so that no hard-coded color is needed."
   (with-current-buffer buf
     (save-excursion
       (goto-char (point-min))
-      (let ((line 1))
+      (let* ((added-bg (or (face-background 'diff-added nil t) "#00af5f"))
+             (ln-bg    (face-background 'line-number nil t))
+             (fg       (face-foreground 'line-number nil t))
+             (line 1))
         (while (not (eobp))
-          (when (or (= (% line 2) 1) fill)
-            (let* ((sign (if (= (% line 2) 1) "!" " "))
-                   (ov (make-overlay (point) (1+ (point)))))
-              (overlay-put ov 'before-string
-                           (face-margin-test--make-sign sign color))))
+          (cond
+           ((= (% line 2) 1)
+            (let ((ov (make-overlay (point) (1+ (point)))))
+              (overlay-put
+               ov 'before-string
+               (face-margin-test--make-sign
+                "+" `(:foreground ,fg :background ,added-bg)))))
+           (fill
+            (let ((ov (make-overlay (point) (1+ (point)))))
+              (overlay-put
+               ov 'before-string
+               (face-margin-test--make-sign
+                " " `(:background ,ln-bg))))))
           (setq line (1+ line))
           (forward-line 1))))))
 
-(defun face-margin-test--base-buffer (name text)
-  "Create buffer NAME with TEXT and return it."
-  (let ((buf (get-buffer-create name)))
+(defun face-margin-test--setup-window (buf &optional right-width)
+  "Set margins on the selected window for BUF.
+LEFT is always 1.  RIGHT-WIDTH defaults to 0."
+  (set-window-buffer (selected-window) buf)
+  (set-window-margins (selected-window) 1 (or right-width 0)))
+
+(defun face-margin-test--load-theme ()
+  "Load modus-vivendi without prompting."
+  (load-theme 'modus-vivendi t))
+
+;;; Test 001 — bug demo: modus-vivendi stripe with no 'margin' face set
+;;
+;; Shows the inconsistency using only built-in Emacs components.
+;; 'modus-vivendi' colors the 'line-number' face; the margin area below EOB
+;; reverts to the frame default, producing a visible stripe.
+;;
+;; Expected: a colored stripe appears below the last line of text in the
+;; line-number column but NOT in the left margin column.
+
+(defun face-margin-test-001 ()
+  "Bug demo: modus-vivendi + left margin, 'margin' face NOT customized.
+
+Uses only built-in components: the modus-vivendi theme (shipped with
+Emacs) colors the 'line-number' face.  The left margin is reserved and
+all lines are annotated.  The 'margin' face is left at its default
+(inherits the frame background).
+
+Expected: a colored stripe is visible in the line-number column below the
+last line of text, but the left margin column below EOB reverts to the
+frame default background — an inconsistency within the same gutter area."
+  (interactive)
+  (face-margin-test--load-theme)
+  (let ((buf (get-buffer-create "*face-margin-test-001*")))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
-      (insert text))
-    buf))
+      (insert "\
+face-margin-test-001: stripe bug demo (no 'margin' face customization).
 
-;;; Test 001 — margin face, fill all lines
-;;
-;; Expected: the left margin area has a uniform blue column from the first line
-;; to the bottom of the window.  No stripe / color discontinuity below the last
-;; line of text.
+This buffer shows the stripe bug using only built-in Emacs components.
+The modus-vivendi theme (shipped with Emacs) gives the 'line-number'
+face a non-default background.  The left margin is reserved and annotated
+the way git-gutter and similar packages do it.  The 'margin' face is not
+customized — it inherits the frame default background.
 
-(defun face-margin-test-001 ()
-  "Test: 'margin' face + annotate all lines (fill = t).
+Look at the bottom of the window, below this text.  The line-number
+column continues with its theme background color, but the left margin
+column to its right reverts to the frame default: a visible stripe.
 
-Expected: the left margin column is uniformly blue from the first text
-line to the bottom of the window.  No stripe discontinuity below EOB."
-  (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-001*"
-              "face-margin-test-001: margin face + fill all lines.
-
-The left margin column should appear uniformly blue all the way to the
-bottom of the window, including the empty rows below this text.
-
-Set (set-face-background 'margin ...) before running, or use the
-face-remap-add-relative call inside this function.
-
-If you see a stripe at the bottom (a colored bar only in the line-number
-area but not in the margin column below the text), the patch is NOT in
-effect or the 'margin' face is not set.
-")))
-    (with-current-buffer buf
+Compare with face-margin-test-002, which shows the fix.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
+      ;; Do NOT customize the 'margin' face — this is the bug scenario.
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 002 — margin face, annotate only odd lines (fill = nil)
+;;; Test 002 — fix demo: same as 001 but 'margin' face set to match line-number
 ;;
-;; Expected: the left margin area below EOB is uniformly blue (from the
-;; 'margin' face).  On text lines, only odd-numbered lines show the "!"
-;; annotation with blue background; even lines show the blue background
-;; from the 'margin' face alone (a plain blue cell, no "!" character).
+;; Expected: the left margin column and the line-number column share the same
+;; background throughout the window, including below the last line of text.
+;; No stripe.
 
 (defun face-margin-test-002 ()
-  "Test: 'margin' face + annotate only odd lines (fill = nil).
+  "Fix demo: modus-vivendi + left margin + 'margin' face set to 'line-number'.
 
-Expected: the margin column below EOB is uniformly blue.  On text lines,
-odd lines show the '!' annotation; even lines show a plain blue cell from
-the 'margin' face background.  No stripe discontinuity."
+Same setup as face-margin-test-001.  Additionally sets the 'margin' face
+background to match the 'line-number' background from modus-vivendi, using:
+
+  (set-face-background \\='margin (face-background \\='line-number nil t))
+
+Expected: the left margin column and the line-number column share the
+same background color throughout the window, including below EOB.
+No stripe."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-002*"
-              "face-margin-test-002: margin face, only odd lines annotated.
-
-Odd lines (1, 3, 5, ...) receive an '!' overlay in the left margin.
-Even lines have no overlay, so the margin cell background comes entirely
-from the 'margin' face.
-
-Expected: all margin cells are blue.  Below EOB also blue.  No stripe.
-")))
+  (face-margin-test--load-theme)
+  (set-face-background 'margin (face-background 'line-number nil t))
+  (let ((buf (get-buffer-create "*face-margin-test-002*")))
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-002: fix demo ('margin' face set to match 'line-number').
+
+Same setup as face-margin-test-001.  The only difference: the 'margin'
+face background is set to match the modus-vivendi 'line-number' background:
+
+  (set-face-background 'margin (face-background 'line-number nil t))
+
+Expected: the left margin column and the line-number column share the
+same background color all the way to the bottom of the window.  No stripe.
+
+Compare with face-margin-test-001, which shows the bug.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color nil)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
@@ -141,30 +172,38 @@ Expected: all margin cells are blue.  Below EOB also blue.  No stripe.
 ;;; Test 003 — overlay with foreground only; 'margin' background shows through
 ;;
 ;; Expected: overlay sets only a foreground color (no :background).  The
-;; 'margin' face background should be visible behind the annotation text.
+;; 'margin' face background fills all margin cells, including those where
+;; the annotation glyph has no background of its own.
 
 (defun face-margin-test-003 ()
   "Test: overlay with :foreground only — 'margin' background shows through.
 
-Overlays specify only a foreground color; the background is unset.
-Expected: the margin column is uniformly blue (from the 'margin' face).
-The '!' character appears in a contrasting foreground color against that
-blue background."
+Annotations specify only :foreground.  The 'margin' face background
+(set to the modus-vivendi 'line-number' background) should be visible
+uniformly in all margin cells.
+
+Expected: the entire left margin column is colored from the 'margin'
+face.  The '+' glyph appears in the overlay foreground color against
+that background.  No stripe below EOB."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-003*"
-              "face-margin-test-003: overlay foreground only.
-
-The '!' annotation in the left margin has only :foreground set (yellow).
-The blue background should come entirely from the 'margin' face.
-
-Expected: all margin cells are blue; '!' glyphs appear in yellow text.
-No stripe below EOB.
-")))
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-003*")))
+    (set-face-background 'margin ln-bg)
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-003: overlay foreground only, 'margin' background shows through.
+
+Annotations set only :foreground (green); no :background is provided.
+The 'margin' face background should fill all margin cells uniformly.
+
+Expected: entire left margin column colored from 'margin' face.
+'+' glyphs appear in green against that background.  No stripe below EOB.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
+      (face-margin-test--setup-window buf)
       ;; Annotate with foreground only (no :background).
       (save-excursion
         (goto-char (point-min))
@@ -177,203 +216,202 @@ No stripe below EOB.
                  (propertize " "
                              'display
                              `((margin left-margin)
-                               ,(propertize "!"
-                                            'face '(:foreground "yellow")))))))
+                               ,(propertize "+"
+                                            'face '(:foreground "#00af5f")))))))
             (setq line (1+ line))
             (forward-line 1))))
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 004 — right margin reserved (soft-wrap style) + 'margin' face
+;;; Test 004 — both left and right margins; 'margin' face colors both
 ;;
-;; Expected: both the left and right margin areas are colored blue.
+;; Expected: both margin areas are colored uniformly by the 'margin' face.
 ;; No stripe in either area below EOB.
 
 (defun face-margin-test-004 ()
-  "Test: both left and right margins reserved; 'margin' face colors both.
-
-Expected: left margin column is blue (with '!' annotations on odd lines).
-Right margin column is also blue.  No stripe in either area below EOB."
-  (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-004*"
-              "face-margin-test-004: left AND right margin, 'margin' face.
+  "Test: left AND right margins reserved; 'margin' face colors both.
 
 Left margin (width 1) is reserved for per-line annotations.
-Right margin (width 2) is reserved as layout padding (soft-wrap style).
+Right margin (width 2) is reserved as layout padding (as done by
+soft-wrap or centering packages).  The 'margin' face background is set
+to match the modus-vivendi 'line-number' background.
 
-Expected: both margin areas appear uniformly blue from the first line to
-the bottom of the window.  No stripe discontinuity in either area.
-")))
+Expected: both margin areas appear uniformly colored from the first line
+to the bottom of the window.  No stripe in either area below EOB."
+  (interactive)
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-004*")))
+    (set-face-background 'margin ln-bg)
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-004: left AND right margin, 'margin' face colors both.
+
+Left margin (width 1): per-line annotations (git-gutter style).
+Right margin (width 2): layout padding (soft-wrap / centering style).
+
+Expected: both margin areas are uniformly colored (same as line-number
+background) from the first line to the bottom of the window.  No stripe.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1 2)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf 2)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 005 — 'margin' face attributes beyond background (bold, font height)
+;;; Test 005 — 'margin' face attributes beyond background (bold, height)
 ;;
-;; Expected: the 'margin' face background is applied.  Bold and height
-;; attributes should have no visible effect in the margin area (the margin
-;; displays spaces, not text), but Emacs must not crash or mis-render.
+;; Expected: background is applied.  Non-background attributes (bold,
+;; height) should not crash Emacs or cause line-height inconsistencies.
 
 (defun face-margin-test-005 ()
-  "Test: 'margin' face with non-background attributes (bold, height).
+  "Test: 'margin' face with non-background attributes (bold, :height 1.5).
 
 Sets :background, :weight bold, and :height 1.5 on the 'margin' face.
-Expected: the margin area is blue.  The bold and height attributes on a
-face used for space glyphs should not cause crashes or visual artifacts.
+Expected: margin area is colored.  Row heights should be consistent —
+no line-height anomaly from non-background attributes on space glyphs.
 
-Note: font height changes in the margin area may affect row height on
-GUI frames — verify no line-height inconsistency is introduced."
+Note for GUI frames: verify no per-row height change is introduced."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-005*"
-              "face-margin-test-005: 'margin' face with bold + height.
-
-The 'margin' face has :background blue, :weight bold, :height 1.5.
-Expected: margin area is blue.  Row heights should be consistent.
-No crash, no visual artifact.
-")))
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-005*")))
+    (set-face-background 'margin ln-bg)
+    (set-face-attribute 'margin nil :weight 'bold :height 1.5)
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-005: 'margin' face with bold + :height 1.5.
+
+The 'margin' face has :background (from line-number), :weight bold,
+and :height 1.5.  Margin cells contain space glyphs, so bold and height
+should have no visible text effect, but Emacs must not crash.
+
+Expected: margin area is colored.  Row heights are consistent.
+No crash, no visual artifact from the non-background attributes.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color
-                               :weight 'bold
-                               :height 1.5)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
 ;;; Test 006 — buffer-local 'margin' face via face-remap-add-relative
 ;;
-;; Expected: the 'margin' face background is applied only in this buffer.
-;; Other buffers visited in the same frame should not be affected.
+;; Expected: the 'margin' background is applied only in this buffer.
+;; Other buffers in the same frame use the global (default) 'margin' face.
 
 (defun face-margin-test-006 ()
   "Test: buffer-local 'margin' face via face-remap-add-relative.
 
-Uses face-remap-add-relative to set the 'margin' background only in this
-buffer.  Expected: margin area is blue in this buffer.  Switching to
-another buffer (e.g. *scratch*) should show the default margin color."
+Uses face-remap-add-relative for a buffer-local override instead of the
+global set-face-background.  Expected: margin area is colored only in
+this buffer.  Switching to *scratch* shows the default margin color."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-006*"
-              "face-margin-test-006: buffer-local margin face via face-remap.
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-006*")))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-006: buffer-local 'margin' via face-remap-add-relative.
 
 The 'margin' face background is set buffer-locally via face-remap-add-relative.
+The global 'margin' face is not modified.
 
-Expected: left margin is blue in this buffer.  In *scratch* or any other
-buffer the margin should use the default (frame background) color.
-")))
-    (with-current-buffer buf
+Expected: left margin is colored in this buffer.
+Switching to *scratch* (or any other buffer) shows the default margin color.
+")
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
+      (face-remap-add-relative 'margin :background ln-bg)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
 ;;; Test 007 — horizontal scrolling
 ;;
-;; Expected: the left margin area stays visually consistent when the window
-;; is horizontally scrolled (via C-x < / C-x >).
+;; Expected: the left margin stays visually consistent when the window is
+;; horizontally scrolled (C-x < / C-x >).
 
 (defun face-margin-test-007 ()
-  "Test: horizontal scrolling with left margin and 'margin' face.
+  "Test: horizontal scrolling with colored left margin.
 
 Expected: when scrolling horizontally (C-x < / C-x >), the left margin
-column remains blue and consistently filled.  No glitches or stripe."
+column remains uniformly colored.  No glitches or stripe on scroll."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-007*"
-              (concat
-               "face-margin-test-007: horizontal scrolling.\n\n"
-               (make-string 120 ?A) "\n"
-               (make-string 120 ?B) "\n"
-               (make-string 120 ?C) "\n"
-               (make-string 120 ?D) "\n"
-               "\nScroll right with C-x > and left with C-x <.\n"
-               "Expected: left margin stays uniformly blue.\n"))))
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-007*")))
+    (set-face-background 'margin ln-bg)
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert
+       (concat
+        "face-margin-test-007: horizontal scrolling.\n\n"
+        "Scroll right with C-x > and left with C-x <.\n"
+        "Expected: left margin stays uniformly colored on scroll.\n\n"
+        (make-string 120 ?A) "\n"
+        (make-string 120 ?B) "\n"
+        (make-string 120 ?C) "\n"
+        (make-string 120 ?D) "\n"
+        (make-string 120 ?E) "\n"))
       (setq-local left-margin-width 1)
       (setq-local truncate-lines t)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 008 — RTL text (Hebrew)
+;;; Test 008 — RTL text
 ;;
 ;; Expected: with right-to-left paragraph direction the margin areas are
 ;; still colored correctly.  No stripe, no reversed-row glitch.
 
 (defun face-margin-test-008 ()
-  "Test: RTL text with 'margin' face.
+  "Test: RTL text with colored 'margin' face.
 
-Inserts a mix of LTR and RTL text.  Expected: the left margin area is
-uniformly blue for both LTR and RTL rows.  No stripe below EOB."
+Inserts a mix of LTR and RTL (Hebrew) lines.  Expected: the left margin
+area is uniformly colored for both LTR and RTL rows.  No stripe below EOB."
   (interactive)
-  (let ((buf (face-margin-test--base-buffer
-              "*face-margin-test-008*"
-              ;; Mix of LTR and RTL lines.
-              (concat
-               "face-margin-test-008: RTL text.\n\n"
-               "This is a left-to-right (LTR) line.\n"
-               "\u05D6\u05D5\u05D4\u05D9 \u05E9\u05D5\u05E8\u05D4 \u05DE\u05D9\u05DE\u05D9\u05DF \u05DC\u05E9\u05DE\u05D0\u05DC \u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
-               "Another LTR line.\n"
-               "\u05E9\u05D5\u05E8\u05D4 \u05E0\u05D5\u05E1\u05E4\u05EA \u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n\n"
-               "Expected: left margin column uniformly blue for all rows.\n"
-               "No stripe below this text.\n"))))
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-008*")))
+    (set-face-background 'margin ln-bg)
     (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert
+       (concat
+        "face-margin-test-008: RTL text.\n\n"
+        "This is a left-to-right (LTR) line.\n"
+        "\u05D6\u05D5\u05D4\u05D9 \u05E9\u05D5\u05E8\u05D4 "
+        "\u05DE\u05D9\u05DE\u05D9\u05DF \u05DC\u05E9\u05DE\u05D0\u05DC "
+        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
+        "Another LTR line.\n"
+        "\u05E9\u05D5\u05E8\u05D4 \u05E0\u05D5\u05E1\u05E4\u05EA "
+        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n\n"
+        "Expected: left margin uniformly colored for all rows.\n"
+        "No stripe below this text.\n"))
       (setq-local left-margin-width 1)
-      (set-window-buffer (selected-window) buf)
-      (set-window-margins (selected-window) 1)
-      (face-margin-test--annotate buf face-margin-test-gutter-color t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      (face-remap-add-relative 'line-number
-                               :background face-margin-test-gutter-color
-                               :foreground "white")
-      (face-remap-add-relative 'margin
-                               :background face-margin-test-gutter-color)
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
@@ -383,21 +421,22 @@ uniformly blue for both LTR and RTL rows.  No stripe below EOB."
 ;; The following scenarios require packages not available with emacs -Q.
 ;; Run them in a full Emacs session with the packages installed.
 ;;
-;; M-1: git-gutter + modus-vivendi
-;;   Load modus-vivendi, enable git-gutter-mode in a Git-tracked buffer.
-;;   Set (set-face-background 'margin (face-background 'line-number)).
+;; M-1: git-gutter + modus-vivendi (end-to-end realistic scenario)
+;;   Load modus-vivendi.  Enable git-gutter-mode in a Git-tracked buffer.
+;;   Add to your config:
+;;     (set-face-background 'margin (face-background 'line-number nil t))
 ;;   Expected: the margin column matches the line-number background throughout,
 ;;   including below the last line of text.
 ;;
 ;; M-2: lsp-mode diagnostics in left margin
 ;;   Open a file with LSP diagnostics displayed in the left margin.
-;;   Set 'margin' background to match 'line-number'.
+;;   Apply the same set-face-background call as M-1.
 ;;   Expected: uniform margin column; no stripe below EOB.
 ;;
 ;; M-3: Olivetti / olivetti-mode (right margin as layout padding)
 ;;   Enable olivetti-mode (which reserves both margins for centering).
 ;;   Set 'margin' background to a distinct color.
-;;   Expected: both margin areas colored uniformly, no stripe.
+;;   Expected: both margin areas colored uniformly; no stripe.
 
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
