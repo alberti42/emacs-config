@@ -36,9 +36,11 @@ will prompt at compile time."
   :config
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
-  (setq-default TeX-master nil)
+  (setq-default TeX-master t)
   ;; Show the compilation output buffer only on errors.
   (setq TeX-show-compilation nil)
+  ;; Save the buffer automatically before compiling without asking.
+  (setq TeX-save-query nil)
 
   ;; The "View" entry in TeX-command-list has its confirm flag set to t by
   ;; default, causing AUCTeX to show the expanded viewer command and wait for
