@@ -31,7 +31,8 @@ Key files:
 - `early-init.el`
   - Loaded by Emacs before the package system and GUI init.
   - Sets `load-prefer-newer t` so Emacs always uses source files newer than their byte-compiled counterparts.
-  - Loads `env-config.el` so PATH and other env vars are set before `straight.el` runs.
+  - Loads `env-config.el` via `(unless (daemonp) ...)` so PATH and other env vars are set before `straight.el` runs. Skipped in daemon mode because the launcher already set up the environment.
+  - Sets the default GUI font via `set-face-attribute` (family, height, weight). TTY frames ignore font face attributes, so no GUI guard is needed.
 
 - `init.el`
   - User entrypoint.

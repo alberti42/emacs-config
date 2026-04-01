@@ -33,13 +33,6 @@
 (setq window-divider-default-bottom-width 2)
 (window-divider-mode 1)
 
-;; Vertical border character between side-by-side windows.
-;; The default `|` leaves gaps with most monospace fonts; `█` (FULL BLOCK)
-;; renders as a solid continuous bar.
-(or standard-display-table
-    (setq standard-display-table (make-display-table)))
-(set-display-table-slot standard-display-table 'vertical-border (make-glyph-code ?█))
-
 ;; Truncation and continuation glyphs.
 ;; In GUI, Emacs uses fringe bitmaps for these; the display-table slots are
 ;; only visible in TTY frames.  Setting them here is harmless in GUI.
@@ -48,10 +41,16 @@
   "Face for truncation and continuation glyphs."
   :group 'basic-faces)
 
-(set-display-table-slot standard-display-table 0
-  (make-glyph-code ?… 'special-glyphs))  ; truncation sign
-(set-display-table-slot standard-display-table 1
-  (make-glyph-code ?↲ 'special-glyphs)) ; continuation sign
+;; If it's nil, create a fresh display table and assign it
+(or standard-display-table
+    (setq standard-display-table (make-display-table)))
+
+;; Vertical border character between side-by-side windows.
+;; The default `|` leaves gaps with most monospace fonts; `█` (FULL BLOCK)
+;; renders as a solid continuous bar.
+(set-display-table-slot standard-display-table 'vertical-border (make-glyph-code ?█))               ; vertical border
+(set-display-table-slot standard-display-table 'truncation (make-glyph-code ?… 'special-glyphs))    ; truncation sign
+(set-display-table-slot standard-display-table 'wrap (make-glyph-code ?↲ 'special-glyphs))          ; continuation sign
 
 ;; TTY mode-line separator
 ;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
