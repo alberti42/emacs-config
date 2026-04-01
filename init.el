@@ -254,6 +254,10 @@
   (tmux-tandem-enable))
 
 ;; Languages
+(emacs-config-load-module
+  'latex-config
+  "Could not load latex-config.el; AUCTeX is disabled.")
+
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
 
