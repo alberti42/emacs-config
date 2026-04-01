@@ -6,7 +6,7 @@
 ;; (bug#80693).  Each test creates a dedicated buffer and configures specific
 ;; conditions so the reviewer can verify the expected visual outcome.
 ;;
-;; All tests use the built-in 'modus-vivendi' theme (included with Emacs since
+;; All tests use the built-in 'modus-operandi' theme (included with Emacs since
 ;; Emacs 28).  That theme gives the 'line-number' face a non-default background
 ;; out of the box, making it possible to demonstrate the inconsistency using
 ;; only components that ship with Emacs — no external packages or custom colors
@@ -71,22 +71,22 @@ LEFT is always 1.  RIGHT-WIDTH defaults to 0."
   (set-window-margins (selected-window) 1 (or right-width 0)))
 
 (defun face-margin-test--load-theme ()
-  "Load modus-vivendi without prompting."
-  (load-theme 'modus-vivendi t))
+  "Load modus-operandi without prompting."
+  (load-theme 'modus-operandi t))
 
-;;; Test 001 — bug demo: modus-vivendi stripe with no 'margin' face set
+;;; Test 001 — bug demo: modus-operandi stripe with no 'margin' face set
 ;;
 ;; Shows the inconsistency using only built-in Emacs components.
-;; 'modus-vivendi' colors the 'line-number' face; the margin area below EOB
+;; 'modus-operandi' colors the 'line-number' face; the margin area below EOB
 ;; reverts to the frame default, producing a visible stripe.
 ;;
 ;; Expected: a colored stripe appears below the last line of text in the
 ;; line-number column but NOT in the left margin column.
 
 (defun face-margin-test-001 ()
-  "Bug demo: modus-vivendi + left margin, 'margin' face NOT customized.
+  "Bug demo: modus-operandi + left margin, 'margin' face NOT customized.
 
-Uses only built-in components: the modus-vivendi theme (shipped with
+Uses only built-in components: the modus-operandi theme (shipped with
 Emacs) colors the 'line-number' face.  The left margin is reserved and
 all lines are annotated.  The 'margin' face is left at its default
 (inherits the frame background).
@@ -104,7 +104,7 @@ frame default background — an inconsistency within the same gutter area."
 face-margin-test-001: stripe bug demo (no 'margin' face customization).
 
 This buffer shows the stripe bug using only built-in Emacs components.
-The modus-vivendi theme (shipped with Emacs) gives the 'line-number'
+The modus-operandi theme (shipped with Emacs) gives the 'line-number'
 face a non-default background.  The left margin is reserved and annotated
 the way git-gutter and similar packages do it.  The 'margin' face is not
 customized — it inherits the frame default background.
@@ -131,10 +131,10 @@ Compare with face-margin-test-002, which shows the fix.
 ;; No stripe.
 
 (defun face-margin-test-002 ()
-  "Fix demo: modus-vivendi + left margin + 'margin' face set to 'line-number'.
+  "Fix demo: modus-operandi + left margin + 'margin' face set to 'line-number'.
 
 Same setup as face-margin-test-001.  Additionally sets the 'margin' face
-background to match the 'line-number' background from modus-vivendi, using:
+background to match the 'line-number' background from modus-operandi, using:
 
   (set-face-background \\='margin (face-background \\='line-number nil t))
 
@@ -152,7 +152,7 @@ No stripe."
 face-margin-test-002: fix demo ('margin' face set to match 'line-number').
 
 Same setup as face-margin-test-001.  The only difference: the 'margin'
-face background is set to match the modus-vivendi 'line-number' background:
+face background is set to match the modus-operandi 'line-number' background:
 
   (set-face-background 'margin (face-background 'line-number nil t))
 
@@ -179,7 +179,7 @@ Compare with face-margin-test-001, which shows the bug.
   "Test: overlay with :foreground only — 'margin' background shows through.
 
 Annotations specify only :foreground.  The 'margin' face background
-(set to the modus-vivendi 'line-number' background) should be visible
+(set to the modus-operandi 'line-number' background) should be visible
 uniformly in all margin cells.
 
 Expected: the entire left margin column is colored from the 'margin'
@@ -236,7 +236,7 @@ Expected: entire left margin column colored from 'margin' face.
 Left margin (width 1) is reserved for per-line annotations.
 Right margin (width 2) is reserved as layout padding (as done by
 soft-wrap or centering packages).  The 'margin' face background is set
-to match the modus-vivendi 'line-number' background.
+to match the modus-operandi 'line-number' background.
 
 Expected: both margin areas appear uniformly colored from the first line
 to the bottom of the window.  No stripe in either area below EOB."
@@ -421,8 +421,8 @@ area is uniformly colored for both LTR and RTL rows.  No stripe below EOB."
 ;; The following scenarios require packages not available with emacs -Q.
 ;; Run them in a full Emacs session with the packages installed.
 ;;
-;; M-1: git-gutter + modus-vivendi (end-to-end realistic scenario)
-;;   Load modus-vivendi.  Enable git-gutter-mode in a Git-tracked buffer.
+;; M-1: git-gutter + modus-operandi (end-to-end realistic scenario)
+;;   Load modus-operandi.  Enable git-gutter-mode in a Git-tracked buffer.
 ;;   Add to your config:
 ;;     (set-face-background 'margin (face-background 'line-number nil t))
 ;;   Expected: the margin column matches the line-number background throughout,
