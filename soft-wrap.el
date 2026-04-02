@@ -222,7 +222,7 @@ font metrics."
     (let ((buf (window-buffer window)))
       (when (buffer-live-p buf)
         (with-current-buffer buf
-          (when soft-wrap-mode
+          (when nil ; soft-wrap-mode
             (let* ((target (soft-wrap--window-target-width window))
                    (margins (window-margins window))
                    (left (if soft-wrap-preserve-left-margin (or (car margins) 0) 0))
