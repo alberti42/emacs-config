@@ -396,39 +396,67 @@ text area font is unchanged; no crash.
 
 ;;; Test 006 — buffer-local 'margin' face via face-remap-add-relative
 ;;
-;; Expected: the 'margin' background is applied only in this buffer.
-;; Other buffers in the same frame use the global (default) 'margin' face.
+;; Opens two windows side by side with identical content and annotations.
+;; The left buffer applies a buffer-local margin color via
+;; face-remap-add-relative; the right buffer uses the global default.
+;; The global 'margin' face is not modified.
+;;
+;; Expected: left buffer shows colored margin; right buffer shows the
+;; default (frame background) margin.  The contrast is visible without
+;; any manual buffer switching.
 
 (defun face-margin-test-006 ()
   "Test: buffer-local 'margin' face via face-remap-add-relative.
 
-Uses face-remap-add-relative for a buffer-local override instead of the
-global set-face-background.  Expected: margin area is colored only in
-this buffer.  Switching to *scratch* shows the default margin color."
-  (interactive)
-  (face-margin-test--load-theme)
-  (let* ((ln-bg (face-background 'line-number nil t))
-         (buf (get-buffer-create "*face-margin-test-006*")))
-    (with-current-buffer buf
-      (read-only-mode -1)
-      (erase-buffer)
-      (insert "\
-face-margin-test-006: buffer-local 'margin' via face-remap-add-relative.
-
-The 'margin' face background is set buffer-locally via face-remap-add-relative.
+Opens two windows side by side.  Both buffers have identical content,
+line numbers, and margin annotations.  Only the left buffer calls
+face-remap-add-relative to set a buffer-local 'margin' background.
 The global 'margin' face is not modified.
 
-Expected: left margin is colored in this buffer.
-Switching to *scratch* (or any other buffer) shows the default margin color.
-")
-      (setq-local left-margin-width 1)
-      (face-margin-test--setup-window buf)
-      (face-margin-test--annotate buf t)
-      (display-line-numbers-mode 1)
-      (face-remap-add-relative 'margin :background ln-bg)
-      (read-only-mode 1)
-      (goto-char (point-min)))
-    (switch-to-buffer buf)))
+Expected: the left buffer shows a colored margin; the right buffer
+shows the default (frame background) margin.  The isolation is
+immediately visible without switching buffers manually."
+  (interactive)
+  (face-margin-test--load-theme)
+  ;; Reset global 'margin' face so the right buffer shows a clear contrast.
+  (set-face-background 'margin nil)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf-l (get-buffer-create "*face-margin-test-006-local*"))
+         (buf-g (get-buffer-create "*face-margin-test-006-global*")))
+    ;; Populate both buffers with identical structure.
+    (dolist (entry `((,buf-l "LEFT  — buffer-local face-remap-add-relative (analogous to test 002)"
+                             "face-remap-add-relative sets the 'margin' background\n\
+buffer-locally.  Behaves like test 002: margin matches line-number,\n\
+no stripe below EOB.  The global 'margin' face is not modified.")
+                     (,buf-g "RIGHT — no override, global default (analogous to test 001)"
+                             "No face-remap-add-relative in this buffer.  Behaves\n\
+like test 001: margin reverts to frame background below EOB,\n\
+producing the visible stripe.  Global 'margin' face is unchanged.")))
+      (let ((buf   (nth 0 entry))
+            (label (nth 1 entry))
+            (desc  (nth 2 entry)))
+        (with-current-buffer buf
+          (read-only-mode -1)
+          (erase-buffer)
+          (insert (format "face-margin-test-006: buffer-local 'margin' isolation.\n\
+%s\n\n%s\n\nLines 1–8 below:\n" label desc))
+          (dotimes (i 8) (insert (format "Line %d\n" (1+ i))))
+          (setq-local left-margin-width 1)
+          (face-margin-test--annotate buf t)
+          (display-line-numbers-mode 1)
+          (read-only-mode 1)
+          (goto-char (point-min)))))
+    ;; Apply buffer-local remap only to the left buffer.
+    (with-current-buffer buf-l
+      (face-remap-add-relative 'margin :background ln-bg))
+    ;; Display side by side: left buffer in the current window, right in a split.
+    (delete-other-windows)
+    (switch-to-buffer buf-l)
+    (set-window-margins (selected-window) 1 0)
+    (let ((win-r (split-window-right)))
+      (set-window-buffer win-r buf-g)
+      (with-selected-window win-r
+        (set-window-margins (selected-window) 1 0)))))
 
 ;;; Test 007 — horizontal scrolling
 ;;
