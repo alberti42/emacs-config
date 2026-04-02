@@ -325,19 +325,38 @@ tips, tutorials, and package listings.
       (read-only-mode 1)
       (goto-char (point-min)))))
 
-;;; Test 005 — 'margin' face attributes beyond background (bold, height)
+;;; Test 005 — 'margin' face font attributes: :weight works, :height is constrained
 ;;
-;; Expected: background is applied.  Non-background attributes (bold,
-;; height) should not crash Emacs or cause line-height inconsistencies.
+;; The 'margin' face is the base face for all margin content.  Font variant
+;; attributes (:weight, :slant) are inherited by annotation glyphs and are
+;; visibly effective.  :height is inherited and fed into font realization, but
+;; margin glyphs are physically constrained to the row height set by the text
+;; area — so :height has no effect on line spacing.  This is correct: margin
+;; annotations must never alter the spacing of the lines they annotate.
 
 (defun face-margin-test-005 ()
-  "Test: 'margin' face with non-background attributes (bold, :height 1.5).
+  "Test: 'margin' face as base for margin content — font attributes and inheritance.
 
-Sets :background, :weight bold, and :height 1.5 on the 'margin' face.
-Expected: margin area is colored.  Row heights should be consistent —
-no line-height anomaly from non-background attributes on space glyphs.
+The 'margin' face acts as the base face for all content in the margin
+area.  Font attributes set on it are inherited by annotation glyphs,
+so packages can configure margin typography without touching each
+individual overlay.
 
-Note for GUI frames: verify no per-row height change is introduced."
+This test sets :weight bold and :height 1.5 on 'margin'.
+
+Expected behavior:
+
+  :weight bold — annotation glyphs ('!') are rendered in bold.  This is
+  a font-variant attribute: it selects a different font (bold), realized
+  locally within the margin.  It does NOT affect the text area.
+
+  :height 1.5 — inherited and used in font realization, but margin glyphs
+  are physically constrained to the row height determined by the text area.
+  Row spacing is unaffected.  This is correct: margin annotations must
+  never change line spacing, since that would corrupt text layout.
+
+Verify: '!' glyphs appear bold; line heights are uniform; text area is
+unaffected; no crash."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -348,14 +367,24 @@ Note for GUI frames: verify no per-row height change is introduced."
       (read-only-mode -1)
       (erase-buffer)
       (insert "\
-face-margin-test-005: 'margin' face with bold + :height 1.5.
+face-margin-test-005: 'margin' as base face — font attributes and inheritance.
 
-The 'margin' face has :background (from line-number), :weight bold,
-and :height 1.5.  Margin cells contain space glyphs, so bold and height
-should have no visible text effect, but Emacs must not crash.
+The 'margin' face is the base face for all margin content.  Font
+attributes set on it propagate to annotation glyphs via inheritance.
 
-Expected: margin area is colored.  Row heights are consistent.
-No crash, no visual artifact from the non-background attributes.
+This test sets :weight bold and :height 1.5 on the 'margin' face.
+
+:weight bold — '!' annotation glyphs should appear bold.  Bold is a font-
+variant attribute: it is realized within the margin and does not affect
+the text area.
+
+:height 1.5 — accepted without error, but margin glyphs are constrained
+to the row height set by the text area.  Line spacing must not change.
+This is correct: annotations must never alter the height of the lines
+they annotate.
+
+Expected: '!' glyphs are bold; line heights are uniform throughout;
+text area font is unchanged; no crash.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
