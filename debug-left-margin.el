@@ -236,21 +236,26 @@ Expected: entire left margin column colored from 'margin' face.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 004 — both left and right margins; 'margin' face colors both
+;;; Test 004 — right margin sized so text area is 75 columns; visual-line-mode
 ;;
-;; Expected: both margin areas are colored uniformly by the 'margin' face.
-;; No stripe in either area below EOB.
+;; Expected: text wraps visually at the right margin boundary.  Both margin
+;; areas are colored uniformly by the 'margin' face.  No stripe below EOB.
 
 (defun face-margin-test-004 ()
-  "Test: left AND right margins reserved; 'margin' face colors both.
+  "Test: right margin computed for 75 text columns + visual-line-mode wrapping.
 
-Left margin (width 1) is reserved for per-line annotations.
-Right margin (width 2) is reserved as layout padding (as done by
-soft-wrap or centering packages).  The 'margin' face background is set
-to match the modus-operandi 'line-number' background.
+Left margin (width 1) holds per-line annotations.  Right margin width is
+computed dynamically so the visible text area is exactly 75 columns wide:
 
-Expected: both margin areas appear uniformly colored from the first line
-to the bottom of the window.  No stripe in either area below EOB."
+  right-margin = (max 0 (- (window-total-width) 1 75))
+
+Long lines (> 75 characters) are inserted so that visual-line-mode has
+something to wrap.  The 'margin' face background is set to match the
+modus-operandi 'line-number' background.
+
+Expected: long lines wrap softly at the right margin boundary without
+truncation glyphs.  Both margin areas are uniformly colored (same as
+line-number background) throughout the window.  No stripe below EOB."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -260,21 +265,31 @@ to the bottom of the window.  No stripe in either area below EOB."
       (read-only-mode -1)
       (erase-buffer)
       (insert "\
-face-margin-test-004: left AND right margin, 'margin' face colors both.
+face-margin-test-004: right margin + visual-line-mode.
 
-Left margin (width 1): per-line annotations (git-gutter style).
-Right margin (width 2): layout padding (soft-wrap / centering style).
+Left margin (width 1): per-line annotation column.
+Right margin: computed so the visible text area is exactly 75 columns.
 
-Expected: both margin areas are uniformly colored (same as line-number
-background) from the first line to the bottom of the window.  No stripe.
+Long lines below are soft-wrapped by visual-line-mode at the right margin.
+Both margin areas should be uniformly colored.  No stripe below EOB.
+
 ")
-      (setq-local left-margin-width 1)
-      (face-margin-test--setup-window buf 2)
+      ;; Insert long lines (> 75 chars) to exercise visual-line-mode wrapping.
+      (let ((long-line (concat (make-string 40 ?A) " " (make-string 40 ?B))))
+        (dotimes (_ 8)
+          (insert long-line "\n")))
+      (setq-local left-margin-width 1))
+    ;; Switch to the buffer before computing window-total-width so the
+    ;; selected window is the one that will display the buffer.
+    (switch-to-buffer buf)
+    (let ((right (max 0 (- (window-total-width) 1 75))))
+      (set-window-margins (selected-window) 1 right))
+    (with-current-buffer buf
       (face-margin-test--annotate buf t)
+      (visual-line-mode 1)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
-      (goto-char (point-min)))
-    (switch-to-buffer buf)))
+      (goto-char (point-min)))))
 
 ;;; Test 005 — 'margin' face attributes beyond background (bold, height)
 ;;
