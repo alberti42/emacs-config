@@ -460,14 +460,21 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
 
 ;;; Test 007 — horizontal scrolling
 ;;
-;; Expected: the left margin stays visually consistent when the window is
-;; horizontally scrolled (C-x < / C-x >).
+;; The left margin is a fixed area that does not participate in horizontal
+;; scrolling.  Expected: the margin background stays uniformly colored as
+;; the text area scrolls left and right.  No redraw glitch on scroll.
 
 (defun face-margin-test-007 ()
-  "Test: horizontal scrolling with colored left margin.
+  "Test: left margin stays fixed and colored during horizontal scrolling.
 
-Expected: when scrolling horizontally (C-x < / C-x >), the left margin
-column remains uniformly colored.  No glitches or stripe on scroll."
+The left margin is a fixed area pinned to the window edge: it does not
+scroll with the text.  This test verifies that the margin background
+remains uniformly colored regardless of the horizontal scroll position.
+
+Use C-e to scroll right to the end of a long line, C-a to return.
+
+Expected: left margin stays uniformly colored throughout.
+No redraw glitch or stripe at any scroll position."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -479,8 +486,9 @@ column remains uniformly colored.  No glitches or stripe on scroll."
       (insert
        (concat
         "face-margin-test-007: horizontal scrolling.\n\n"
-        "Scroll right with C-x > and left with C-x <.\n"
-        "Expected: left margin stays uniformly colored on scroll.\n\n"
+        "The left margin is fixed and does not scroll with the text.\n"
+        "Use C-e to scroll right to the end of a line, C-a to return.\n"
+        "Expected: left margin stays uniformly colored at all scroll positions.\n\n"
         (make-string 120 ?A) "\n"
         (make-string 120 ?B) "\n"
         (make-string 120 ?C) "\n"
