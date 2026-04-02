@@ -204,7 +204,7 @@ Annotations set only :foreground (green); no :background is provided.
 The 'margin' face background should fill all margin cells uniformly.
 
 Expected: entire left margin column colored from 'margin' face.
-'+' glyphs appear in green against that background.  No stripe below EOB.
+'!' glyphs appear in red against that background.  No stripe below EOB.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
@@ -220,8 +220,8 @@ Expected: entire left margin column colored from 'margin' face.
                  (propertize " "
                              'display
                              `((margin left-margin)
-                               ,(propertize "+"
-                                            'face '(:foreground "#00af5f")))))))
+                               ,(propertize "!"
+                                            'face '(:foreground "red")))))))
             (setq line (1+ line))
             (forward-line 1))))
       (display-line-numbers-mode 1)
