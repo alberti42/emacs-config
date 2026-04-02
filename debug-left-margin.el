@@ -182,13 +182,20 @@ Compare with face-margin-test-001, which shows the bug.
 (defun face-margin-test-003 ()
   "Test: overlay with :foreground only — 'margin' background shows through.
 
-Annotations specify only :foreground.  The 'margin' face background
-(set to the modus-operandi 'line-number' background) should be visible
-uniformly in all margin cells.
+Annotations specify only :foreground \"red\" (no :background).  The
+'margin' face is set to the modus-operandi 'line-number' background.
 
-Expected: the entire left margin column is colored from the 'margin'
-face.  The '+' glyph appears in the overlay foreground color against
-that background.  No stripe below EOB."
+Without the fix, annotated cells (odd lines) show the frame default
+background (white) while unannotated cells show the 'margin' background
+— inconsistent.
+
+With the fix, the 'margin' face becomes the base face for all margin
+display-spec glyphs.  Unspecified attributes (background) are inherited
+from 'margin', so all cells — annotated or not — show the same background.
+
+Expected: the entire left margin column is uniformly colored from the
+'margin' face.  '!' glyphs appear in red against that background.
+No stripe below EOB."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -200,7 +207,7 @@ that background.  No stripe below EOB."
       (insert "\
 face-margin-test-003: overlay foreground only, 'margin' background shows through.
 
-Annotations set only :foreground (green); no :background is provided.
+Annotations set only :foreground (red); no :background is provided.
 The 'margin' face background should fill all margin cells uniformly.
 
 Expected: entire left margin column colored from 'margin' face.
