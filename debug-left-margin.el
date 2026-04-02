@@ -288,6 +288,9 @@ soft-wraps long lines at the right boundary; visual-wrap-prefix-mode
 adds a hanging indent to continuation lines of list items so that
 wrapped entries look correct.
 
+See face-margin-test-004b for a complementary test that writes actual
+annotation glyphs into both the left and right margins simultaneously.
+
 Content below is adapted from
 https://www.gnu.org/software/emacs/documentation.html
 
@@ -345,9 +348,11 @@ tips, tutorials, and package listings.
   "Test: content placed in the right margin via display property.
 
 Places \"Line 1\", \"Line 2\", \"Line 3\" in the right margin on the first
-three lines.  The remaining lines leave the right margin empty.
+three lines.  The remaining lines leave the right margin empty.  The left
+margin is annotated the same way as in test 001–003: odd lines show \"!\"
+in red, even lines a blank filler.
 
-Expected: the right margin is uniformly colored from the 'margin' face
+Expected: both margin areas are uniformly colored from the 'margin' face
 background on all lines, whether or not a glyph is present.  No stripe
 below EOB."
   (interactive)
@@ -364,11 +369,12 @@ face-margin-test-004b: content in the right margin.
 The right margin is reserved and the first three lines receive a label
 glyph (\"Line 1\", \"Line 2\", \"Line 3\") placed there via a display
 property with (margin right-margin).  The remaining lines leave the
-right margin empty.
+right margin empty.  The left margin is annotated with git-gutter-style
+indicators: odd lines show \"!\" in red, even lines a blank filler.
 
-Expected: the right margin column is uniformly colored from the 'margin'
-face background on all lines.  Annotated and unannotated cells share the
-same background.  No stripe below EOB.
+Expected: both margin areas are uniformly colored from the 'margin' face
+background on all lines.  Annotated and unannotated cells share the same
+background.  No stripe below EOB.
 
 Line 1
 Line 2
@@ -401,6 +407,7 @@ Line 8
                                         'face `(:foreground "blue"
                                                 :background ,ln-bg))))))
           (forward-line 1)))
+      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))
