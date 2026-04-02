@@ -543,7 +543,7 @@ text area font is unchanged; no crash.
 ;; default (frame background) margin.  The contrast is visible without
 ;; any manual buffer switching.
 
-(defun face-margin-test-006 ()
+(defun face-margin-test-006 (&optional mode)
   "Test: buffer-local 'margin' face via face-remap-add-relative.
 
 Opens two windows side by side.  Both buffers have identical content,
@@ -551,14 +551,19 @@ line numbers, and margin annotations.  Only the left buffer calls
 face-remap-add-relative to set a buffer-local 'margin' background.
 The global 'margin' face is not modified.
 
+Optional argument MODE is 'patched (default) or 'unpatched.
+Interactively, Emacs will prompt to choose between patched and unpatched.
+
 Expected: the left buffer shows a colored margin; the right buffer
 shows the default (frame background) margin.  The isolation is
 immediately visible without switching buffers manually."
-  (interactive)
+  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   ;; Reset global 'margin' face so the right buffer shows a clear contrast.
-  (set-face-background 'margin nil)
-  (let* ((ln-bg (face-background 'line-number nil t))
+  ;; The facep guard prevents a crash on unpatched builds.
+  (when (facep 'margin) (set-face-background 'margin nil))
+  (let* ((mode (or mode 'patched))
+         (ln-bg (face-background 'line-number nil t))
          (buf-l (get-buffer-create "*face-margin-test-006-local*"))
          (buf-g (get-buffer-create "*face-margin-test-006-global*")))
     ;; Populate both buffers with identical structure.
@@ -576,8 +581,9 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
         (with-current-buffer buf
           (read-only-mode -1)
           (erase-buffer)
-          (insert (format "face-margin-test-006: buffer-local 'margin' isolation\n\
-%s\n\n%s\n\nLines 1–8 below:\n" label desc))
+          (insert (face-margin-test--title "face-margin-test-006: buffer-local 'margin' isolation" mode))
+          (insert (face-margin-test--mode-header mode))
+          (insert (format "%s\n\n%s\n\nLines 1–8 below:\n" label desc))
           (dotimes (i 8) (insert (format "Line %d\n" (1+ i))))
           (setq-local left-margin-width 1)
           (face-margin-test--annotate buf t)
