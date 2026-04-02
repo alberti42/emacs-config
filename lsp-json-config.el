@@ -1,4 +1,4 @@
-;;; lsp-json.el --- JSON LSP configuration -*- lexical-binding: t; -*-
+;;; lsp-json-config.el --- JSON LSP configuration -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -17,10 +17,15 @@
          (json-mode     . lsp-deferred)   ; json-mode package
          (json-ts-mode  . lsp-deferred))  ; tree-sitter
   :config
-  ;; Enable SchemaStore: auto-detects and applies the right schema
-  ;; for known files (package.json, tsconfig.json, docker-compose.yml, etc.)
-  (setq lsp-json-schema-store-enabled t))
+  ;; Ensure js-json-mode activates the JSON client even when the buffer is not
+  ;; visiting a file (lsp-mode otherwise falls back to "js-json").
+  (add-to-list 'lsp-language-id-configuration '(js-json-mode . "json")))
 
-(provide 'lsp-json)
+;; lsp-mode JSON client definitions (ships with lsp-mode; not a separate package)
+(use-package lsp-json
+  :straight nil
+  :after lsp-mode)
 
-;;; lsp-json.el ends here
+(provide 'lsp-json-config)
+
+;;; lsp-json-config.el ends here
