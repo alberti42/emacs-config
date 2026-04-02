@@ -17,7 +17,7 @@
 ;;   emacs -Q --load /path/to/debug-left-margin.el \
 ;;             --eval "(face-margin-test-NNN)"
 ;;
-;; Replace NNN with the test number (001 through 008).
+;; Replace NNN with the test number (001 through 008, plus 007b).
 ;;
 ;; Tests 001 and 002 are paired: 001 shows the stripe bug using only built-in
 ;; components; 002 shows the fix by setting the 'margin' face background to
@@ -517,6 +517,8 @@ No visual inconsistency at any horizontal scroll position."
         (make-string 120 ?C) "\n"
         (make-string 120 ?D) "\n"
         (make-string 120 ?E) "\n\n"
+        "See also face-margin-test-007b for the same scenario without\n"
+        "display-line-numbers-mode.\n\n"
         "--- Preexisting independent bugs surfaced by this test ---\n\n"
         "Scrolling right exposes three bugs that are related to the area\n"
         "covered by this patch but are out of scope and left unchanged.\n"
@@ -548,6 +550,69 @@ No visual inconsistency at any horizontal scroll position."
       (face-margin-test--setup-window buf)
       (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))
+    (switch-to-buffer buf)))
+
+;;; Test 007b — horizontal scrolling WITHOUT display-line-numbers-mode
+;;
+;; Same as test 007 but with no line-number column.  The left margin abuts
+;; the text area directly.  Bug 2 (left '$' uses DEFAULT_FACE_ID) is still
+;; visible: '$' now contrasts with the 'margin' face immediately to its
+;; left with no line-number column in between.
+
+(defun face-margin-test-007b ()
+  "Test: horizontal scrolling — left margin only, no line-number column.
+
+Same scenario as face-margin-test-007 but with display-line-numbers-mode
+disabled.  The left margin abuts the text area directly; there is no
+line-number column between them.
+
+Use C-e to scroll right to the end of a long line, C-a to return.
+
+Expected: the left margin remains uniformly colored at all horizontal
+scroll positions.  No stripe or redraw glitch.
+
+The three preexisting independent bugs documented in test 007 apply here
+as well.  Bug 2 is particularly visible in this setup: when the window
+is scrolled right, the left '$' indicator is rendered with DEFAULT_FACE_ID
+and abuts the 'margin' face directly — a stark contrast with no line-number
+column to soften the boundary."
+  (interactive)
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-007b*")))
+    (set-face-background 'margin ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert
+       (concat
+        "face-margin-test-007b: horizontal scrolling, no line-number column.\n\n"
+        "Same as test 007, but display-line-numbers-mode is disabled.\n"
+        "The left margin abuts the text area directly.\n\n"
+        "Use C-e to scroll right to the end of a long line, C-a to return.\n"
+        "Expected: left margin remains uniformly colored at all scroll\n"
+        "positions.  No stripe or redraw glitch.\n\n"
+        (make-string 120 ?A) "\n"
+        (make-string 120 ?B) "\n"
+        (make-string 120 ?C) "\n"
+        (make-string 120 ?D) "\n"
+        (make-string 120 ?E) "\n\n"
+        "--- Preexisting independent bugs (see test 007 for full details) ---\n\n"
+        "The same three preexisting bugs documented in test 007 apply here.\n"
+        "Notably: on TTY frames, '!' annotations disappear on horizontally\n"
+        "scrolled lines; and display table remapping has no effect on the\n"
+        "left-edge '$'.\n\n"
+        "The DEFAULT_FACE_ID background of '$' (bug 2 in test 007) is less\n"
+        "visually disruptive here: without a line-number column, '$' is\n"
+        "contiguous with the text area and its default background produces\n"
+        "a consistent appearance.\n"))
+      (setq-local left-margin-width 1)
+      (setq-local truncate-lines t)
+      (face-margin-test--setup-window buf)
+      (face-margin-test--annotate buf t)
+      ;; display-line-numbers-mode intentionally NOT enabled here.
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
