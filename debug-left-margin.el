@@ -547,6 +547,10 @@ No visual inconsistency at any horizontal scroll position."
 ;;
 ;; Expected: with right-to-left paragraph direction the margin areas are
 ;; still colored correctly.  No stripe, no reversed-row glitch.
+;;
+;; PREEXISTING INDEPENDENT BUG: the left margin area of R2L rows is
+;; rendered with the default face (black on white) regardless of any
+;; overlay or 'margin' face customization.  Not addressed by this patch.
 
 (defun face-margin-test-008 ()
   "Test: RTL text with colored 'margin' face.
@@ -564,15 +568,39 @@ area is uniformly colored for both LTR and RTL rows.  No stripe below EOB."
       (insert
        (concat
         "face-margin-test-008: RTL text.\n\n"
+        "This test mixes LTR and RTL (Hebrew) lines to verify that the\n"
+        "left margin is handled correctly for both text directions.\n"
+        "Odd lines receive a '!' annotation (red); even lines receive a\n"
+        "blank filler \" \" — both with an explicit background matching the\n"
+        "'line-number' face, as git-gutter-style packages would do.\n\n"
+        "On LTR lines: odd lines show '!' in red, even lines show a\n"
+        "gray filler.  The left margin column is uniformly colored.\n\n"
+        "On Hebrew (RTL) lines: see the bug note below.\n\n"
+        ;; odd  (line 11) — LTR, annotated
         "This is a left-to-right (LTR) line.\n"
+        ;; even (line 12) — Hebrew
         "\u05D6\u05D5\u05D4\u05D9 \u05E9\u05D5\u05E8\u05D4 "
         "\u05DE\u05D9\u05DE\u05D9\u05DF \u05DC\u05E9\u05DE\u05D0\u05DC "
         "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
+        ;; odd  (line 13) — Hebrew, annotated: "Another right-to-left line"
+        "\u05E2\u05D5\u05D3 \u05E9\u05D5\u05E8\u05D4 \u05DE\u05D9\u05DE\u05D9\u05DF "
+        "\u05DC\u05E9\u05DE\u05D0\u05DC.\n"
+        ;; even (line 14) — LTR
         "Another LTR line.\n"
+        ;; odd  (line 15) — Hebrew, annotated
         "\u05E9\u05D5\u05E8\u05D4 \u05E0\u05D5\u05E1\u05E4\u05EA "
-        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n\n"
+        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
+        ;; even (line 16) — LTR
+        "Yet another LTR line.\n\n"
         "Expected: left margin uniformly colored for all rows.\n"
-        "No stripe below this text.\n"))
+        "No stripe below EOB.\n\n"
+        "PREEXISTING INDEPENDENT BUG: on RTL (Hebrew) rows, the left margin\n"
+        "area is rendered with the default face (black foreground, white\n"
+        "background) regardless of any overlay or 'margin' face customization.\n"
+        "The root cause is likely that the display engine does not properly\n"
+        "handle LEFT_MARGIN_AREA for reversed (R2L) glyph rows.  This bug\n"
+        "exists in unpatched Emacs and has not been addressed here; it\n"
+        "requires a dedicated patch.\n"))
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
       (face-margin-test--annotate buf t)
