@@ -461,44 +461,8 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
 ;;; Test 007 — horizontal scrolling
 ;;
 ;; The left margin is a fixed area that does not participate in horizontal
-;; scrolling.  When the window is scrolled right, Emacs places a '$'
-;; truncation indicator at the left edge of the text area (in the fringe
-;; on GUI frames; in the text area on TTY frames where there are no fringes).
-;; This patch makes the '$' inherit the 'line-number' face background so it
-;; blends with the line-number column that occupies the same visual area.
-;; 'line-number' is the correct choice: '$' is in TEXT_AREA, just like line
-;; numbers, and should not use the 'margin' face which is for LEFT_MARGIN_AREA.
-;;
-;; Expected: left margin and '$' indicator are uniformly colored.
-;; No stripe at any scroll position.
-;;
-;; PREEXISTING INDEPENDENT BUG 1 (TTY only): on TTY frames, '!' annotations
-;; disappear on horizontally scrolled lines.  The '$' indicator is placed in
-;; TEXT_AREA[0] while '!' lives in LEFT_MARGIN_AREA — different areas, so
-;; there is no direct overwriting at the data structure level.  The likely
-;; cause is that the TTY renderer skips LEFT_MARGIN_AREA entirely for rows
-;; flagged as truncated_on_left_p.  This may have been intentional, but it
-;; is poor design: the left margin is a fixed area pinned to the window edge
-;; and should remain visible regardless of horizontal scroll state.  This
-;; bug exists in unpatched Emacs and has not been addressed here; it requires
-;; a dedicated patch.
-;;
-;; PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always rendered
-;; with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless of the visual
-;; context of the surrounding area.  When a theme gives the 'line-number' face
-;; a non-default background, the '$' shows the buffer default background
-;; instead, creating a visible inconsistency.  A proper fix requires a
-;; dedicated patch that determines the correct face based on what is actually
-;; displayed at that position (line numbers, fringes, margins).
-;;
-;; PREEXISTING INDEPENDENT BUG 3: display table remapping of the truncation
-;; character does not work for the left-edge '$'.  In produce_special_glyphs,
-;; the mirroring code path for L2R left-edge glyphs discards both the
-;; character and the face from the display table glyph code when no bidi
-;; mirror is found.  Additionally, the display table has only one
-;; 'truncation' slot shared by both edges, making it impossible to style
-;; left and right independently.  This patch does not attempt to fix any of
-;; these limitations; each requires a dedicated patch.
+;; scrolling.  Use C-e / C-a to scroll right and left.  The buffer text
+;; documents three preexisting independent bugs visible in this scenario.
 
 (defun face-margin-test-007 ()
   "Test: left margin and '$' truncation indicator colored during horizontal scroll.
@@ -532,25 +496,44 @@ No visual inconsistency at any horizontal scroll position."
       (erase-buffer)
       (insert
        (concat
-        "face-margin-test-007: horizontal scrolling + '$' truncation indicator.\n\n"
-        "Use C-e to scroll right to the end of a long line, C-a to return.\n\n"
-        "When scrolled right, a '$' indicator appears at the left edge of\n"
-        "the text area.  This patch makes it inherit the 'line-number' face\n"
-        "background, so it blends with the line-number column next to it.\n\n"
-        "Expected: '$' and line numbers share the same background color.\n\n"
-        "PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames, '!'\n"
-        "annotations disappear on horizontally scrolled lines.  '$' lives\n"
-        "in TEXT_AREA and '!' in LEFT_MARGIN_AREA — different areas, so\n"
-        "no direct overwriting occurs.  The likely cause is that the TTY\n"
-        "renderer skips LEFT_MARGIN_AREA for rows flagged truncated_on_left_p.\n"
-        "This may be by design, but it is poor design: the left margin is\n"
-        "fixed and should remain visible regardless of scroll position.\n"
-        "Not addressed by this patch; requires a dedicated fix.\n\n"
+        "face-margin-test-007: horizontal scrolling.\n\n"
+        "This test verifies that the left margin stays uniformly colored\n"
+        "during horizontal scrolling.  The left margin is a fixed area\n"
+        "pinned to the window edge: it does not scroll with the text.\n\n"
+        "Use C-e to scroll right to the end of a long line, C-a to return.\n"
+        "Expected: left margin remains uniformly colored at all scroll\n"
+        "positions.  No stripe or redraw glitch.\n\n"
         (make-string 120 ?A) "\n"
         (make-string 120 ?B) "\n"
         (make-string 120 ?C) "\n"
         (make-string 120 ?D) "\n"
-        (make-string 120 ?E) "\n"))
+        (make-string 120 ?E) "\n\n"
+        "--- Preexisting independent bugs surfaced by this test ---\n\n"
+        "Scrolling right exposes three bugs that are related to the area\n"
+        "covered by this patch but are out of scope and left unchanged.\n"
+        "They are documented here so that reviewers understand the\n"
+        "inconsistencies they observe, and so that each can be tracked\n"
+        "and addressed in the future with a separate dedicated discussion\n"
+        "(new bug report) and patch.\n\n"
+        "PREEXISTING INDEPENDENT BUG 1 (TTY only): '!' annotations disappear\n"
+        "on horizontally scrolled lines.  '$' is placed in TEXT_AREA[0] while\n"
+        "'!' lives in LEFT_MARGIN_AREA — different areas, so there is no direct\n"
+        "overwriting.  The likely cause is that the TTY renderer skips\n"
+        "LEFT_MARGIN_AREA entirely for rows flagged truncated_on_left_p.  This\n"
+        "may be intentional, but it is poor design: the left margin is a fixed\n"
+        "area and should remain visible regardless of scroll position.\n\n"
+        "PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always\n"
+        "rendered with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless\n"
+        "of the visual context.  When a theme gives 'line-number' a non-default\n"
+        "background, '$' shows the buffer default background instead — a visible\n"
+        "inconsistency.  A proper fix must determine the correct face based on\n"
+        "what is actually displayed at that position (line numbers, margins).\n\n"
+        "PREEXISTING INDEPENDENT BUG 3: display table remapping does not work\n"
+        "for the left-edge '$'.  In produce_special_glyphs, the mirroring code\n"
+        "path for L2R left-edge glyphs discards both the character and the face\n"
+        "from the display table glyph code when no bidi mirror is found.\n"
+        "Additionally, the display table has only one 'truncation' slot shared\n"
+        "by both edges, making independent left/right styling impossible.\n"))
       (setq-local left-margin-width 1)
       (setq-local truncate-lines t)
       (face-margin-test--setup-window buf)
