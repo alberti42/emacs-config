@@ -334,6 +334,77 @@ tips, tutorials, and package listings.
       (read-only-mode 1)
       (goto-char (point-min)))))
 
+;;; Test 004b — content placed in the right margin
+;;
+;; Places "Line 1", "Line 2", "Line 3" as glyphs in the right margin on the
+;; first three lines; the remaining lines leave the right margin empty.
+;; Expected: the right margin is uniformly colored from the 'margin' face
+;; background on all lines, whether or not a glyph is present.
+
+(defun face-margin-test-004b ()
+  "Test: content placed in the right margin via display property.
+
+Places \"Line 1\", \"Line 2\", \"Line 3\" in the right margin on the first
+three lines.  The remaining lines leave the right margin empty.
+
+Expected: the right margin is uniformly colored from the 'margin' face
+background on all lines, whether or not a glyph is present.  No stripe
+below EOB."
+  (interactive)
+  (face-margin-test--load-theme)
+  (let* ((ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-004b*")))
+    (set-face-background 'margin ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert "\
+face-margin-test-004b: content in the right margin.
+
+The right margin is reserved and the first three lines receive a label
+glyph (\"Line 1\", \"Line 2\", \"Line 3\") placed there via a display
+property with (margin right-margin).  The remaining lines leave the
+right margin empty.
+
+Expected: the right margin column is uniformly colored from the 'margin'
+face background on all lines.  Annotated and unannotated cells share the
+same background.  No stripe below EOB.
+
+Line 1
+Line 2
+Line 3
+Line 4
+Line 5
+Line 6
+Line 7
+Line 8
+")
+      (setq-local left-margin-width 1)
+      (setq-local right-margin-width 8))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 1 8)
+    (with-current-buffer buf
+      ;; Annotate the first three lines in the right margin.
+      (save-excursion
+        (goto-char (point-min))
+        ;; Skip the preamble — find the "Line 1" content line.
+        (search-forward "\nLine 1\n")
+        (forward-line -1)
+        (dotimes (i 3)
+          (let ((ov (make-overlay (point) (1+ (point)))))
+            (overlay-put
+             ov 'before-string
+             (propertize " "
+                         'display
+                         `((margin right-margin)
+                           ,(propertize (format "Line %d" (1+ i))
+                                        'face `(:foreground "blue"
+                                                :background ,ln-bg))))))
+          (forward-line 1)))
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
 ;;; Test 005 — 'margin' face font attributes: :weight works, :height is constrained
 ;;
 ;; The 'margin' face is the base face for all margin content.  Font variant
