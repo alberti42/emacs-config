@@ -84,17 +84,21 @@ does not exist (unpatched builds)."
       (set-face-background 'margin ln-bg))))
 
 (defun face-margin-test--mode-header (mode)
-  "Return a short buffer header line describing MODE.
-If MODE is 'patched but the 'margin' face does not exist, emit a warning
-explaining that the build is unpatched and behavior reverted automatically."
-  (cond
-   ((and (eq mode 'patched) (not (facep 'margin)))
-    "Warning: 'patched was selected but this Emacs build is not patched.\n\
-The test reverted to unpatched behavior automatically.\n\n")
-   ((eq mode 'unpatched)
-    "Running in UNPATCHED mode: showing pre-patch behavior.\n\n")
-   (t
-    "Running in PATCHED mode: showing the fix.\n\n")))
+  "Return a warning string if MODE is 'patched but the build is unpatched.
+Returns an empty string when no warning is needed."
+  (if (and (eq mode 'patched) (not (facep 'margin)))
+      "Warning: 'patched was selected but this Emacs build is not patched.\n\
+The test reverted to unpatched behavior automatically.\n\n"
+    ""))
+
+(defun face-margin-test--title (title mode)
+  "Return TITLE with a running mode indicator appended on the same line.
+The effective mode is determined by MODE and whether the 'margin' face exists."
+  (let ((patched (and (eq mode 'patched) (facep 'margin))))
+    (format "%s - running in %s mode (%s)\n\n"
+            title
+            (if patched "PATCHED" "UNPATCHED")
+            (if patched "showing the fix" "showing pre-patch behavior"))))
 
 ;;; Test 001 — bug demo: modus-operandi stripe with no 'margin' face set
 ;;
@@ -238,10 +242,9 @@ background; unannotated cells show 'margin' background — inconsistent."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-003: overlay foreground only, 'margin' background shows through" mode))
       (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-003: overlay foreground only, 'margin' background shows through.
-
 Annotations set only :foreground (red); no :background is provided.
 The 'margin' face background should fill all margin cells uniformly.
 
@@ -315,11 +318,9 @@ Expected (unpatched): stripe visible in both margin areas below EOB."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-004: org-mode content + visual-wrap-prefix-mode + right margin" mode))
       (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-004: org-mode content + visual-wrap-prefix-mode +
-right margin.
-
 This test simulates the technique used by focus/centering packages
 such as olivetti, visual-fill-column, writeroom-mode, and darkroom:
 the right window margin is reserved as empty layout padding to
@@ -409,10 +410,9 @@ Expected (unpatched): stripe visible in both margin areas below EOB."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-004b: content in the right margin." mode))
       (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-004b: content in the right margin.
-
 The right margin is reserved and the first three lines receive a label
 glyph (\"Line 1\", \"Line 2\", \"Line 3\") placed there via a display
 property with (margin right-margin).  The remaining lines leave the
@@ -504,10 +504,9 @@ unaffected; no crash."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-005: 'margin' as base face — font attributes and inheritance" mode))
       (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-005: 'margin' as base face — font attributes and inheritance.
-
 The 'margin' face is the base face for all margin content.  Font
 attributes set on it propagate to annotation glyphs via inheritance.
 
@@ -577,7 +576,7 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
         (with-current-buffer buf
           (read-only-mode -1)
           (erase-buffer)
-          (insert (format "face-margin-test-006: buffer-local 'margin' isolation.\n\
+          (insert (format "face-margin-test-006: buffer-local 'margin' isolation\n\
 %s\n\n%s\n\nLines 1–8 below:\n" label desc))
           (dotimes (i 8) (insert (format "Line %d\n" (1+ i))))
           (setq-local left-margin-width 1)
@@ -640,7 +639,7 @@ Expected (unpatched): stripe visible in the left margin below EOB."
       (erase-buffer)
       (insert
        (concat
-        "face-margin-test-007: horizontal scrolling.\n\n"
+        (face-margin-test--title "face-margin-test-007: horizontal scrolling" mode)
         (face-margin-test--mode-header mode)
         "This test verifies that the left margin stays uniformly colored\n"
         "during horizontal scrolling.  The left margin is a fixed area\n"
@@ -723,7 +722,7 @@ Expected (unpatched): stripe visible in left margin below EOB."
       (erase-buffer)
       (insert
        (concat
-        "face-margin-test-007b: horizontal scrolling, no line-number column.\n\n"
+        (face-margin-test--title "face-margin-test-007b: horizontal scrolling, no line-number column." mode)
         (face-margin-test--mode-header mode)
         "Same as test 007, but display-line-numbers-mode is disabled.\n"
         "The left margin abuts the text area directly.\n\n"
@@ -781,7 +780,7 @@ Interactively, Emacs will prompt to choose between patched and unpatched."
       (erase-buffer)
       (insert
        (concat
-        "face-margin-test-008: RTL text.\n\n"
+        (face-margin-test--title "face-margin-test-008: RTL text" mode)
         (face-margin-test--mode-header mode)
         "This test mixes LTR and RTL (Hebrew) lines to verify that the\n"
         "left margin is handled correctly for both text directions.\n"
