@@ -37,15 +37,13 @@
 
 (defun face-margin-test--annotate (buf &optional fill)
   "Annotate lines in BUF with git-gutter-style indicators.
-Odd lines receive a green \"+\" ; even lines receive a blank filler if
-FILL is non-nil.  Colors are taken from the active theme via 'diff-added'
-and 'line-number' faces so that no hard-coded color is needed."
+All margin cells use the 'line-number' face background so the gutter
+column looks uniform.  Odd lines show \"!\" in red; even lines receive
+a blank filler when FILL is non-nil."
   (with-current-buffer buf
     (save-excursion
       (goto-char (point-min))
-      (let* ((added-bg (or (face-background 'diff-added nil t) "#00af5f"))
-             (ln-bg    (face-background 'line-number nil t))
-             (fg       (face-foreground 'line-number nil t))
+      (let* ((ln-bg (face-background 'line-number nil t))
              (line 1))
         (while (not (eobp))
           (cond
@@ -54,7 +52,7 @@ and 'line-number' faces so that no hard-coded color is needed."
               (overlay-put
                ov 'before-string
                (face-margin-test--make-sign
-                "+" `(:foreground ,fg :background ,added-bg)))))
+                "!" `(:foreground "red" :background ,ln-bg)))))
            (fill
             (let ((ov (make-overlay (point) (1+ (point)))))
               (overlay-put
@@ -117,7 +115,7 @@ customized — it inherits the frame default background.
 
 Look at the bottom of the window, below this text.  The line-number
 column continues with its theme background color, but the left margin
-column to its right reverts to the frame default: a visible stripe.
+column to its left reverts to the frame default: a visible stripe.
 
 Compare with face-margin-test-002, which shows the fix.
 ")
