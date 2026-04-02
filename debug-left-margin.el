@@ -461,20 +461,51 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
 ;;; Test 007 — horizontal scrolling
 ;;
 ;; The left margin is a fixed area that does not participate in horizontal
-;; scrolling.  Expected: the margin background stays uniformly colored as
-;; the text area scrolls left and right.  No redraw glitch on scroll.
+;; scrolling.  When the window is scrolled right, Emacs places a '$'
+;; truncation indicator at the left edge of the text area (in the fringe
+;; on GUI frames; in the text area on TTY frames where there are no fringes).
+;; This patch makes the '$' inherit the 'margin' face background so it
+;; blends with the gutter rather than showing the buffer default background.
+;;
+;; Expected: left margin and '$' indicator are uniformly colored.
+;; No stripe at any scroll position.
+;;
+;; PREEXISTING INDEPENDENT BUG 1 (TTY only): on TTY frames, the '$'
+;; indicator and the '!' annotation both occupy the left edge of the text
+;; area, so '$' overwrites '!' on scrolled lines.  This bug exists in
+;; unpatched Emacs and has not been addressed here; it requires a dedicated
+;; patch.
+;;
+;; PREEXISTING INDEPENDENT BUG 2: display table remapping of the truncation
+;; character does not work for the left-edge '$'.  In produce_special_glyphs,
+;; the mirroring code path for L2R left-edge glyphs discards both the
+;; character and the face from the display table glyph code when no bidi
+;; mirror is found.  Additionally, the display table has only one
+;; 'truncation' slot shared by both edges, making it impossible to style
+;; left and right independently.  This patch does not attempt to fix either
+;; limitation; they require a dedicated patch.
 
 (defun face-margin-test-007 ()
-  "Test: left margin stays fixed and colored during horizontal scrolling.
+  "Test: left margin and '$' truncation indicator colored during horizontal scroll.
 
 The left margin is a fixed area pinned to the window edge: it does not
-scroll with the text.  This test verifies that the margin background
-remains uniformly colored regardless of the horizontal scroll position.
+scroll with the text.  When the window is scrolled right (use C-e to
+reach the end of a long line, C-a to return), Emacs places a '$'
+truncation indicator at the left edge of the text area to signal that
+content is hidden to the left.
 
-Use C-e to scroll right to the end of a long line, C-a to return.
+This patch makes the '$' indicator inherit the 'margin' face background
+(via insert_left_trunc_glyphs in xdisp.c), so it blends uniformly with
+the gutter rather than showing the buffer default background.
 
-Expected: left margin stays uniformly colored throughout.
-No redraw glitch or stripe at any scroll position."
+PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames, the '$'
+indicator and the '!' annotation both occupy the left edge of the text
+area, so '$' overwrites '!' on scrolled lines.  This bug exists in
+unpatched Emacs and has not been addressed here; it requires a
+dedicated patch.
+
+Expected: left margin and '$' indicator share the same background color.
+No visual inconsistency at any horizontal scroll position."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -485,20 +516,17 @@ No redraw glitch or stripe at any scroll position."
       (erase-buffer)
       (insert
        (concat
-        "face-margin-test-007: horizontal scrolling.\n\n"
-        "The left margin is fixed and does not scroll with the text.\n"
-        "Use C-e to scroll right to the end of a line, C-a to return.\n"
-        "Expected: left margin stays uniformly colored at all scroll positions.\n\n"
-        "NOTE (pre-existing TTY behavior, unrelated to this patch):\n"
-        "In TTY mode, when the window is scrolled right, Emacs places a '$'\n"
-        "truncation indicator at the left edge of the text area to signal\n"
-        "that content is hidden to the left.  In GUI mode this indicator\n"
-        "goes in the fringe; in TTY mode there are no fringes, so it lands\n"
-        "in the text area with the default face background — creating a\n"
-        "visual inconsistency between the '$' column and the colored margin.\n"
-        "Additionally, left margin annotations ('!') are overwritten by '$'\n"
-        "on scrolled lines.  Both behaviors predate this patch and are\n"
-        "independent of the 'margin' face.\n\n"
+        "face-margin-test-007: horizontal scrolling + '$' truncation indicator.\n\n"
+        "Use C-e to scroll right to the end of a long line, C-a to return.\n\n"
+        "When scrolled right, a '$' indicator appears at the left edge of\n"
+        "the text area.  This patch makes it inherit the 'margin' face\n"
+        "background, so it blends with the gutter uniformly.\n\n"
+        "Expected: left margin and '$' share the same background color.\n\n"
+        "PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames,\n"
+        "the '$' indicator and the '!' annotation both occupy the left edge\n"
+        "of the text area, so '$' overwrites '!' on scrolled lines.  This\n"
+        "bug exists in unpatched Emacs and has not been addressed here;\n"
+        "it requires a dedicated patch.\n\n"
         (make-string 120 ?A) "\n"
         (make-string 120 ?B) "\n"
         (make-string 120 ?C) "\n"
