@@ -33,9 +33,39 @@
 (global-set-key (kbd "M-v") (lambda () (interactive) (scroll-down 5)))
 
 ;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
-;; These events are not handled by ultra-scroll, which only covers vertical scrolling.
-(global-set-key (kbd "<wheel-left>")  (lambda () (interactive) (scroll-right hscroll-step t)))
-(global-set-key (kbd "<wheel-right>") (lambda () (interactive) (scroll-left  hscroll-step t)))
+;; ultra-scroll only covers vertical; we replicate its pixel-delta approach here.
+;; The NS port encodes pixel amounts in (nth 4 event) as (COLS . PIXELS), same as
+;; vertical events.  We accumulate fractional column remainders so sub-character-width
+;; movements are not silently dropped.
+(defvar scroll-config--hscroll-residual 0
+  "Accumulated sub-column pixel remainder for smooth horizontal scrolling.")
+
+(defun scroll-config-horizontal (event &optional _arg)
+  "Horizontal scroll EVENT with pixel-proportional column steps."
+  (interactive "e")
+  (let* ((window (mwheel-event-window event))
+         (delta-info (nth 4 event))
+         (direction (event-basic-type event)))
+    (when (framep window) (setq window (frame-selected-window window)))
+    (with-selected-window window
+      (if delta-info
+          ;; Pixel-precise path: convert pixels → columns, carry the remainder.
+          (let* ((pixels (abs (cdr delta-info)))
+                 (total  (+ scroll-config--hscroll-residual pixels))
+                 (char-w (frame-char-width))
+                 (cols   (truncate (/ total char-w))))
+            (setq scroll-config--hscroll-residual (- total (* cols char-w)))
+            (unless (zerop cols)
+              (if (eq direction 'wheel-left)
+                  (scroll-right cols t)
+                (scroll-left cols t))))
+        ;; Fallback for events without pixel data (e.g. physical tilt wheel).
+        (if (eq direction 'wheel-left)
+            (scroll-right 3 t)
+          (scroll-left 3 t))))))
+
+(global-set-key (kbd "<wheel-left>")  #'scroll-config-horizontal)
+(global-set-key (kbd "<wheel-right>") #'scroll-config-horizontal)
 
 ;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
