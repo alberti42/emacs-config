@@ -236,26 +236,30 @@ Expected: entire left margin column colored from 'margin' face.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 004 — right margin sized so text area is 75 columns; visual-line-mode
+;;; Test 004 — org-mode prose, visual-wrap-prefix-mode, right margin for 75 cols
 ;;
-;; Expected: text wraps visually at the right margin boundary.  Both margin
-;; areas are colored uniformly by the 'margin' face.  No stripe below EOB.
+;; Simulates a focus-writing scenario: right margin constrains text to 75
+;; columns (as olivetti and similar packages do), visual-line-mode soft-wraps
+;; long lines, and visual-wrap-prefix-mode gives list-item continuations a
+;; hanging indent.  Expected: wrapped list items are properly indented; both
+;; margin areas are uniformly colored; no stripe below EOB.
 
 (defun face-margin-test-004 ()
-  "Test: right margin computed for 75 text columns + visual-line-mode wrapping.
+  "Test: org-mode list items, visual-wrap-prefix-mode, right margin for 75 cols.
 
-Left margin (width 1) holds per-line annotations.  Right margin width is
-computed dynamically so the visible text area is exactly 75 columns wide:
+Simulates a realistic writing/note-taking scenario: the right window
+margin is sized so the text area is exactly 75 columns wide — the same
+technique used by focus/centering packages such as olivetti:
 
   right-margin = (max 0 (- (window-total-width) 1 75))
 
-Long lines (> 75 characters) are inserted so that visual-line-mode has
-something to wrap.  The 'margin' face background is set to match the
-modus-operandi 'line-number' background.
+visual-line-mode soft-wraps long lines at the right margin.
+visual-wrap-prefix-mode adds a hanging indent to continuation lines of
+list items, so wrapped items look correctly indented.
 
-Expected: long lines wrap softly at the right margin boundary without
-truncation glyphs.  Both margin areas are uniformly colored (same as
-line-number background) throughout the window.  No stripe below EOB."
+Expected: list items wrap with a hanging indent aligned after '- '.
+Both margin areas are uniformly colored throughout the window.
+No stripe below EOB."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((ln-bg (face-background 'line-number nil t))
@@ -265,19 +269,48 @@ line-number background) throughout the window.  No stripe below EOB."
       (read-only-mode -1)
       (erase-buffer)
       (insert "\
-face-margin-test-004: right margin + visual-line-mode.
+face-margin-test-004: org-mode content + visual-wrap-prefix-mode +
+right margin.
 
-Left margin (width 1): per-line annotation column.
-Right margin: computed so the visible text area is exactly 75 columns.
+This test simulates a realistic writing scenario: the right window
+margin constrains the text area to 75 columns — the technique used by
+centering and focus-writing packages such as olivetti.
+visual-line-mode soft-wraps long lines at that boundary;
+visual-wrap-prefix-mode adds a hanging indent to continuation lines of
+list items so that wrapped entries look correct.
 
-Long lines below are soft-wrapped by visual-line-mode at the right margin.
-Both margin areas should be uniformly colored.  No stripe below EOB.
+Content below is adapted from
+https://www.gnu.org/software/emacs/documentation.html
+
+Expected: list items wrap with a hanging indent aligned after '- '.
+Both the left and right margin areas are uniformly colored.  No stripe
+below EOB.
+
+---
 
 ")
-      ;; Insert long lines (> 75 chars) to exercise visual-line-mode wrapping.
-      (let ((long-line (concat (make-string 40 ?A) " " (make-string 40 ?B))))
-        (dotimes (_ 8)
-          (insert long-line "\n")))
+      ;; Org-mode list items long enough to wrap at 75 columns.
+      ;; Content adapted from https://www.gnu.org/software/emacs/documentation.html
+      (insert "\
+* Reporting Bugs
+
+- To report bugs or contribute fixes, use the built-in bug reporter \
+(M-x report-emacs-bug) or send email to bug-gnu-emacs@gnu.org.  \
+For security issues, see the security page before filing a public report.
+
+- You can browse the bug database at debbugs.gnu.org.  For more information \
+on contributing, see the CONTRIBUTE file distributed with Emacs; patches \
+should include a ChangeLog entry in the standard GNU format.
+
+- For all other queries, consult the Emacs-related mailing lists on \
+savannah.gnu.org and the complete list of GNU mailing lists on lists.gnu.org.  \
+Development discussion happens on emacs-devel@gnu.org; user questions \
+belong on help-gnu-emacs@gnu.org.
+
+- See «Get Help with GNU Software» for help with GNU software in general.  \
+The Emacs Wiki at emacswiki.org is a community-maintained resource with \
+tips, tutorials, and package listings.
+")
       (setq-local left-margin-width 1))
     ;; Switch to the buffer before computing window-total-width so the
     ;; selected window is the one that will display the buffer.
@@ -287,6 +320,7 @@ Both margin areas should be uniformly colored.  No stripe below EOB.
     (with-current-buffer buf
       (face-margin-test--annotate buf t)
       (visual-line-mode 1)
+      (visual-wrap-prefix-mode 1)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))
