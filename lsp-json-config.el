@@ -9,6 +9,10 @@
 ;; - Schema validation and completion
 ;; - Auto schema detection via SchemaStore (package.json, tsconfig.json, etc.)
 ;;
+;; Commentary:
+;; - lsp-mode is the engine (session/workspaces, protocol plumbing, process management, requests/responses).
+;; - clients/lsp-json.el is a plugin for that engine: it calls lsp-register-client to tell lsp-mode how to start the JSON server,
+;;   and when to use it.
 
 ;;; Code:
 
@@ -17,8 +21,11 @@
          (json-mode     . lsp-deferred)   ; json-mode package
          (json-ts-mode  . lsp-deferred))  ; tree-sitter
   :config
-  ;; Ensure js-json-mode activates the JSON client even when the buffer is not
-  ;; visiting a file (lsp-mode otherwise falls back to "js-json").
+  ;; lsp-mode decides which server to start using a "language id" string.
+  ;; For js-json-mode, lsp-mode would otherwise use "js-json", but the JSON
+  ;; language server client only activates for "json" (and "jsonc").
+  ;; This mainly matters for buffers that are not visiting a *.json file, e.g.
+  ;; code-block edit buffers created by Markdown/Org helpers.
   (add-to-list 'lsp-language-id-configuration '(js-json-mode . "json")))
 
 ;; lsp-mode JSON client definitions (ships with lsp-mode; not a separate package)
