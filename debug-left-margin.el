@@ -96,6 +96,12 @@ last line of text, but the left margin column below EOB reverts to the
 frame default background — an inconsistency within the same gutter area."
   (interactive)
   (face-margin-test--load-theme)
+  ;; Reset the 'margin' face to its built-in default so this test
+  ;; demonstrates unmodified behavior regardless of what previous tests
+  ;; set.  The set-face-background call also triggers face cache
+  ;; re-realization, which is required for the theme's 'line-number'
+  ;; face to appear correctly.
+  (set-face-background 'margin nil)
   (let ((buf (get-buffer-create "*face-margin-test-001*")))
     (with-current-buffer buf
       (read-only-mode -1)
