@@ -247,11 +247,17 @@ Expected: entire left margin column colored from 'margin' face.
 (defun face-margin-test-004 ()
   "Test: org-mode list items, visual-wrap-prefix-mode, right margin for 75 cols.
 
-Simulates a realistic writing/note-taking scenario: the right window
-margin is sized so the text area is exactly 75 columns wide — the same
-technique used by focus/centering packages such as olivetti:
+Simulates the technique used by focus/centering packages such as
+olivetti, visual-fill-column, writeroom-mode, and darkroom: the right
+window margin is sized so the text area is exactly 75 columns wide,
+constraining line length without inserting newlines.
 
   right-margin = (max 0 (- (window-total-width) 1 75))
+
+These packages use the margin as empty layout padding — they do NOT
+write content into it.  Writing actual glyphs into the right margin
+via display properties (the right-margin equivalent of git-gutter) is
+a distinct scenario not covered here.
 
 visual-line-mode soft-wraps long lines at the right margin.
 visual-wrap-prefix-mode adds a hanging indent to continuation lines of
@@ -272,12 +278,15 @@ No stripe below EOB."
 face-margin-test-004: org-mode content + visual-wrap-prefix-mode +
 right margin.
 
-This test simulates a realistic writing scenario: the right window
-margin constrains the text area to 75 columns — the technique used by
-centering and focus-writing packages such as olivetti.
-visual-line-mode soft-wraps long lines at that boundary;
-visual-wrap-prefix-mode adds a hanging indent to continuation lines of
-list items so that wrapped entries look correct.
+This test simulates the technique used by focus/centering packages
+such as olivetti, visual-fill-column, writeroom-mode, and darkroom:
+the right window margin is reserved as empty layout padding to
+constrain the text area to 75 columns.  These packages do NOT write
+content into the margin — writing actual glyphs into the right margin
+is a distinct scenario not covered by this test.  visual-line-mode
+soft-wraps long lines at the right boundary; visual-wrap-prefix-mode
+adds a hanging indent to continuation lines of list items so that
+wrapped entries look correct.
 
 Content below is adapted from
 https://www.gnu.org/software/emacs/documentation.html
