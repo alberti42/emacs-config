@@ -32,6 +32,11 @@
 (global-set-key (kbd "C-v") (lambda () (interactive) (scroll-up 5)))
 (global-set-key (kbd "M-v") (lambda () (interactive) (scroll-down 5)))
 
+;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
+;; These events are not handled by ultra-scroll, which only covers vertical scrolling.
+(global-set-key (kbd "<wheel-left>")  (lambda () (interactive) (scroll-right hscroll-step t)))
+(global-set-key (kbd "<wheel-right>") (lambda () (interactive) (scroll-left  hscroll-step t)))
+
 ;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
 (global-set-key (kbd "<C-wheel-down>") 'ignore)
