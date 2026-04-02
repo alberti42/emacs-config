@@ -3,6 +3,12 @@
 ;; Prefer loading newest version of a file (typically the non-compiled version)
 (setq load-prefer-newer t)
 
+;; Emacs ships with a built-in package manager called package.el.  Our Emacs
+;; config uses straight.el instead.  If package.el also auto-enables packages
+;; from ~/.config/emacs/elpa at startup, we can end up loading two different
+;; copies of the same package.  That leads to confusing warnings/bugs.
+(setq package-enable-at-startup nil)
+
 ;; Import shell environment before straight.el and package lookups run,
 ;; so PATH is correct from the very start.  Uses the same file-truename
 ;; trick as init.el to work through the ~/.config/emacs symlink.
