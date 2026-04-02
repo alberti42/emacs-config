@@ -464,26 +464,41 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
 ;; scrolling.  When the window is scrolled right, Emacs places a '$'
 ;; truncation indicator at the left edge of the text area (in the fringe
 ;; on GUI frames; in the text area on TTY frames where there are no fringes).
-;; This patch makes the '$' inherit the 'margin' face background so it
-;; blends with the gutter rather than showing the buffer default background.
+;; This patch makes the '$' inherit the 'line-number' face background so it
+;; blends with the line-number column that occupies the same visual area.
+;; 'line-number' is the correct choice: '$' is in TEXT_AREA, just like line
+;; numbers, and should not use the 'margin' face which is for LEFT_MARGIN_AREA.
 ;;
 ;; Expected: left margin and '$' indicator are uniformly colored.
 ;; No stripe at any scroll position.
 ;;
-;; PREEXISTING INDEPENDENT BUG 1 (TTY only): on TTY frames, the '$'
-;; indicator and the '!' annotation both occupy the left edge of the text
-;; area, so '$' overwrites '!' on scrolled lines.  This bug exists in
-;; unpatched Emacs and has not been addressed here; it requires a dedicated
-;; patch.
+;; PREEXISTING INDEPENDENT BUG 1 (TTY only): on TTY frames, '!' annotations
+;; disappear on horizontally scrolled lines.  The '$' indicator is placed in
+;; TEXT_AREA[0] while '!' lives in LEFT_MARGIN_AREA — different areas, so
+;; there is no direct overwriting at the data structure level.  The likely
+;; cause is that the TTY renderer skips LEFT_MARGIN_AREA entirely for rows
+;; flagged as truncated_on_left_p.  This may have been intentional, but it
+;; is poor design: the left margin is a fixed area pinned to the window edge
+;; and should remain visible regardless of horizontal scroll state.  This
+;; bug exists in unpatched Emacs and has not been addressed here; it requires
+;; a dedicated patch.
 ;;
-;; PREEXISTING INDEPENDENT BUG 2: display table remapping of the truncation
+;; PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always rendered
+;; with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless of the visual
+;; context of the surrounding area.  When a theme gives the 'line-number' face
+;; a non-default background, the '$' shows the buffer default background
+;; instead, creating a visible inconsistency.  A proper fix requires a
+;; dedicated patch that determines the correct face based on what is actually
+;; displayed at that position (line numbers, fringes, margins).
+;;
+;; PREEXISTING INDEPENDENT BUG 3: display table remapping of the truncation
 ;; character does not work for the left-edge '$'.  In produce_special_glyphs,
 ;; the mirroring code path for L2R left-edge glyphs discards both the
 ;; character and the face from the display table glyph code when no bidi
 ;; mirror is found.  Additionally, the display table has only one
 ;; 'truncation' slot shared by both edges, making it impossible to style
-;; left and right independently.  This patch does not attempt to fix either
-;; limitation; they require a dedicated patch.
+;; left and right independently.  This patch does not attempt to fix any of
+;; these limitations; each requires a dedicated patch.
 
 (defun face-margin-test-007 ()
   "Test: left margin and '$' truncation indicator colored during horizontal scroll.
@@ -494,9 +509,10 @@ reach the end of a long line, C-a to return), Emacs places a '$'
 truncation indicator at the left edge of the text area to signal that
 content is hidden to the left.
 
-This patch makes the '$' indicator inherit the 'margin' face background
-(via insert_left_trunc_glyphs in xdisp.c), so it blends uniformly with
-the gutter rather than showing the buffer default background.
+This patch makes the '$' indicator inherit the 'line-number' face
+background (via insert_left_trunc_glyphs in xdisp.c), so it blends with
+the line-number column that occupies the same visual area.  'line-number'
+is the correct choice: '$' lives in TEXT_AREA, just like line numbers.
 
 PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames, the '$'
 indicator and the '!' annotation both occupy the left edge of the text
@@ -519,14 +535,17 @@ No visual inconsistency at any horizontal scroll position."
         "face-margin-test-007: horizontal scrolling + '$' truncation indicator.\n\n"
         "Use C-e to scroll right to the end of a long line, C-a to return.\n\n"
         "When scrolled right, a '$' indicator appears at the left edge of\n"
-        "the text area.  This patch makes it inherit the 'margin' face\n"
-        "background, so it blends with the gutter uniformly.\n\n"
-        "Expected: left margin and '$' share the same background color.\n\n"
-        "PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames,\n"
-        "the '$' indicator and the '!' annotation both occupy the left edge\n"
-        "of the text area, so '$' overwrites '!' on scrolled lines.  This\n"
-        "bug exists in unpatched Emacs and has not been addressed here;\n"
-        "it requires a dedicated patch.\n\n"
+        "the text area.  This patch makes it inherit the 'line-number' face\n"
+        "background, so it blends with the line-number column next to it.\n\n"
+        "Expected: '$' and line numbers share the same background color.\n\n"
+        "PREEXISTING INDEPENDENT BUG (TTY only): on TTY frames, '!'\n"
+        "annotations disappear on horizontally scrolled lines.  '$' lives\n"
+        "in TEXT_AREA and '!' in LEFT_MARGIN_AREA — different areas, so\n"
+        "no direct overwriting occurs.  The likely cause is that the TTY\n"
+        "renderer skips LEFT_MARGIN_AREA for rows flagged truncated_on_left_p.\n"
+        "This may be by design, but it is poor design: the left margin is\n"
+        "fixed and should remain visible regardless of scroll position.\n"
+        "Not addressed by this patch; requires a dedicated fix.\n\n"
         (make-string 120 ?A) "\n"
         (make-string 120 ?B) "\n"
         (make-string 120 ?C) "\n"
