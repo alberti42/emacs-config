@@ -79,7 +79,7 @@ syntaxes/                # Per-language indentation and settings
 lsp-core.el              # Shared LSP configuration
 lsp-python.el            # Python LSP
 lsp-web.el               # TypeScript / JavaScript LSP
-lsp-json.el              # JSON LSP (SchemaStore)
+lsp-json-config.el       # JSON LSP (SchemaStore)
 lsp-ltex-plus-config.el  # Grammar / spell checking
 gui-config.el            # Fonts, frame chrome, window dividers
 scroll-config.el         # Scrolling (pixel-precise GUI, TTY mouse)

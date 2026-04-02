@@ -75,7 +75,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
 - `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
-- `lsp-json.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
+- `lsp-json-config.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
 - `lsp-swift.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
@@ -258,7 +258,7 @@ These modules expect external programs on `PATH`:
   - `typescript-language-server`
   - `tsserver` (typically from `typescript` npm package)
 
-- JSON LSP (`lsp-json.el`):
+- JSON LSP (`lsp-json-config.el`):
   - `vscode-json-language-server` (from `vscode-langservers-extracted` npm package)
 
 - LTEX+ (`lsp-ltex-plus-config.el`):
