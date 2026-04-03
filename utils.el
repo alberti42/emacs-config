@@ -71,13 +71,38 @@ before entering it.  Does nothing if the buffer does not visit a file."
    ;; ("C-g"             . crux-keyboard-quit-dwim)                           ; Smarter C-g: dismisses the minibuffer or *Completions* buffer even when focus is elsewhere. Replaces built-in C-g.
    ))
 
-;; Help system enhancements
-(defun my/help-fns-describe-custom-type (variable)
-  "Show the `custom-type' (schema) for VARIABLE in Help buffers."
-  (when-let* ((type (get variable 'custom-type)))
-    (princ (format "  Type Schema: %S\n" type))))
+;; Help system enhancements: Schema-aware documentation.
+;;
+;; This feature enhances `describe-variable' (C-h v) by automatically extracting
+;; and rendering the machine-readable schema (custom-type) of customizable
+;; variables. This provides "JSON Schema"-style discoverability directly in
+;; the Help buffer, showing allowed values without needing to open the
+;; full Customize UI.
 
-;; Register the schema viewer after the "You can customize" section.
+(defun my/help-fns-describe-custom-type (variable)
+  "Extract and render the `custom-type' (schema) for VARIABLE.
+This function is intended for `help-fns-describe-variable-functions'.
+
+It provides specialized formatting for:
+- `choice`: Lists all possible options.
+- `const`: Extracts both the internal value and the human-readable :tag.
+- others: Falls back to a clean printed representation of the type."
+  (when-let* ((type (get variable 'custom-type)))
+    (if (and (listp type) (eq (car type) 'choice))
+        ;; Format choice types as a comma-separated list of "value (Tag)"
+        (let ((opts (mapcar (lambda (o)
+                              (if (and (listp o) (eq (car o) 'const))
+                                  (let ((v (car (last o)))
+                                        (tag (plist-get (cdr o) :tag)))
+                                    (if tag (format "%s (%s)" v tag) (format "%s" v)))
+                                (format "%s" o)))
+                            (cdr type))))
+          (princ (format "  Choice: %s\n" (mapconcat #'identity opts ", "))))
+      ;; Fallback for non-choice types (e.g. boolean, integer, string)
+      (princ (format "  Type: %S\n" type)))))
+
+;; Register the schema viewer. We append it (t) so it appears after the
+;; standard "You can customize this variable" line.
 (add-hook 'help-fns-describe-variable-functions #'my/help-fns-describe-custom-type t)
 
 (provide 'utils)
