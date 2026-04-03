@@ -40,4 +40,5 @@ The following items from the maintainer's review are verified using the interact
 - [x] **Font Variations:** Test the `margin` face with larger fonts or different weights. (Verified by `face-margin-test-005`)
 - [x] **Horizontal Scrolling:** Ensure no redraw glitches or color bleed during `C-e` / `C-a`. (Verified by `face-margin-test-007` and `007b`)
 - [x] **R2L Text:** Verify behavior in Hebrew/Arabic buffers. (Verified by `face-margin-test-008`)
+- [x] **Built-in LSP (Flymake):** Verify behavior with `eglot` style margin indicators. (Verified by `face-margin-test-009`)
 - [x] **Third-party Integration:** Smoke tests with `olivetti` (right margin) and `git-gutter` (left margin). (Simulated by `face-margin-test-004` and `face-margin-test--annotate`)

@@ -17,11 +17,11 @@
 ;;   emacs -Q --load /path/to/debug-left-margin.el \
 ;;             --eval "(face-margin-test-NNN)"
 ;;
-;; Replace NNN with the test number (001 through 008, plus 007b).
+;; Replace NNN with the test number (001 through 009, plus 007b).
 ;;
 ;; Tests 001 and 002 are paired: 001 shows the stripe bug using only built-in
 ;; components; 002 shows the fix by setting the 'margin' face background to
-;; match 'line-number'.  Tests 003–008 cover additional scenarios and describe
+;; match 'line-number'.  Tests 003–009 cover additional scenarios and describe
 ;; their expected outcome in the buffer text.
 
 ;;; Code:
@@ -824,6 +824,66 @@ Interactively, Emacs will prompt to choose between patched and unpatched."
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
       (face-margin-test--annotate buf t)
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))
+    (switch-to-buffer buf)))
+
+;;; Test 009 — built-in Flymake (LSP-style) margin indicators
+;;
+;; This test uses the built-in Flymake engine to display a diagnostic error
+;; in the left margin, exactly as Eglot (built-in LSP) does when configured
+;; to use margins.
+
+(defun face-margin-test-009 (&optional mode)
+  "Test: built-in Flymake (LSP-style) margin indicators.
+
+Simulates how Eglot/LSP display diagnostics in the margin using
+built-in Flymake logic.
+
+Expected (patched): the Flymake '!!' (error) indicator is correctly
+backgrounded by the 'margin' face.
+Expected (unpatched): the Flymake indicator has the frame default
+background, creating a stripe if 'margin' is colored."
+  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'patched))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-009*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-009: built-in Flymake margin indicators (Eglot/LSP style)" mode))
+      (insert (face-margin-test--mode-header mode))
+      (insert "\
+This test uses the built-in Flymake engine to display a diagnostic
+error in the left margin, exactly as Eglot (built-in LSP) does.
+
+Configured via:
+  (setq-local flymake-margin-indicator-position 'left-margin)
+
+Expected (patched): the Flymake error indicator blends perfectly with the
+colored margin background.
+Expected (unpatched): the indicator shows the frame default
+background (white), causing a visual break in the gutter.
+")
+      ;; Configure Flymake for margins
+      (setq-local flymake-margin-indicator-position 'left-margin)
+      (setq-local left-margin-width 2)
+
+      ;; Add a dummy backend that reports an error on line 15
+      (let ((backend (lambda (report-fn &rest _)
+                       (funcall report-fn
+                                (list (flymake-make-diagnostic
+                                       (current-buffer)
+                                       (line-beginning-position 15)
+                                       (line-end-position 15)
+                                       :error "Dummy LSP error"))))))
+        (add-hook 'flymake-diagnostic-functions backend nil t))
+
+      (face-margin-test--setup-window buf)
+      (flymake-mode 1)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))
