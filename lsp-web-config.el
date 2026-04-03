@@ -10,13 +10,22 @@
 ;;; Code:
 
 ;; lsp-mode itself is configured in lsp-core.el.
-;; This module only adds Web-specific activation.
+;; This module adds Web-specific activation.
 
+;; We hook into the major modes directly so that `lsp-deferred` can
+;; trigger the loading of `lsp-mode` when a file is opened.
+
+(use-package typescript-mode
+  :hook (typescript-mode . lsp-deferred))
+
+(use-package js
+  :straight nil
+  :hook (js-mode . lsp-deferred))
+
+;; Once lsp-mode is loaded, we can apply specific JS/TS client settings if needed.
 (use-package lsp-javascript
   :straight nil
-  :after lsp-mode
-  :hook ((typescript-mode . lsp-deferred)
-         (js-mode . lsp-deferred)))
+  :after lsp-mode)
 
 (provide 'lsp-web-config)
 

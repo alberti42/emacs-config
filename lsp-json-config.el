@@ -15,23 +15,29 @@
 ;;; Code:
 
 ;; lsp-mode itself is configured in lsp-core.el.
-;; This module only adds JSON-specific activation.
+;; This module adds JSON-specific activation.
 
+;; We hook into the major modes directly so that `lsp-deferred` can
+;; trigger the loading of `lsp-mode` when a file is opened.
+
+(add-hook 'js-json-mode-hook
+          (lambda ()
+            ;; lsp-mode picks a server based on a "language id".
+            ;; For js-json-mode it would otherwise use "js-json",
+            ;; but the JSON client activates for "json"/"jsonc".
+            ;; This matters for buffers without a *.json filename
+            ;; (e.g. code-block edit buffers).
+            (with-eval-after-load 'lsp-mode
+              (add-to-list 'lsp-language-id-configuration '(js-json-mode . "json")))
+            (lsp-deferred)))
+
+;; json-ts-mode is built-in (Emacs 29+); uses tree-sitter.
+(add-hook 'json-ts-mode-hook #'lsp-deferred)
+
+;; Once lsp-mode is loaded, we can apply specific JSON client settings if needed.
 (use-package lsp-json
   :straight nil
-  :after lsp-mode
-  :hook ((js-json-mode . (lambda ()
-                           ;; lsp-mode picks a server based on a "language id".
-                           ;; For js-json-mode it would otherwise use "js-json",
-                           ;; but the JSON client activates for "json"/"jsonc".
-                           ;; This matters for buffers without a *.json filename
-                           ;; (e.g. code-block edit buffers).
-                           (add-to-list 'lsp-language-id-configuration '(js-json-mode . "json"))
-                           (lsp-deferred)))
-         ;; Built into Emacs (Emacs 29+); uses tree-sitter for accurate
-         ;; parsing/highlighting/indentation if one has JSON treesitter grammar
-         ;; installed.
-         (json-ts-mode . lsp-deferred)))
+  :after lsp-mode)
 
 (provide 'lsp-json-config)
 
