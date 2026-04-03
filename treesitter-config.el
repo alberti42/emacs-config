@@ -21,12 +21,17 @@
   ;; Note: markdown requires both markdown and markdown-inline from the split_parser branch.
   (setq treesit-language-source-alist
         '((json "https://github.com/tree-sitter/tree-sitter-json")
+          (yaml "https://github.com/ikatyang/tree-sitter-yaml")
+          (toml "https://github.com/tree-sitter-grammars/tree-sitter-toml")
           (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
           (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
 
   ;; Remap major modes to their tree-sitter counterparts
   (setq major-mode-remap-alist
         '((json-mode . json-ts-mode)
+          (js-json-mode . json-ts-mode)
+          (yaml-mode . yaml-ts-mode)
+          (toml-mode . toml-ts-mode)
           (markdown-mode . markdown-ts-mode)
           (gfm-mode . markdown-ts-mode)))
 
