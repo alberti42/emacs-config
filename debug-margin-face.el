@@ -933,24 +933,38 @@ colored margin background.
 Expected (unpatched): the indicator shows the frame default
 background (white), causing a visual break in the gutter.
 ")
-      ;; Configure Flymake for margins
+      ;; Configure Flymake for margins and disable fringes to favor margins
       (setq-local flymake-margin-indicator-position 'left-margin)
+      (setq-local flymake-indicator-type 'margins)
+      (setq-local flymake-fringe-indicator-position nil)
+      (setq-local flymake-margin-indicators-string 
+                  '((error "!!" . flymake-error)
+                    (warning "!!" . flymake-warning)
+                    (note "!!" . flymake-note)))
       (setq-local left-margin-width 2)
 
-      ;; Add a dummy backend that reports an error on line 15
+      ;; Add a dummy backend that reports an error on line 1 (the title line)
       (let ((backend (lambda (report-fn &rest _)
-                       (funcall report-fn
-                                (list (flymake-make-diagnostic
-                                       (current-buffer)
-                                       (line-beginning-position 15)
-                                       (line-end-position 15)
-                                       :error "Dummy LSP error"))))))
-        (add-hook 'flymake-diagnostic-functions backend nil t))
+                       (let ((diag (flymake-make-diagnostic
+                                    (point-min)
+                                    (save-excursion 
+                                      (goto-char (point-min))
+                                      (line-end-position))
+                                    :error "Dummy LSP error")))
+                         (funcall report-fn (list diag))))))
+        (setq-local flymake-diagnostic-functions (list backend)))
 
-      (face-margin-test--setup-window buf)
+      ;; Setup window with width 2
+      (set-window-buffer (selected-window) buf)
+      (set-window-margins (selected-window) 2 0)
+
       (flymake-mode 1)
+      (flymake-start)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
+      ;; Force Flymake to realize margins
+      (when (fboundp 'flymake--apply-margins) (flymake--apply-margins))
+      (sit-for 0.2)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
