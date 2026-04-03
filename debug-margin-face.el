@@ -595,14 +595,18 @@ immediately visible without switching buffers manually."
          (buf-l (get-buffer-create "*face-margin-test-006-local*"))
          (buf-g (get-buffer-create "*face-margin-test-006-global*")))
     ;; Populate both buffers with identical structure.
-    (dolist (entry `((,buf-l "LEFT  — buffer-local face-remap-add-relative (analogous to test 002)"
-                             "face-remap-add-relative sets the 'margin' background\n\
-buffer-locally.  Behaves like test 002: margin matches line-number,\n\
-no stripe below EOB.  The global 'margin' face is not modified.")
-                     (,buf-g "RIGHT — no override, global default (analogous to test 001)"
-                             "No face-remap-add-relative in this buffer.  Behaves\n\
-like test 001: margin reverts to frame background below EOB,\n\
-producing the visible stripe.  Global 'margin' face is unchanged.")))
+    (dolist (entry `((,buf-l "\
+LEFT — buffer-local face-remap-add-relative (analogous to test 002)
+face-remap-add-relative sets the 'margin' background buffer-locally.
+Behaves like test 002: margin matches line-number, no stripe below EOB.
+The global 'margin' face is not modified.
+")
+                     (,buf-g "\
+RIGHT — no override, global default (analogous to test 001) No
+face-remap-add-relative in this buffer.  Behaves like test 001: margin
+reverts to frame background below EOB, producing the visible white stripe.
+Global 'margin' face is unchanged.
+")))
       (let ((buf   (nth 0 entry))
             (label (nth 1 entry))
             (desc  (nth 2 entry)))
