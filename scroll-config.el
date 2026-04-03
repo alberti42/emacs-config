@@ -28,9 +28,14 @@
   (setq ultra-scroll-preserve-column nil)
   (ultra-scroll-mode 1))
 
-;; Scroll by 5 lines at a time.
-(global-set-key (kbd "C-v") (lambda () (interactive) (scroll-up 5)))
-(global-set-key (kbd "M-v") (lambda () (interactive) (scroll-down 5)))
+;; Scroll by 5 lines (current and other window).
+(let ((num-lines 5))
+  (pcase-dolist (`(,key . ,fn)
+                 '(("C-v" . scroll-up)      ("<next>"  . scroll-up)
+                   ("M-v" . scroll-down)    ("<prior>" . scroll-down)
+                   ("M-<next>" . scroll-other-window)
+                   ("M-<prior>" . scroll-other-window-down)))
+    (global-set-key (kbd key) (lambda () (interactive) (funcall fn num-lines)))))
 
 ;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
 ;; ultra-scroll only covers vertical; we replicate its pixel-delta approach here.
