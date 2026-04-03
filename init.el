@@ -223,12 +223,12 @@
   "Could not load lsp-core.el; LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-python
-  "Could not load lsp-python.el; Python LSP is disabled.")
+  'lsp-python-config
+  "Could not load lsp-python-config.el; Python LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-web
-  "Could not load lsp-web.el; TypeScript/JavaScript LSP is disabled.")
+  'lsp-web-config
+  "Could not load lsp-web-config.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
   'lsp-json-config
@@ -239,8 +239,8 @@
   "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 (emacs-config-load-module
-  'lsp-swift
-  "Could not load lsp-swift.el; Swift LSP is disabled.")
+  'lsp-swift-config
+  "Could not load lsp-swift-config.el; Swift LSP is disabled.")
 
 ; ;; VCS gutter (TTY)
 (emacs-config-load-module

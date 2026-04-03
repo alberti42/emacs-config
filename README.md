@@ -77,8 +77,8 @@ completion.el            # Completion orchestration
 completions/             # Vertico, Corfu, Cape, Orderless, Consult, …
 syntaxes/                # Per-language indentation and settings
 lsp-core.el              # Shared LSP configuration
-lsp-python.el            # Python LSP
-lsp-web.el               # TypeScript / JavaScript LSP
+lsp-python-config.el            # Python LSP
+lsp-web-config.el               # TypeScript / JavaScript LSP
 lsp-json-config.el       # JSON LSP (SchemaStore)
 lsp-ltex-plus-config.el  # Grammar / spell checking
 gui-config.el            # Fonts, frame chrome, window dividers

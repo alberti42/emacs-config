@@ -75,11 +75,11 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `navigation-config.el`: cursor position jump history via `better-jumper`. Provides forward/backward jump list (`C-c [` / `C-c ]`), similar to Vim's C-o/C-i. Integrates automatically with xref/LSP jumps. NOTE (2026-03-24): `better-jumper.el` emits native compiler warnings for missing `declare-function` for `ring-*`, `evil-visual-state-p`, `get-current-persp`, and `safe-persp-name`. These are harmless (ring is always loaded; the others are optional integrations guarded by `fboundp`). TODO: file a PR upstream with `declare-function` declarations if we keep this package.
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
-- `lsp-python.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
-- `lsp-web.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
+- `lsp-python-config.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
+- `lsp-web-config.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json-config.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
-- `lsp-swift.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
+- `lsp-swift-config.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
@@ -253,10 +253,10 @@ macOS / Linux:
 
 These modules expect external programs on `PATH`:
 
-- Python LSP (`lsp-python.el`):
+- Python LSP (`lsp-python-config.el`):
   - `basedpyright` (configured via `lsp-pyright-langserver-command`)
 
-- JS/TS LSP (`lsp-web.el`):
+- JS/TS LSP (`lsp-web-config.el`):
   - `typescript-language-server`
   - `tsserver` (typically from `typescript` npm package)
 
@@ -266,7 +266,7 @@ These modules expect external programs on `PATH`:
 - LTEX+ (`lsp-ltex-plus-config.el`):
   - `ltex-ls-plus` (Java-based server)
 
-- Swift LSP (`lsp-swift.el`):
+- Swift LSP (`lsp-swift-config.el`):
   - `sourcekit-lsp` (ships with the Swift toolchain; on macOS located via `xcrun`)
 
 If any of these are missing, Emacs may still start but language features will
