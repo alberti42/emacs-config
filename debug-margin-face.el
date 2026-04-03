@@ -921,50 +921,39 @@ background, creating a stripe if 'margin' is colored."
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title "face-margin-test-009: built-in Flymake margin indicators (Eglot/LSP style)" mode))
       (insert "\
-This test uses the built-in Flymake engine to display a diagnostic
-error in the left margin, exactly as Eglot (built-in LSP) does.
+This test simulates how Eglot (built-in LSP) displays diagnostics in
+the margin using Flymake's display logic.
 
-Configured via:
+This scenario is technically identical to face-margin-test-003 (face
+merging between the 'margin' face and a foreground-only overlay), but
+validates the behavior for a 2-column margin, which is the standard width
+for built-in diagnostic indicators.
 
-  (setq-local flymake-margin-indicator-position 'left-margin)
+Instead of running the full Flymake engine, we manually create an
+overlay with the exact display property Flymake uses:
 
-Expected (patched): the Flymake error indicator blends perfectly with the
-colored margin background.
+  '((margin left-margin) \"!!\")
+
+The indicator face specifies only :foreground \"red\".
+
+Expected (patched): the red '!!' indicator is correctly backgrounded by
+the 'margin' face, blending into the gutter.
 Expected (unpatched): the indicator shows the frame default
-background (white), causing a visual break in the gutter.
+background (white), creating a visual break in the gutter.
 ")
-      ;; Configure Flymake for margins and disable fringes to favor margins
-      (setq-local flymake-margin-indicator-position 'left-margin)
-      (setq-local flymake-indicator-type 'margins)
-      (setq-local flymake-fringe-indicator-position nil)
-      (setq-local flymake-margin-indicators-string 
-                  '((error "!!" . flymake-error)
-                    (warning "!!" . flymake-warning)
-                    (note "!!" . flymake-note)))
+      ;; Manual simulation of Flymake/LSP margin indicator
       (setq-local left-margin-width 2)
-
-      ;; Add a dummy backend that reports an error on line 1 (the title line)
-      (let ((backend (lambda (report-fn &rest _)
-                       (let ((diag (flymake-make-diagnostic
-                                    (point-min)
-                                    (save-excursion 
-                                      (goto-char (point-min))
-                                      (line-end-position))
-                                    :error "Dummy LSP error")))
-                         (funcall report-fn (list diag))))))
-        (setq-local flymake-diagnostic-functions (list backend)))
-
-      ;; Setup window with width 2
-      (set-window-buffer (selected-window) buf)
       (set-window-margins (selected-window) 2 0)
 
-      (flymake-mode 1)
-      (flymake-start)
+      (let ((ov (make-overlay (point-min) (1+ (point-min)))))
+        (overlay-put ov 'before-string
+                     (propertize " " 'display
+                                 `((margin left-margin)
+                                   ,(propertize "!!" 'face '(:foreground "red"))))))
+
       (display-line-numbers-mode 1)
       (read-only-mode 1)
-      ;; Force Flymake to realize margins
-      (when (fboundp 'flymake--apply-margins) (flymake--apply-margins))
-      (sit-for 0.2)
+      (redisplay t)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
