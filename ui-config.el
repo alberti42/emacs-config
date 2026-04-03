@@ -52,13 +52,12 @@
 (set-display-table-slot standard-display-table 'truncation (make-glyph-code ?… 'special-glyphs))    ; truncation sign
 (set-display-table-slot standard-display-table 'wrap (make-glyph-code ?↲ 'special-glyphs))          ; continuation sign
 
-;; TTY mode-line separator
-;; Emacs fills the trailing space of the TTY mode-line via mode-line-end-spaces,
-;; which defaults to "%-" (fill with dashes).  Override it after all themes load.
-;; The :eval guard keeps GUI frames unaffected when running as a daemon.
-;; Use (make-string 500 ?─) instead of "" to fill with ─ (U+2500), drawing a
-;; continuous horizontal line across the mode-line (500 chars gets truncated to
-;; window width).
+;; TTY mode-line separator Emacs fills the trailing space of the TTY mode-line
+;; via mode-line-end-spaces, which defaults to "%-" (fill with dashes).  We
+;; override it after all themes load.  The :eval guard keeps GUI frames
+;; unaffected.  Use (make-string 500 ?─) instead of "" to fill with ─ (U+2500),
+;; drawing a continuous horizontal line across the mode-line (500 chars gets
+;; truncated to window width).
 (defun emacs-config--tty-mode-line-separator ()
   (setq-default mode-line-end-spaces
     '(:eval (unless (display-graphic-p) ""))))
