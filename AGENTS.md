@@ -61,6 +61,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `mac-clipboard.el`: macOS TTY clipboard sync — wires kill-ring writes to `pbcopy`; deliberately omits the paste direction to avoid spawning a `pbpaste` subprocess on every `C-y`.
 - `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame. (Currently **commented out** in `init.el`; kept but not loaded.)
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
+- `treesitter-config.el`: tree-sitter grammar bootstrap. Checks `(treesit-available-p)` and automatically installs missing grammars from `treesit-language-source-alist` (JSON, YAML, TOML, Markdown) at load time. Uses `major-mode-remap-alist` to promote `-ts-mode` variants. Provides `treesitter-config-reinstall-grammars` for manual updates.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
 - `soft-wrap.el`: `soft-wrap-mode` (buffer-local minor mode) and `global-soft-wrap-mode` for visual-only soft wrapping. Used by text/Markdown configs.
