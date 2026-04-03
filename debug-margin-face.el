@@ -195,13 +195,14 @@ On an unpatched build, the face does not exist and the call is skipped safely."
       (insert (face-margin-test--mode-header mode))
       (insert "face-margin-test-002: fix demo ('margin' face set to match 'line-number')\n\n")
       (insert "\
-Same setup as face-margin-test-001.  The only difference: the 'margin'
-face background is set to match the modus-operandi 'line-number' background:
+Same setup as face-margin-test-001.  The only difference: the 'margin' face
+background is set to match the modus-operandi 'line-number' background:
 
   (set-face-background 'margin (face-background 'line-number nil t))
 
-Expected: the left margin column and the line-number column share the
-same background color all the way to the bottom of the window.  No stripe.
+Expected: the left margin column and the line-number column share the same
+background color all the way to the bottom of the window, showing the
+solution to the bug: no visible stripe.
 
 Compare with face-margin-test-001, which shows the bug.
 ")
