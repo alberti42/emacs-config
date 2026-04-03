@@ -18,8 +18,17 @@
            (treesit-available-p))
   :config
   ;; Define grammar sources
+  ;; Note: markdown requires both markdown and markdown-inline from the split_parser branch.
   (setq treesit-language-source-alist
-        '((json "https://github.com/tree-sitter/tree-sitter-json")))
+        '((json "https://github.com/tree-sitter/tree-sitter-json")
+          (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
+          (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
+
+  ;; Remap major modes to their tree-sitter counterparts
+  (setq major-mode-remap-alist
+        '((json-mode . json-ts-mode)
+          (markdown-mode . markdown-ts-mode)
+          (gfm-mode . markdown-ts-mode)))
 
   (defun treesitter-config-reinstall-grammars ()
     "Force reinstallation of all grammars in `treesit-language-source-alist'.
@@ -28,9 +37,6 @@ Use this to update grammars to their latest versions."
     (dolist (lang-source treesit-language-source-alist)
       (let ((lang (car lang-source)))
         (message "Treesitter: Reinstalling grammar for %s..." lang)
-        ;; We use cl-letf to skip the confirmation prompt if it exists in this
-        ;; Emacs version.  This ensures that the installation remains
-        ;; non-interactive.
         (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
           (treesit-install-language-grammar lang)))))
 
