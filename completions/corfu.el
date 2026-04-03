@@ -27,7 +27,8 @@
         corfu-preselect 'prompt          ;; Always preselect the prompt
         corfu-quit-no-match 'separator)  ;; Never quit, even if there is no match
   :config
-  (global-corfu-mode 1))
+  (global-corfu-mode 1)
+  (corfu-popupinfo-mode 1))
 
 ;; TTY support for Corfu.
 (use-package corfu-terminal

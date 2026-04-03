@@ -41,7 +41,15 @@
   :commands lsp-ui-mode
   :init
   ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
-  (setq lsp-ui-doc-position 'at-point))
+  (setq lsp-ui-doc-enable t)
+  (setq lsp-ui-doc-position 'top)
+  ;; Use child-frames for at-point positioning. Note that in many TTY
+  ;; environments this will fall back to a side/top/bottom panel if the
+  ;; terminal/Emacs build doesn't support TTY child-frames.
+  (setq lsp-ui-doc-use-childframe t)
+  ;; Automatically show doc when cursor is over a symbol.
+  (setq lsp-ui-doc-show-with-cursor t)
+  (setq lsp-ui-doc-show-with-mouse t))
 
 ;; yasnippet: Snippet engine for interactive LSP expansions.
 ;;
