@@ -42,10 +42,15 @@
   :init
   ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
   (setq lsp-ui-doc-enable t)
-  (setq lsp-ui-doc-position 'top)
-  ;; Use child-frames for at-point positioning. Note that in many TTY
-  ;; environments this will fall back to a side/top/bottom panel if the
-  ;; terminal/Emacs build doesn't support TTY child-frames.
+
+  ;; Positioning based on frame capabilities:
+  ;; - GUI: Supports child-frames and pixel math, enabling true 'at-point' floating.
+  ;; - TTY: Lacks child-frames; lsp-ui falls back to a standard window split.
+  ;;        We explicitly set 'top' for TTY to avoid the failed 'at-point' math
+  ;;        and keep the behavior predictable and transparent.
+  (setq lsp-ui-doc-position (if (display-graphic-p) 'at-point 'top))
+
+  ;; Use child-frames where available (GUI).
   (setq lsp-ui-doc-use-childframe t)
   ;; Automatically show doc when cursor is over a symbol.
   (setq lsp-ui-doc-show-with-cursor t)
