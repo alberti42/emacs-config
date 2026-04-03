@@ -10,12 +10,13 @@
 
 ;;; Code:
 
-(if (not (and (fboundp 'treesit-available-p)
-              (treesit-available-p)))
-    (display-warning 'treesitter "Tree-sitter is not available (not compiled in or library missing); skipping grammar bootstrap." :warning)
-
-  (require 'treesit)
-
+(use-package treesit
+  :straight nil
+  ;; Guard against treesit presence (note: treesit is built-in in Emacs 29+ but
+  ;; needs to be compiled)
+  :if (and (fboundp 'treesit-available-p)
+           (treesit-available-p))
+  :config
   ;; Define grammar sources
   (setq treesit-language-source-alist
         '((json "https://github.com/tree-sitter/tree-sitter-json")))
@@ -41,6 +42,11 @@ Use this to update grammars to their latest versions."
                             (format "Failed to install tree-sitter grammar for %s: %s"
                                     lang (error-message-string err))
                             :error)))))))
+
+;; Warn if tree-sitter is unavailable
+(unless (and (fboundp 'treesit-available-p)
+             (treesit-available-p))
+  (display-warning 'treesitter "Tree-sitter is not available (not compiled in or library missing); skipping grammar bootstrap." :warning))
 
 (provide 'treesitter-config)
 ;;; treesitter-config.el ends here
