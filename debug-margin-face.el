@@ -666,7 +666,7 @@ Interactively, Emacs will prompt to choose between patched and unpatched.
 
 Expected (patched): left margin remains uniformly colored at all scroll
 positions.  No stripe or redraw glitch.
-Expected (unpatched): stripe visible in the left margin below EOB."
+Expected (unpatched): stripe visible in the bottom left margin below EOB."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -684,6 +684,7 @@ during horizontal scrolling.  The left margin is a fixed area
 pinned to the window edge: it does not scroll with the text.
 
 Use C-e to scroll right to the end of a long line, C-a to return.
+
 Expected (patched): left margin uniformly colored at all scroll
 positions.  No stripe or redraw glitch.
 Expected (unpatched): stripe visible in left margin below EOB.
@@ -702,10 +703,14 @@ display-line-numbers-mode.
 
 Scrolling right exposes three bugs that are related to the area
 covered by this patch but are out of scope and left unchanged.
-They are documented here so that reviewers understand the
-inconsistencies they observe, and so that each can be tracked
-and addressed in the future with a separate dedicated discussion
-(new bug report) and patch.
+They are documented here for two reasons:
+
+- for the mere documentation purpose: the results of the present
+  investigation are not lost, and it leaves open the possibility in the
+  future to address these bugs with separate bug reports.
+
+- to provide an explanation of certain visual inconsistencies in the
+  layout that were preexisting this patch and independent of it.
 
 PREEXISTING INDEPENDENT BUG 1 (TTY only): '!' annotations disappear
 on horizontally scrolled lines.  '$' is placed in TEXT_AREA[0] while
