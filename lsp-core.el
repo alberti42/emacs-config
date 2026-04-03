@@ -41,7 +41,7 @@
   :commands lsp-ui-mode
   :init
   ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
-  (setq lsp-ui-doc-enable t)
+  (setq lsp-ui-doc-enable nil)
 
   ;; Positioning based on frame capabilities:
   ;; - GUI: Supports child-frames and pixel math, enabling true 'at-point' floating.
