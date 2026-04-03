@@ -10,10 +10,10 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+
 (use-package treesit
   :straight nil
-  ;; Guard against treesit presence (note: treesit is built-in in Emacs 29+ but
-  ;; needs to be compiled)
   :if (and (fboundp 'treesit-available-p)
            (treesit-available-p))
   :config
@@ -28,7 +28,11 @@ Use this to update grammars to their latest versions."
     (dolist (lang-source treesit-language-source-alist)
       (let ((lang (car lang-source)))
         (message "Treesitter: Reinstalling grammar for %s..." lang)
-        (treesit-install-language-grammar lang t))))
+        ;; We use cl-letf to skip the confirmation prompt if it exists in this
+        ;; Emacs version.  This ensures that the installation remains
+        ;; non-interactive.
+        (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+          (treesit-install-language-grammar lang)))))
 
   ;; Bootstrap missing grammars
   (dolist (lang-source treesit-language-source-alist)
@@ -36,7 +40,8 @@ Use this to update grammars to their latest versions."
       (unless (treesit-language-available-p lang)
         (message "Treesitter: Installing grammar for %s..." lang)
         (condition-case err
-            (treesit-install-language-grammar lang t)
+            (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+              (treesit-install-language-grammar lang))
           (error
            (display-warning 'treesitter
                             (format "Failed to install tree-sitter grammar for %s: %s"
