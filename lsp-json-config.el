@@ -19,8 +19,8 @@
 
 (use-package lsp-json
   :straight nil
+  :after lsp-mode
   :hook ((js-json-mode . (lambda ()
-                           (require 'lsp-json)
                            ;; lsp-mode picks a server based on a "language id".
                            ;; For js-json-mode it would otherwise use "js-json",
                            ;; but the JSON client activates for "json"/"jsonc".
@@ -28,12 +28,10 @@
                            ;; (e.g. code-block edit buffers).
                            (add-to-list 'lsp-language-id-configuration '(js-json-mode . "json"))
                            (lsp-deferred)))
-         ;; Built into Emacs (Emacs 29+); uses tree-sitter.  Usually the most
-         ;; accurate parsing/highlighting/indentation, if one has the JSON
-         ;; tree-sitter grammar installed.
-         (json-ts-mode . (lambda ()
-                           (require 'lsp-json)
-                           (lsp-deferred)))))
+         ;; Built into Emacs (Emacs 29+); uses tree-sitter for accurate
+         ;; parsing/highlighting/indentation if one has JSON treesitter grammar
+         ;; installed.
+         (json-ts-mode . lsp-deferred)))
 
 (provide 'lsp-json-config)
 
