@@ -331,28 +331,30 @@ Expected (unpatched): stripe visible in both margin areas below EOB."
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title "face-margin-test-004: org-mode content + visual-wrap-prefix-mode + right margin" mode))
       (insert "\
-This test simulates the technique used by focus/centering packages
-such as olivetti, visual-fill-column, writeroom-mode, and darkroom:
-the right window margin is reserved as empty layout padding to
-constrain the text area to 75 columns.  These packages do NOT write
-content into the margin — writing actual glyphs into the right margin
-is a distinct scenario not covered by this test.  visual-line-mode
-soft-wraps long lines at the right boundary; visual-wrap-prefix-mode
-adds a hanging indent to continuation lines of list items so that
-wrapped entries look correct.
+This test simulates the technique used by focus/centering packages such as
+olivetti, visual-fill-column, writeroom-mode, and darkroom: the right
+window margin is reserved as empty layout padding to constrain the text
+area to 75 columns.  visual-line-mode soft-wraps long lines at the right
+boundary; visual-wrap-prefix-mode adds a hanging indent to continuation
+lines of list items so that wrapped entries look correct.
 
-See face-margin-test-004b for a complementary test that writes actual
+These packages do NOT write content into the margin — writing actual glyphs
+into the right margin is a distinct scenario not covered by this test. See
+face-margin-test-004b for a complementary test that writes actual
 annotation glyphs into both the left and right margins simultaneously.
 
 Content below is adapted from
 https://www.gnu.org/software/emacs/documentation.html
 
-Expected (patched): list items wrap with a hanging indent.  Both margin
-areas are uniformly colored.  No stripe below EOB.
-Expected (unpatched): stripe visible in both margin areas below EOB.
+Expected (patched): list items wrap with a hanging indent.  The background
+of both margin areas is uniformly colored of the same color as
+line-numbers. No stripe below EOB.
+
+Expected (unpatched): the background of both left and right margin inherits
+the same default background color of the frame (white). In the left margin,
+only annotated characters have a background matched to the line-numbers.
 
 ---
-
 ")
       ;; Org-mode list items long enough to wrap at 75 columns.
       ;; Content adapted from https://www.gnu.org/software/emacs/documentation.html
