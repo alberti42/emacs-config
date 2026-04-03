@@ -841,14 +841,14 @@ Interactively, Emacs will prompt to choose between patched and unpatched."
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title "face-margin-test-008: RTL text" mode))
       (insert "\
-This test mixes LTR and RTL (Hebrew) lines to verify that the
-left margin is handled correctly for both text directions.
-Odd lines receive a '!' annotation (red); even lines receive a
-blank filler \" \" — both with an explicit background matching the
-'line-number' face, as git-gutter-style packages would do.
+This test mixes LTR and RTL (Hebrew) lines to verify that the left margin
+is handled correctly for both text directions.  Odd lines receive a '!'
+annotation (red); even lines receive a blank filler \" \" — both with an
+explicit background matching the 'line-number' face, simulating what the
+user would likely do to create a visually consistent style.
 
-On LTR lines: odd lines show '!' in red, even lines show a
-gray filler.  The left margin column is uniformly colored.
+On LTR lines: odd lines show '!' in red, even lines show a gray filler.
+The left margin column is uniformly colored.
 
 On Hebrew (RTL) lines: see the bug note below.
 
