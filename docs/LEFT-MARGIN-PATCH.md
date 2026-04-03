@@ -15,16 +15,21 @@ The patch is currently in the **Strategy/Execution** phase. There is a consensus
 ### Open Design Issues
 - **Single vs. Separate Faces:**
     - **Eli Zaretskii (Maintainer):** Insists on a single `margin` face covering both left and right margins for symmetry and simplicity, analogous to how `fringe` works.
-    - **Andrea Alberti (Contributor):** Argues for separate `left-margin` and `right-margin` faces. The rationale is that the left margin is typically used for **content/annotations** (git-gutter, LSP), while the right margin is often used for **layout** (soft-wrapping padding). Coloring the right margin automatically when only the left gutter is desired creates a new visual inconsistency.
+    - **Andrea Alberti (Contributor):** Argues for separate `left-margin` and `right-margin` faces. The rationale is that the left margin is typically used for **content/annotations** (git-gutter, LSP), while the right margin is frequently used as **empty layout padding** for focus/centering modes (e.g., `olivetti`). In these layout scenarios, the margin is meant to be invisible; automatically coloring the right padding to match a left-hand annotation gutter creates a new visual asymmetry. (Demonstrated by **`face-margin-test-004`**).
 - **Status:** Andrea is currently refactoring the patch to use a single `margin` face as requested, while documenting the potential issues with soft-wrapping asymmetry.
 
 ## The "Stripe Bug" Explained
 When a theme (like the built-in `modus-operandi`) gives the `line-number` face a distinct background color:
 1. **On text lines:** Packages like `git-gutter` fill the margin area with annotation glyphs (e.g., a red `!` for changes) or space fillers. To make the gutter look uniform, they typically set the background of these glyphs to match the `line-number` background.
 2. **Below EOB:** No glyphs or overlays exist in the margin area beyond the last line of text. Consequently, the display engine clears this area using the frame's default background.
-3. **Result:** A visible vertical "white stripe" (or whatever the frame default is) appears in the margin area below the end of the buffer, while the adjacent `line-number` column correctly continues with its themed background. This creates a disjointed look in what should be a single visual gutter. (Demonstrated by **`face-margin-test-001`**).
+3. **Result:** A visible vertical "white stripe" appears in the margin area below the end of the buffer, while the adjacent `line-number` column correctly continues with its themed background. (Demonstrated by **`face-margin-test-001`**).
 
 **The Solution:** The patch modifies `extend_face_to_end_of_line` in `xdisp.c` to produce space glyphs with the `margin` face for any empty margin areas if the `margin` face's background differs from the frame default. This ensures the gutter background is consistent regardless of buffer content. (Verified by **`face-margin-test-002`**).
+
+### The Choice of Reference Color
+In these tests, the `line-number` background is used as the target color for the margin. This choice is illustrative:
+- **Visual Consistency:** Users typically want the left margin (annotations) and the line-number column to appear as a single, unified "gutter."
+- **Standard Reference:** The `line-number` face is not functionally linked to the margin, but it provides a convenient, built-in example of how a theme intends the gutter to look. By matching the `margin` face to the `line-number` background, we can demonstrate a "visually consistent result" using only components that ship with Emacs.
 
 ## Discovered Preexisting Bugs
 Horizontal scrolling (`face-margin-test-007`) surfaces three preexisting bugs in the Emacs display engine. These are considered out-of-scope for the current patch but are documented for tracking:

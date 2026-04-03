@@ -6,11 +6,18 @@
 ;; (bug#80693).  Each test creates a dedicated buffer and configures specific
 ;; conditions so the reviewer can verify the expected visual outcome.
 ;;
+;; These tests aim to demonstrate a typical usage case: a user wants to
+;; configure the 'margin' face to match the background of the 'line-number'
+;; area, creating a single, visually consistent gutter for both line numbers
+;; and annotations.
+;;
 ;; All tests use the built-in 'modus-operandi' theme (included with Emacs since
 ;; Emacs 28).  That theme gives the 'line-number' face a non-default background
 ;; out of the box, making it possible to demonstrate the inconsistency using
 ;; only components that ship with Emacs — no external packages or custom colors
-;; are required.
+;; are required.  The 'line-number' face is used strictly as a built-in
+;; reference color for a themed gutter; it is not functionally linked to the
+;; margins.
 ;;
 ;; Tests are callable from "emacs -Q" with the patched build:
 ;;
@@ -113,8 +120,16 @@ The effective mode is determined by MODE and whether the 'margin' face exists."
 
 Uses only built-in components: the modus-operandi theme (shipped with
 Emacs) colors the 'line-number' face.  The left margin is reserved and
-all lines are annotated.  The 'margin' face is left at its default
-(inherits the frame background).
+all lines are annotated.
+
+This test simulates a typical usage case where a user wants the left
+margin (annotations) to share the same background as the line-number
+column, creating a unified gutter.  The 'line-number' face is used here
+strictly as a built-in reference for what a themed gutter looks like; it
+has no functional link to the margins.
+
+In this demo, the 'margin' face is left at its default (inherits the
+frame background) to show the bug.
 
 This test always shows the bug regardless of MODE: it is designed to
 demonstrate the pre-patch stripe and does not depend on whether Emacs
