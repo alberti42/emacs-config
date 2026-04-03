@@ -40,7 +40,7 @@
   :after lsp-mode
   :commands lsp-ui-mode
   :init
-  (add-hook 'lsp-mode-hook #'lsp-ui-mode)
+  ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
   (setq lsp-ui-doc-position 'at-point))
 
 ;; yasnippet: snippet expansion used by LSP to render completion candidates
