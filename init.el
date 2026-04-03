@@ -141,6 +141,11 @@
   :load-path emacs-config-dir
   :commands (soft-wrap-mode global-soft-wrap-mode))
 
+;; Tree-sitter grammars (auto-install missing ones)
+(emacs-config-load-module
+  'treesitter-config
+  "Could not load treesitter-config.el; tree-sitter grammar bootstrap is disabled.")
+
 ;; Per-syntax indentation settings
 (emacs-config-load-module
   'syntaxes
