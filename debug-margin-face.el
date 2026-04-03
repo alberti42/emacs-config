@@ -87,8 +87,9 @@ does not exist (unpatched builds)."
   "Return a warning string if MODE is 'patched but the build is unpatched.
 Returns an empty string when no warning is needed."
   (if (and (eq mode 'patched) (not (facep 'margin)))
-      "Warning: 'patched was selected but this Emacs build is not patched.\n\
-The test reverted to unpatched behavior automatically.\n\n"
+      (let ((msg "Warning: 'patched was selected but this Emacs build is not patched. Falling back to unpatched behavior."))
+        (message "%s" msg)
+        (concat msg "\n\n"))
     ""))
 
 (defun face-margin-test--title (title mode)
@@ -104,8 +105,8 @@ The effective mode is determined by MODE and whether the 'margin' face exists."
 ;;
 ;; Always shows the stripe regardless of MODE: the 'margin' face is cleared
 ;; unconditionally so the bug is visible on both patched and unpatched builds.
-;; The mode parameter is accepted for API consistency and to avoid a crash on
-;; unpatched builds where the 'margin' face does not exist yet.
+;; The mode parameter is accepted for API consistency and to provide build-status
+;; warnings on unpatched builds.
 
 (defun face-margin-test-001 (&optional mode)
   "Bug demo: modus-operandi + left margin, 'margin' face NOT customized.
@@ -124,16 +125,17 @@ last line of text, but the left margin column below EOB reverts to the
 frame default background — an inconsistency within the same gutter area."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
-  ;; Always clear the 'margin' face — this is the bug scenario.
-  ;; The facep guard prevents a crash on unpatched builds.
-  (when (facep 'margin) (set-face-background 'margin nil))
-  (let ((buf (get-buffer-create "*face-margin-test-001*")))
+  (let* ((mode (or mode 'patched))
+         (buf (get-buffer-create "*face-margin-test-001*")))
+    ;; Always clear the 'margin' face — this is the bug scenario.
+    ;; The facep guard prevents a crash on unpatched builds.
+    (when (facep 'margin) (set-face-background 'margin nil))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-001: stripe bug demo (no 'margin' face customization)" mode))
+      (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-001: stripe bug demo (no 'margin' face customization).
-
 This buffer shows the stripe bug using only built-in Emacs components.
 The modus-operandi theme (shipped with Emacs) gives the 'line-number'
 face a non-default background.  The left margin is reserved and annotated
@@ -150,7 +152,6 @@ Compare with face-margin-test-002, which shows the fix.
       (face-margin-test--setup-window buf)
       (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
-      ;; Do NOT customize the 'margin' face — this is the bug scenario.
       (read-only-mode 1)
       (goto-char (point-min)))
     (switch-to-buffer buf)))
@@ -179,15 +180,15 @@ On an unpatched build, the face does not exist and the call is skipped safely."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
-         (ln-bg (face-background 'line-number nil t)))
-    (face-margin-test--apply-mode mode ln-bg))
-  (let ((buf (get-buffer-create "*face-margin-test-002*")))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-002*")))
+    (face-margin-test--apply-mode mode ln-bg)
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
+      (insert (face-margin-test--title "face-margin-test-002: fix demo ('margin' face set to match 'line-number')" mode))
+      (insert (face-margin-test--mode-header mode))
       (insert "\
-face-margin-test-002: fix demo ('margin' face set to match 'line-number').
-
 Same setup as face-margin-test-001.  The only difference: the 'margin'
 face background is set to match the modus-operandi 'line-number' background:
 
@@ -500,7 +501,8 @@ unaffected; no crash."
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-005*")))
     (face-margin-test--apply-mode mode ln-bg)
-    (set-face-attribute 'margin nil :weight 'bold :height 1.5)
+    (when (and (facep 'margin) (eq mode 'patched))
+      (set-face-attribute 'margin nil :weight 'bold :height 1.5))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
@@ -592,7 +594,8 @@ producing the visible stripe.  Global 'margin' face is unchanged.")))
           (goto-char (point-min)))))
     ;; Apply buffer-local remap only to the left buffer.
     (with-current-buffer buf-l
-      (face-remap-add-relative 'margin :background ln-bg))
+      (when (and (facep 'margin) (eq mode 'patched))
+        (face-remap-add-relative 'margin :background ln-bg)))
     ;; Display side by side: left buffer in the current window, right in a split.
     (delete-other-windows)
     (switch-to-buffer buf-l)
@@ -643,50 +646,59 @@ Expected (unpatched): stripe visible in the left margin below EOB."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
-      (insert
-       (concat
-        (face-margin-test--title "face-margin-test-007: horizontal scrolling" mode)
-        (face-margin-test--mode-header mode)
-        "This test verifies that the left margin stays uniformly colored\n"
-        "during horizontal scrolling.  The left margin is a fixed area\n"
-        "pinned to the window edge: it does not scroll with the text.\n\n"
-        "Use C-e to scroll right to the end of a long line, C-a to return.\n"
-        "Expected (patched): left margin uniformly colored at all scroll\n"
-        "positions.  No stripe or redraw glitch.\n"
-        "Expected (unpatched): stripe visible in left margin below EOB.\n\n"
-        (make-string 120 ?A) "\n"
-        (make-string 120 ?B) "\n"
-        (make-string 120 ?C) "\n"
-        (make-string 120 ?D) "\n"
-        (make-string 120 ?E) "\n\n"
-        "See also face-margin-test-007b for the same scenario without\n"
-        "display-line-numbers-mode.\n\n"
-        "--- Preexisting independent bugs surfaced by this test ---\n\n"
-        "Scrolling right exposes three bugs that are related to the area\n"
-        "covered by this patch but are out of scope and left unchanged.\n"
-        "They are documented here so that reviewers understand the\n"
-        "inconsistencies they observe, and so that each can be tracked\n"
-        "and addressed in the future with a separate dedicated discussion\n"
-        "(new bug report) and patch.\n\n"
-        "PREEXISTING INDEPENDENT BUG 1 (TTY only): '!' annotations disappear\n"
-        "on horizontally scrolled lines.  '$' is placed in TEXT_AREA[0] while\n"
-        "'!' lives in LEFT_MARGIN_AREA — different areas, so there is no direct\n"
-        "overwriting.  The likely cause is that the TTY renderer skips\n"
-        "LEFT_MARGIN_AREA entirely for rows flagged truncated_on_left_p.  This\n"
-        "may be intentional, but it is poor design: the left margin is a fixed\n"
-        "area and should remain visible regardless of scroll position.\n\n"
-        "PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always\n"
-        "rendered with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless\n"
-        "of the visual context.  When a theme gives 'line-number' a non-default\n"
-        "background, '$' shows the buffer default background instead — a visible\n"
-        "inconsistency.  A proper fix must determine the correct face based on\n"
-        "what is actually displayed at that position (line numbers, margins).\n\n"
-        "PREEXISTING INDEPENDENT BUG 3: display table remapping does not work\n"
-        "for the left-edge '$'.  In produce_special_glyphs, the mirroring code\n"
-        "path for L2R left-edge glyphs discards both the character and the face\n"
-        "from the display table glyph code when no bidi mirror is found.\n"
-        "Additionally, the display table has only one 'truncation' slot shared\n"
-        "by both edges, making independent left/right styling impossible.\n"))
+      (insert (face-margin-test--title "face-margin-test-007: horizontal scrolling" mode))
+      (insert (face-margin-test--mode-header mode))
+      (insert "\
+This test verifies that the left margin stays uniformly colored
+during horizontal scrolling.  The left margin is a fixed area
+pinned to the window edge: it does not scroll with the text.
+
+Use C-e to scroll right to the end of a long line, C-a to return.
+Expected (patched): left margin uniformly colored at all scroll
+positions.  No stripe or redraw glitch.
+Expected (unpatched): stripe visible in left margin below EOB.
+
+"
+              (make-string 120 ?A) "\n"
+              (make-string 120 ?B) "\n"
+              (make-string 120 ?C) "\n"
+              (make-string 120 ?D) "\n"
+              (make-string 120 ?E) "\n\n"
+              "\
+See also face-margin-test-007b for the same scenario without
+display-line-numbers-mode.
+
+--- Preexisting independent bugs surfaced by this test ---
+
+Scrolling right exposes three bugs that are related to the area
+covered by this patch but are out of scope and left unchanged.
+They are documented here so that reviewers understand the
+inconsistencies they observe, and so that each can be tracked
+and addressed in the future with a separate dedicated discussion
+(new bug report) and patch.
+
+PREEXISTING INDEPENDENT BUG 1 (TTY only): '!' annotations disappear
+on horizontally scrolled lines.  '$' is placed in TEXT_AREA[0] while
+'!' lives in LEFT_MARGIN_AREA — different areas, so there is no direct
+overwriting.  The likely cause is that the TTY renderer skips
+LEFT_MARGIN_AREA entirely for rows flagged truncated_on_left_p.  This
+may be intentional, but it is poor design: the left margin is a fixed
+area and should remain visible regardless of scroll position.
+
+PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always
+rendered with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless
+of the visual context.  When a theme gives 'line-number' a non-default
+background, '$' shows the buffer default background instead — a visible
+inconsistency.  A proper fix must determine the correct face based on
+what is actually displayed at that position (line numbers, margins).
+
+PREEXISTING INDEPENDENT BUG 3: display table remapping does not work
+for the left-edge '$'.  In produce_special_glyphs, the mirroring code
+path for L2R left-edge glyphs discards both the character and the face
+from the display table glyph code when no bidi mirror is found.
+Additionally, the display table has only one 'truncation' slot shared
+by both edges, making independent left/right styling impossible.
+")
       (setq-local left-margin-width 1)
       (setq-local truncate-lines t)
       (face-margin-test--setup-window buf)
@@ -726,29 +738,36 @@ Expected (unpatched): stripe visible in left margin below EOB."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
-      (insert
-       (concat
-        (face-margin-test--title "face-margin-test-007b: horizontal scrolling, no line-number column." mode)
-        (face-margin-test--mode-header mode)
-        "Same as test 007, but display-line-numbers-mode is disabled.\n"
-        "The left margin abuts the text area directly.\n\n"
-        "Use C-e to scroll right to the end of a long line, C-a to return.\n"
-        "Expected (patched): left margin uniformly colored at all scroll positions.\n"
-        "Expected (unpatched): stripe visible in left margin below EOB.\n\n"
-        (make-string 120 ?A) "\n"
-        (make-string 120 ?B) "\n"
-        (make-string 120 ?C) "\n"
-        (make-string 120 ?D) "\n"
-        (make-string 120 ?E) "\n\n"
-        "--- Preexisting independent bugs (see test 007 for full details) ---\n\n"
-        "The same three preexisting bugs documented in test 007 apply here.\n"
-        "Notably: on TTY frames, '!' annotations disappear on horizontally\n"
-        "scrolled lines; and display table remapping has no effect on the\n"
-        "left-edge '$'.\n\n"
-        "The DEFAULT_FACE_ID background of '$' (bug 2 in test 007) is less\n"
-        "visually disruptive here: without a line-number column, '$' is\n"
-        "contiguous with the text area and its default background produces\n"
-        "a consistent appearance.\n"))
+      (insert (face-margin-test--title "face-margin-test-007b: horizontal scrolling, no line-number column." mode))
+      (insert (face-margin-test--mode-header mode))
+      (insert "\
+Same as test 007, but display-line-numbers-mode is disabled.
+The left margin abuts the text area directly.
+
+Use C-e to scroll right to the end of a long line, C-a to return.
+
+Expected (patched): left margin uniformly colored at all scroll positions.
+Expected (unpatched): stripe visible in left margin below EOB.
+
+"
+              (make-string 120 ?A) "\n"
+              (make-string 120 ?B) "\n"
+              (make-string 120 ?C) "\n"
+              (make-string 120 ?D) "\n"
+              (make-string 120 ?E) "\n\n"
+              "\
+--- Preexisting independent bugs (see test 007 for full details) ---
+
+The same three preexisting bugs documented in test 007 apply here.
+Notably: on TTY frames, '!' annotations disappear on horizontally
+scrolled lines; and display table remapping has no effect on the
+left-edge '$'.
+
+The DEFAULT_FACE_ID background of '$' (bug 2 in test 007) is less
+visually disruptive here: without a line-number column, '$' is
+contiguous with the text area and its default background produces
+a consistent appearance.
+")
       (setq-local left-margin-width 1)
       (setq-local truncate-lines t)
       (face-margin-test--setup-window buf)
@@ -784,43 +803,49 @@ Interactively, Emacs will prompt to choose between patched and unpatched."
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
-      (insert
-       (concat
-        (face-margin-test--title "face-margin-test-008: RTL text" mode)
-        (face-margin-test--mode-header mode)
-        "This test mixes LTR and RTL (Hebrew) lines to verify that the\n"
-        "left margin is handled correctly for both text directions.\n"
-        "Odd lines receive a '!' annotation (red); even lines receive a\n"
-        "blank filler \" \" — both with an explicit background matching the\n"
-        "'line-number' face, as git-gutter-style packages would do.\n\n"
-        "On LTR lines: odd lines show '!' in red, even lines show a\n"
-        "gray filler.  The left margin column is uniformly colored.\n\n"
-        "On Hebrew (RTL) lines: see the bug note below.\n\n"
-        ;; odd  (line 11) — LTR, annotated
-        "This is a left-to-right (LTR) line.\n"
-        ;; even (line 12) — Hebrew
-        "\u05D6\u05D5\u05D4\u05D9 \u05E9\u05D5\u05E8\u05D4 "
-        "\u05DE\u05D9\u05DE\u05D9\u05DF \u05DC\u05E9\u05DE\u05D0\u05DC "
-        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
-        ;; odd  (line 13) — Hebrew, annotated: "Another right-to-left line"
-        "\u05E2\u05D5\u05D3 \u05E9\u05D5\u05E8\u05D4 \u05DE\u05D9\u05DE\u05D9\u05DF "
-        "\u05DC\u05E9\u05DE\u05D0\u05DC.\n"
-        ;; even (line 14) — LTR
-        "Another LTR line.\n"
-        ;; odd  (line 15) — Hebrew, annotated
-        "\u05E9\u05D5\u05E8\u05D4 \u05E0\u05D5\u05E1\u05E4\u05EA "
-        "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n"
-        ;; even (line 16) — LTR
-        "Yet another LTR line.\n\n"
-        "Expected: left margin uniformly colored for all rows.\n"
-        "No stripe below EOB.\n\n"
-        "PREEXISTING INDEPENDENT BUG: on RTL (Hebrew) rows, the left margin\n"
-        "area is rendered with the default face (black foreground, white\n"
-        "background) regardless of any overlay or 'margin' face customization.\n"
-        "The root cause is likely that the display engine does not properly\n"
-        "handle LEFT_MARGIN_AREA for reversed (R2L) glyph rows.  This bug\n"
-        "exists in unpatched Emacs and has not been addressed here; it\n"
-        "requires a dedicated patch.\n"))
+      (insert (face-margin-test--title "face-margin-test-008: RTL text" mode))
+      (insert (face-margin-test--mode-header mode))
+      (insert "\
+This test mixes LTR and RTL (Hebrew) lines to verify that the
+left margin is handled correctly for both text directions.
+Odd lines receive a '!' annotation (red); even lines receive a
+blank filler \" \" — both with an explicit background matching the
+'line-number' face, as git-gutter-style packages would do.
+
+On LTR lines: odd lines show '!' in red, even lines show a
+gray filler.  The left margin column is uniformly colored.
+
+On Hebrew (RTL) lines: see the bug note below.
+
+")
+      ;; odd  (line 11) — LTR, annotated
+      (insert "This is a left-to-right (LTR) line.\n")
+      ;; even (line 12) — Hebrew
+      (insert "\u05D6\u05D5\u05D4\u05D9 \u05E9\u05D5\u05E8\u05D4 "
+              "\u05DE\u05D9\u05DE\u05D9\u05DF \u05DC\u05E9\u05DE\u05D0\u05DC "
+              "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n")
+      ;; odd  (line 13) — Hebrew, annotated: "Another right-to-left line"
+      (insert "\u05E2\u05D5\u05D3 \u05E9\u05D5\u05E8\u05D4 \u05DE\u05D9\u05DE\u05D9\u05DF "
+              "\u05DC\u05E9\u05DE\u05D0\u05DC.\n")
+      ;; even (line 14) — LTR
+      (insert "Another LTR line.\n")
+      ;; odd  (line 15) — Hebrew, annotated
+      (insert "\u05E9\u05D5\u05E8\u05D4 \u05E0\u05D5\u05E1\u05E4\u05EA "
+              "\u05D1\u05E2\u05D1\u05E8\u05D9\u05EA.\n")
+      ;; even (line 16) — LTR
+      (insert "Yet another LTR line.\n\n")
+      (insert "\
+Expected: left margin uniformly colored for all rows.
+No stripe below EOB.
+
+PREEXISTING INDEPENDENT BUG: on RTL (Hebrew) rows, the left margin
+area is rendered with the default face (black foreground, white
+background) regardless of any overlay or 'margin' face customization.
+The root cause is likely that the display engine does not properly
+handle LEFT_MARGIN_AREA for reversed (R2L) glyph rows.  This bug
+exists in unpatched Emacs and has not been addressed here; it
+requires a dedicated patch.
+")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
       (face-margin-test--annotate buf t)
