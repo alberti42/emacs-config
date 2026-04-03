@@ -134,7 +134,7 @@ frame default background — an inconsistency within the same gutter area."
       (read-only-mode -1)
       (erase-buffer)
       (insert (face-margin-test--mode-header mode))
-      (insert (face-margin-test--title "face-margin-test-001: stripe bug demo (no 'margin' face customization)" mode))
+      (insert "face-margin-test-001: stripe bug demo (no 'margin' face customization)\n\n")
       (insert "\
 This buffer shows the stripe bug using only built-in Emacs components.
 The modus-operandi theme (shipped with Emacs) gives the 'line-number'
@@ -187,7 +187,7 @@ On an unpatched build, the face does not exist and the call is skipped safely."
       (read-only-mode -1)
       (erase-buffer)
       (insert (face-margin-test--mode-header mode))
-      (insert (face-margin-test--title "face-margin-test-002: fix demo ('margin' face set to match 'line-number')" mode))
+      (insert "face-margin-test-002: fix demo ('margin' face set to match 'line-number')\n\n")
       (insert "\
 Same setup as face-margin-test-001.  The only difference: the 'margin'
 face background is set to match the modus-operandi 'line-number' background:
