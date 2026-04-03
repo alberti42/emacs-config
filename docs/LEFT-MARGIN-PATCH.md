@@ -9,7 +9,7 @@ The patch is currently in the **Strategy/Execution** phase. There is a consensus
 ### Agreed Requirements
 - **Dedicated Face:** Instead of reusing the `line-number` face, a new basic face (provisionally `margin`) will be introduced.
 - **Basic Face Integration:** The face must be added to `realize_basic_faces` in `xfaces.c` to ensure support for face-remapping.
-- **Base Face Logic:** The face will serve as the "base" for the margin area. If an overlay or display property provides a face, the two will be merged (allowing the margin background to show through if the overlay specifies only a foreground).
+- **Base Face Logic:** The face serves as the "base" for the margin area. If an overlay or display property provides a face that specifies only a foreground color (e.g., a red `!` for an error), the `margin` face background will "show through." This ensures that annotations do not create visual "holes" or stripes of the default background color within the gutter. (Verified by **`face-margin-test-003`**).
 - **Graceful Degradation:** The face inherits from `default`. If left uncustomized, it produces a no-op, preserving existing Emacs behavior.
 
 ### Open Design Issues
@@ -22,9 +22,9 @@ The patch is currently in the **Strategy/Execution** phase. There is a consensus
 When a theme (like the built-in `modus-operandi`) gives the `line-number` face a distinct background color:
 1. **On text lines:** Packages like `git-gutter` fill the margin area with annotation glyphs (e.g., a red `!` for changes) or space fillers. To make the gutter look uniform, they typically set the background of these glyphs to match the `line-number` background.
 2. **Below EOB:** No glyphs or overlays exist in the margin area beyond the last line of text. Consequently, the display engine clears this area using the frame's default background.
-3. **Result:** A visible vertical "white stripe" (or whatever the frame default is) appears in the margin area below the end of the buffer, while the adjacent `line-number` column correctly continues with its themed background. This creates a disjointed look in what should be a single visual gutter.
+3. **Result:** A visible vertical "white stripe" (or whatever the frame default is) appears in the margin area below the end of the buffer, while the adjacent `line-number` column correctly continues with its themed background. This creates a disjointed look in what should be a single visual gutter. (Demonstrated by **`face-margin-test-001`**).
 
-The fix involves modifying `extend_face_to_end_of_line` in `xdisp.c` to produce space glyphs with the `margin` face for any empty margin areas if the `margin` face's background differs from the frame default.
+**The Solution:** The patch modifies `extend_face_to_end_of_line` in `xdisp.c` to produce space glyphs with the `margin` face for any empty margin areas if the `margin` face's background differs from the frame default. This ensures the gutter background is consistent regardless of buffer content. (Verified by **`face-margin-test-002`**).
 
 ## Discovered Preexisting Bugs
 Horizontal scrolling (`face-margin-test-007`) surfaces three preexisting bugs in the Emacs display engine. These are considered out-of-scope for the current patch but are documented for tracking:
