@@ -19,10 +19,10 @@ The patch is currently in the **Strategy/Execution** phase. There is a consensus
 - **Status:** Andrea is currently refactoring the patch to use a single `margin` face as requested, while documenting the potential issues with soft-wrapping asymmetry.
 
 ## The "Stripe Bug" Explained
-When a theme (like the built-in `modus-operandi`) gives the `line-number` face or margin annotations a distinct background color:
-1. **On text lines:** Packages like `git-gutter` fill the margin with space glyphs carrying a specific background face.
-2. **Below EOB:** No glyphs exist, so the display engine clears the area using the frame's default background.
-3. **Result:** A visible vertical "stripe" appears where the gutter color abruptly stops at the end of the text.
+When a theme (like the built-in `modus-operandi`) gives the `line-number` face a distinct background color:
+1. **On text lines:** Packages like `git-gutter` fill the margin area with annotation glyphs (e.g., a red `!` for changes) or space fillers. To make the gutter look uniform, they typically set the background of these glyphs to match the `line-number` background.
+2. **Below EOB:** No glyphs or overlays exist in the margin area beyond the last line of text. Consequently, the display engine clears this area using the frame's default background.
+3. **Result:** A visible vertical "white stripe" (or whatever the frame default is) appears in the margin area below the end of the buffer, while the adjacent `line-number` column correctly continues with its themed background. This creates a disjointed look in what should be a single visual gutter.
 
 The fix involves modifying `extend_face_to_end_of_line` in `xdisp.c` to produce space glyphs with the `margin` face for any empty margin areas if the `margin` face's background differs from the frame default.
 

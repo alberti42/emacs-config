@@ -136,15 +136,21 @@ frame default background — an inconsistency within the same gutter area."
       (insert (face-margin-test--mode-header mode))
       (insert "face-margin-test-001: stripe bug demo (no 'margin' face customization)\n\n")
       (insert "\
-This buffer shows the stripe bug using only built-in Emacs components.
-The modus-operandi theme (shipped with Emacs) gives the 'line-number'
-face a non-default background.  The left margin is reserved and annotated
-the way git-gutter and similar packages do it.  The 'margin' face is not
-customized — it inherits the frame default background.
+This buffer shows the stripe bug using only built-in Emacs components.  The
+modus-operandi theme (shipped with Emacs) gives the 'line-number' face a
+non-default background.  The left margin is reserved and annotated the way
+git-gutter and similar packages do it.
 
-Look at the bottom of the window, below this text.  The line-number
-column continues with its theme background color, but the left margin
-column to its left reverts to the frame default: a visible stripe.
+As an example, we marked odd lines with a red "!" indication.  The
+background face is chosen to match the face background of 'line-number'.
+The even rows are filled with " " with the same background face.
+
+The 'margin' face is left on purpose not customized — it inherits the frame
+default background.
+
+Look at the bottom of the window, below this text.  The line-number column
+continues with its theme background color, but the left margin area to its
+left reverts to the frame default: a visible white stripe.
 
 Compare with face-margin-test-002, which shows the fix.
 ")
