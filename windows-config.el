@@ -46,18 +46,22 @@ connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
 
 ;; Split windows and switch to the other buffer instead of mirroring the current one.
 (defun windows-config-split-right ()
-  "Split window right and show the other buffer in the new window."
+  "Split window right and show the other buffer in the new window.
+In `dired-mode', preserves default behavior (mirroring current buffer)."
   (interactive)
   (split-window-right)
-  (other-window 1)
-  (switch-to-buffer (other-buffer)))
+  (unless (derived-mode-p 'dired-mode)
+    (other-window 1)
+    (switch-to-buffer (other-buffer))))
 
 (defun windows-config-split-below ()
-  "Split window below and show the other buffer in the new window."
+  "Split window below and show the other buffer in the new window.
+In `dired-mode', preserves default behavior (mirroring current buffer)."
   (interactive)
   (split-window-below)
-  (other-window 1)
-  (switch-to-buffer (other-buffer)))
+  (unless (derived-mode-p 'dired-mode)
+    (other-window 1)
+    (switch-to-buffer (other-buffer))))
 
 ;; Change default behavior when splitting windows
 (keymap-global-set "C-x 3" #'windows-config-split-right)
