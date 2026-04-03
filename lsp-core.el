@@ -43,12 +43,28 @@
   ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
   (setq lsp-ui-doc-position 'at-point))
 
-;; yasnippet: snippet expansion used by LSP to render completion candidates
-;; that have placeholders (e.g. function signatures where you fill in the
-;; arguments by tabbing through them).  Without it, completions still work
-;; but the whole text is inserted at once with no tab-stop navigation.
-;; corfu shows the candidates; yasnippet handles the expansion of the
-;; selected one.
+;; yasnippet: Snippet engine for interactive LSP expansions.
+;;
+;; While yasnippet is a standalone template system, its primary role here is
+;; to act as the "expansion engine" for lsp-mode completion candidates.
+;;
+;; Many LSP servers (Python, TS, etc.) return "snippets" for completions
+;; rather than plain text. For example, a function completion might be:
+;;   "my_function(${1:arg1}, ${2:arg2})"
+;;
+;; Without yasnippet:
+;;   LSP inserts the literal string "my_function(${1:arg1}, ${2:arg2})" or
+;;   just "my_function", forcing you to manually type the arguments.
+;;
+;; With yasnippet:
+;;   The text is inserted as "my_function(arg1, arg2)", your cursor is
+;;   placed on "arg1", and hitting TAB jumps you directly to "arg2".
+;;
+;; Integration Flow:
+;; 1. Corfu displays candidates.
+;; 2. You select one that is a snippet (marked with a [S] icon).
+;; 3. lsp-mode passes the snippet string to yasnippet for expansion.
+;; 4. yasnippet handles the interactive tab-stops and placeholders.
 (use-package yasnippet
   :hook (lsp-mode . yas-minor-mode))
 
