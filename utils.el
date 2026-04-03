@@ -12,6 +12,57 @@
            (logior #x8000 (logand #xbfff (random (expt 16 4))))
            (random (expt 16 12)))))
 
+(defun emacs-config--mode-command-names ()
+  "Return a sorted list of mode command names.
+
+The list includes commands whose names end in \"-mode\" (major and minor)."
+  (let (names)
+    (mapatoms
+     (lambda (sym)
+       (when (commandp sym)
+         (let ((name (symbol-name sym)))
+           (when (and (>= (length name) 5)
+                      (string= (substring name (- (length name) 5)) "-mode"))
+             (push name names))))))
+    (sort names #'string<)))
+
+(defun emacs-config-describe-mode (mode)
+  "Display documentation of current major mode and all enabled minor modes, or specified MODE.
+
+When MODE is empty, describe the current buffer (like `describe-mode').
+When MODE is a mode command name (e.g. \"json-mode\"), enable it in a temporary
+buffer and run `describe-mode' there."
+  (interactive
+   (list (completing-read
+          (format "Describe mode (default %s): " (symbol-name major-mode))
+          (emacs-config--mode-command-names)
+          nil
+          nil
+          nil
+          nil
+          "")))
+  (if (or (null mode) (string= mode ""))
+      (describe-mode)
+    (let ((sym (intern mode)))
+      (with-temp-buffer
+        (condition-case err
+            (progn
+              (funcall sym)
+              (describe-mode))
+          (error
+           (user-error "Could not enable %s: %s" sym (error-message-string err))))))))
+
+(defun emacs-config--describe-mode-advice (orig-fun &rest args)
+  "Prompt for a mode when `describe-mode' is called interactively."
+  (if (called-interactively-p 'interactive)
+      (progn
+        (call-interactively #'emacs-config-describe-mode)
+        nil)
+    (apply orig-fun args)))
+
+(unless (advice-member-p #'emacs-config--describe-mode-advice 'describe-mode)
+  (advice-add 'describe-mode :around #'emacs-config--describe-mode-advice))
+
 ;; Copy the current buffer's file path to the kill ring.
 (defun copy-buffer-file-name ()
   "Copy the absolute path of the current buffer's file to the kill ring.
