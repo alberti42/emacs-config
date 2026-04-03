@@ -71,5 +71,14 @@ before entering it.  Does nothing if the buffer does not visit a file."
    ;; ("C-g"             . crux-keyboard-quit-dwim)                           ; Smarter C-g: dismisses the minibuffer or *Completions* buffer even when focus is elsewhere. Replaces built-in C-g.
    ))
 
+;; Help system enhancements
+(defun my/help-fns-describe-custom-type (variable)
+  "Show the `custom-type' (schema) for VARIABLE in Help buffers."
+  (when-let* ((type (get variable 'custom-type)))
+    (princ (format "  Type Schema: %S\n" type))))
+
+;; Register the schema viewer after the "You can customize" section.
+(add-hook 'help-fns-describe-variable-functions #'my/help-fns-describe-custom-type t)
+
 (provide 'utils)
 ;;; utils.el ends here
