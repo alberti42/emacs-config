@@ -253,13 +253,15 @@ background; unannotated cells show 'margin' background — inconsistent."
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title "face-margin-test-003: overlay foreground only, 'margin' background shows through" mode))
       (insert "\
-Annotations set only :foreground (red); no :background is provided.
-The 'margin' face background should fill all margin cells uniformly.
+Annotations set only :foreground (red); no :background is provided.  The
+'margin' face background should fill all margin cells uniformly.
 
-Expected (patched): entire left margin column uniformly colored.
-'!' glyphs appear in red against that background.  No stripe below EOB.
-Expected (unpatched): annotated cells show frame default background;
-unannotated cells show 'margin' background — inconsistent stripe.
+Expected entire left margin column uniformly colored.  '!'  glyphs appear
+in red against that background.  No stripe below EOB.  Expected
+(unpatched): annotated cells show frame default background (white);
+unannotated cells also show default background. This results in a white
+stripe on the left of the gray line-number, creating a visual
+inconsistency.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
