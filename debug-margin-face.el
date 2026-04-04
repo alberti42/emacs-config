@@ -111,7 +111,7 @@ The effective mode is determined by MODE and whether the 'margin' face exists."
   (let ((patched (and (eq mode 'patched) (facep 'margin))))
     (format "%s - running in %s mode (%s)\n\n"
             title
-            (if patched "PATCHED" "UNPATCHED")
+            (if patched "'patched" "'unpatched")
             (if patched "showing the fix" "showing pre-patch behavior"))))
 
 ;;; Test 001 — bug demo: modus-operandi stripe with no 'margin' face set
@@ -234,24 +234,38 @@ Compare with face-margin-test-001, which shows the bug.
 (defun face-margin-test-003 (&optional mode)
   "Test: overlay with :foreground only — 'margin' background shows through.
 
-Annotations specify only :foreground \"red\" (no :background).  The
-'margin' face is set to the modus-operandi 'line-number' background.
+The left margin is 2 columns wide.  Annotations specify only
+:foreground \"red\" (no :background).  The 'margin' face is set to the
+modus-operandi 'line-number' background.
 
-Without the fix, annotated cells (odd lines) show the frame default
-background (white) while unannotated cells show the 'margin' background
-— inconsistent.
+This exercises two distinct cases in a single test:
 
-With the fix, the 'margin' face becomes the base face for all margin
-display-spec glyphs.  Unspecified attributes (background) are inherited
-from 'margin', so all cells — annotated or not — show the same background.
+  1. Face interaction — odd lines place a 1-char '!' glyph with a
+     foreground-only face in column 1; column 2 is left empty.  The
+     'margin' face background must show through where the glyph does
+     not specify a background, so column 1 and column 2 both render
+     with the 'margin' background.
+
+  2. Empty-margin filling — even lines have no annotation at all.
+     Both columns are entirely empty; the display engine must fill
+     them using the 'margin' face background.
+
+Without the fix: annotated cells (odd lines, column 1) show the frame
+default background; all empty cells (column 2 of odd lines; both
+columns of even lines; the area below EOB) also show the frame default.
+The result is a white stripe to the left of the themed line-number column.
+
+With the fix: all margin cells — whether occupied by a foreground-only
+glyph or completely empty — render with the 'margin' face background,
+producing a uniformly colored 2-column gutter.
 
 Optional argument MODE is 'patched (default) or 'unpatched.
 Interactively, Emacs will prompt to choose between patched and unpatched.
 
-Expected (patched): entire left margin column uniformly colored.
+Expected (patched): entire 2-column left margin uniformly colored.
 '!' glyphs appear in red against that background.  No stripe below EOB.
-Expected (unpatched): annotated cells (odd lines) show frame default
-background; unannotated cells show 'margin' background — inconsistent."
+Expected (unpatched): all margin cells show the frame default background
+(white), creating a visible stripe against the gray line-number column."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -262,21 +276,37 @@ background; unannotated cells show 'margin' background — inconsistent."
       (read-only-mode -1)
       (erase-buffer)
       (insert (face-margin-test--mode-header mode))
-      (insert (face-margin-test--title "face-margin-test-003: overlay foreground only, 'margin' background shows through" mode))
+      (insert (face-margin-test--title "face-margin-test-003: 2-column margin — face interaction and empty filling" mode))
       (insert "\
-Annotations set only :foreground (red); no :background is provided.  The
-'margin' face background should fill all margin cells uniformly.
+The left margin is 2 columns wide.  Annotations use :foreground only (red);
+no :background is provided.
 
-Expected entire left margin column uniformly colored.  '!'  glyphs appear
-in red against that background.  No stripe below EOB.  Expected
-(unpatched): annotated cells show frame default background (white);
-unannotated cells also show default background. This results in a white
-stripe on the left of the gray line-number, creating a visual
-inconsistency.
+Two cases are covered:
+
+  Odd lines: a 1-char '!' glyph occupies column 1; column 2 is empty.
+    - Column 1 tests face interaction: the 'margin' background must show
+      through the foreground-only glyph.
+    - Column 2 tests partial empty filling: no glyph, the display engine
+      must fill it with the 'margin' background.
+
+  Even lines: no annotation at all.
+    - Both columns test pure empty filling.
+
+Also: the area below the last line of text (EOB) has no glyphs in either
+column and tests the same empty-filling path.
+
+Expected (patched): the entire 2-column left margin is uniformly colored.
+'!' glyphs appear in red against the gutter background.  No stripe below EOB.
+
+Expected (unpatched): all margin cells show the frame default background
+(white), resulting in a visual inconsistency: a visible white stripe on the left
+of the gray line-number column.
 ")
-      (setq-local left-margin-width 1)
+      (setq-local left-margin-width 2)
       (face-margin-test--setup-window buf)
-      ;; Annotate with foreground only (no :background).
+      (set-window-margins (selected-window) 2 0)
+      ;; Annotate odd lines with a single foreground-only '!' in column 1.
+      ;; Column 2 is intentionally left empty to test empty-margin filling.
       (save-excursion
         (goto-char (point-min))
         (let ((line 1))
