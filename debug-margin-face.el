@@ -775,27 +775,5 @@ background (white), creating a visual break in the gutter.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Manual tests (require external packages — cannot run with emacs -Q)
-;;
-;; The following scenarios require packages not available with emacs -Q.
-;; Run them in a full Emacs session with the packages installed.
-;;
-;; M-1: git-gutter + modus-operandi (end-to-end realistic scenario)
-;;   Load modus-operandi.  Enable git-gutter-mode in a Git-tracked buffer.
-;;   Add to your config:
-;;     (set-face-background 'margin (face-background 'line-number nil t))
-;;   Expected: the margin column matches the line-number background throughout,
-;;   including below the last line of text.
-;;
-;; M-2: lsp-mode diagnostics in left margin
-;;   Open a file with LSP diagnostics displayed in the left margin.
-;;   Apply the same set-face-background call as M-1.
-;;   Expected: uniform margin column; no stripe below EOB.
-;;
-;; M-3: Olivetti / olivetti-mode (right margin as layout padding)
-;;   Enable olivetti-mode (which reserves both margins for centering).
-;;   Set 'margin' background to a distinct color.
-;;   Expected: both margin areas colored uniformly; no stripe.
-
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
