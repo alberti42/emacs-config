@@ -114,10 +114,7 @@ The effective mode is determined by MODE and whether the 'margin' face exists."
             (if patched "'patched" "'unpatched")
             (if patched "showing the fix" "showing pre-patch behavior"))))
 
-;;; Test 001 — bug demo: modus-operandi stripe with no 'margin' face set
-;;
-;; Always shows the stripe: the 'margin' face is cleared so the bug
-;; is visible on both patched and unpatched builds.
+;;; Test 001 — stripe bug demo; full explanation in the test buffer.
 
 (defun face-margin-test-001 ()
   "Bug demo: modus-operandi + left margin, 'margin' face NOT customized.
@@ -176,11 +173,7 @@ Compare with face-margin-test-002, which shows the fix.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 002 — fix demo: same as 001 but 'margin' face set to match line-number
-;;
-;; Expected: the left margin column and the line-number column share the same
-;; background throughout the window, including below the last line of text.
-;; No stripe.
+;;; Test 002 — fix demo: 'margin' face set to match line-number; full explanation in the test buffer.
 
 (defun face-margin-test-002 ()
   "Fix demo: modus-operandi + left margin + 'margin' face set to 'line-number'.
@@ -225,11 +218,7 @@ Compare with face-margin-test-001, which shows the bug.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 003 — overlay with foreground only; 'margin' background shows through
-;;
-;; Expected: overlay sets only a foreground color (no :background).  The
-;; 'margin' face background fills all margin cells, including those where
-;; the annotation glyph has no background of its own.
+;;; Test 003 — face interaction and empty-margin filling; full explanation in the test buffer.
 
 (defun face-margin-test-003 (&optional mode)
   "Test: overlay with :foreground only — 'margin' background shows through.
@@ -327,13 +316,7 @@ of the gray line-number column.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 004 — org-mode prose, visual-wrap-prefix-mode, right margin for 75 cols
-;;
-;; Simulates a focus-writing scenario: right margin constrains text to 75
-;; columns (as olivetti and similar packages do), visual-line-mode soft-wraps
-;; long lines, and visual-wrap-prefix-mode gives list-item continuations a
-;; hanging indent.  Expected: wrapped list items are properly indented; both
-;; margin areas are uniformly colored; no stripe below EOB.
+;;; Test 004 — right margin as layout padding + visual-wrap-prefix-mode; full explanation in the test buffer.
 
 (defun face-margin-test-004 (&optional mode)
   "Test: org-mode list items, visual-wrap-prefix-mode, right margin for 75 cols.
@@ -433,12 +416,7 @@ tips, tutorials, and package listings.
       (read-only-mode 1)
       (goto-char (point-min)))))
 
-;;; Test 004b — content placed in the right margin
-;;
-;; Places "Line 1", "Line 2", "Line 3" as glyphs in the right margin on the
-;; first three lines; the remaining lines leave the right margin empty.
-;; Expected: the right margin is uniformly colored from the 'margin' face
-;; background on all lines, whether or not a glyph is present.
+;;; Test 004b — annotation glyphs in the right margin; full explanation in the test buffer.
 
 (defun face-margin-test-004b (&optional mode)
   "Test: content placed in the right margin via display property.
@@ -514,14 +492,7 @@ Line 8
       (read-only-mode 1)
       (goto-char (point-min)))))
 
-;;; Test 005 — 'margin' face font attributes: :weight works, :height is constrained
-;;
-;; The 'margin' face is the base face for all margin content.  Font variant
-;; attributes (:weight, :slant) are inherited by annotation glyphs and are
-;; visibly effective.  :height is inherited and fed into font realization, but
-;; margin glyphs are physically constrained to the row height set by the text
-;; area — so :height has no effect on line spacing.  This is correct: margin
-;; annotations must never alter the spacing of the lines they annotate.
+;;; Test 005 — 'margin' face font attributes (:weight, :height); full explanation in the test buffer.
 
 (defun face-margin-test-005 (&optional mode)
   "Test: 'margin' face as base for margin content — font attributes and inheritance.
@@ -588,16 +559,7 @@ text area font is unchanged; no crash.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 006 — buffer-local 'margin' face via face-remap-add-relative
-;;
-;; Opens two windows side by side with identical content and annotations.
-;; The left buffer applies a buffer-local margin color via
-;; face-remap-add-relative; the right buffer uses the global default.
-;; The global 'margin' face is not modified.
-;;
-;; Expected: left buffer shows colored margin; right buffer shows the
-;; default (frame background) margin.  The contrast is visible without
-;; any manual buffer switching.
+;;; Test 006 — buffer-local 'margin' face isolation via face-remap-add-relative; full explanation in the test buffer.
 
 (defun face-margin-test-006 (&optional mode)
   "Test: buffer-local 'margin' face via face-remap-add-relative.
@@ -667,11 +629,7 @@ Global 'margin' face is unchanged.
       (with-selected-window win-r
         (set-window-margins (selected-window) 1 0)))))
 
-;;; Test 007 — horizontal scrolling
-;;
-;; The left margin is a fixed area that does not participate in horizontal
-;; scrolling.  Use C-e / C-a to scroll right and left.  The buffer text
-;; documents three preexisting independent bugs visible in this scenario.
+;;; Test 007 — horizontal scrolling; preexisting bugs documented in the test buffer.
 
 (defun face-margin-test-007 (&optional mode)
   "Test: left margin and '$' truncation indicator colored during horizontal scroll.
@@ -776,12 +734,7 @@ by both edges, making independent left/right styling impossible.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 007b — horizontal scrolling WITHOUT display-line-numbers-mode
-;;
-;; Same as test 007 but with no line-number column.  The left margin abuts
-;; the text area directly.  Bug 2 (left '$' uses DEFAULT_FACE_ID) is still
-;; visible: '$' now contrasts with the 'margin' face immediately to its
-;; left with no line-number column in between.
+;;; Test 007b — horizontal scrolling without line-number column; full explanation in the test buffer.
 
 (defun face-margin-test-007b (&optional mode)
   "Test: horizontal scrolling — left margin only, no line-number column.
@@ -846,14 +799,7 @@ a consistent appearance.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 008 — RTL text
-;;
-;; Expected: with right-to-left paragraph direction the margin areas are
-;; still colored correctly.  No stripe, no reversed-row glitch.
-;;
-;; PREEXISTING INDEPENDENT BUG: the left margin area of R2L rows is
-;; rendered with the default face (black on white) regardless of any
-;; overlay or 'margin' face customization.  Not addressed by this patch.
+;;; Test 008 — RTL text; preexisting R2L margin bug documented in the test buffer.
 
 (defun face-margin-test-008 (&optional mode)
   "Test: RTL text with colored 'margin' face.
@@ -923,11 +869,7 @@ requires a dedicated patch.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
-;;; Test 009 — built-in Flymake (LSP-style) margin indicators
-;;
-;; This test uses the built-in Flymake engine to display a diagnostic error
-;; in the left margin, exactly as Eglot (built-in LSP) does when configured
-;; to use margins.
+;;; Test 009 — Flymake/Eglot-style margin indicators; full explanation in the test buffer.
 
 (defun face-margin-test-009 (&optional mode)
   "Test: built-in Flymake (LSP-style) margin indicators.
