@@ -56,3 +56,22 @@ The following items from the maintainer's review are verified using the interact
 - [x] **R2L Text:** Verify behavior in Hebrew/Arabic buffers. (Verified by `face-margin-test-008`)
 - [x] **Built-in LSP (Flymake):** Verify behavior with `eglot` style margin indicators. (Verified by `face-margin-test-009`)
 - [x] **Third-party Integration:** Smoke tests with `olivetti` (right margin) and `git-gutter` (left margin). (Simulated by `face-margin-test-004` and `face-margin-test--annotate`)
+
+## Appendix: The Left-Edge Truncation Indicator ($)
+During the investigation of **Bug 2** (Hardcoded Truncation Face), a more elegant architectural solution was identified to resolve the visual clash between truncation marks and line numbers.
+
+### The Problem
+Currently, `insert_left_trunc_glyphs` hardcodes the placement of the `$` indicator at `glyphs[TEXT_AREA][0]`. When `display-line-numbers-mode` is active, this causes the `$` to overwrite the first digit of the line number. Because the `$` uses the buffer's default background, it creates a jarring visual "hole" in the themed gutter.
+
+### Proposed Solution: Repurposing Padding
+A superior solution is to move the `$` indicator to the **right** of the line-number digits. 
+- **Mechanism:** `display-line-numbers-mode` already reserves a single blank space (padding) between the digits and the buffer text.
+- **Implementation:** The truncation logic in `xdisp.c` should be updated to target this specific padding slot (index `it->lnum_width - 1`) rather than index `0`.
+- **Benefits:**
+    - **Information Preservation:** Line numbers remain fully readable as no digits are overwritten.
+    - **Visual Logic:** The `$` acts as a clear divider between metadata (gutter) and content (text).
+    - **Zero Layout Shift:** Since the padding is already reserved, the text position remains identical.
+    - **Background Consistency:** Placed at the text boundary, the `$` can correctly use the default face without clashing with the gutter theme.
+
+### Conceptual Note
+It is observed that a left-edge truncation indicator is conceptually questionable in standard LTR (Left-to-Right) mode, where the user is generally aware of the horizontal scroll state. Its presence is most logically justified in RTL (Right-to-Left) contexts or as a general window-level status signal. Moving it to the padding area respects existing layout constraints while significantly improving visual clarity.
