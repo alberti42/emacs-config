@@ -417,16 +417,17 @@ tips, tutorials, and package listings.
 (defun face-margin-test-004b (&optional mode)
   "Test: content placed in the right margin via display property.
 
-Places \"Line 1\", \"Line 2\", \"Line 3\" in the right margin on the first
-three lines.  The remaining lines leave the right margin empty.  The left
-margin is annotated the same way as in test 001–003: odd lines show \"!\"
-in red, even lines a blank filler.
+Places \"Line 1\", \"Line 2\", \"Line 3\" in a 12-column right margin.
+\"Line 2\" is given a YELLOW background to verify if the 'margin' face
+correctly fills the remaining space on that same line.
 
 Optional argument MODE is 'patched (default) or 'unpatched.
 Interactively, Emacs will prompt to choose between patched and unpatched.
 
-Expected (patched): both margin areas uniformly colored.  Annotated and
-unannotated cells share the same background.  No stripe below EOB.
+Expected (patched GUI): both margin areas uniformly colored.  On Line 2,
+the \"Line 2\" text should be yellow, but the rest of the 12-column
+margin on that row should be grey (filled by the 'margin' face).
+
 Expected (unpatched): stripe visible in both margin areas below EOB."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -440,15 +441,14 @@ Expected (unpatched): stripe visible in both margin areas below EOB."
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title "face-margin-test-004b: content in the right margin." mode))
       (insert "\
-The right margin is reserved and the first three lines receive a label
-glyph (\"Line 1\", \"Line 2\", \"Line 3\") placed there via a display
-property with (margin right-margin).  The remaining lines leave the
-right margin empty.  The left margin is annotated with git-gutter-style
-indicators: odd lines show \"!\" in red, even lines a blank filler.
+The right margin is 12 columns wide. The first three lines receive a
+label glyph (\"Line 1\", \"Line 2\", \"Line 3\") via a display property.
+IMPORTANT: \"Line 2\" is given a YELLOW background.
 
-Expected (patched): both margin areas uniformly colored.  Annotated and
-unannotated cells share the same background.  No stripe below EOB.
-Expected (unpatched): stripe visible in both margin areas below EOB.
+Expected (patched): On Line 2, the \"Line 2\" label should be yellow,
+but the rest of the margin area on that line should be grey (matching
+the line-numbers). If the code is buggy, the rest of the margin on
+Line 2 will be white (frame default).
 
 Line 1
 Line 2
@@ -460,9 +460,9 @@ Line 7
 Line 8
 ")
       (setq-local left-margin-width 1)
-      (setq-local right-margin-width 8))
+      (setq-local right-margin-width 12))
     (switch-to-buffer buf)
-    (set-window-margins (selected-window) 1 8)
+    (set-window-margins (selected-window) 1 12)
     (with-current-buffer buf
       ;; Annotate the first three lines in the right margin.
       (save-excursion
@@ -471,15 +471,17 @@ Line 8
         (search-forward "\nLine 1\n")
         (forward-line -1)
         (dotimes (i 3)
-          (let ((ov (make-overlay (point) (1+ (point)))))
+          (let* ((bg (if (= i 1) "yellow" ln-bg))
+                 (fg (if (= i 1) "black" "blue"))
+                 (ov (make-overlay (point) (1+ (point)))))
             (overlay-put
              ov 'before-string
              (propertize " "
                          'display
                          `((margin right-margin)
                            ,(propertize (format "Line %d" (1+ i))
-                                        'face `(:foreground "blue"
-                                                :background ,ln-bg))))))
+                                        'face `(:foreground ,fg
+                                                :background ,bg))))))
           (forward-line 1)))
       (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
