@@ -566,12 +566,12 @@ They are documented here for two reasons:
   layout that were preexisting this patch and independent of it.
 
 PREEXISTING INDEPENDENT BUG 1 (TTY only): '!' annotations disappear
-on horizontally scrolled lines.  '$' is placed in TEXT_AREA[0] while
-'!' lives in LEFT_MARGIN_AREA — different areas, so there is no direct
-overwriting.  The likely cause is that the TTY renderer skips
-LEFT_MARGIN_AREA entirely for rows flagged truncated_on_left_p.  This
-may be intentional, but it is poor design: the left margin is a fixed
-area and should remain visible regardless of scroll position.
+on horizontally scrolled lines.  This is independent of the '$'
+indicator; it occurs because the display engine skips margin-bound
+display properties during the initial hscroll seek phase.  By the time
+the seek reaches the first visible text character, the margin content
+has already been bypassed.  This bug exists in unpatched Emacs and has
+not been addressed here.
 
 PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always
 rendered with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless
