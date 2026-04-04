@@ -44,7 +44,7 @@
 
 (defun face-margin-test--annotate (buf &optional fill)
   "Annotate lines in BUF with git-gutter-style indicators.
-All margin cells use the 'line-number' face background so the gutter
+All margin cells use the `line-number' face background so the gutter
 column looks uniform.  Odd lines show \"!\" in red; even lines receive
 a blank filler when FILL is non-nil."
   (with-current-buffer buf
@@ -76,14 +76,14 @@ LEFT is always 1.  RIGHT-WIDTH defaults to 0."
   (set-window-margins (selected-window) 1 (or right-width 0)))
 
 (defun face-margin-test--load-theme ()
-  "Load modus-operandi without prompting."
+  "Load `modus-operandi' without prompting."
   (load-theme 'modus-operandi t))
 
 (defun face-margin-test--apply-mode (mode ln-bg)
-  "Set or clear the 'margin' face background depending on MODE.
-MODE is 'patched (default) or 'unpatched.  In patched mode the
+  "Set or clear the `margin' face background depending on MODE.
+MODE is `patched' (default) or `unpatched'.  In patched mode the
 background is set to LN-BG; in unpatched mode it is cleared so
-the pre-patch stripe is visible.  No-ops when the 'margin' face
+the pre-patch stripe is visible.  No-ops when the `margin' face
 does not exist (unpatched builds)."
   (when (facep 'margin)
     (if (eq mode 'unpatched)
@@ -99,7 +99,7 @@ WARNING: you are running on an unpatched version of Emacs.  The tests will be
 carried out nonetheless to demonstrate Emacs' behavior before applying the patch."
                    "\
 WARNING: you are running on an unpatched version of Emacs.  Your request
-to execute tests in 'patched mode cannot be fulfilled with the currently
+to execute tests in `patched' mode cannot be fulfilled with the currently
 unpatched Emacs. Falling back to unpatched behavior.")))
         (message "%s" msg)
         (concat msg "\n\n"))
@@ -107,17 +107,18 @@ unpatched Emacs. Falling back to unpatched behavior.")))
 
 (defun face-margin-test--title (title mode)
   "Return TITLE with a running mode indicator appended on the same line.
-The effective mode is determined by MODE and whether the 'margin' face exists."
+The effective mode is determined by MODE and whether the `margin' face exists."
   (let ((patched (and (eq mode 'patched) (facep 'margin))))
     (format "%s - running in %s mode (%s)\n\n"
             title
-            (if patched "'patched" "'unpatched")
+            (if patched "`patched'" "`unpatched'")
             (if patched "showing the fix" "showing pre-patch behavior"))))
 
 ;;; Test 001 — stripe bug demo; full explanation in the test buffer.
 
 (defun face-margin-test-001 ()
-  "Stripe bug demo: 'margin' face left uncustomized.  See test buffer for full explanation."
+  "Stripe bug demo: `margin' face left uncustomized.
+See test buffer for full explanation."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((mode 'unpatched)
@@ -159,7 +160,8 @@ Compare with face-margin-test-002, which shows the fix.
 ;;; Test 002 — fix demo: 'margin' face set to match line-number; full explanation in the test buffer.
 
 (defun face-margin-test-002 ()
-  "Fix demo: 'margin' face set to match 'line-number' background.  See test buffer for full explanation."
+  "Fix demo: `margin' face set to match `line-number' background.
+See test buffer for full explanation."
   (interactive)
   (face-margin-test--load-theme)
   (let* ((mode 'patched)
@@ -194,9 +196,10 @@ Compare with face-margin-test-001, which shows the bug.
 ;;; Test 003 — face interaction and empty-margin filling; full explanation in the test buffer.
 
 (defun face-margin-test-003 (&optional mode)
-  "2-column margin: face interaction and empty-margin filling.  See test buffer for full explanation.
+  "2-column margin: face interaction and empty-margin filling.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -262,9 +265,10 @@ of the gray line-number column.
 ;;; Test 004 — right margin as layout padding + visual-wrap-prefix-mode; full explanation in the test buffer.
 
 (defun face-margin-test-004 (&optional mode)
-  "Right margin as layout padding + visual-wrap-prefix-mode.  See test buffer for full explanation.
+  "Right margin as layout padding + visual-wrap-prefix-mode.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -342,9 +346,10 @@ tips, tutorials, and package listings.
 ;;; Test 004b — annotation glyphs in the right margin; full explanation in the test buffer.
 
 (defun face-margin-test-004b (&optional mode)
-  "Annotation glyphs placed in a 12-column right margin.  See test buffer for full explanation.
+  "Annotation glyphs placed in a 12-column right margin.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -408,9 +413,10 @@ Line 8
 ;;; Test 005 — 'margin' face font attributes (:weight, :height); full explanation in the test buffer.
 
 (defun face-margin-test-005 (&optional mode)
-  "'margin' face font attributes: :weight bold and :height 1.5.  See test buffer for full explanation.
+  "`margin' face font attributes: :weight bold and :height 1.5.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -454,9 +460,10 @@ text area font is unchanged; no crash.
 ;;; Test 006 — buffer-local 'margin' face isolation via face-remap-add-relative; full explanation in the test buffer.
 
 (defun face-margin-test-006 (&optional mode)
-  "Buffer-local 'margin' face isolation via face-remap-add-relative.  See test buffer for full explanation.
+  "Buffer-local `margin' face isolation via face-remap-add-relative.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -515,7 +522,11 @@ Global 'margin' face is unchanged.
 ;;; Test 007 — horizontal scrolling; preexisting bugs documented in the test buffer.
 
 (defun face-margin-test-007 (&optional mode)
-  "Left margin during horizontal scrolling; preexisting bugs documented in the test buffer."
+  "Left margin during horizontal scrolling;
+preexisting bugs documented in the test buffer.
+
+Optional argument MODE is `patched' (default) or `unpatched'.
+Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -598,7 +609,11 @@ impossible.
 ;;; Test 007b — horizontal scrolling without line-number column; full explanation in the test buffer.
 
 (defun face-margin-test-007b (&optional mode)
-  "Horizontal scrolling without line-number column; preexisting bugs documented in the test buffer."
+  "Horizontal scrolling without line-number column;
+preexisting bugs documented in the test buffer.
+
+Optional argument MODE is `patched' (default) or `unpatched'.
+Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -651,9 +666,10 @@ a consistent appearance.
 ;;; Test 008 — RTL text; preexisting R2L margin bug documented in the test buffer.
 
 (defun face-margin-test-008 (&optional mode)
-  "RTL text with colored 'margin' face; preexisting R2L bug documented in the test buffer.
+  "RTL text with colored `margin' face;
+preexisting R2L bug documented in the test buffer.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
@@ -702,12 +718,12 @@ No stripe below EOB.
 PREEXISTING INDEPENDENT BUG 4: on RTL (Hebrew) rows, the left margin
 area is rendered with the default face (black foreground, white
 background) regardless of any overlay or 'margin' face customization.
-The root cause lies in the TTY renderer (dispnew.c and term.c): while
-the display engine correctly produces margin glyphs with the intended
-face for reversed rows, the TTY output phase appears to neglect these
-faces when flattening the window matrix or calculating the physical
-output.  This bug exists in unpatched Emacs and has not been
-addressed here.
+The root cause appears to lie in the TTY renderer (dispnew.c and
+term.c): while the display engine correctly produces margin glyphs
+with the intended face for reversed rows, the TTY output phase appears
+to neglect these faces when flattening the window matrix or
+calculating the physical output.  This bug exists in unpatched Emacs
+and has not been addressed here.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
@@ -720,9 +736,10 @@ addressed here.
 ;;; Test 009 — Flymake/Eglot-style margin indicators; full explanation in the test buffer.
 
 (defun face-margin-test-009 (&optional mode)
-  "Flymake/Eglot-style margin indicators.  See test buffer for full explanation.
+  "Flymake/Eglot-style margin indicators.
+See test buffer for full explanation.
 
-Optional argument MODE is \\='patched (default) or \\='unpatched.
+Optional argument MODE is `patched' (default) or `unpatched'.
 Interactively, Emacs prompts to choose between patched and unpatched."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
