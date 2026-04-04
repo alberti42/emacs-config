@@ -34,6 +34,12 @@ Add face propagation here as new packages need harmonizing."
       (when line-number-bg-color
         (set-face-background 'line-number line-number-bg-color))))
 
+  ;; customize margin color after bug#80693
+  (let ((bg (face-background 'line-number nil t)))
+    ;; guard against the patch being installed
+    (when (facep 'margin)
+      (set-face-background 'margin bg)))
+
   ;; flymake margin indicators: set background to match the line-number face so
   ;; the indicator characters blend with the left-margin column background.
   ;; The three faces cover error, warning, and note severity levels.
