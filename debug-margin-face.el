@@ -81,25 +81,25 @@ LEFT is always 1.  RIGHT-WIDTH defaults to 0."
 
 (defun face-margin-test--apply-mode (mode ln-bg)
   "Set or clear the `margin' face background depending on MODE.
-MODE is `patched' (default) or `unpatched'.  In patched mode the
-background is set to LN-BG; in unpatched mode it is cleared so
+MODE is `themed' (default) or `standard'.  In themed mode the
+background is set to LN-BG; in standard mode it is cleared so
 the pre-patch stripe is visible.  No-ops when the `margin' face
 does not exist (unpatched builds)."
   (when (facep 'margin)
-    (if (eq mode 'unpatched)
+    (if (eq mode 'standard)
         (set-face-background 'margin nil)
       (set-face-background 'margin ln-bg))))
 
 (defun face-margin-test--mode-header (mode)
   "Return a warning string if the build is unpatched."
   (if (not (facep 'margin))
-      (let ((msg (if (eq mode 'unpatched)
+      (let ((msg (if (eq mode 'standard)
                      "\
 WARNING: you are running on an unpatched version of Emacs.  The tests will be
 carried out nonetheless to demonstrate Emacs' behavior before applying the patch."
                    "\
 WARNING: you are running on an unpatched version of Emacs.  Your request
-to execute tests in `patched' mode cannot be fulfilled with the currently
+to execute tests in `themed' mode cannot be fulfilled with the currently
 unpatched Emacs. Falling back to unpatched behavior.")))
         (message "%s" msg)
         (concat msg "\n\n"))
@@ -108,11 +108,11 @@ unpatched Emacs. Falling back to unpatched behavior.")))
 (defun face-margin-test--title (title mode)
   "Return TITLE with a running mode indicator appended on the same line.
 The effective mode is determined by MODE and whether the `margin' face exists."
-  (let ((patched (and (eq mode 'patched) (facep 'margin))))
+  (let ((applied (and (eq mode 'themed) (facep 'margin))))
     (format "%s - running in %s mode (%s)\n\n"
             title
-            (if patched "`patched'" "`unpatched'")
-            (if patched "showing the fix" "showing pre-patch behavior"))))
+            (if applied "`themed'" "`standard'")
+            (if applied "showing the fix" "showing pre-patch behavior"))))
 
 ;;; Test 001 — stripe bug demo; full explanation in the test buffer.
 
@@ -121,7 +121,7 @@ The effective mode is determined by MODE and whether the `margin' face exists."
 See test buffer for full explanation."
   (interactive)
   (face-margin-test--load-theme)
-  (let* ((mode 'unpatched)
+  (let* ((mode 'standard)
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-001*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -164,7 +164,7 @@ Compare with face-margin-test-002, which shows the fix.
 See test buffer for full explanation."
   (interactive)
   (face-margin-test--load-theme)
-  (let* ((mode 'patched)
+  (let* ((mode 'themed)
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-002*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -199,11 +199,11 @@ Compare with face-margin-test-001, which shows the bug.
   "2-column margin: face interaction and empty-margin filling.
 See test buffer for full explanation.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-003*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -268,11 +268,11 @@ of the gray line-number column.
   "Right margin as layout padding + visual-wrap-prefix-mode.
 See test buffer for full explanation.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-004*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -356,10 +356,10 @@ the margin area.
 Left Margin (4 columns): '!' with CYAN background.
 Right Margin (12 columns): 'Line 2' with YELLOW background.
 
-Optional argument MODE is `patched' (default) or `unpatched'."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-004b*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -465,15 +465,15 @@ with robust filling loops in both GUI and TTY branches.
   "`margin' face font attributes: :weight bold and :height 1.5.
 See test buffer for full explanation.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-005*")))
     (face-margin-test--apply-mode mode ln-bg)
-    (when (and (facep 'margin) (eq mode 'patched))
+    (when (and (facep 'margin) (eq mode 'themed))
       (set-face-attribute 'margin nil :weight 'bold :height 1.5))
     (with-current-buffer buf
       (read-only-mode -1)
@@ -512,14 +512,14 @@ text area font is unchanged; no crash.
   "Buffer-local `margin' face isolation via face-remap-add-relative.
 See test buffer for full explanation.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
   ;; Reset global 'margin' face so the right buffer shows a clear contrast.
   ;; The facep guard prevents a crash on unpatched builds.
   (when (facep 'margin) (set-face-background 'margin nil))
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf-l (get-buffer-create "*face-margin-test-006-local*"))
          (buf-g (get-buffer-create "*face-margin-test-006-global*")))
@@ -557,7 +557,7 @@ Global 'margin' face is unchanged.
           (goto-char (point-min)))))
     ;; Apply buffer-local remap only to the left buffer.
     (with-current-buffer buf-l
-      (when (and (facep 'margin) (eq mode 'patched))
+      (when (and (facep 'margin) (eq mode 'themed))
         (face-remap-add-relative 'margin :background ln-bg)))
     ;; Display side by side: left buffer in the current window, right in a split.
     (delete-other-windows)
@@ -572,13 +572,10 @@ Global 'margin' face is unchanged.
 
 (defun face-margin-test-007 (&optional mode)
   "Left margin during horizontal scrolling;
-preexisting bugs documented in the test buffer.
-
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+preexisting bugs documented in the test buffer."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-007*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -659,13 +656,10 @@ impossible.
 
 (defun face-margin-test-007b (&optional mode)
   "Horizontal scrolling without line-number column;
-preexisting bugs documented in the test buffer.
-
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+preexisting bugs documented in the test buffer."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-007b*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -718,11 +712,11 @@ a consistent appearance.
   "RTL text with colored `margin' face;
 preexisting R2L bug documented in the test buffer.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-008*")))
     (face-margin-test--apply-mode mode ln-bg)
@@ -785,14 +779,13 @@ and has not been addressed here.
 ;;; Test 009 — Flymake/Eglot-style margin indicators; full explanation in the test buffer.
 
 (defun face-margin-test-009 (&optional mode)
-  "Flymake/Eglot-style margin indicators.
-See test buffer for full explanation.
+  "Flymake/Eglot-style margin indicators.  See test buffer for full explanation.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-009*")))
     (face-margin-test--apply-mode mode ln-bg)
