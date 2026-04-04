@@ -26,9 +26,14 @@
 ;; Tests are callable from "emacs -Q" with the patched build:
 ;;
 ;;   emacs -Q --load /path/to/debug-margin-face.el \
-;;             --eval "(face-margin-test-NNN)"
+;;             --eval "(face-margin-test-NNN 'themed)"
 ;;
-;; Replace NNN with the test number (001 through 009, plus 007b).
+;; Replace NNN with the test number (001 through 009, plus 007b), and
+;; 'themed with 'standard as needed.
+;;
+;; The tests can also be run interactively within Emacs via M-x.  For
+;; tests 003–009, a prompt will appear in the minibuffer to choose
+;; between the 'themed and 'standard modes.
 ;;
 ;; The script is designed to run on unpatched Emacs without crashing.  On
 ;; unpatched builds, the 'margin' face does not exist, so all tests
