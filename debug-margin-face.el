@@ -515,10 +515,7 @@ Global 'margin' face is unchanged.
 ;;; Test 007 — horizontal scrolling; preexisting bugs documented in the test buffer.
 
 (defun face-margin-test-007 (&optional mode)
-  "Left margin during horizontal scrolling; preexisting bugs documented in the test buffer.
-
-Optional argument MODE is \\='patched (default) or \\='unpatched.
-Interactively, Emacs prompts to choose between patched and unpatched."
+  "Left margin during horizontal scrolling; preexisting bugs documented in the test buffer."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -573,19 +570,21 @@ the seek reaches the first visible text character, the margin content
 has already been bypassed.  This bug exists in unpatched Emacs and has
 not been addressed here.
 
-PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is always
-rendered with DEFAULT_FACE_ID in insert_left_trunc_glyphs, regardless
-of the visual context.  When a theme gives 'line-number' a non-default
-background, '$' shows the buffer default background instead — a visible
-inconsistency.  A proper fix must determine the correct face based on
-what is actually displayed at that position (line numbers, margins).
+PREEXISTING INDEPENDENT BUG 2: the left '$' indicator is rendered with
+a hardcoded DEFAULT_FACE_ID in xdisp.c:insert_left_trunc_glyphs.  When a
+theme gives 'line-number' a non-default background, '$' shows the
+buffer default background instead — a visible inconsistency.  A proper
+fix requires the function to detect the visual context (line numbers
+or margins) and inherit the background of the element it abuts.
 
-PREEXISTING INDEPENDENT BUG 3: display table remapping does not work
-for the left-edge '$'.  In produce_special_glyphs, the mirroring code
-path for L2R left-edge glyphs discards both the character and the face
-from the display table glyph code when no bidi mirror is found.
-Additionally, the display table has only one 'truncation' slot shared
-by both edges, making independent left/right styling impossible.
+PREEXISTING INDEPENDENT BUG 3: display table remapping face loss.
+In xdisp.c:produce_special_glyphs, the code path for mirrored
+truncation glyphs (used for the left-edge indicator) initializes a
+local face_id from the basic default face.  This local variable
+effectively discards any face information specified in the display
+table entry.  Additionally, the display table has only one
+'truncation' slot shared by both edges, making independent styling
+impossible.
 ")
       (setq-local left-margin-width 1)
       (setq-local truncate-lines t)
@@ -599,10 +598,7 @@ by both edges, making independent left/right styling impossible.
 ;;; Test 007b — horizontal scrolling without line-number column; full explanation in the test buffer.
 
 (defun face-margin-test-007b (&optional mode)
-  "Horizontal scrolling without line-number column.  See test buffer for full explanation.
-
-Optional argument MODE is \\='patched (default) or \\='unpatched.
-Interactively, Emacs prompts to choose between patched and unpatched."
+  "Horizontal scrolling without line-number column; preexisting bugs documented in the test buffer."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -703,13 +699,15 @@ On Hebrew (RTL) lines: see the bug note below.
 Expected: left margin uniformly colored for all rows.
 No stripe below EOB.
 
-PREEXISTING INDEPENDENT BUG: on RTL (Hebrew) rows, the left margin
+PREEXISTING INDEPENDENT BUG 4: on RTL (Hebrew) rows, the left margin
 area is rendered with the default face (black foreground, white
 background) regardless of any overlay or 'margin' face customization.
-The root cause is likely that the display engine does not properly
-handle LEFT_MARGIN_AREA for reversed (R2L) glyph rows.  This bug
-exists in unpatched Emacs and has not been addressed here; it
-requires a dedicated patch.
+The root cause lies in the TTY renderer (dispnew.c and term.c): while
+the display engine correctly produces margin glyphs with the intended
+face for reversed rows, the TTY output phase appears to neglect these
+faces when flattening the window matrix or calculating the physical
+output.  This bug exists in unpatched Emacs and has not been
+addressed here.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
