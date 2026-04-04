@@ -719,6 +719,7 @@ Use C-e to scroll right to the end of a long line, C-a to return.
 
 Expected (patched): left margin uniformly colored at all scroll
 positions.  No stripe or redraw glitch.
+
 Expected (unpatched): stripe visible in left margin below EOB.
 
 "
@@ -814,6 +815,7 @@ The left margin abuts the text area directly.
 Use C-e to scroll right to the end of a long line, C-a to return.
 
 Expected (patched): left margin uniformly colored at all scroll positions.
+
 Expected (unpatched): stripe visible in left margin below EOB.
 
 "
@@ -966,6 +968,7 @@ The indicator face specifies only :foreground \"red\".
 
 Expected (patched): the red '!!' indicator is correctly backgrounded by
 the 'margin' face, blending into the gutter.
+
 Expected (unpatched): the indicator shows the frame default
 background (white), creating a visual break in the gutter.
 ")
