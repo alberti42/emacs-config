@@ -476,7 +476,7 @@ with robust filling loops in both GUI and TTY branches.
 ;;; Test 005 — 'margin' face font attributes (:weight, :height); full explanation in the test buffer.
 
 (defun face-margin-test-005 (&optional mode)
-  "`margin' face font attributes: :weight bold and :height 1.5.
+  "`margin' face font attributes: :weight bold and :height 2.0.
 See test buffer for full explanation.
 
 Optional argument MODE is `themed' (default) or `standard'.
@@ -488,7 +488,7 @@ Interactively, Emacs prompts to choose between themed and standard."
          (buf (get-buffer-create "*face-margin-test-005*")))
     (face-margin-test--apply-mode mode ln-bg)
     (when (and (facep 'margin) (eq mode 'themed))
-      (set-face-attribute 'margin nil :weight 'bold :height 1.5))
+      (set-face-attribute 'margin nil :weight 'bold :height 2.0))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
@@ -498,19 +498,18 @@ Interactively, Emacs prompts to choose between themed and standard."
 The 'margin' face is the base face for all margin content.  Font
 attributes set on it propagate to annotation glyphs via inheritance.
 
-This test sets :weight bold and :height 1.5 on the 'margin' face.
+This test sets :weight bold and :height 2.0 on the 'margin' face.
 
 :weight bold — '!' annotation glyphs should appear bold.  Bold is a font-
 variant attribute: it is realized within the margin and does not affect
 the text area.
 
-:height 1.5 — accepted without error, but margin glyphs are constrained
-to the row height set by the text area.  Line spacing must not change.
-This is correct: annotations must never alter the height of the lines
-they annotate.
+:height 2.0 — this attribute propagates to the annotation glyphs.  In
+GUI frames, this is visually evident (the '!' character will appear taller).
+In TTY frames, font height attributes are generally a no-op.
 
-Expected: '!' glyphs are bold; line heights are uniform throughout;
-text area font is unchanged; no crash.
+Expected: '!' glyphs are bold (and taller in GUI); line heights for the
+rest of the text area remain uniform; no crash.
 ")
       (setq-local left-margin-width 1)
       (face-margin-test--setup-window buf)
