@@ -91,10 +91,16 @@ does not exist (unpatched builds)."
       (set-face-background 'margin ln-bg))))
 
 (defun face-margin-test--mode-header (mode)
-  "Return a warning string if MODE is 'patched but the build is unpatched.
-Returns an empty string when no warning is needed."
-  (if (and (eq mode 'patched) (not (facep 'margin)))
-      (let ((msg "WARNING: you selected 'patched mode but this Emacs build is not patched. Falling back to unpatched behavior."))
+  "Return a warning string if the build is unpatched."
+  (if (not (facep 'margin))
+      (let ((msg (if (eq mode 'unpatched)
+                     "\
+WARNING: you are running on an unpatched version of Emacs.  The tests will be
+carried out nonetheless to demonstrate Emacs' behavior before applying the patch."
+                   "\
+WARNING: you are running on an unpatched version of Emacs.  Your request
+to execute tests in 'patched mode cannot be fulfilled with the currently
+unpatched Emacs. Falling back to unpatched behavior.")))
         (message "%s" msg)
         (concat msg "\n\n"))
     ""))
@@ -110,12 +116,10 @@ The effective mode is determined by MODE and whether the 'margin' face exists."
 
 ;;; Test 001 — bug demo: modus-operandi stripe with no 'margin' face set
 ;;
-;; Always shows the stripe regardless of MODE: the 'margin' face is cleared
-;; unconditionally so the bug is visible on both patched and unpatched builds.
-;; The mode parameter is accepted for API consistency and to provide build-status
-;; warnings on unpatched builds.
+;; Always shows the stripe: the 'margin' face is cleared so the bug
+;; is visible on both patched and unpatched builds.
 
-(defun face-margin-test-001 (&optional mode)
+(defun face-margin-test-001 ()
   "Bug demo: modus-operandi + left margin, 'margin' face NOT customized.
 
 Uses only built-in components: the modus-operandi theme (shipped with
@@ -131,20 +135,15 @@ has no functional link to the margins.
 In this demo, the 'margin' face is left at its default (inherits the
 frame background) to show the bug.
 
-This test always shows the bug regardless of MODE: it is designed to
-demonstrate the pre-patch stripe and does not depend on whether Emacs
-is patched or not.
-
 Expected: a colored stripe is visible in the line-number column below the
 last line of text, but the left margin column below EOB reverts to the
 frame default background — an inconsistency within the same gutter area."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+  (interactive)
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode 'unpatched)
+         (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-001*")))
-    ;; Always clear the 'margin' face — this is the bug scenario.
-    ;; The facep guard prevents a crash on unpatched builds.
-    (when (facep 'margin) (set-face-background 'margin nil))
+    (face-margin-test--apply-mode mode ln-bg)
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
@@ -183,7 +182,7 @@ Compare with face-margin-test-002, which shows the fix.
 ;; background throughout the window, including below the last line of text.
 ;; No stripe.
 
-(defun face-margin-test-002 (&optional mode)
+(defun face-margin-test-002 ()
   "Fix demo: modus-operandi + left margin + 'margin' face set to 'line-number'.
 
 Same setup as face-margin-test-001.  Additionally sets the 'margin' face
@@ -191,16 +190,13 @@ background to match the 'line-number' background from modus-operandi, using:
 
   (set-face-background \\='margin (face-background \\='line-number nil t))
 
-Optional argument MODE is 'patched (default) or 'unpatched.
-Interactively, Emacs will prompt to choose between patched and unpatched.
-
 Expected (patched): the left margin column and the line-number column share
 the same background color throughout the window, including below EOB.  No stripe.
 Expected (unpatched): the 'margin' face is not set; the stripe remains visible.
 On an unpatched build, the face does not exist and the call is skipped safely."
-  (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
+  (interactive)
   (face-margin-test--load-theme)
-  (let* ((mode (or mode 'patched))
+  (let* ((mode 'patched)
          (ln-bg (face-background 'line-number nil t))
          (buf (get-buffer-create "*face-margin-test-002*")))
     (face-margin-test--apply-mode mode ln-bg)
