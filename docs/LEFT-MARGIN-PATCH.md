@@ -3,20 +3,28 @@
 ## Overview
 This patch introduces a new basic face, `margin`, to control the background and default styling of the window margins (left and right). Its primary goal is to fix the "stripe bug" where the margin area beyond the end-of-buffer (EOB) reverts to the frame's default background, even when themes or packages have colored the margin area on text lines.
 
-## Current Status (as of 2026-04-02)
-The patch is currently in the **Strategy/Execution** phase. There is a consensus on the technical approach, but a design disagreement exists regarding the naming and scope of the face.
+## Current Status (as of 2026-04-04)
+The patch is currently in the **Submission** phase. The second revision has been completed, implementing a single `margin` face while robustly addressing background inconsistencies across all platforms.
 
 ### Agreed Requirements
-- **Dedicated Face:** Instead of reusing the `line-number` face, a new basic face (provisionally `margin`) will be introduced.
-- **Basic Face Integration:** The face must be added to `realize_basic_faces` in `xfaces.c` to ensure support for face-remapping.
-- **Base Face Logic:** The face serves as the "base" for the margin area. If an overlay or display property provides a face that specifies only a foreground color (e.g., a red `!` for an error), the `margin` face background will "show through." This ensures that annotations do not create visual "holes" or stripes of the default background color within the gutter. (Verified by **`face-margin-test-003`**).
+- **Dedicated Face:** Instead of reusing the `line-number` face, a new basic face (`margin`) has been introduced.
+- **Basic Face Integration:** The face is added to `realize_basic_faces` in `xfaces.c` to ensure support for face-remapping.
+- **Base Face Logic:** The face serves as the "base" for the margin area. If an overlay or display property provides a face that specifies only a foreground color, the `margin` face background "shows through." (Verified by **`face-margin-test-003`** and **`009`**).
+- **Robust Filling:** Both TTY and GUI branches use `while` loops to explicitly fill every character slot in the margin, preventing background bleeding or gaps. (Verified by **`face-margin-test-004b`**).
 - **Graceful Degradation:** The face inherits from `default`. If left uncustomized, it produces a no-op, preserving existing Emacs behavior.
 
 ### Open Design Issues
 - **Single vs. Separate Faces:**
-    - **Eli Zaretskii (Maintainer):** Insists on a single `margin` face covering both left and right margins for symmetry and simplicity, analogous to how `fringe` works.
-    - **Andrea Alberti (Contributor):** Argues for separate `left-margin` and `right-margin` faces. The rationale is that the left margin is typically used for **content/annotations** (git-gutter, LSP), while the right margin is frequently used as **empty layout padding** for focus/centering modes (e.g., `olivetti`). In these layout scenarios, the margin is meant to be invisible; automatically coloring the right padding to match a left-hand annotation gutter creates a new visual asymmetry. (Demonstrated by **`face-margin-test-004`**).
-- **Status:** Andrea is currently refactoring the patch to use a single `margin` face as requested, while documenting the potential issues with soft-wrapping asymmetry.
+    - **Eli Zaretskii (Maintainer):** Insists on a single `margin` face covering both left and right margins for symmetry and simplicity.
+    - **Andrea Alberti (Contributor):** Argues for separate `left-margin` and `right-margin` faces. The rationale is that the left margin is typically used for **content/annotations**, while the right margin is frequently used as **empty layout padding** (e.g., `olivetti`). Automatically coloring the right padding to match a left-hand annotation gutter creates a visual asymmetry. (Demonstrated by **`face-margin-test-004`**).
+- **Status:** The second revision uses a single `margin` face as requested, but the contributor maintains the argument for independent customization in future iterations.
+
+### Test Suite Nomenclature
+The interactive test suite `debug-margin-face.el` uses two modes to demonstrate the patch:
+- **`themed` mode:** Configures the `margin` face to match the `line-number` background (showing the fix).
+- **`standard` mode:** Leaves the `margin` face at its default configuration (showing the stripe bug or background bleed).
+The suite consists of 11 dedicated test units.
+
 
 ## The "Stripe Bug" Explained
 When a theme (like the built-in `modus-operandi`) gives the `line-number` face a distinct background color:
