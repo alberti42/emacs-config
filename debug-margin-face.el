@@ -346,11 +346,17 @@ tips, tutorials, and package listings.
 ;;; Test 004b — annotation glyphs in the right margin; full explanation in the test buffer.
 
 (defun face-margin-test-004b (&optional mode)
-  "Annotation glyphs placed in a 12-column right margin.
-See test buffer for full explanation.
+  "Test: margin background bleed.
 
-Optional argument MODE is `patched' (default) or `unpatched'.
-Interactively, Emacs prompts to choose between patched and unpatched."
+Places annotations with distinct background colors in margins wider
+than the glyphs.  Verifies that the `margin' face filling loop
+prevents the annotation's background from bleeding into the rest of
+the margin area.
+
+Left Margin (4 columns): '!' with CYAN background.
+Right Margin (12 columns): 'Line 2' with YELLOW background.
+
+Optional argument MODE is `patched' (default) or `unpatched'."
   (interactive (list (if (eq (read-char-choice "Mode — [p]atched or [u]npatched? " '(?p ?u)) ?u) 'unpatched 'patched)))
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'patched))
@@ -361,16 +367,34 @@ Interactively, Emacs prompts to choose between patched and unpatched."
       (read-only-mode -1)
       (erase-buffer)
       (insert (face-margin-test--mode-header mode))
-      (insert (face-margin-test--title "face-margin-test-004b: content in the right margin." mode))
+      (insert (face-margin-test--title "face-margin-test-004b: margin background bleed" mode))
       (insert "\
-The right margin is 12 columns wide. The first three lines receive a
-label glyph (\"Line 1\", \"Line 2\", \"Line 3\") via a display property.
-IMPORTANT: \"Line 2\" is given a YELLOW background.
+This test validates the fix for the \"Background Bleed\" inconsistency
+surfaced by themes that color the gutter.
 
-Expected (patched): On Line 2, the \"Line 2\" label should be yellow,
-but the rest of the margin area on that line should be grey (matching
-the line-numbers). If the code is buggy, the rest of the margin on
-Line 2 will be white (frame default).
+LEFT MARGIN (4 columns wide):
+Odd lines contain a '!' with a CYAN background.  If the patch is working,
+only the first column should be cyan; columns 2-4 must be grey.
+
+RIGHT MARGIN (12 columns wide):
+Line 2 contains 'Line 2' with a YELLOW background.  If the patch is
+working, the rest of the 12-column width should be grey.
+
+--- Why a loop is needed ---
+
+In GUI frames, the display engine does not know the `margin' face
+background when it finishes drawing the glyphs we provide.  Without an
+explicit loop filling the area with `margin' glyphs, the renderer simply
+extends the background of the LAST glyph it saw (the annotation) to the
+rest of the rectangle.  This causes the annotation's color to \"bleed\"
+horizontally across the gutter.
+
+In TTY frames, the engine does not perform rectangle clearing; it simply
+leaves unassigned cells empty.  Without the loop, these cells show the
+frame's default background, creating visual \"gaps\" in the gutter.
+
+The filling loop ensures that every character slot in the margin is
+explicitly assigned the `margin' face, preventing both bleed and gaps.
 
 Line 1
 Line 2
@@ -380,18 +404,44 @@ Line 5
 Line 6
 Line 7
 Line 8
+
+--- Preexisting independent bugs ---
+
+PREEXISTING INDEPENDENT BUG 5 (discovered in this sequence): Margin
+background bleed (GUI) or gaps (TTY).  When a margin is wider than one
+character and contains an annotation shorter than that width, the
+background of the \"empty\" portion of the margin is inconsistent.
+Addressing this bug was within the scope of the current patch and
+was resolved by replacing the previous minimal \"one-glyph\" logic
+with robust filling loops in both GUI and TTY branches.
 ")
-      (setq-local left-margin-width 1)
+      (setq-local left-margin-width 4)
       (setq-local right-margin-width 12))
     (switch-to-buffer buf)
-    (set-window-margins (selected-window) 1 12)
+    (set-window-margins (selected-window) 4 12)
     (with-current-buffer buf
-      ;; Annotate the first three lines in the right margin.
       (save-excursion
         (goto-char (point-min))
-        ;; Skip the preamble — find the "Line 1" content line.
+        ;; Find the "Line 1" content line.
         (search-forward "\nLine 1\n")
         (forward-line -1)
+        ;; 1. Annotate Left Margin (4 cols) with Cyan background '!'
+        (let ((line 1))
+          (while (< line 9)
+            (when (= (% line 2) 1)
+              (let ((ov (make-overlay (point) (1+ (point)))))
+                (overlay-put
+                 ov 'before-string
+                 (propertize " " 'display
+                             `((margin left-margin)
+                               ,(propertize "!" 'face '(:foreground "red" :background "cyan")))))))
+            (setq line (1+ line))
+            (forward-line 1)))
+
+        (goto-char (point-min))
+        (search-forward "\nLine 1\n")
+        (forward-line -1)
+        ;; 2. Annotate Right Margin (12 cols) with Yellow 'Line 2'
         (dotimes (i 3)
           (let* ((bg (if (= i 1) "yellow" ln-bg))
                  (fg (if (= i 1) "black" "blue"))
@@ -405,7 +455,6 @@ Line 8
                                         'face `(:foreground ,fg
                                                 :background ,bg))))))
           (forward-line 1)))
-      (face-margin-test--annotate buf t)
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))

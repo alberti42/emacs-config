@@ -47,6 +47,10 @@ The investigation into this patch surfaced four preexisting bugs in the Emacs di
 4.  **RTL Margin Rendering (TTY):** On Right-to-Left (R2L) rows (e.g., Hebrew or Arabic text), the left margin area incorrectly reverts to the default face (black foreground, white background).
     - **Root Cause:** While `extend_face_to_end_of_line` correctly produces margin glyphs with the `margin` face for reversed rows, the TTY renderer appears to neglect these faces during the final output phase. This likely occurs in `dispnew.c:build_frame_matrix_from_leaf_window` or `term.c`, where the interaction between the row's `reversed_p` flag and the flattened frame matrix causes the margin area to be treated as unassigned or reset to the default face. (Demonstrated by **`face-margin-test-008`**).
 
+5.  **Margin Background Bleed (GUI) / Gaps (TTY):** When a margin is wider than one character and contains an annotation shorter than that width, the background of the "empty" portion of the margin is inconsistent.
+    - **Root Cause:** The pre-patch engine only attempted to fix the margin background if the area was entirely empty (`used == 0`). If an annotation existed, the fill was skipped. In GUI frames, the renderer would "bleed" the background of the last glyph (the annotation) into the remaining margin width. In TTY frames, the remaining width would show the frame's default background ("gaps").
+    - **Resolution:** This patch resolves the issue by replacing the minimal `if (used == 0)` check with a robust `while` loop in `extend_face_to_end_of_line` for both GUI and TTY branches. This ensures that every character slot in the margin is explicitly filled with the `margin` face background, regardless of existing annotations. (Verified by **`face-margin-test-004b`**).
+
 ## Required Validation (Eli's Checklist)
 The following items from the maintainer's review are verified using the interactive test suite in `debug-margin-face.el`:
 - [x] **Basic Faces:** Confirm `face-remapping-alist` works for `margin`. (Verified by `face-margin-test-006`)
