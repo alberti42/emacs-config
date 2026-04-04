@@ -6,30 +6,39 @@
 ;; (bug#80693).  Each test creates a dedicated buffer and configures specific
 ;; conditions so the reviewer can verify the expected visual outcome.
 ;;
-;; These tests aim to demonstrate a typical usage case: a user wants to
-;; configure the 'margin' face to match the background of the 'line-number'
-;; area, creating a single, visually consistent gutter for both line numbers
-;; and annotations.
+;; Each test (with the exception of 001 and 002) can be run in one of two
+;; modes:
 ;;
-;; All tests use the built-in 'modus-operandi' theme (included with Emacs since
-;; Emacs 28).  That theme gives the 'line-number' face a non-default background
-;; out of the box, making it possible to demonstrate the inconsistency using
-;; only components that ship with Emacs — no external packages or custom colors
-;; are required.  The 'line-number' face is used strictly as a built-in
-;; reference color for a themed gutter; it is not functionally linked to the
-;; margins.
+;;   - 'themed' mode: Configures the 'margin' face to match the background of
+;;     the 'line-number' area.  This demonstrates the intended fix: a single,
+;;     visually consistent gutter for both line numbers and annotations.
+;;
+;;   - 'standard' mode: Leaves the 'margin' face at its default configuration
+;;     (inheriting from 'default').  This demonstrates the pre-patch behavior:
+;;     the margin area beyond the end-of-buffer (EOB) reverts to the frame
+;;     background, producing the visible "stripe" bug.
+;;
+;; All tests use the built-in 'modus-operandi' theme (included since Emacs 28).
+;; That theme provides a non-default 'line-number' background out of the box,
+;; making it possible to demonstrate the inconsistency using only components
+;; that ship with Emacs.
 ;;
 ;; Tests are callable from "emacs -Q" with the patched build:
 ;;
-;;   emacs -Q --load /path/to/debug-left-margin.el \
+;;   emacs -Q --load /path/to/debug-margin-face.el \
 ;;             --eval "(face-margin-test-NNN)"
 ;;
 ;; Replace NNN with the test number (001 through 009, plus 007b).
 ;;
-;; Tests 001 and 002 are paired: 001 shows the stripe bug using only built-in
-;; components; 002 shows the fix by setting the 'margin' face background to
-;; match 'line-number'.  Tests 003–009 cover additional scenarios and describe
-;; their expected outcome in the buffer text.
+;; The script is designed to run on unpatched Emacs without crashing.  On
+;; unpatched builds, the 'margin' face does not exist, so all tests
+;; gracefully fall back to 'standard' mode, allowing the reviewer to
+;; demonstrate the pre-patch behavior before applying the fix.
+;;
+;; Tests 001 and 002 are paired: 001 is fixed to 'standard' mode to show
+;; the stripe bug using only built-in components; 002 is fixed to 'themed'
+;; mode to show the fix.  Tests 003–009 allow choosing the mode via an
+;; interactive prompt.
 
 ;;; Code:
 
