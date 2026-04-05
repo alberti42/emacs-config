@@ -220,7 +220,14 @@
 ;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
 ;; exec-path.  Needed by any package that spawns processes in temp buffers
 ;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
-(use-package inheritenv)
+(use-package inheritenv
+  :init
+  ;; Unset editor-selection variables so that git subprocesses (e.g. spawned
+  ;; by Magit) never try to re-enter Emacs.  Must run unconditionally: in
+  ;; daemon mode env-config.el is skipped, so EDITOR is already present from
+  ;; the shell that started the daemon.  Magit sets GIT_EDITOR itself when needed.
+  (dolist (var '("EDITOR" "GIT_EDITOR" "VISUAL"))
+    (setenv var nil)))
 
 ;; LSP modules
 (emacs-config-load-module
