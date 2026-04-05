@@ -98,6 +98,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `vim-file-locals`: parse Vim modelines/file-local settings.
 - `mac-clipboard.el` (macOS TTY only): sync kill ring write direction with system clipboard (local module, no external package). Loaded conditionally in `init.el`.
 - `xclip` (Linux TTY only): sync kill ring with system clipboard.
+- `inheritenv`: provides tools (`inheritenv` macro, `inheritenv-add-advice`) to allow temp buffers to inherit buffer-local `process-environment` and `exec-path`. Loaded before LSP so packages that wrap it (e.g. rustic) work correctly.
 - `multiple-cursors`: Sublime Text-style multiple cursors (`C->` / `C-<`).
 - `tmux-tandem`: tmux open-file bridge — opens files in Emacs from tmux via IPC (Emacs 29+).
 - `mouse` (built-in, TTY only): `xterm-mouse-mode` + mouse wheel bindings for terminal frames.

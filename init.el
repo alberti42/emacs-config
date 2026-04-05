@@ -217,6 +217,11 @@
   'treemacs-config
   "Could not load treemacs-config.el; Treemacs is disabled.")
 
+;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
+;; exec-path.  Needed by any package that spawns processes in temp buffers
+;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
+(use-package inheritenv)
+
 ;; LSP modules
 (emacs-config-load-module
   'lsp-core
