@@ -247,6 +247,10 @@
   'lsp-swift-config
   "Could not load lsp-swift-config.el; Swift LSP is disabled.")
 
+(emacs-config-load-module
+  'lsp-rust-config
+  "Could not load lsp-rust-config.el; Rust LSP is disabled.")
+
 ; ;; VCS gutter (TTY)
 (emacs-config-load-module
   'git-gutter-config
