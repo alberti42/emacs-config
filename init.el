@@ -1,6 +1,5 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
-
 (setq backup-inhibited t)    ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
@@ -33,17 +32,17 @@
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
 (let ((init-path (or load-file-name
-                   user-init-file
-                   (expand-file-name "init.el" user-emacs-directory))))
+                     user-init-file
+                     (expand-file-name "init.el" user-emacs-directory))))
   (load (expand-file-name
-          "emacs-config-core"
-          (file-name-directory (file-truename init-path)))
-    nil 'nomessage))
+         "emacs-config-core"
+         (file-name-directory (file-truename init-path)))
+        nil 'nomessage))
 
 ;; UI chrome, fonts, frame setup, and TTY mode-line separator.
 (emacs-config-load-module
-  'ui-config
-  "Could not load ui-config.el; UI settings are disabled.")
+ 'ui-config
+ "Could not load ui-config.el; UI settings are disabled.")
 
 ;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
@@ -53,14 +52,14 @@
 ;; Smart auto-revert: silently revert clean buffers on external change,
 ;; prompt when the buffer has unsaved local edits.
 (emacs-config-load-module
-  'auto-revert-config
-  "Could not load auto-revert-config.el; smart auto-revert is disabled.")
+ 'auto-revert-config
+ "Could not load auto-revert-config.el; smart auto-revert is disabled.")
 
 ;; Suppress kill prompt when the buffer content matches the file on disk
 ;; (i.e. edits were made and then fully undone).
 (emacs-config-load-module
-  'buffer-kill-config
-  "Could not load buffer-kill-config.el; kill-buffer prompt suppression is disabled.")
+ 'buffer-kill-config
+ "Could not load buffer-kill-config.el; kill-buffer prompt suppression is disabled.")
 
 ;; UI & Convenience
 ;; which-key: display available keybindings in popup.
@@ -93,28 +92,28 @@
 
 ;; Recently visited files
 (emacs-config-load-module
-  'recentf-config
-  "Could not load recentf-config.el; recent files list is disabled.")
+ 'recentf-config
+ "Could not load recentf-config.el; recent files list is disabled.")
 
 ;; Project management (submodule-aware root detection)
 (emacs-config-load-module
-  'project-config
-  "Could not load project-config.el; project root detection uses default behavior.")
+ 'project-config
+ "Could not load project-config.el; project root detection uses default behavior.")
 
 ;; Fast project search (prefer ripgrep)
 (emacs-config-load-module
-  'search-config
-  "Could not load search-config.el; using default project search backend.")
+ 'search-config
+ "Could not load search-config.el; using default project search backend.")
 
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
-  'completion
-  "Could not load completion.el; using default completion behavior.")
+ 'completion
+ "Could not load completion.el; using default completion behavior.")
 
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
-  'nerd-icons-config
-  "Could not load nerd-icons-config.el; nerd icons are disabled.")
+ 'nerd-icons-config
+ "Could not load nerd-icons-config.el; nerd icons are disabled.")
 
 ;; Line numbers
 (setq display-line-numbers-type t) ; (t displays absolute line numbers; alternatives: 'relative or 'visual)
@@ -132,8 +131,8 @@
 
 ;; Terminal emulators (term, eshell, vterm)
 (emacs-config-load-module
-  'terminal-config
-  "Could not load terminal-config.el; terminal settings are disabled.")
+ 'terminal-config
+ "Could not load terminal-config.el; terminal settings are disabled.")
 
 ;; Wrapping helpers (soft wrap, visual only)
 (use-package soft-wrap
@@ -143,25 +142,25 @@
 
 ;; Tree-sitter grammars (auto-install missing ones)
 (emacs-config-load-module
-  'treesitter-config
-  "Could not load treesitter-config.el; tree-sitter grammar bootstrap is disabled.")
+ 'treesitter-config
+ "Could not load treesitter-config.el; tree-sitter grammar bootstrap is disabled.")
 
 ;; Per-syntax indentation settings
 (emacs-config-load-module
-  'syntaxes
-  "Could not load syntaxes.el; per-syntax settings are disabled.")
+ 'syntaxes
+ "Could not load syntaxes.el; per-syntax settings are disabled.")
 
 ;; Terminal key decoding (CSI u).
 (emacs-config-load-module
-  'csi-u-keys
-  "Could not load csi-u-keys.el; CSI-u key decoding is disabled.")
+ 'csi-u-keys
+ "Could not load csi-u-keys.el; CSI-u key decoding is disabled.")
 
 ;; vim-file-locals: parse Vim modelines/file-local settings in files.
 (use-package vim-file-locals
   :straight (vim-file-locals
-              :type git
-              :host github
-              :repo "abougouffa/emacs-vim-file-locals")
+             :type git
+             :host github
+             :repo "abougouffa/emacs-vim-file-locals")
   ;; Enable globally after startup; it adds `vim-file-locals-apply` to
   ;; `find-file-hook` for newly opened files.
   :hook (after-init . vim-file-locals-mode))
@@ -172,8 +171,8 @@
 ;; macOS: sync kill ring → clipboard via pbcopy (TTY and GUI).
 (when (eq system-type 'darwin)
   (emacs-config-load-module
-    'mac-clipboard
-    "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
+   'mac-clipboard
+   "Could not load mac-clipboard.el; macOS clipboard sync is disabled."))
 
 ;; Linux: sync clipboard via xclip; also enable X11 primary selection.
 ;; (declare-function xclip-mode "xclip")
@@ -186,20 +185,20 @@
 
 ;; General-purpose interactive utilities (insert-uuid, copy-buffer-file-name, …)
 (emacs-config-load-module
-  'utils
-  "Could not load utils.el; utility commands are disabled.")
+ 'utils
+ "Could not load utils.el; utility commands are disabled.")
 
 ;; Dired and file manager
 (emacs-config-load-module
-  'dired-config
-  "Could not load dired-config.el; dired customizations are disabled.")
+ 'dired-config
+ "Could not load dired-config.el; dired customizations are disabled.")
 
 ;; Window navigation (C-c <arrow>) and resizing (C-c C-<arrow>)
 ;; Match tmux's repeat-time default (500ms) for consistent feel.
 (setq repeat-exit-timeout 0.5)
 (emacs-config-load-module
-  'windows-config
-  "Could not load windows-config.el; windmove and window resizing are disabled.")
+ 'windows-config
+ "Could not load windows-config.el; windmove and window resizing are disabled.")
 
 ;; Development
 ;; multiple-cursors: Sublime Text-style multiple cursors.
@@ -209,75 +208,77 @@
 
 ;; magit: Git porcelain, forge (GitHub/GitLab), and nerd-icons integration.
 (emacs-config-load-module
-  'magit-config
-  "Could not load magit-config.el; Magit is disabled.")
+ 'magit-config
+ "Could not load magit-config.el; Magit is disabled.")
 
 ;; Project tree (TTY-friendly)
 (emacs-config-load-module
-  'treemacs-config
-  "Could not load treemacs-config.el; Treemacs is disabled.")
+ 'treemacs-config
+ "Could not load treemacs-config.el; Treemacs is disabled.")
 
-;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
-;; exec-path.  Needed by any package that spawns processes in temp buffers
-;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
-(use-package inheritenv
-  :init
-  ;; Unset editor-selection variables so that git subprocesses (e.g. spawned
-  ;; by Magit) never try to re-enter Emacs.  Must run unconditionally: in
-  ;; daemon mode env-config.el is skipped, so EDITOR is already present from
-  ;; the shell that started the daemon.  Magit sets GIT_EDITOR itself when needed.
-  (dolist (var '("EDITOR" "GIT_EDITOR" "VISUAL"))
-    (setenv var nil)))
+(when nil
+  
+  ;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
+  ;; exec-path.  Needed by any package that spawns processes in temp buffers
+  ;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
+  (use-package inheritenv
+    :init
+    ;; Unset editor-selection variables so that git subprocesses (e.g. spawned
+    ;; by Magit) never try to re-enter Emacs.  Must run unconditionally: in
+    ;; daemon mode env-config.el is skipped, so EDITOR is already present from
+    ;; the shell that started the daemon.  Magit sets GIT_EDITOR itself when needed.
+    (dolist (var '("EDITOR" "GIT_EDITOR" "VISUAL"))
+      (setenv var nil))))
 
 ;; LSP modules
 (emacs-config-load-module
-  'lsp-core
-  "Could not load lsp-core.el; LSP is disabled.")
+ 'lsp-core
+ "Could not load lsp-core.el; LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-python-config
-  "Could not load lsp-python-config.el; Python LSP is disabled.")
+ 'lsp-python-config
+ "Could not load lsp-python-config.el; Python LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-web-config
-  "Could not load lsp-web-config.el; TypeScript/JavaScript LSP is disabled.")
+ 'lsp-web-config
+ "Could not load lsp-web-config.el; TypeScript/JavaScript LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-json-config
-  "Could not load lsp-json-config.el; JSON LSP is disabled.")
+ 'lsp-json-config
+ "Could not load lsp-json-config.el; JSON LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-ltex-plus-config
-  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
+ 'lsp-ltex-plus-config
+ "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 (emacs-config-load-module
-  'lsp-swift-config
-  "Could not load lsp-swift-config.el; Swift LSP is disabled.")
+ 'lsp-swift-config
+ "Could not load lsp-swift-config.el; Swift LSP is disabled.")
 
 (emacs-config-load-module
-  'lsp-rust-config
-  "Could not load lsp-rust-config.el; Rust LSP is disabled.")
+ 'lsp-rust-config
+ "Could not load lsp-rust-config.el; Rust LSP is disabled.")
 
-; ;; VCS gutter (TTY)
+                                        ; ;; VCS gutter (TTY)
 (emacs-config-load-module
-  'git-gutter-config
-  "Could not load git-gutter-tty.el; VCS gutter is disabled.")
+ 'git-gutter-config
+ "Could not load git-gutter-tty.el; VCS gutter is disabled.")
 
 ;; tmux open-file bridge: open files in Emacs from tmux via IPC.
 ;; Requires Emacs 29+ for server-after-make-frame-hook.
 (use-package tmux-tandem
   :if (>= emacs-major-version 29)
   :straight (tmux-tandem
-              :type git
-              :host github
-              :repo "alberti42/emacs-tmux-tandem")
+             :type git
+             :host github
+             :repo "alberti42/emacs-tmux-tandem")
   :config
   (tmux-tandem-enable))
 
 ;; Languages
 (emacs-config-load-module
-  'latex-config
-  "Could not load latex-config.el; AUCTeX is disabled.")
+ 'latex-config
+ "Could not load latex-config.el; AUCTeX is disabled.")
 
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
@@ -287,15 +288,15 @@
 
 ;; AI agent shell (Claude Code, Gemini CLI, etc. via ACP)
 (emacs-config-load-module
-  'agent-shell-config
-  "Could not load agent-shell-config.el; agent-shell is disabled.")
+ 'agent-shell-config
+ "Could not load agent-shell-config.el; agent-shell is disabled.")
 
 ;; Themes
 ;; Load order within themes-config: theme-harmonize → load-theme → zac-theme-autodetection.
 ;; See themes-config.el for the rationale.
 (emacs-config-load-module
-  'themes-config
-  "Could not load themes-config.el; theme and appearance settings are disabled.")
+ 'themes-config
+ "Could not load themes-config.el; theme and appearance settings are disabled.")
 
 ;; Terminal UX
 ;; Mouse support in terminal Emacs.
@@ -322,10 +323,10 @@
 
 ;; Cursor navigation (smart Home/End)
 (emacs-config-load-module
-  'navigation-config
-  "Could not load navigation-config.el; smart Home/End keys are disabled.")
+ 'navigation-config
+ "Could not load navigation-config.el; smart Home/End keys are disabled.")
 
 ;; Scrolling
 (emacs-config-load-module
-  'scroll-config
-  "Could not load scroll-config.el; scrolling settings are disabled.")
+ 'scroll-config
+ "Could not load scroll-config.el; scrolling settings are disabled.")
