@@ -113,16 +113,23 @@
             (+ mx (/ (- mw fw) 2))
             (+ my (/ (- mh fh) 2))))))))
 
-(defun emacs-config-setup-gui-frame (&optional frame)
-  "Apply GUI-only settings (fonts, centering) to FRAME."
+(defun emacs-config-setup-frame (&optional frame)
+  "Apply per-frame settings to FRAME.
+Enforces no menu bar (emacsclient GUI frames re-enable it by default),
+and applies GUI-only settings: cursor shape and frame centering.
+
+For more infos about frame parameters, visit https://www.gnu.org/software/emacs/manual/html_node/elisp/Frame-Parameters.html#Frame-Parameters"
   (with-selected-frame (or frame (selected-frame))
+    ;; Enforce no menu bar on every frame (emacsclient GUI frames re-enable it
+    ;; by default; menu-bar-mode -1 at startup is not enough).
+    (set-frame-parameter nil 'menu-bar-lines 0)
     (when (display-graphic-p)
       (blink-cursor-mode 1)
       (set-frame-parameter nil 'cursor-type 'box)
       (run-at-time 0 nil #'emacs-config-center-frame (selected-frame)))))
 
-(add-hook 'emacs-startup-hook #'emacs-config-setup-gui-frame)
-(add-hook 'after-make-frame-functions #'emacs-config-setup-gui-frame)
+(add-hook 'emacs-startup-hook #'emacs-config-setup-frame)
+(add-hook 'after-make-frame-functions #'emacs-config-setup-frame)
 
 ;; When running as a server, prefer focusing frames created by emacsclient.
 ;; This is important to ensure that 'emacsclient -a= -n -c' brings emacs in focus.
