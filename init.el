@@ -284,6 +284,9 @@
 ;; ssh-config-mode: major mode for ~/.ssh/config.
 (use-package ssh-config-mode)
 
+;; swift-mode: major mode for Swift.
+(use-package swift-mode)
+
 ;; AI agent shell (Claude Code, Gemini CLI, etc. via ACP)
 (emacs-config-load-module
  'agent-shell-config
