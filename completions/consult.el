@@ -19,6 +19,7 @@
          ("C-c s R" . consult-ripgrep-here)
          ("C-c s i" . consult-imenu)
          ("C-c s m" . consult-mark)
+         ("C-c s M" . consult-global-mark)
          ("C-c s k" . consult-keep-lines)
          ;; Replace project-find-file with fd-backed consult-fd.
          ("C-c s f" . consult-fd)
