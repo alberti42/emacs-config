@@ -141,9 +141,9 @@ modus-operandi theme (shipped with Emacs) gives the 'line-number' face a
 non-default background.  The left margin is reserved and annotated the way
 git-gutter and similar packages do it.
 
-As an example, we marked odd lines with a red "!" indication.  The
+As an example, we marked odd lines with a red \"!\" indication.  The
 background face is chosen to match the face background of 'line-number'.
-The even rows are filled with " " with the same background face.
+The even rows are filled with \" \" with the same background face.
 
 The 'margin' face is left on purpose not customized — it inherits the frame
 default background.
