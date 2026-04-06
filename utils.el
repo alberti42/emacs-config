@@ -71,7 +71,19 @@ before entering it.  Does nothing if the buffer does not visit a file."
    ;; ("C-g"             . crux-keyboard-quit-dwim)                           ; Smarter C-g: dismisses the minibuffer or *Completions* buffer even when focus is elsewhere. Replaces built-in C-g.
    ))
 
-;; Help system enhancements: Schema-aware documentation.
+;;; Miscellaneous commands
+;;
+;; Command to obtain the number of characters in the selected region; obtained
+;; from https://www.emacswiki.org/emacs/misc-cmds.el
+;;;###autoload
+(defun region-length ()
+  "Display the number of characters in the region in a message."
+  (interactive)
+  (let ((len  (abs (- (mark) (point)))))
+    (message "Region contains %s characters" len)
+    len))
+
+;;; Help system enhancements: Schema-aware documentation.
 ;;
 ;; This feature enhances `describe-variable' (C-h v) by automatically extracting
 ;; and rendering the machine-readable schema (custom-type) of customizable
