@@ -72,7 +72,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration. Includes `vdiff` and a local patched copy of `vdiff-magit` for side-by-side diffs; `e`/`E` in Magit buffers open vdiff instead of Ediff. Disables line numbers in `git-commit-mode` and `git-rebase-mode` buffers.
 - `project-config.el`: project.el settings — sets `project-vc-merge-submodules nil` so git submodules are treated as independent project roots rather than merged into the parent repo.
 - `search-config.el`: prefer ripgrep for project/xref search; isearch edge-triggered context scrolling (scrolls the minimum amount to keep `search-recenter-context-lines` of context visible when the match lands within `search-recenter-edge-threshold` lines of the window edge).
-- `navigation-config.el`: cursor position jump history via `better-jumper`. Provides forward/backward jump list (`C-c [` / `C-c ]`), similar to Vim's C-o/C-i. Integrates automatically with xref/LSP jumps. NOTE (2026-03-24): `better-jumper.el` emits native compiler warnings for missing `declare-function` for `ring-*`, `evil-visual-state-p`, `get-current-persp`, and `safe-persp-name`. These are harmless (ring is always loaded; the others are optional integrations guarded by `fboundp`). TODO: file a PR upstream with `declare-function` declarations if we keep this package.
+- `navigation-config.el`: cursor position jump history via `better-jumper`. Provides forward/backward jump list (`C-c [` / `C-c ]`), similar to Vim's C-o/C-i. Integrates automatically with xref/LSP jumps. Uses a local patched copy (`local/better-jumper.el`) that adds `(require 'ring)` and `declare-function` declarations for optional evil/persp-mode functions to silence native-compiler warnings.
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`).
 - `lsp-python-config.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
@@ -91,6 +91,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 Local package overrides (`local/`):
 
 - `local/vdiff-magit.el`: local patched copy of the unmaintained `vdiff-magit` package. Fixes two Magit API breakages: `magit-get-revision-buffer` removed (replaced by `magit--get-blob-buffer`); `magit-find-file-index-noselect` dropped its second argument. Loaded via `:straight nil` with `:load-path`. TODO: file a PR upstream if the project shows signs of life.
+- `local/better-jumper.el`: local patched copy of `better-jumper`. Adds `(require 'ring)` and `declare-function` declarations for optional `evil-visual-state-p`, `get-current-persp`, and `safe-persp-name` to silence native-compiler warnings. Loaded via `:straight nil` with `:load-path`.
 
 Packages configured directly in `init.el` (not extracted into modules):
 
