@@ -83,6 +83,42 @@ before entering it.  Does nothing if the buffer does not visit a file."
     (message "Region contains %s characters" len)
     len))
 
+(defun check-long-lines (max-col)
+  "Check lines in the region (or buffer) for lines exceeding MAX-COL characters.
+Displays a report buffer listing each offending line number and content."
+  (interactive (list (read-number "Max columns: " 79)))
+  (let* ((start (if (use-region-p) (region-beginning) (point-min)))
+         (end   (if (use-region-p) (region-end)       (point-max)))
+         (source-buf (current-buffer))
+         offenders)
+    (save-excursion
+      (goto-char start)
+      (while (< (point) end)
+        (let* ((line (buffer-substring-no-properties
+                      (line-beginning-position) (line-end-position)))
+               (trimmed (progn (string-match "^[ \t]*\\(.*\\)" line)
+                               (match-string 1 line)))
+               (len (length trimmed)))
+          (when (> len max-col)
+            (push (cons (line-number-at-pos) trimmed) offenders)))
+        (forward-line 1)))
+    (if (null offenders)
+        (message "No lines exceed %d characters." max-col)
+      (let ((report (get-buffer-create "*long-lines*")))
+        (with-current-buffer report
+          (read-only-mode -1)
+          (erase-buffer)
+          (insert (format "Lines exceeding %d columns in %s:\n\n"
+                          max-col (buffer-name source-buf)))
+          (dolist (entry (nreverse offenders))
+            (insert (format "L%d (%d chars): %s\n"
+                            (car entry)
+                            (length (cdr entry))
+                            (cdr entry))))
+          (read-only-mode 1)
+          (goto-char (point-min)))
+        (pop-to-buffer report)))))
+
 ;;; Help system enhancements: Schema-aware documentation.
 ;;
 ;; This feature enhances `describe-variable' (C-h v) by automatically extracting
