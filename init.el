@@ -1,5 +1,20 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
+;; Disable bidirectional text reordering for better performance.
+(setq-default bidi-display-reordering 'left-to-right
+              bidi-paragraph-direction 'left-to-right)
+(setq bidi-inhibit-bpa t)
+
+;; Defer fontification while typing; highlighting catches up on idle.
+;; In practice, we will never notice the delay, but scrolling and
+;; typing may feel smoother.
+(setq redisplay-skip-fontification-on-input t)
+
+;; Increase subprocess read buffer from 64KB to 4MB.  LSP servers like
+;; rust-analyzer or clangd routinely send multi-megabyte responses;
+;; this reduces the number of read() calls Emacs has to make.
+(setq read-process-output-max (* 4 1024 1024))
+
 (setq backup-inhibited t)    ; disable backup
 (setq make-backup-files nil) ; stop creating ~ files
 (setq auto-save-default nil) ; disable auto-save completely (no #…# files)
@@ -167,6 +182,10 @@
 
 ;; Clipboard
 (setq select-enable-clipboard t)
+
+;; Before overwriting the clipboard with a kill, save its current
+;; content into the kill ring so M-y can still retrieve it.
+(setq save-interprogram-paste-before-kill t)
 
 ;; macOS: sync kill ring → clipboard via pbcopy (TTY and GUI).
 (when (eq system-type 'darwin)

@@ -220,5 +220,22 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
 (global-set-key (kbd "C-b M-<up>")    #'windmove-swap-states-up)
 (global-set-key (kbd "C-b M-<down>")  #'windmove-swap-states-down)
 
+;; Auto-focus help windows: jump straight into the *Help* buffer instead
+;; of having to press C-x o after every C-h f / C-h v.
+(setq help-window-select t)
+
+;; Reversible C-x 1: press once to go single-window, again to restore.
+(winner-mode +1)
+
+(defun windows-config-toggle-delete-other-windows ()
+  "Delete other windows in frame if any, or restore previous window config."
+  (interactive)
+  (if (and winner-mode
+           (equal (selected-window) (next-window)))
+      (winner-undo)
+    (delete-other-windows)))
+
+(global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
+
 (provide 'windows-config)
 ;;; windows-config.el ends here
