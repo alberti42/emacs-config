@@ -4,19 +4,37 @@
   :straight auctex
   :defer t
   :init
-  (defun latex-config--apply-tex-root-magic-comment ()
-    "Set `TeX-master' from a `% !TeX root = FILE' magic comment if present.
-Scans the first 10 lines of the buffer, case-insensitively, so both
-`% !TeX root' and `% !TEX root' are accepted.  Has no effect when the
-comment is absent; in that case `TeX-master' remains nil and AUCTeX
-will prompt at compile time."
+  (defun latex-config--apply-tex-magic-comments ()
+    "Set `TeX-master' and `TeX-engine' from magic comments if present.
+Scans the first 10 lines of the buffer, case-insensitively.
+
+  % !TeX root = FILE     sets `TeX-master' to FILE.
+  % !TeX program = NAME  sets `TeX-engine' to the corresponding AUCTeX
+                         engine symbol (pdflatex → pdflatex, lualatex →
+                         luatex, xelatex → xetex, latex → default)."
     (save-excursion
       (goto-char (point-min))
-      (let ((case-fold-search t))
-        (when (re-search-forward
-               "^%[[:space:]]*!TeX[[:space:]]+root[[:space:]]*=[[:space:]]*\\(.+\\)"
-               (line-end-position 10) t)
-          (setq-local TeX-master (string-trim (match-string-no-properties 1)))))))  
+      (let ((case-fold-search t)
+            (limit (line-end-position 10)))
+        (save-excursion
+          (when (re-search-forward
+                 "^%[[:space:]]*!TeX[[:space:]]+root[[:space:]]*=[[:space:]]*\\(.+\\)"
+                 limit t)
+            (setq-local TeX-master (string-trim (match-string-no-properties 1)))))
+        (save-excursion
+          (when (re-search-forward
+                 "^%[[:space:]]*!TeX[[:space:]]+program[[:space:]]*=[[:space:]]*\\(.+\\)"
+                 limit t)
+            (let* ((name (downcase (string-trim (match-string-no-properties 1))))
+                   (engine (cond ((string= name "lualatex") 'luatex)
+                                 ((string= name "luatex")   'luatex)
+                                 ((string= name "xelatex")  'xetex)
+                                 ((string= name "xetex")    'xetex)
+                                 ((string= name "pdflatex") 'pdflatex)
+                                 ((string= name "latex")    'default)
+                                 (t nil))))
+              (when engine
+                (setq-local TeX-engine engine))))))))
 
   ;; Use LuaLaTeX. LuaLaTeX only produces PDF, so no DVI viewer is ever needed.
   (setq-default TeX-engine 'luatex)
@@ -31,8 +49,8 @@ will prompt at compile time."
   ;; very first .tex buffer. Inside :config it would be too late — AUCTeX loads
   ;; when the first LaTeX-mode buffer opens, so LaTeX-mode-hook has already run
   ;; by the time :config executes.
-  (add-hook 'LaTeX-mode-hook #'latex-config--apply-tex-root-magic-comment)
-  (add-hook 'TeX-mode-hook   #'latex-config--apply-tex-root-magic-comment)
+  (add-hook 'LaTeX-mode-hook #'latex-config--apply-tex-magic-comments)
+  (add-hook 'TeX-mode-hook   #'latex-config--apply-tex-magic-comments)
   :config
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
