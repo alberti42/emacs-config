@@ -21,6 +21,14 @@
   :custom
   ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
   (vterm-shell shell-file-name)
+  :config
+  ;; C-b is our tmux-map prefix (windows-config.el).  Adding it here prevents
+  ;; vterm from swallowing the key before Emacs sees it as a prefix, so
+  ;; C-b <arrow> and other C-b * bindings work inside a vterm buffer.
+  ;; customize-set-variable (not setq) is needed to trigger vterm's :set handler
+  ;; which rebuilds the keymap.
+  (customize-set-variable 'vterm-keymap-exceptions
+    (cons "C-b" vterm-keymap-exceptions))
   :bind (:map vterm-mode-map
          ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
          ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
@@ -78,6 +86,13 @@
              :repo "dakra/ghostel")
   :custom
   (ghostel-shell shell-file-name)
+  :config
+  ;; ghostel-mode-map is a defvar built at load time from ghostel-keymap-exceptions;
+  ;; updating the list after load has no effect on the already-built map.
+  ;; We must directly remove the C-b binding so it falls through to the global
+  ;; tmux-map prefix (windows-config.el) and C-b <arrow> etc. work.
+  (add-to-list 'ghostel-keymap-exceptions "C-b")  ; effective for future reloads
+  (define-key ghostel-mode-map (kbd "C-b") nil)
   :bind (:map ghostel-mode-map
          ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
          ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the
