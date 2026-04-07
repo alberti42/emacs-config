@@ -126,7 +126,7 @@
 ;; display-line-numbers mode is enabled in all buffers where
 (global-display-line-numbers-mode 1)
 ;; Disable line numbers in terminal/shell buffers.
-(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook))
+(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook ghostel-mode-hook))
   (add-hook hook (lambda () (display-line-numbers-mode -1))))
 
 ;; Terminal emulators (term, eshell, vterm)

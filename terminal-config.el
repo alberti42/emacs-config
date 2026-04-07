@@ -66,5 +66,31 @@
 (with-eval-after-load 'vterm
   (add-to-list 'vterm-eval-cmds '("ev-open-file" ev-open-file)))
 
+;; ghostel: fast terminal emulator backed by libghostty-vt (the Ghostty VT engine).
+;; Roughly 2x faster throughput than vterm; adds Kitty keyboard protocol, mouse
+;; passthrough, OSC 8 hyperlinks, 5 underline styles, and auto shell integration.
+;; The native module is downloaded automatically on first use.
+;; To open a new session use M-x ghostel.
+(use-package ghostel
+  :straight (ghostel
+             :type git
+             :host github
+             :repo "dakra/ghostel")
+  :custom
+  (ghostel-shell shell-file-name)
+  :bind (:map ghostel-mode-map
+         ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
+         ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the
+         ;; mode map is consulted, so we bind C-@ instead.
+         ("C-@"   . (lambda () (interactive) (ghostel-send-string "\C-@")))
+         ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r).
+         ("C-M-m" . (lambda () (interactive) (ghostel-send-string "\e\r")))
+         ;; C-g passes through to Emacs by default in ghostel; rebind to send BEL
+         ;; (\C-g = ASCII 7) so terminal apps (e.g. Claude Code) receive it.
+         ("C-g"   . (lambda () (interactive) (ghostel-send-string "\C-g")))))
+
+(with-eval-after-load 'ghostel
+  (add-to-list 'ghostel-eval-cmds '("ev-open-file" ev-open-file)))
+
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
