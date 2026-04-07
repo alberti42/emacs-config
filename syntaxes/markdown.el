@@ -9,8 +9,8 @@
   (dolist (hook '(markdown-mode-hook gfm-mode-hook))
     (add-hook hook
               (lambda ()
-                ;; Visual soft wrap at 100 columns.
-                (setq-local fill-column 100)
+                ;; Visual soft wrap at 72 columns.
+                (setq-local fill-column 72)
                 (soft-wrap-mode 1)))))
 
 (provide 'syntaxes-markdown)
