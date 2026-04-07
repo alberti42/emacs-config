@@ -16,11 +16,11 @@
 ;;; Code:
 
 (use-package git-gutter
-  :straight nil
-  :load-path emacs-config-dir
-  ;; :straight (git-gutter
-  ;;            :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
-  ;;            :files ("git-gutter.el"))
+  :straight (git-gutter
+             :host github
+             :repo "alberti42/fork-git-gutter"
+             :branch "fix/git-gutter-faces"
+             :files ("git-gutter.el"))
   :config
   ;; Live-ish updates (idle timer).
   (setq git-gutter:update-interval 0.5)
