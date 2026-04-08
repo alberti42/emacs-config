@@ -42,7 +42,6 @@
 (use-package kind-icon
   :after (corfu nerd-icons)
   :config
-  (require 'nerd-icons)
   (setq kind-icon-use-icons nil)
   (setq kind-icon-mapping
         `(
