@@ -12,6 +12,8 @@
   :custom
   ;; Fontify fenced code blocks using their language's major mode.
   (markdown-fontify-code-blocks-natively t)
+  ;; Support wiki links
+  (markdown-enable-wiki-links t)
   :hook ((markdown-mode gfm-mode) . markdown-config--markup-setup))
 
 (defun markdown-config--markup-setup ()
