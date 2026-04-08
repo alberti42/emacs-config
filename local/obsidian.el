@@ -406,13 +406,19 @@ a message regarding the formatting issue."
             (obsidian--message "Tags in front matter must be a list" file)
           (if (equal tags :null)
               (obsidian--message "The key 'tags' cannot have an empty value in front matter" file)
-            (let ((resp (->> tags
-                             ;; spaces are not allowed in tags; use commas between tags
-                             (seq-remove (lambda (tag) (s-contains-p " " tag)))
-                             ;; tags in front matter can't start with a hashtag
-                             (seq-remove (lambda (tag) (s-starts-with-p "#" tag))))))
-              (when (not (= (length tags) (length resp)))
-                (obsidian--message "Found invalid tags in front matter" file))
+            (let* ((stripped (seq-map (lambda (tag)
+                                        (if (s-starts-with-p "#" tag)
+                                            (substring tag 1)
+                                          tag))
+                                      tags))
+                   (resp (->> stripped
+                               ;; spaces are not allowed in tags; use commas between tags
+                               (seq-remove (lambda (tag) (s-contains-p " " tag))))))
+              (when (not (= (length stripped) (length resp)))
+                (obsidian--message
+                 (format "Found tags with spaces in front matter: %s"
+                         (seq-difference stripped resp))
+                 file))
               resp)))))))
 
 (defun obsidian--process-body-tags (tags)
