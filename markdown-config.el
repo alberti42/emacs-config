@@ -29,6 +29,11 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
 ;; Set obsidian-directory to the vault location, e.g.:
 ;;   (setq obsidian-directory "~/Documents/Obsidian")
 
+;; obsidian dependencies not pulled in by other packages
+(use-package elgrep :straight t :no-require t)
+(use-package yaml   :straight t :no-require t)
+(use-package ht     :straight t :no-require t)
+
 (use-package obsidian
   :straight nil
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
