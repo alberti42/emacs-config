@@ -30,7 +30,8 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
 ;;   (setq obsidian-directory "~/Documents/Obsidian")
 
 (use-package obsidian
-  :straight t
+  :straight nil
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :hook ((markdown-mode gfm-mode) . obsidian-mode)
   :custom
   ;; location of obsidian vault
