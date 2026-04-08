@@ -276,7 +276,8 @@
  'lsp-c-config
  "Could not load lsp-c-config.el; C/C++ LSP is disabled.")
 
-                                        ; ;; VCS gutter (TTY)
+;;; VCS gutter
+
 (emacs-config-load-module
  'git-gutter-config
  "Could not load git-gutter-tty.el; VCS gutter is disabled.")

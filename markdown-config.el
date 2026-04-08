@@ -10,8 +10,6 @@
          ("\\.markdown\\'" . markdown-mode)
          ("README\\.md\\'" . gfm-mode))
   :custom
-  ;; Enable [[wiki link]] syntax highlighting and navigation.
-  (markdown-enable-wiki-links t)
   ;; Fontify fenced code blocks using their language's major mode.
   (markdown-fontify-code-blocks-natively t)
   :hook ((markdown-mode gfm-mode) . markdown-config--markup-setup))
@@ -23,45 +21,6 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
   ;; markdown-toggle-markup-hiding does more than setq: it updates
   ;; invisibility-spec and calls markdown-reload-extensions.
   (markdown-toggle-markup-hiding 1))
-
-;; obsidian: Obsidian vault integration ----------------------------------------
-;;
-;; Set obsidian-directory to the vault location, e.g.:
-;;   (setq obsidian-directory "~/Documents/Obsidian")
-
-;; obsidian dependencies not pulled in by other packages
-(use-package elgrep :straight t :no-require t)
-(use-package yaml   :straight t :no-require t)
-(use-package ht     :straight t :no-require t)
-
-(use-package obsidian
-  :straight nil
-  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
-  :hook ((markdown-mode gfm-mode) . obsidian-mode)
-  :bind (:map obsidian-mode-map
-              ("C-c o f" . obsidian-follow-link-at-point)
-              ("C-c o b" . obsidian-backlinks)
-              ("C-c o F" . obsidian-find-file)
-              ("C-c o i" . obsidian-insert-wikilink)))
-
-;; elgrep (obsidian dependency) -----------------------------------------------
-;;
-;; Add lexical-binding cookie to its cache file.  Without this Emacs warns on
-;; every startup about the missing cookie.
-;;
-;; It intercepts write-file inside elgrep-save-elgrep-data-file and prepends the
-;; cookie before the file hits.
-
-(with-eval-after-load 'elgrep
-  (advice-add 'elgrep-save-elgrep-data-file :around
-              (lambda (orig &rest args)
-                (cl-letf* ((orig-write-file (symbol-function 'write-file))
-                           ((symbol-function 'write-file)
-                            (lambda (file &rest wf-args)
-                              (goto-char (point-min))
-                              (insert ";; -*- lexical-binding: t; -*-\n")
-                              (apply orig-write-file file wf-args))))
-                  (apply orig args)))))
 
 ;; grip-mode: live GitHub Markdown preview in browser --------------------------
 
