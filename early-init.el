@@ -24,7 +24,11 @@
                     (member (car (split-string e "=")) '("EDITOR" "GIT_EDITOR" "VISUAL")))
                   process-environment))
 
-;; Default font for GUI frames (TTY frames ignore font face attributes).
+;; Default font for GUI frames (TTY frames ignore font face attributes).  Note:
+;; in `nerd-icons-config.el', we call 'set-fontset-font' for Emacs GUI to map
+;; the Private Use Area (#xe000–#xffff) to 'Symbols Nerd Font Mono', preventing
+;; fallback to fonts with wrong glyph metrics, like JetBrainsMonoNL, which
+;; causes horizontal truncation of icons in dired and elsewhere.
 (set-face-attribute 'default nil :family "JetBrainsMonoNL Nerd Font Mono" :height 180 :weight 'light)
 
 ;;; early-init.el ends here

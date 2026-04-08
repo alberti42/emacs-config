@@ -61,9 +61,9 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `mac-clipboard.el`: macOS TTY clipboard sync — wires kill-ring writes to `pbcopy`; deliberately omits the paste direction to avoid spawning a `pbpaste` subprocess on every `C-y`.
 - `mac-pseudo-daemon-config.el`: keeps a hidden GUI frame alive on macOS so the Dock icon and menu bar stay functional after closing the last visible frame. (Currently **commented out** in `init.el`; kept but not loaded.)
 - `recentf-config.el`: recently visited files list, persisted under `$XDG_CACHE_HOME/emacs/`.
-- `treesitter-config.el`: tree-sitter grammar bootstrap. Checks `(treesit-available-p)` and automatically installs missing grammars from `treesit-language-source-alist` (JSON, YAML, TOML, Markdown) at load time. Uses `major-mode-remap-alist` to promote `-ts-mode` variants. Provides `treesitter-config-reinstall-grammars` for manual updates.
+- `treesitter-config.el`: tree-sitter grammar bootstrap. Checks `(treesit-available-p)` and automatically installs missing grammars from `treesit-language-source-alist` (JSON, YAML, TOML, Markdown) at load time. Uses `major-mode-remap-alist` to promote `-ts-mode` variants for JSON, YAML, and TOML. Markdown is intentionally NOT remapped to `markdown-ts-mode` because `markdown-mode` has richer features (markup hiding, wiki links, obsidian integration) that `markdown-ts-mode` does not support. Provides `treesitter-config-reinstall-grammars` for manual updates.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
-- `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, etc.).
+- `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, dired, etc.). Configures `nerd-icons-font-family` to "Symbols Nerd Font Mono" (standalone icon-only font with correct monospace metrics). In GUI frames, calls `set-fontset-font` to map the Private Use Area (`#xe000–#xffff`) to that font, preventing fallback to fonts with wrong glyph metrics (which causes horizontal truncation of icons in dired and elsewhere).
 - `soft-wrap.el`: `soft-wrap-mode` (buffer-local minor mode) and `global-soft-wrap-mode` for visual-only soft wrapping. Used by text/Markdown configs.
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences. Adds explicit decoders for Backspace variants (`S-backspace`, `C-backspace`, `C-S-backspace`), Ctrl+Tab (`\e[9;5u`), and Shift+Enter (`\e[13;2u`). Requires the application to opt in to CSI-u mode via `printf '\e[>4;1m'` (sent from zsh on startup); without this, tmux and terminals correctly fall back to legacy encoding.
@@ -79,6 +79,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-web-config.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json-config.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
 - `lsp-ltex-plus-config.el`: LTEX+ grammar/spell checks via `lsp-ltex-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
+- `markdown-config.el`: Markdown reading and authoring experience. Installs `markdown-mode` with `markdown-enable-wiki-links t`; enables `markdown-hide-markup` on mode entry (which is a superset of URL hiding — hides brackets, asterisks, URLs, etc.). Installs `obsidian` for Obsidian vault integration (wikilink navigation, backlinks, tag search; set `obsidian-directory` to your vault path). Installs `grip-mode` for live GitHub-flavored Markdown preview in a browser (bound to `C-c C-c g`). Visual line wrapping is handled by `syntaxes/markdown.el` via `soft-wrap-mode`.
 - `lsp-swift-config.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `lsp-rust-config.el`: Rust LSP via `rustic-mode` + `rust-analyzer` (lsp-mode built-in `lsp-rust`). Enables `rustfmt` on save.
 - `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
@@ -120,7 +121,7 @@ Current syntax modules:
 
 - `syntaxes/js.el`: JS/TS indentation settings.
 - `syntaxes/json.el`: JSON indentation (supports `js-json-mode`, `json-mode`, `json-ts-mode`).
-- `syntaxes/markdown.el`: Markdown settings. Unbinds `C-c <left>`/`C-c <right>` from `markdown-mode-map` and rebinds `markdown-promote`/`markdown-demote` to `C-c M-<` / `C-c M->`.
+- `syntaxes/markdown.el`: General Emacs editing settings for Markdown (`fill-column 72`, `soft-wrap-mode`). Package-level configuration (markup hiding, wiki links, obsidian, grip-mode) lives in `markdown-config.el`.
 - `syntaxes/python.el`: Python indentation settings.
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.

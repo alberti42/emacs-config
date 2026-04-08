@@ -12,6 +12,8 @@
   :custom
   ;; Enable [[wiki link]] syntax highlighting and navigation.
   (markdown-enable-wiki-links t)
+  ;; Fontify fenced code blocks using their language's major mode.
+  (markdown-fontify-code-blocks-natively t)
   :hook ((markdown-mode gfm-mode) . markdown-config--markup-setup))
 
 (defun markdown-config--markup-setup ()
