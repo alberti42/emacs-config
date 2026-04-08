@@ -54,6 +54,21 @@ type that's available."
                          (const :tag "Monochrome Symbols" symbol)
                          (const :tag "Text Only" text))))
 
+(defcustom icons-gui-emoji t
+  "Whether to use emoji icons in GUI frames when a suitable font is available.
+Set to nil to prefer symbol icons even in graphical displays."
+  :type 'boolean
+  :group 'icons
+  :version "31.1")
+
+(defcustom icons-tty-emoji nil
+  "Whether to use emoji icons in TTY frames.
+Emacs cannot reliably auto-detect terminal emoji support, so this
+must be set manually if your terminal renders emoji correctly."
+  :type 'boolean
+  :group 'icons
+  :version "31.1")
+
 (defmacro define-icon (name parent specification documentation &rest keywords)
   "Define an icon identified by NAME.
 If non-nil, inherit the specification from PARENT.  Entries from
@@ -218,12 +233,21 @@ present if the icon is represented by an image."
             (apply 'create-image file nil nil props))))))
 
 (cl-defmethod icons--create ((_type (eql 'emoji)) icon _keywords)
-  (when-let* ((font (and (display-multi-font-p)
-                         ;; FIXME: This is not enough for ensuring
-                         ;; display of color Emoji.
-                         (car (internal-char-font nil ?🟠)))))
-    (and (font-has-char-p font (aref icon 0))
-         icon)))
+  (if (display-graphic-p)
+      ;; GUI: honour icons-gui-emoji and check that a font covering the
+      ;; glyph is available.  Note: this confirms the codepoint is present
+      ;; in some font but does not guarantee color emoji rendering (the font
+      ;; may render it as a monochrome glyph).
+      (when (and icons-gui-emoji
+                 (display-multi-font-p)
+                 (when-let* ((font (car (internal-char-font nil ?🟠))))
+                   (font-has-char-p font (aref icon 0))))
+        icon)
+    ;; TTY: Emacs has no font renderer; the terminal emulator renders
+    ;; emoji directly from the Unicode codepoint.  Honour the user's
+    ;; explicit opt-in via `icons-tty-emoji'.
+    (when icons-tty-emoji
+      icon)))
 
 (cl-defmethod icons--create ((_type (eql 'symbol)) icon _keywords)
   (and (cl-every #'char-displayable-p icon)

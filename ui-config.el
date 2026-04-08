@@ -137,6 +137,10 @@ For more infos about frame parameters, visit https://www.gnu.org/software/emacs/
   (when (boundp 'server-after-make-frame-hook)
     (add-hook 'server-after-make-frame-hook #'emacs-config--activate-gui-frame)))
 
+;; Opt in to emoji icons in TTY — terminal renders them natively from the
+;; Unicode codepoint.  Requires local/icons.el patch (see CLAUDE.md).
+(setq icons-tty-emoji t)
+
 (provide 'ui-config)
 
 ;;; ui-config.el ends here
