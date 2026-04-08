@@ -22,53 +22,6 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
   ;; invisibility-spec and calls markdown-reload-extensions.
   (markdown-toggle-markup-hiding 1))
 
-;; Wikilink visual rendering ---------------------------------------------------
-;;
-;; obsidian.el handles navigation (follow-link, backlinks, find-file); this is
-;; purely cosmetic: hide [[ ]] delimiters so only the display text is visible.
-;; Integrated with font-lock so jit-lock refontifies incrementally.
-;;
-;; [[Target|Display Text]] → shows "Display Text"
-;; [[Page]]                → shows "Page"
-
-(defconst markdown-config--wikilink-keywords
-  '(("\\[\\[\\([^]|]+\\)|\\([^]]+\\)\\]\\]"   ; [[Target|Display Text]]
-     (0 (progn
-          (put-text-property (match-beginning 0) (match-beginning 2) 'display "")
-          (put-text-property (match-end 2)       (match-end 0)       'display "")
-          nil)))
-    ("\\[\\[\\([^]|]+\\)\\]\\]"               ; [[Page]]
-     (0 (progn
-          (put-text-property (match-beginning 0) (match-beginning 1) 'display "")
-          (put-text-property (match-end 1)       (match-end 0)       'display "")
-          nil))))
-  "Font-lock keywords that hide [[ and ]] wikilink delimiters.")
-
-(defun markdown-config--setup-wikilinks ()
-  "Register wikilink font-lock keywords in the current buffer.
-Respects `markdown-hide-markup': keywords are added only when hiding is on,
-mirroring how markdown-mode handles standard [text](url) links."
-  ;; Tell font-lock to manage the 'display property so it clears and
-  ;; re-applies it correctly during incremental refontification.
-  (setq-local font-lock-extra-managed-props
-              (append font-lock-extra-managed-props '(display)))
-  (when markdown-hide-markup
-    (font-lock-add-keywords nil markdown-config--wikilink-keywords t)))
-
-(defun markdown-config--sync-wikilinks (&rest _)
-  "Sync wikilink keywords with the current `markdown-hide-markup' state.
-Advises `markdown-toggle-markup-hiding' so toggling standard markup
-hiding also toggles wikilink hiding."
-  (if markdown-hide-markup
-      (font-lock-add-keywords nil markdown-config--wikilink-keywords t)
-    (font-lock-remove-keywords nil markdown-config--wikilink-keywords))
-  (font-lock-flush))
-
-(dolist (hook '(markdown-mode-hook gfm-mode-hook))
-  (add-hook hook #'markdown-config--setup-wikilinks))
-
-(advice-add 'markdown-toggle-markup-hiding :after #'markdown-config--sync-wikilinks)
-
 ;; obsidian: Obsidian vault integration ----------------------------------------
 ;;
 ;; Set obsidian-directory to your vault, e.g.:
