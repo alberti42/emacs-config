@@ -947,20 +947,46 @@ If the file include directories in its path, we create the file relative to
       (obsidian-add-file cleaned))
     cleaned))
 
+(defun obsidian--resolve-non-markdown-link (f)
+  "Resolve non-markdown link F to an absolute path or signal an error.
+Tries, in order:
+1. Vault-root-relative: obsidian-directory/F (if obsidian-directory is set).
+2. Buffer-relative: F relative to the current buffer's directory.
+Never creates files — signals `user-error' if the file is not found."
+  (let* ((candidates
+          (delq nil
+                (list
+                 (when (and (boundp 'obsidian-directory)
+                            (not (string-empty-p obsidian-directory)))
+                   (expand-file-name f obsidian-directory))
+                 (when buffer-file-name
+                   (expand-file-name f (file-name-directory buffer-file-name))))))
+         (found (seq-filter #'file-exists-p candidates)))
+    (pcase (length found)
+      (0 (user-error "File not found: %s" f))
+      (1 (car found))
+      (_ (completing-read "Jump to: " found)))))
+
 (defun obsidian-find-file (f &optional arg)
   "Open file F, offering a choice if multiple files match F.
 
 If ARG is set, the file will be opened in other window."
-  (let* ((all-files (seq-map #'obsidian-file-relative-name (obsidian-files)))
-         (matches (obsidian--match-files f all-files))
-         (file (cl-case (length matches)
-                 (0 (obsidian--prepare-new-file-from-rel-path
-                     (obsidian--prepare-rel-path f)))
-                 (1 (car matches))
-                 (t
-                  (let ((choice (completing-read "Jump to: " matches)))
-                    choice))))
-         (path (obsidian-expand-file-name file)))
+  (message "Opening <%s>" arg)
+  (let* ((ext (file-name-extension f))
+         (path
+          (if (and ext (not (string-equal ext "md")))
+              ;; Non-markdown files are not indexed in the cache (which only
+              ;; tracks .md files).  Resolve via filesystem instead.
+              (obsidian--resolve-non-markdown-link f)
+            ;; Markdown files: use the cache.
+            (let* ((all-files (seq-map #'obsidian-file-relative-name (obsidian-files)))
+                   (matches (obsidian--match-files f all-files))
+                   (file (cl-case (length matches)
+                           (0 (obsidian--prepare-new-file-from-rel-path
+                               (obsidian--prepare-rel-path f)))
+                           (1 (car matches))
+                           (t (completing-read "Jump to: " matches)))))
+              (obsidian-expand-file-name file)))))
     (if arg (find-file-other-window path) (find-file path))))
 
 (defun obsidian-find-point-in-file (f p &optional arg)
