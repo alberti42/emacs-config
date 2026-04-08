@@ -12,7 +12,8 @@
   ;; of opening new buffer for each directory
   (dired-kill-when-opening-new-dired-buffer t)
   (dired-dwim-target t)
-  (dired-use-ls-dired t))
+  (dired-use-ls-dired t)
+  (delete-by-moving-to-trash t))
 
 ;; dired-narrow: live-filter the dired listing as you type.
 (use-package dired-narrow
