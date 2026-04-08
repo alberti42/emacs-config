@@ -42,6 +42,25 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
               ("C-c o F" . obsidian-find-file)
               ("C-c o i" . obsidian-insert-wikilink)))
 
+;; elgrep (obsidian dependency) -----------------------------------------------
+;;
+;; Add lexical-binding cookie to its cache file.  Without this Emacs warns on
+;; every startup about the missing cookie.
+;;
+;; It intercepts write-file inside elgrep-save-elgrep-data-file and prepends the
+;; cookie before the file hits.
+
+(with-eval-after-load 'elgrep
+  (advice-add 'elgrep-save-elgrep-data-file :around
+              (lambda (orig &rest args)
+                (cl-letf* ((orig-write-file (symbol-function 'write-file))
+                           ((symbol-function 'write-file)
+                            (lambda (file &rest wf-args)
+                              (goto-char (point-min))
+                              (insert ";; -*- lexical-binding: t; -*-\n")
+                              (apply orig-write-file file wf-args))))
+                  (apply orig args)))))
+
 ;; grip-mode: live GitHub Markdown preview in browser --------------------------
 
 (use-package grip-mode
