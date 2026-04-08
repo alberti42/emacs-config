@@ -30,6 +30,9 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
 (use-package obsidian
   :straight t
   :hook ((markdown-mode gfm-mode) . obsidian-mode)
+  :custom
+  ;; location of obsidian vault
+  (obsidian-directory "~/Obsidian/Work")
   :bind (:map obsidian-mode-map
               ("C-c o f" . obsidian-follow-link-at-point)
               ("C-c o b" . obsidian-backlinks)
