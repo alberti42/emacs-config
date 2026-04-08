@@ -26,16 +26,13 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
 
 ;; obsidian: Obsidian vault integration ----------------------------------------
 ;;
-;; Set obsidian-directory to your vault, e.g.:
+;; Set obsidian-directory to the vault location, e.g.:
 ;;   (setq obsidian-directory "~/Documents/Obsidian")
 
 (use-package obsidian
   :straight nil
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :hook ((markdown-mode gfm-mode) . obsidian-mode)
-  :custom
-  ;; location of obsidian vault
-  (obsidian-directory "~/Obsidian/Work")
   :bind (:map obsidian-mode-map
               ("C-c o f" . obsidian-follow-link-at-point)
               ("C-c o b" . obsidian-backlinks)
