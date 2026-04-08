@@ -297,6 +297,11 @@
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
 
+;; Markdown reading/authoring (olivetti, obsidian vault, grip-mode preview)
+(emacs-config-load-module
+ 'markdown-config
+ "Could not load markdown-config.el; Markdown enhancements are disabled.")
+
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
 
