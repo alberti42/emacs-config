@@ -31,9 +31,7 @@
         '((json-mode . json-ts-mode)
           (js-json-mode . json-ts-mode)
           (yaml-mode . yaml-ts-mode)
-          (toml-mode . toml-ts-mode)
-          (markdown-mode . markdown-ts-mode)
-          (gfm-mode . markdown-ts-mode)))
+          (toml-mode . toml-ts-mode)))
 
   (defun treesitter-config-reinstall-grammars ()
     "Force reinstallation of all grammars in `treesit-language-source-alist'.
