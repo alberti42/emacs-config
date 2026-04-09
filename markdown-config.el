@@ -33,5 +33,21 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
   :bind (:map markdown-mode-command-map
               ("g" . grip-mode)))
 
+;; obsidian ---------------------------------------------------------------
+
+;; Currently disabled because buggy and malfunctioning
+(when nil
+  (use-package obsidian
+    :straight (obsidian :type git
+                        :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/local"
+                        :files ("obsidian.el"))
+    :hook ((markdown-mode gfm-mode) . obsidian-mode)
+    :config
+    :bind (:map obsidian-mode-map
+                ("C-c o f" . obsidian-follow-link-at-point)
+                ("C-c o b" . obsidian-backlinks)
+                ("C-c o F" . obsidian-find-file)
+                ("C-c o i" . obsidian-insert-wikilink))))
+
 (provide 'markdown-config)
 ;;; markdown-config.el ends here
