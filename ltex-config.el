@@ -97,7 +97,8 @@ Deduplicates and persists immediately."
 (defvar ltex-diagnostic-severity "warning")
 (defvar ltex-java-initial-heap 64)
 (defvar ltex-java-max-heap 512)
-(defvar ltex-lt-server-uri "https://api.languagetoolplus.com/v2")
+;; ltex-ls-plus appends /v2/check to this URI, so omit the /v2 suffix.
+(defvar ltex-lt-server-uri "https://api.languagetoolplus.com")
 (defvar ltex-lt-username "")
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
