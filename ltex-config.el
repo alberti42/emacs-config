@@ -1,0 +1,177 @@
+;;; ltex-config.el --- Minimal lsp-mode client for ltex-ls-plus -*- lexical-binding: t; -*-
+
+;;; Commentary:
+;;
+;; Direct lsp-mode client for ltex-ls-plus. Does NOT depend on lsp-ltex-plus.
+;;
+;; Design, based on manual LSP protocol tests:
+;;
+;; - textDocument/didOpen and textDocument/didChange trigger checking
+;;   automatically. No custom scheduling needed.
+;; - Before every check the server sends workspace/configuration; lsp-mode
+;;   responds via lsp-register-custom-settings. This is what delivers the
+;;   language, API credentials, and dictionary to the server.
+;; - _ltex.checkDocument reads from disk, not from the LSP in-memory buffer.
+;;   It fails on unsaved files. We never call it.
+;; - _ltex.addToDictionary / _ltex.disableRules / _ltex.hideFalsePositives
+;;   are handled entirely client-side via lsp action-handlers. The server
+;;   never receives these commands. After updating the dictionary we notify
+;;   the server via workspace/didChangeConfiguration so it re-fetches
+;;   settings and immediately re-checks the document.
+;;
+;; The dictionary file format is compatible with lsp-ltex-plus for easy
+;; migration of existing word lists.
+
+;;; Code:
+
+;;;; ── Dictionary ──────────────────────────────────────────────────────────────
+
+(defvar ltex-dictionary-file
+  (expand-file-name "lsp-ltex-plus/stored-dictionary" user-emacs-directory)
+  "File storing words added via 'Add to dictionary'.
+Elisp plist: (:en-US [\"word1\" \"word2\"] :de-DE [\"word\" ...])")
+
+(defvar ltex--words nil
+  "In-memory plist of added words, kept in sync with `ltex-dictionary-file'.")
+
+(defun ltex--load-words ()
+  "Load words from `ltex-dictionary-file' into `ltex--words'."
+  (setq ltex--words
+        (when (file-exists-p ltex-dictionary-file)
+          (condition-case err
+              (with-temp-buffer
+                (insert-file-contents ltex-dictionary-file)
+                (read (current-buffer)))
+            (error
+             (message "[ltex] Could not read dictionary %s: %S"
+                      ltex-dictionary-file err)
+             nil)))))
+
+(defun ltex--save-words ()
+  "Persist `ltex--words' to `ltex-dictionary-file'."
+  (make-directory (file-name-directory ltex-dictionary-file) t)
+  (with-temp-file ltex-dictionary-file
+    (prin1 ltex--words (current-buffer))))
+
+(defun ltex--add-words (lang words)
+  "Add WORDS (list of strings) to the dictionary for LANG (e.g. \"en-US\").
+Deduplicates and persists immediately."
+  (let* ((key (intern (concat ":" lang)))
+         (current (let ((v (plist-get ltex--words key)))
+                    (if (vectorp v) (append v nil) nil)))
+         (merged (vconcat (seq-uniq (append words current) #'string=))))
+    (setq ltex--words (plist-put (copy-sequence ltex--words) key merged)))
+  (ltex--save-words))
+
+(defun ltex-list-words ()
+  "Display all words in the dictionary."
+  (interactive)
+  (message "[ltex] Dictionary: %S" ltex--words))
+
+;;;; ── Settings ────────────────────────────────────────────────────────────────
+
+(defvar ltex-language "en-US"
+  "BCP 47 language tag for grammar checking.")
+(defvar ltex-enabled ["markdown" "org" "plaintext" "latex" "restructuredtext"]
+  "Language IDs for which ltex-ls-plus is active.")
+(defvar ltex-check-frequency "edit"
+  "When to check: \"edit\", \"save\", or \"manual\".")
+(defvar ltex-diagnostic-severity "warning")
+(defvar ltex-java-initial-heap 64)
+(defvar ltex-java-max-heap 512)
+(defvar ltex-lt-server-uri "https://api.languagetoolplus.com/v2")
+(defvar ltex-lt-username "")
+(defvar ltex-lt-api-key "")
+(defvar ltex--disabled-rules nil)
+(defvar ltex--hidden-false-positives nil)
+
+;;;; ── Action handlers (client-side, no server round-trip) ────────────────────
+
+(defun ltex--action-add-to-dictionary (action)
+  "Handle _ltex.addToDictionary: persist word and refresh server config."
+  (let* ((args (gethash "arguments" action))
+         (arg0 (and (vectorp args) (aref args 0)))
+         (words-by-lang (and arg0 (gethash "words" arg0))))
+    (if (null words-by-lang)
+        (message "[ltex] addToDictionary: unexpected argument shape %S" args)
+      (maphash (lambda (lang words-arr)
+                 (ltex--add-words lang (append words-arr nil)))
+               words-by-lang)))
+  ;; Tell the server configuration changed. It will send workspace/configuration,
+  ;; get the updated dictionary, and immediately re-check the document.
+  (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
+
+(defun ltex--action-disable-rules (_action)
+  "Handle _ltex.disableRules (not yet persisted)."
+  ;; TODO: persist like the dictionary if you use this frequently.
+  (message "[ltex] 'Disable rule' executed but not persisted across sessions."))
+
+(defun ltex--action-hide-false-positives (_action)
+  "Handle _ltex.hideFalsePositives (not yet persisted)."
+  ;; TODO: persist like the dictionary if you use this frequently.
+  (message "[ltex] 'Hide false positive' executed but not persisted across sessions."))
+
+;;;; ── lsp-mode registration ───────────────────────────────────────────────────
+
+(defun ltex--setup ()
+  "Register ltex-ls-plus settings and client with lsp-mode."
+  ;; Load words before registering so the symbol has a value on first
+  ;; workspace/configuration response.
+  (ltex--load-words)
+  (setq ltex-lt-username (or (getenv "LANGUAGETOOL_USERNAME") "")
+        ltex-lt-api-key  (or (getenv "LANGUAGETOOL_API_KEY")  ""))
+
+  (lsp-register-custom-settings
+   '(("ltex.language"                    ltex-language)
+     ("ltex.enabled"                     ltex-enabled)
+     ("ltex.checkFrequency"              ltex-check-frequency)
+     ("ltex.diagnosticSeverity"          ltex-diagnostic-severity)
+     ("ltex.dictionary"                  ltex--words)
+     ("ltex.disabledRules"               ltex--disabled-rules)
+     ("ltex.hiddenFalsePositives"        ltex--hidden-false-positives)
+     ("ltex.languageToolHttpServerUri"   ltex-lt-server-uri)
+     ("ltex.languageToolOrg.username"    ltex-lt-username)
+     ("ltex.languageToolOrg.apiKey"      ltex-lt-api-key)
+     ("ltex.java.initialHeapSize"        ltex-java-initial-heap)
+     ("ltex.java.maximumHeapSize"        ltex-java-max-heap)))
+
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (lsp-stdio-connection "ltex-ls-plus")
+    :major-modes '(markdown-mode gfm-mode
+                   latex-mode tex-mode plain-tex-mode
+                   text-mode org-mode rst-mode
+                   git-commit-mode)
+    :server-id 'ltex-ls-plus
+    :priority -1  ; add-on: run alongside other servers (e.g. texlab)
+    :add-on? t
+    :action-handlers
+    (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
+             ("_ltex.disableRules"       #'ltex--action-disable-rules)
+             ("_ltex.hideFalsePositives" #'ltex--action-hide-false-positives)))))
+
+(with-eval-after-load 'lsp-mode
+  ;; Language-ID overrides for modes lsp-mode doesn't map by default.
+  (dolist (pair '((tex-mode        . "latex")
+                  (plain-tex-mode  . "latex")
+                  (git-commit-mode . "plaintext")))
+    (add-to-list 'lsp-language-id-configuration pair))
+  (ltex--setup))
+
+;;;; ── Per-buffer activation ───────────────────────────────────────────────────
+
+(defun ltex-enable ()
+  "Start ltex-ls-plus in the current buffer."
+  ;; Suppress lsp-mode's project-root prompt for standalone files (ltex
+  ;; has no concept of a project root), and disable file watchers so
+  ;; lsp-mode never scans a large directory tree for a loose file in $HOME.
+  (setq-local lsp-auto-guess-root t)
+  (setq-local lsp-enable-file-watchers nil)
+  (lsp-deferred))
+
+(dolist (hook '(markdown-mode-hook tex-mode-hook text-mode-hook
+                org-mode-hook rst-mode-hook git-commit-mode-hook))
+  (add-hook hook #'ltex-enable))
+
+(provide 'ltex-config)
+;;; ltex-config.el ends here
