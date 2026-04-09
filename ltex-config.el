@@ -217,7 +217,7 @@ Deduplicates and persists immediately."
   (ltex--log "ltex-enable: buffer=%S major-mode=%S file=%S"
              (buffer-name) major-mode (buffer-file-name))
   (ltex--log "  language-id for this buffer: %S"
-             (lsp-buffer-language))
+             (if (fboundp 'lsp-buffer-language) (lsp-buffer-language) "<lsp not loaded yet>"))
   ;; Suppress lsp-mode's project-root prompt for standalone files (ltex
   ;; has no concept of a project root), and disable file watchers so
   ;; lsp-mode never scans a large directory tree for a loose file in $HOME.
