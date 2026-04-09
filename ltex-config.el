@@ -97,8 +97,13 @@ Deduplicates and persists immediately."
 (defvar ltex-diagnostic-severity "warning")
 (defvar ltex-java-initial-heap 64)
 (defvar ltex-java-max-heap 512)
-;; ltex-ls-plus appends /v2/check to this URI, so omit the /v2 suffix.
-(defvar ltex-lt-server-uri "https://api.languagetoolplus.com")
+;; Empty string = use the bundled LanguageTool Java library (recommended).
+;; The bundled interface handles timeouts and errors internally; setting this
+;; to an HTTP URI forces LanguageToolHttpInterface which has no read timeout
+;; and will hang the server's single-thread executor indefinitely on a stalled
+;; connection.  Premium credentials (username/apiKey) still work via the
+;; bundled interface.
+(defvar ltex-lt-server-uri "")
 (defvar ltex-lt-username "")
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
