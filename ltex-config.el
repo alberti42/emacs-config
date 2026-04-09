@@ -27,12 +27,27 @@
 ;;;; ── Debug logging ───────────────────────────────────────────────────────────
 
 (defvar ltex-debug nil
-  "When non-nil, emit verbose [ltex] messages to *Messages* and *lsp-log*.")
+  "When non-nil, emit verbose [ltex] messages to `*ltex-ls-plus::client*'.")
+
+(defvar ltex--start-time nil
+  "Time when ltex--setup ran; used as t=0 for log timestamps.
+Comparable to the server's wallClockDuration field in getServerStatus.")
+
+(defun ltex--elapsed ()
+  "Seconds with millisecond precision since `ltex--start-time' (or Emacs start)."
+  (float-time (time-subtract (current-time)
+                             (or ltex--start-time before-init-time))))
+
+(defun ltex--log-to-buffer (msg)
+  "Append MSG with elapsed timestamp to `*ltex-ls-plus::client*'."
+  (with-current-buffer (get-buffer-create "*ltex-ls-plus::client*")
+    (goto-char (point-max))
+    (insert (format "[%10.3f] %s\n" (ltex--elapsed) msg))))
 
 (defmacro ltex--log (fmt &rest args)
-  "Log FMT with ARGS to *Messages* when `ltex-debug' is non-nil."
+  "Log FMT with ARGS to `*ltex-ls-plus::client*' when `ltex-debug' is non-nil."
   `(when ltex-debug
-     (message (concat "[ltex] " ,fmt) ,@args)))
+     (ltex--log-to-buffer (format ,fmt ,@args))))
 
 ;;;; ── Dictionary ──────────────────────────────────────────────────────────────
 
@@ -137,6 +152,7 @@ Deduplicates and persists immediately."
 
 (defun ltex--setup ()
   "Register ltex-ls-plus settings and client with lsp-mode."
+  (setq ltex--start-time (current-time))
   (ltex--log "ltex--setup called")
   ;; Load words before registering so the symbol has a value on first
   ;; workspace/configuration response.
