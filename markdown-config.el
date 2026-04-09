@@ -14,6 +14,8 @@
   (markdown-fontify-code-blocks-natively t)
   ;; Support wiki links
   (markdown-enable-wiki-links t)
+  ;; Parse wiki links with the correct structure [[link|label]]
+  (markdown-wiki-link-alias-first nil)
   :hook ((markdown-mode gfm-mode) . markdown-config--markup-setup))
 
 (defun markdown-config--markup-setup ()
