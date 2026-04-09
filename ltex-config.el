@@ -194,6 +194,27 @@ Deduplicates and persists immediately."
     :server-id 'ltex-ls-plus
     :priority -1  ; add-on: run alongside other servers (e.g. texlab)
     :add-on? t
+    :request-handlers
+    (let ((ht (make-hash-table :test 'equal)))
+      (puthash "workspace/configuration"
+               (lambda (workspace params)
+                 (ltex--log "workspace/configuration: handler called")
+                 (condition-case err
+                     (let ((response
+                            (with-lsp-workspace workspace
+                              (if-let* ((buf (car (lsp--workspace-buffers workspace))))
+                                  (lsp-with-current-buffer buf
+                                    (lsp--build-workspace-configuration-response params))
+                                (lsp--with-workspace-temp-buffer
+                                    (lsp--workspace-root workspace)
+                                  (lsp--build-workspace-configuration-response params))))))
+                       (ltex--log "workspace/configuration: response built OK")
+                       response)
+                   (error
+                    (ltex--log "workspace/configuration: ERROR %S" err)
+                    (signal (car err) (cdr err)))))
+               ht)
+      ht)
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
              ("_ltex.disableRules"       #'ltex--action-disable-rules)
