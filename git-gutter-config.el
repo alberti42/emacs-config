@@ -37,11 +37,11 @@
   ;; Separator sign following the change sign; it is appended, but will be
   ;; clipped unless window-width >= 2; thus it is effectively only displayed if we reserved a larger window-width than 1; it can be used to separate the
   ;; change signs from the rest.
-  (setq git-gutter:separator-sign " ")
+  (setq git-gutter:separator-sign "")
   ;; Determines whether to show the separator-sign and the unchanged-sign for
   ;; buffers with no modifications yet (no 'diffinfos).
-  (setq git-gutter:always-show-separator t)
-  (setq git-gutter:unchanged-sign " ")
+  (setq git-gutter:always-show-separator nil)
+  (setq git-gutter:unchanged-sign "")
 
   ;; Disable git-gutter for large files
   (advice-add 'git-gutter-mode :before-while
