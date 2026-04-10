@@ -65,7 +65,26 @@ The fix is implemented by overriding `lsp--get-message-type` or `lsp--parser-on-
         ...))))
 ```
 
+## Diagnostic Tools
+
+A Python script has been created to audit LSP logs for ID collisions and congestion:
+`docs/parse-ltex-stdin-emacs.py`.
+
+Usage:
+```bash
+python3 docs/parse-ltex-stdin-emacs.py /tmp/ltex-stdin-emacs.log
+```
+This script identifies instances where the same numeric ID is used for both an outgoing Request and an outgoing Response, which is a primary indicator of the protocol-level congestion described above.
+
 ## Current Status
 - **Local Fix:** Applied globally in `lsp-core.el` to protect all LSP clients.
+- **Empirical Proof:** Logs (`ltex-stdin-emacs.log`) confirmed that when Integer ID `4` (client completion) and String ID `"4"` (server configuration) were sent simultaneously, the patched dispatcher correctly routed the server request to the configuration handler instead of the completion handler.
 - **Upstream:** This logic should be submitted as a PR to `lsp-mode`.
-- **Secondary Issues:** While this fix prevents the protocol deadlock, "hangs" caused by pipe saturation (back-pressure from a slow server) may still require client-side throttling (e.g., increasing `lsp-idle-delay`).
+
+## Secondary Issues: Server Congestion and Back-pressure
+
+While the protocol deadlock is resolved, "hangs" or lag may still occur under specific conditions:
+
+1.  **Pipe Saturation:** When using a slow external API (like LanguageTool.org), the server may buffer incoming completion requests in the OS stdin pipe while waiting for the network. If the pipe fills, Emacs will block on write operations.
+2.  **Server-Side ID Reuse:** Traces revealed that `ltex-ls-plus` (or the underlying `lsp4j` library) occasionally reuses the same String ID (e.g., `"5"`) for concurrent server-initiated requests (like `window/workDoneProgress/create`), which is a violation of the LSP uniqueness requirement and can confuse even a robust client.
+3.  **Mitigation:** For network-heavy servers, it remains recommended to increase `lsp-idle-delay` or disable background noise features like `completion` and `sideline` to maintain UI fluidness.
