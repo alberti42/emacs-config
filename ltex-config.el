@@ -113,11 +113,13 @@ Deduplicates and persists immediately."
 (defvar ltex-java-initial-heap 64)
 (defvar ltex-java-max-heap 512)
 ;; ltex-ls-plus appends /v2/check to this URI, so omit the /v2 suffix.
-(defvar ltex-lt-server-uri "https://api.languagetoolplus.com")
+;; A trailing slash is recommended.
+(defvar ltex-lt-server-uri "https://api.languagetoolplus.com/")
 (defvar ltex-lt-username "")
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
 (defvar ltex--hidden-false-positives nil)
+(defvar ltex-trace-server "off")
 
 ;;;; ── Action handlers (client-side, no server round-trip) ────────────────────
 
@@ -180,6 +182,9 @@ Deduplicates and persists immediately."
      ("ltex.languageToolHttpServerUri"   ltex-lt-server-uri)
      ("ltex.languageToolOrg.username"    ltex-lt-username)
      ("ltex.languageToolOrg.apiKey"      ltex-lt-api-key)
+     ("ltex.ltex-ls.languageToolOrgApiKey" ltex-lt-api-key)  ; deprecated but used by Sublime client
+     ("ltex.ltex-ls.logLevel"            "fine")
+     ("ltex.trace.server"                ltex-trace-server)
      ("ltex.java.initialHeapSize"        ltex-java-initial-heap)
      ("ltex.java.maximumHeapSize"        ltex-java-max-heap)))
 
@@ -194,27 +199,6 @@ Deduplicates and persists immediately."
     :server-id 'ltex-ls-plus
     :priority -1  ; add-on: run alongside other servers (e.g. texlab)
     :add-on? t
-    :request-handlers
-    (let ((ht (make-hash-table :test 'equal)))
-      (puthash "workspace/configuration"
-               (lambda (workspace params)
-                 (ltex--log "workspace/configuration: handler called")
-                 (condition-case err
-                     (let ((response
-                            (with-lsp-workspace workspace
-                              (if-let* ((buf (car (lsp--workspace-buffers workspace))))
-                                  (lsp-with-current-buffer buf
-                                    (lsp--build-workspace-configuration-response params))
-                                (lsp--with-workspace-temp-buffer
-                                    (lsp--workspace-root workspace)
-                                  (lsp--build-workspace-configuration-response params))))))
-                       (ltex--log "workspace/configuration: response built OK")
-                       response)
-                   (error
-                    (ltex--log "workspace/configuration: ERROR %S" err)
-                    (signal (car err) (cdr err)))))
-               ht)
-      ht)
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
              ("_ltex.disableRules"       #'ltex--action-disable-rules)
