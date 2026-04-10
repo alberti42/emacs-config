@@ -161,6 +161,13 @@ Deduplicates and persists immediately."
   (ltex--log "credentials: username=%S api-key=%S"
              (if (string-empty-p ltex-lt-username) "<empty>" "<set>")
              (if (string-empty-p ltex-lt-api-key)  "<empty>" "<set>"))
+  ;; Sticky debug settings: when ltex-debug is on, we ensure the server
+  ;; traces and lsp-log-io are enabled unless already customized.
+  (when ltex-debug
+    (setq lsp-log-io t)
+    (when (string= ltex-trace-server "off")
+      (setq ltex-trace-server "messages")))
+
   (ltex--log "registering custom settings")
   (ltex--log "  ltex.language=%S" ltex-language)
   (ltex--log "  ltex.enabled=%S" ltex-enabled)
@@ -217,6 +224,7 @@ Deduplicates and persists immediately."
                                                                 :enabled ,ltex-enabled
                                                                 :checkFrequency ,ltex-check-frequency
                                                                 :languageToolHttpServerUri ,ltex-lt-server-uri
+                                                                :trace (:server ,ltex-trace-server)
                                                                 :languageToolOrg (:username ,ltex-lt-username)
                                                                 :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
                                                                                                  :logLevel "fine"))))))
