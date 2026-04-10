@@ -30,11 +30,55 @@
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
   (setq read-process-output-max (* 1024 1024))
-  (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
   ;; Breadcrumb headers are unreliable: multiple LSP servers fighting over
   ;; header-line-format cause partial overwrites, and the header line shifts
   ;; point by one when opening a file at a specific line number.
-  (setq lsp-headerline-breadcrumb-enable nil))
+  (setq lsp-headerline-breadcrumb-enable nil)
+  :config
+  (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
+
+  (defun lsp--parser-on-message (json-data workspace)
+    "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
+This prevents server-initiated requests from being misrouted as responses
+to client requests when IDs collide."
+    (with-demoted-errors "Error processing message %S."
+      (with-lsp-workspace workspace
+        (-let* ((client (lsp--workspace-client workspace))
+                (message-type (cond
+                               ((lsp:json-message-method? json-data)
+                                (if (lsp:json-message-id? json-data) 'request 'notification))
+                               ((lsp:json-message-id? json-data)
+                                (if (lsp:json-message-error? json-data) 'response-error 'response))
+                               (t 'notification)))
+                (id (--when-let (lsp:json-response-id json-data)
+                      (if (stringp it) (string-to-number it) it)))
+                (data (lsp:json-response-result json-data)))
+          (pcase message-type
+            ('response
+             (cl-assert id)
+             (-let [(callback _ method _ before-send) (gethash id (lsp--client-response-handlers client))]
+               (when (lsp--log-io-p method)
+                 (lsp--log-entry-new
+                  (lsp--make-log-entry method id data 'incoming-resp
+                                       (lsp--ms-since before-send))
+                  workspace))
+               (when callback
+                 (remhash id (lsp--client-response-handlers client))
+                 (funcall callback (lsp:json-response-result json-data)))))
+            ('response-error
+             (cl-assert id)
+             (-let [(_ callback method _ before-send) (gethash id (lsp--client-response-handlers client))]
+               (when (lsp--log-io-p method)
+                 (lsp--log-entry-new
+                  (lsp--make-log-entry method id (lsp:json-response-error-error json-data)
+                                       'incoming-resp (lsp--ms-since before-send))
+                  workspace))
+               (when callback
+                 (remhash id (lsp--client-response-handlers client))
+                 (funcall callback (lsp:json-response-error-error json-data)))))
+            ('notification
+             (lsp--on-notification workspace json-data))
+            ('request (lsp--on-request workspace json-data))))))))
 
 (use-package lsp-ui
   :after lsp-mode
