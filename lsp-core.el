@@ -45,62 +45,82 @@ to client requests when IDs collide."
     ;; a single malformed message from crashing the entire LSP client.
     (with-demoted-errors "Error processing message %S."
       (with-lsp-workspace workspace
-        ;; Bind local variables for the current message.
-        (-let* ((client (lsp--workspace-client workspace))
-                ;; 1. DETERMINE MESSAGE TYPE (The "Kind-First" Logic)
-                ;; This is the core of the patch. It checks for a 'method' field
-                ;; first to identify server-initiated messages before checking
-                ;; for an 'id' to identify responses.
-                (message-type (cond
-                               ;; A) If a 'method' field exists, it's from the server.
-                               ((lsp:json-message-method? json-data)
-                                ;; If it also has an 'id', it's a REQUEST that expects a response.
-                                ;; Otherwise, it's a NOTIFICATION.
-                                (if (lsp:json-message-id? json-data) 'request 'notification))
-                               ;; B) If no 'method' but an 'id' exists, it's a response from the server
-                               ;;    to a request previously sent by the client (Emacs).
-                               ((lsp:json-message-id? json-data)
-                                ;; If it has an 'error' field, it's an error response.
-                                (if (lsp:json-message-error? json-data) 'response-error 'response))
-                               ;; C) Default to 'notification' if none of the above match.
-                               (t 'notification)))
-                (id (--when-let (gethash "id" json-data)
-                      ;; The ID from the server is often a string, so we convert it to a number
-                      ;; to match the numeric IDs Emacs tracks for its own requests.
-                      (if (stringp it) (string-to-number it) it)))
-                ;; 3. EXTRACT MESSAGE DATA
-                ;; This extracts the primary payload ('result') of a response message.
-                ;; For requests, this will be nil, as they have 'params' instead.
-                (data (gethash "result" json-data)))
-          ;; 4. DISPATCH BASED ON MESSAGE TYPE
-          ;; Finally, call the appropriate lsp-mode handler based on the
-          ;; message type determined in step 1.
-          (pcase message-type
-            ('response
-             (cl-assert id)
-             (-let [(callback _ method _ before-send) (gethash id (lsp--client-response-handlers client))]
-               (when (lsp--log-io-p method)
-                 (lsp--log-entry-new
-                  (lsp--make-log-entry method id data 'incoming-resp
-                                       (lsp--ms-since before-send))
-                  workspace))
-               (when callback
-                 (remhash id (lsp--client-response-handlers client))
-                 (funcall callback (lsp:json-response-result json-data)))))
-            ('response-error
-             (cl-assert id)
-             (-let [(_ callback method _ before-send) (gethash id (lsp--client-response-handlers client))]
-               (when (lsp--log-io-p method)
-                 (lsp--log-entry-new
-                  (lsp--make-log-entry method id (lsp:json-response-error-error json-data)
-                                       'incoming-resp (lsp--ms-since before-send))
-                  workspace))
-               (when callback
-                 (remhash id (lsp--client-response-handlers client))
-                 (funcall callback (lsp:json-response-error-error json-data)))))
-            ('notification
-             (lsp--on-notification workspace json-data))
-            ('request (lsp--on-request workspace json-data))))))))
+        (condition-case err
+            (condition-case quit-err
+                (progn
+              ;; Bind local variables for the current message.
+              (-let* ((client (lsp--workspace-client workspace))
+                      (method (lsp-mode-debug--json-get json-data "method"))
+                      (raw-id (lsp-mode-debug--json-get json-data "id"))
+                      (has-method (not (null method)))
+                      (has-id (not (null raw-id)))
+                      (has-error (not (null (lsp-mode-debug--json-get json-data "error"))))
+                      ;; 1. DETERMINE MESSAGE TYPE (The "Kind-First" Logic)
+                      (message-type (cond
+                                     (has-method (if has-id 'request 'notification))
+                                     (has-id (if has-error 'response-error 'response))
+                                     (t 'notification)))
+                      ;; 2. NORMALIZE ID
+                      (id (and raw-id (if (stringp raw-id) (string-to-number raw-id) raw-id)))
+                      ;; 3. EXTRACT MESSAGE DATA (responses only)
+                      (data (and (memq message-type '(response response-error))
+                                 (lsp-mode-debug--json-get json-data "result"))))
+
+                (lsp-mode-debug--log
+                 "on-message: kind=%s has-method=%s method=%S has-id=%s raw-id=%S id=%S has-error=%s obj=%S"
+                 message-type has-method method has-id raw-id id has-error (type-of json-data))
+
+                ;; 4. DISPATCH BASED ON MESSAGE TYPE
+                (pcase message-type
+                  ('response
+                   (cl-assert id)
+                   (let ((handler (gethash id (lsp--client-response-handlers client))))
+                     (lsp-mode-debug--log "dispatch response: id=%S handler=%s" id (if handler "yes" "no"))
+                     (-let [(callback _ cb-method _ before-send) handler]
+                       (when (lsp--log-io-p cb-method)
+                         (lsp--log-entry-new
+                          (lsp--make-log-entry cb-method id data 'incoming-resp
+                                               (lsp--ms-since before-send))
+                          workspace))
+                       (cond
+                        ((null callback)
+                         (lsp-mode-debug--log "response: id=%S has no callback; dropped" id))
+                        (t
+                         (remhash id (lsp--client-response-handlers client))
+                         (lsp-mode-debug--log "response: calling callback id=%S method=%S" id cb-method)
+                         (funcall callback (lsp-mode-debug--json-get json-data "result")))))))
+                  ('response-error
+                   (cl-assert id)
+                   (let ((handler (gethash id (lsp--client-response-handlers client))))
+                     (lsp-mode-debug--log "dispatch response-error: id=%S handler=%s" id (if handler "yes" "no"))
+                     (-let [(_ callback cb-method _ before-send) handler]
+                       (when (lsp--log-io-p cb-method)
+                         (lsp--log-entry-new
+                          (lsp--make-log-entry cb-method id (lsp-mode-debug--json-get json-data "error")
+                                               'incoming-resp (lsp--ms-since before-send))
+                          workspace))
+                       (cond
+                        ((null callback)
+                         (lsp-mode-debug--log "response-error: id=%S has no callback; dropped" id))
+                        (t
+                         (remhash id (lsp--client-response-handlers client))
+                         (lsp-mode-debug--log "response-error: calling callback id=%S method=%S" id cb-method)
+                         (funcall callback (lsp-mode-debug--json-get json-data "error")))))))
+                  ('notification
+                   (lsp-mode-debug--log "dispatch notification: method=%S" method)
+                   (lsp--on-notification workspace json-data))
+                  ('request
+                   (lsp-mode-debug--log "dispatch request: id=%S method=%S" raw-id method)
+                    (lsp--on-request workspace json-data)))))
+              (quit
+               (lsp-mode-debug--log "QUIT in on-message: method=%S raw-id=%S" 
+                                    (lsp-mode-debug--json-get json-data "method")
+                                    (lsp-mode-debug--json-get json-data "id"))
+               (signal (car quit-err) (cdr quit-err))))
+          (error
+           (lsp-mode-debug--log "exception while handling message: %S" err)
+           (lsp-mode-debug--log "exception json type=%S json=%S" (type-of json-data) json-data)
+           (signal (car err) (cdr err))))))))
 
 (use-package lsp-ui
   :after lsp-mode
