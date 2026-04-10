@@ -44,7 +44,7 @@
   :type 'string
   :group 'lsp-ltex-plus)
 
-(defcustom lsp-ltex-plus-debug t
+(defcustom lsp-ltex-plus-debug nil
   "When non-nil, enable verbose logging and JSON-RPC tracing.
 Enabling this automatically sets `lsp-log-io' to t and creates
 detailed log files in /tmp."
