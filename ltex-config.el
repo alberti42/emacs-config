@@ -26,7 +26,7 @@
 
 ;;;; ── Debug logging ───────────────────────────────────────────────────────────
 
-(defvar ltex-debug nil
+(defvar ltex-debug t
   "When non-nil, emit verbose [ltex] messages to `*ltex-ls-plus::client*'.")
 
 (defvar ltex--start-time nil
@@ -156,6 +156,17 @@ Deduplicates and persists immediately."
   "Register ltex-ls-plus settings and client with lsp-mode."
   (setq ltex--start-time (current-time))
   (ltex--log "ltex--setup called")
+  
+  ;; PROPER FIX: Prevent ID collisions by prefixing client requests with "C-".
+  ;; This ensures Emacs IDs (C-1, C-2) never collide with server IDs (1, 2).
+  (advice-add 'lsp--next-id :around
+              (lambda (orig-fun workspace)
+                (let ((id (funcall orig-fun workspace)))
+                  (if (eq (lsp--client-server-id (lsp-workspace-client workspace)) 
+                          'ltex-ls-plus)
+                      (format "C-%s" id)
+                    id))))
+
   ;; Load words before registering so the symbol has a value on first
   ;; workspace/configuration response.
   (ltex--load-words)
@@ -274,9 +285,9 @@ Deduplicates and persists immediately."
   (setq-local lsp-enable-file-watchers nil)
   ;; Debounce: reduce overhead when using the external LanguageTool API.
   (setq-local lsp-idle-delay 1.0)
-  (setq-local lsp-completion-enable nil)
-  (setq-local lsp-ui-sideline-enable nil)
-  (setq-local lsp-modeline-code-actions-enable nil)
+  (setq-local lsp-completion-enable t)
+  (setq-local lsp-ui-sideline-enable t)
+  (setq-local lsp-modeline-code-actions-enable t)
   (ltex--log "  calling lsp-deferred")
   (lsp-deferred))
 
