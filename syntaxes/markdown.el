@@ -9,7 +9,7 @@
               (lambda ()
                 ;; Visual soft wrap at 72 columns.
                 (setq-local fill-column 72)
-                (soft-wrap-mode 0)))))
+                (soft-wrap-mode 1)))))
 
 (provide 'syntaxes-markdown)
 ;;; syntaxes/markdown.el ends here
