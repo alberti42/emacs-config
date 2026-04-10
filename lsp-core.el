@@ -50,7 +50,9 @@ to client requests when IDs collide."
                                ((lsp:json-message-id? json-data)
                                 (if (lsp:json-message-error? json-data) 'response-error 'response))
                                (t 'notification)))
-                (id (--when-let (lsp:json-response-id json-data)
+                (id (--when-let (if (eq message-type 'request)
+                                    (lsp:json-message-id json-data)
+                                  (lsp:json-response-id json-data))
                       (if (stringp it) (string-to-number it) it)))
                 (data (lsp:json-response-result json-data)))
           (pcase message-type
