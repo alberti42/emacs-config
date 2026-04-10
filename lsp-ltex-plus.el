@@ -72,6 +72,15 @@ identifiers for which LTeX+ should be enabled."
   :type '(choice boolean (vector string))
   :group 'lsp-ltex-plus)
 
+(defcustom lsp-ltex-plus-major-modes
+  '(markdown-mode gfm-mode latex-mode tex-mode plain-tex-mode
+                  text-mode org-mode rst-mode git-commit-mode
+                  bibtex-mode context-mode html-mode typst-mode
+                  asciidoc-mode norg-mode quarto-mode)
+  "List of major modes for which the lsp-ltex-plus client can be activated."
+  :type '(repeat symbol)
+  :group 'lsp-ltex-plus)
+
 (defcustom lsp-ltex-plus-language "en-US"
   "The language (e.g., \"en-US\") LanguageTool should check against.
 If possible, use a specific variant like \"en-US\" or \"de-DE\" instead of the
@@ -389,9 +398,7 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
                                          (shell-quote-argument lsp-ltex-plus-ls-plus-executable)
                                          (shell-quote-argument lsp-ltex-plus-server-output-log)))
                          (list lsp-ltex-plus-ls-plus-executable))))
-    :major-modes '(markdown-mode gfm-mode latex-mode tex-mode
-                                 plain-tex-mode text-mode org-mode
-                                 rst-mode git-commit-mode)
+    :major-modes lsp-ltex-plus-major-modes
     :server-id 'ltex-ls-plus
     :priority -1
     :add-on? t

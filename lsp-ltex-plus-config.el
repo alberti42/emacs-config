@@ -39,9 +39,9 @@
     (lsp-deferred)))
 
 ;; Automatic hooks for supported modes.
-(dolist (hook '(markdown-mode-hook tex-mode-hook text-mode-hook
-                org-mode-hook rst-mode-hook git-commit-mode-hook))
-  (add-hook hook #'lsp-ltex-plus-enable))
+(dolist (mode lsp-ltex-plus-major-modes)
+  (let ((hook (intern (concat (symbol-name mode) "-hook"))))
+    (add-hook hook #'lsp-ltex-plus-enable)))
 
 (provide 'lsp-ltex-plus-config)
 ;;; lsp-ltex-plus-config.el ends here
