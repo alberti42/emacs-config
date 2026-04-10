@@ -7,21 +7,16 @@
 ;;
 ;; ── DESIGN PRINCIPLES ────────────────────────────────────────────────────────
 ;;
-;; 1. Standard Protocol Compliance: Unlike the lsp-ltex package, this client
-;;    relies on standard textDocument/didOpen and didChange notifications.
-;;    It avoids _ltex.checkDocument, which incorrectly reads from disk rather
-;;    than the in-memory buffer.
-;;
-;; 2. Kind-First Routing: Built-in lsp-mode can deadlock when server-initiated
+;; 1. Kind-First Routing: Built-in lsp-mode can deadlock when server-initiated
 ;;    requests (like workspace/configuration) collide with client requests.
 ;;    This module assumes the "Kind-First" dispatcher patch in lsp-core.el
 ;;    is active to handle such bi-directional traffic safely.
 ;;
-;; 3. Add-on Integration: Registered with :add-on? t and :priority -1,
+;; 2. Add-on Integration: Registered with :add-on? t and :priority -1,
 ;;    allowing it to run concurrently with primary language servers (e.g.,
 ;;    texlab or basedpyright) without interference.
 ;;
-;; 4. Transparent Settings: Settings are registered via lsp-register-custom-settings.
+;; 3. Transparent Settings: Settings are registered via lsp-register-custom-settings.
 ;;    The server fetches these via workspace/configuration. Updating the Lisp
 ;;    variables (like the dictionary) results in immediate server updates on
 ;;    the next check.
