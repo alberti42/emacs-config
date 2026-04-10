@@ -119,7 +119,7 @@ Deduplicates and persists immediately."
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
 (defvar ltex--hidden-false-positives nil)
-(defvar ltex-trace-server "verbose")
+(defvar ltex-trace-server "off")
 
 ;;;; ── Action handlers (client-side, no server round-trip) ────────────────────
 
@@ -198,14 +198,11 @@ Deduplicates and persists immediately."
   (ltex--log "registering lsp client ltex-ls-plus")
   (lsp-register-client
    (make-lsp-client
-    :new-connection (lsp-stdio-connection
-                   (lambda ()
-                     (list "sh" "-c"
-                           "tee /tmp/ltex-stdin-emacs.log | ltex-ls-plus | tee /tmp/ltex-stdout-emacs.log")))
+    :new-connection (lsp-stdio-connection '("ltex-ls-plus"))
     :major-modes '(markdown-mode gfm-mode
-                   latex-mode tex-mode plain-tex-mode
-                   text-mode org-mode rst-mode
-                   git-commit-mode)
+                                 latex-mode tex-mode plain-tex-mode
+                                 text-mode org-mode rst-mode
+                                 git-commit-mode)
     :server-id 'ltex-ls-plus
     :priority -1
     :add-on? t
@@ -213,12 +210,12 @@ Deduplicates and persists immediately."
                       (ltex--log "initialized: pushing configuration")
                       (lsp-notify "workspace/didChangeConfiguration"
                                   `(:settings (:ltex (:language ,ltex-language
-                                                      :enabled ,ltex-enabled
-                                                      :checkFrequency ,ltex-check-frequency
-                                                      :languageToolHttpServerUri ,ltex-lt-server-uri
-                                                      :languageToolOrg (:username ,ltex-lt-username)
-                                                      :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
-                                                                :logLevel "fine"))))))
+                                                                :enabled ,ltex-enabled
+                                                                :checkFrequency ,ltex-check-frequency
+                                                                :languageToolHttpServerUri ,ltex-lt-server-uri
+                                                                :languageToolOrg (:username ,ltex-lt-username)
+                                                                :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
+                                                                                                 :logLevel "fine"))))))
     :request-handlers
     (let ((ht (make-hash-table :test 'equal)))
       (puthash "workspace/configuration"
@@ -230,8 +227,8 @@ Deduplicates and persists immediately."
       ht)
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
-             ("_ltex.disableRules"       #'ltex--action-disable-rules)
-             ("_ltex.hideFalsePositives" #'ltex--action-hide-false-positives))))
+            ("_ltex.disableRules"       #'ltex--action-disable-rules)
+            ("_ltex.hideFalsePositives" #'ltex--action-hide-false-positives))))
   (ltex--log "ltex--setup done"))
 
 ;; Advise lsp-mode's workspace/configuration handler to log what we actually
@@ -243,7 +240,7 @@ Deduplicates and persists immediately."
   result)
 
 (with-eval-after-load 'lsp-mode
-  (setq lsp-log-io t) ; Ensure *lsp-log* is populated
+  (setq lsp-log-io nil)
   ;; Language-ID overrides for modes lsp-mode doesn't map by default.
   (dolist (pair '((tex-mode        . "latex")
                   (plain-tex-mode  . "latex")
@@ -284,7 +281,7 @@ Deduplicates and persists immediately."
   (lsp-deferred))
 
 (dolist (hook '(markdown-mode-hook tex-mode-hook text-mode-hook
-                org-mode-hook rst-mode-hook git-commit-mode-hook))
+                                   org-mode-hook rst-mode-hook git-commit-mode-hook))
   (add-hook hook #'ltex-enable))
 
 (provide 'ltex-config)
