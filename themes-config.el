@@ -54,7 +54,7 @@
 (use-package zac-theme-autodetection
   :straight nil
   :after theme-harmonize
-  :load-path emacs-config-dir
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :init
   ;; Theme selection callback for zac-theme-autodetection.  Set before loading
   ;; the module so the watcher picks it up on first application.
