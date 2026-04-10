@@ -220,6 +220,13 @@ time may increase significantly."
   :type 'boolean
   :group 'lsp-ltex-plus)
 
+(defcustom lsp-ltex-plus-buffer-setup-function #'lsp-ltex-plus-buffer-setup-default
+  "Function used to configure buffer-local settings when the mode is enabled.
+The default value `lsp-ltex-plus-buffer-setup-default' sets sane defaults for
+a grammar checker (disabling watchers, auto-guessing roots, etc.)."
+  :type 'function
+  :group 'lsp-ltex-plus)
+
 (defcustom lsp-ltex-plus-diagnostic-severity "warning"
   "Severity of the diagnostics corresponding to the grammar and spelling errors.
 Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
@@ -439,13 +446,25 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 
 ;;;; ── Activation ─────────────────────────────────────────────────────────────
 
+(defun lsp-ltex-plus-buffer-setup-default ()
+  "Apply sane default buffer-local settings for ltex-ls-plus."
+  ;; ltex-ls-plus is not root-aware; auto-guessing avoids prompts for standalone files.
+  (setq-local lsp-auto-guess-root t)
+  ;; Watching is unnecessary and potentially expensive for this server.
+  (setq-local lsp-enable-file-watchers nil)
+  ;; UI and behavior tweaks for a grammar checker.
+  (setq-local lsp-idle-delay 0.5)
+  (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
+  (setq-local lsp-ui-sideline-enable t)
+  (setq-local lsp-modeline-code-actions-enable t))
+
 ;;;###autoload
 (define-minor-mode lsp-ltex-plus-mode
   "Minor mode for LTEX+ grammar checking via lsp-mode.
 
 When enabled, this mode configures the buffer for ltex-ls-plus and
-calls `lsp-deferred` to start the server.  It sets several buffer-local
-LSP variables to ensure optimal performance for a grammar checker."
+calls `lsp-deferred` to start the server.  It uses
+`lsp-ltex-plus-buffer-setup-function' to apply buffer-local settings."
   :lighter " LTeX+"
   :group 'lsp-ltex-plus
   (if lsp-ltex-plus-mode
@@ -454,15 +473,7 @@ LSP variables to ensure optimal performance for a grammar checker."
             (message "[lsp-ltex-plus] Aborting: %s not found on PATH." lsp-ltex-plus-ls-plus-executable)
             (setq lsp-ltex-plus-mode nil))
         (lsp-ltex-plus--log "Enabling LTEX+ in %s" (buffer-name))
-        ;; ltex-ls-plus is not root-aware; auto-guessing avoids prompts for standalone files.
-        (setq-local lsp-auto-guess-root t)
-        ;; Watching is unnecessary and potentially expensive for this server.
-        (setq-local lsp-enable-file-watchers nil)
-        ;; UI and behavior tweaks.
-        (setq-local lsp-idle-delay 0.5)
-        (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
-        (setq-local lsp-ui-sideline-enable t)
-        (setq-local lsp-modeline-code-actions-enable t)
+        (funcall lsp-ltex-plus-buffer-setup-function)
         (lsp-deferred))
     ;; When disabling, we add the server to disabled clients so it doesn't restart.
     (setq-local lsp-disabled-clients (add-to-list 'lsp-disabled-clients 'ltex-ls-plus))))
