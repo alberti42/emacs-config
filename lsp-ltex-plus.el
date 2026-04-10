@@ -247,6 +247,16 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   :type 'boolean
   :group 'lsp-ltex-plus)
 
+(defcustom lsp-ltex-plus-apply-kind-first-patch nil
+  "Whether to apply the 'Kind-First' routing patch to `lsp-mode'.
+This patch redefines `lsp--parser-on-message' to prioritize the 'method' field,
+preventing deadlocks when server-initiated requests (like workspace/configuration)
+collide with client requests.
+
+Note: This is a global surgical patch affecting all LSP servers."
+  :type 'boolean
+  :group 'lsp-ltex-plus)
+
 (defvar lsp-ltex-plus-trace-server "off"
   "Debug setting to log the communication between language client and server.
 - \"off\": Don't log any communication.
@@ -411,12 +421,89 @@ Items in vectors are merged and deduplicated using `string=`."
                fps-by-lang)))
   (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
 
-;;;; ── LSP Registration ───────────────────────────────────────────────────────
+
+;;;; ── Lsp-mode Patch ──────────────────────────────────────────────────────────────
+
+;; This section contains a protocol-level deadlock fix for `lsp-mode`.
+;;
+;; ── THE PROBLEM: ID COLLISIONS ───────────────────────────────────────────────
+;;
+;; Standard `lsp-mode` routes incoming JSON-RPC messages based on the 'id' field:
+;; 1. If 'id' is present, it's treated as a RESPONSE to a client request.
+;; 2. If 'method' is present (but no 'id'), it's a NOTIFICATION or REQUEST.
+;;
+;; LTeX+ frequently initiates its own requests (like `workspace/configuration`)
+;; to fetch your dictionary and rules. If the server-initiated request uses an
+;; ID that `lsp-mode` is already tracking for a client-side request, `lsp-mode`
+;; will misroute the server's request as a response to its own request.
+;; This results in a protocol deadlock where both sides are waiting for each
+;; other indefinitely.
+;;
+;; ── THE SOLUTION: KIND-FIRST ROUTING ─────────────────────────────────────────
+;;
+;; The "Kind-First" patch below redefines `lsp--parser-on-message` to prioritize
+;; the 'method' field over the 'id' field. If a 'method' is present, we know the
+;; message is a Request or Notification from the server, regardless of whether
+;; the ID happens to collide with an internal Emacs ID.
+
+(defun lsp-ltex-plus--apply-lsp-mode-patch ()
+  "Apply the 'Kind-First' patch to `lsp-mode'.
+This redefines `lsp--parser-on-message' with the logic to prioritize
+the 'method' field, preventing deadlocks when server-initiated
+requests collide with client response IDs."
+  (lsp-ltex-plus--log "Applying Kind-First patch to lsp--parser-on-message...")
+  (defun lsp--parser-on-message (json-data workspace)
+    "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
+This prevents server-initiated requests from being misrouted as responses
+to client requests when IDs collide."
+    (with-demoted-errors "Error processing message %S."
+      (with-lsp-workspace workspace
+        (-let* ((client (lsp--workspace-client workspace))
+                (message-type (cond
+                               ((lsp:json-message-method? json-data)
+                                (if (lsp:json-message-id? json-data) 'request 'notification))
+                               ((lsp:json-message-id? json-data)
+                                (if (lsp:json-message-error? json-data) 'response-error 'response))
+                               (t 'notification)))
+                (id (--when-let (lsp:json-response-id json-data)
+                      (if (stringp it) (string-to-number it) it)))
+                (data (lsp:json-response-result json-data)))
+          (pcase message-type
+            ('response
+             (cl-assert id)
+             (-let [(callback _ method _ before-send) (gethash id (lsp--client-response-handlers client))]
+               (when (lsp--log-io-p method)
+                 (lsp--log-entry-new
+                  (lsp--make-log-entry method id data 'incoming-resp
+                                       (lsp--ms-since before-send))
+                  workspace))
+               (when callback
+                 (remhash id (lsp--client-response-handlers client))
+                 (funcall callback (lsp:json-response-result json-data)))))
+            ('response-error
+             (cl-assert id)
+             (-let [(_ callback method _ before-send) (gethash id (lsp--client-response-handlers client))]
+               (when (lsp--log-io-p method)
+                 (lsp--log-entry-new
+                  (lsp--make-log-entry method id (lsp:json-response-error-error json-data)
+                                       'incoming-resp (lsp--ms-since before-send))
+                  workspace))
+               (when callback
+                 (remhash id (lsp--client-response-handlers client))
+                 (funcall callback (lsp:json-response-error-error json-data)))))
+            ('notification
+             (lsp--on-notification workspace json-data))
+            ('request (lsp--on-request workspace json-data))))))))
+
+;;;; ── Lsp-mode Registration ───────────────────────────────────────────────────────
 
 (defun lsp-ltex-plus--setup ()
   "Initialize and register the ltex-ls-plus client with lsp-mode."
   (setq lsp-ltex-plus--start-time (current-time))
   (lsp-ltex-plus--log "Initializing lsp-ltex-plus...")
+
+  (when lsp-ltex-plus-apply-kind-first-patch
+    (lsp-ltex-plus--apply-lsp-mode-patch))
 
   (lsp-ltex-plus--load-external-settings)
 
