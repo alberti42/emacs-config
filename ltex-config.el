@@ -119,7 +119,7 @@ Deduplicates and persists immediately."
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
 (defvar ltex--hidden-false-positives nil)
-(defvar ltex-trace-server "off")
+(defvar ltex-trace-server "verbose")
 
 ;;;; ── Action handlers (client-side, no server round-trip) ────────────────────
 
@@ -191,7 +191,10 @@ Deduplicates and persists immediately."
   (ltex--log "registering lsp client ltex-ls-plus")
   (lsp-register-client
    (make-lsp-client
-    :new-connection (lsp-stdio-connection '("ltex-ls-plus"))
+    :new-connection (lsp-stdio-connection
+                   (lambda ()
+                     (list "sh" "-c"
+                           "/opt/homebrew/bin/stdbuf -i0 -o0 -e0 tee /tmp/ltex-stdin-emacs.log | ltex-ls-plus | /opt/homebrew/bin/stdbuf -i0 -o0 -e0 tee /tmp/ltex-stdout-emacs.log")))
     :major-modes '(markdown-mode gfm-mode
                    latex-mode tex-mode plain-tex-mode
                    text-mode org-mode rst-mode
