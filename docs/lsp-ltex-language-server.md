@@ -1,8 +1,8 @@
-# ltex-config.el — Minimal lsp-mode Client for ltex-ls-plus
+# lsp-ltex-plus.el — Minimal lsp-mode Client for ltex-ls-plus
 
 ## Overview
 
-`ltex-config.el` is a self-contained lsp-mode client for
+`lsp-ltex-plus.el` is a self-contained lsp-mode client for
 [ltex-ls-plus](https://github.com/ltex-plus/ltex-ls-plus), the LanguageTool-based
 grammar and spell checker for Markdown, LaTeX, Org, plain text, and
 reStructuredText. It replaces the
@@ -24,7 +24,7 @@ The `lsp-ltex-plus` package has several problems discovered during debugging:
 - A large amount of custom async scheduling code was layered on top of the broken
   `_ltex.checkDocument` call, creating hard-to-debug race conditions.
 
-All of these issues are absent from `ltex-config.el`.
+All of these issues are absent from `lsp-ltex-plus.el`.
 
 ---
 
@@ -65,7 +65,7 @@ Manual testing confirmed that `_ltex.checkDocument` attempts to open the file
 path from the filesystem, not from the server's in-memory document buffer. It
 returns `{"success": false, "errorMessage": "Could not read file ..."}` for any
 file that is not saved to disk at that exact path. This command is never used in
-`ltex-config.el`.
+`lsp-ltex-plus.el`.
 
 ### Document sync is full (not incremental)
 
@@ -105,7 +105,7 @@ path `…/v2/v2/check`, returning HTTP 404).
 ## Architecture
 
 ```
-ltex-config.el
+lsp-ltex-plus.el
 │
 ├── Dictionary persistence
 │   ├── ltex-dictionary-file        — path to stored-dictionary file
@@ -224,16 +224,15 @@ to the server as part of `ltex.dictionary` in `workspace/configuration`.
 
 ## Installation (current — dotfiles)
 
-`ltex-config.el` is loaded as an optional module from `init.el`:
+`lsp-ltex-plus-config.el` is loaded as an optional module from `init.el`:
 
 ```elisp
 (emacs-config-load-module
- 'ltex-config
- "Could not load ltex-config.el; LTEX+ is disabled.")
+ 'lsp-ltex-plus-config
+ "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 ```
 
-No `straight.el` or `use-package` declaration is needed — the file registers
-itself with lsp-mode via `with-eval-after-load 'lsp-mode`.
+It loads `lsp-ltex-plus.el` (the client module) and configures the activation hooks.
 
 ---
 

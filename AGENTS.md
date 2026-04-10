@@ -78,7 +78,9 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `lsp-python-config.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
 - `lsp-web-config.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json-config.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
-- `ltex-config.el`: Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, plain text, Org, reStructuredText). Replaces `lsp-ltex-plus` with a more transparent implementation that matches Sublime Text client logic (e.g. proactive configuration push).
+- `lsp-ltex-plus.el`: Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
+- `lsp-ltex-plus-config.el`: User configuration and activation for `lsp-ltex-plus`.
+- `lsp-ltex-plus.el`: [REPLACED by lsp-ltex-plus.el] Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, plain text, Org, reStructuredText). Replaces `lsp-ltex-plus` with a more transparent implementation that matches Sublime Text client logic (e.g. proactive configuration push).
 - `markdown-config.el`: Markdown reading and authoring experience. Installs `markdown-mode` with `markdown-enable-wiki-links t` and `markdown-wiki-link-alias-first nil` (so wiki links use `[[url|label]]` order, not `[[label|url]]`); enables `markdown-hide-markup` on mode entry (which is a superset of URL hiding — hides brackets, asterisks, URLs, etc.). Custom link-following logic (symmetric for both wiki links and standard `[label](path)` links): Markdown targets open with `find-file`; non-Markdown local files open `dired` with the cursor on the file; missing files signal a `user-error` with the resolved path; full URLs open in the browser unchanged. The default `markdown-follow-wiki-link` is replaced via `:override` advice (`markdown-config--follow-wiki-link`) to avoid its bugs (appending the buffer extension to the link name, replacing spaces with dashes). Standard links are intercepted via `markdown-follow-link-functions` (`markdown-config--follow-local-link`). Includes a disabled `obsidian` block (wrapped in `(when nil ...)`) for Obsidian vault integration — currently disabled due to bugs. Installs `grip-mode` for live GitHub-flavored Markdown preview in a browser (bound to `C-c C-c g`). Visual line wrapping is handled by `syntaxes/markdown.el` via `soft-wrap-mode`.
 - `lsp-swift-config.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `lsp-rust-config.el`: Rust LSP via `rustic-mode` + `rust-analyzer` (lsp-mode built-in `lsp-rust`). Enables `rustfmt` on save.
@@ -267,7 +269,7 @@ These modules expect external programs on `PATH`:
 - JSON LSP (`lsp-json-config.el`):
   - `vscode-json-language-server` (from `vscode-langservers-extracted` npm package)
 
-- LTEX+ (`ltex-config.el`):
+- LTEX+ (`lsp-ltex-plus.el`):
   - `ltex-ls-plus` (Java-based server)
 
 - Swift LSP (`lsp-swift-config.el`):
@@ -317,7 +319,7 @@ Design choice:
 
 ## LTEX+ Module Notes
 
-`ltex-config.el` contains non-trivial glue code to:
+`lsp-ltex-plus.el` contains non-trivial glue code to:
 
 - ensure `_ltex.*` commands are executed against the LTEX+ workspace (buffers
   may have multiple LSP workspaces, e.g. TeX + LTEX+)

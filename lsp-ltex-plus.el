@@ -1,4 +1,4 @@
-;;; ltex-config.el --- Minimal lsp-mode client for ltex-ls-plus -*- lexical-binding: t; -*-
+;;; lsp-ltex-plus.el --- Minimal lsp-mode client for ltex-ls-plus -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -39,34 +39,34 @@
 
 ;;;; ── Customization ───────────────────────────────────────────────────────────
 
-(defgroup ltex nil
+(defgroup lsp-ltex-plus nil
   "Customization group for the LTEX+ grammar checker."
   :group 'lsp-mode
-  :prefix "ltex-")
+  :prefix "lsp-ltex-plus-")
 
-(defcustom ltex-ls-plus-executable "ltex-ls-plus"
+(defcustom lsp-ltex-plus-ls-plus-executable "ltex-ls-plus"
   "The name or path of the ltex-ls-plus executable."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-debug t
+(defcustom lsp-ltex-plus-debug t
   "When non-nil, enable verbose logging and JSON-RPC tracing.
 Enabling this automatically sets `lsp-log-io' to t and creates
 detailed log files in /tmp."
   :type 'boolean
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-server-input-log "/tmp/ltex-server-input.log"
+(defcustom lsp-ltex-plus-server-input-log "/tmp/ltex-server-input.log"
   "Log file for JSON-RPC input received by the server (from Emacs)."
   :type 'file
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-server-output-log "/tmp/ltex-server-output.log"
+(defcustom lsp-ltex-plus-server-output-log "/tmp/ltex-server-output.log"
   "Log file for JSON-RPC output produced by the server (to Emacs)."
   :type 'file
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-enabled ["bibtex" "context" "context.tex" "html" "latex" "markdown" "mdx" "typst" "asciidoc" "neorg" "org" "quarto" "restructuredtext" "rsweave"]
+(defcustom lsp-ltex-plus-enabled ["bibtex" "context" "context.tex" "html" "latex" "markdown" "mdx" "typst" "asciidoc" "neorg" "org" "quarto" "restructuredtext" "rsweave"]
   "Controls whether the extension is enabled.
 Allows disabling LanguageTool on specific workspaces or for specific code
 language modes (i.e., file types).
@@ -75,9 +75,9 @@ Either supply a Boolean value stating whether LTeX+ is enabled for all supported
 markup languages or disabled for all of them, or supply a list of code language
 identifiers for which LTeX+ should be enabled."
   :type '(choice boolean (vector string))
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-language "en-US"
+(defcustom lsp-ltex-plus-language "en-US"
   "The language (e.g., \"en-US\") LanguageTool should check against.
 If possible, use a specific variant like \"en-US\" or \"de-DE\" instead of the
 generic language code like \"en\" or \"de\" to obtain spelling corrections (in
@@ -87,155 +87,155 @@ When using the language code \"auto\", LTeX+ will try to detect the language of
 the document. This is not recommended, as only generic languages like \"en\" or
 \"de\" will be detected and thus no spelling errors might be reported."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-enabled-rules nil
+(defcustom lsp-ltex-plus-enabled-rules nil
   "Lists of rules that should be enabled (if disabled by default by LanguageTool).
 This setting is language-specific, so use an object of the format
 '(:en-US [\"RULE1\" \"RULE2\"] :de-DE [\"RULE1\" ...]) where the key is the
 language code and the value is a vector of rule IDs."
   :type 'plist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-disabled-rules nil
+(defcustom lsp-ltex-plus-disabled-rules nil
   "Lists of rules that should be disabled (if enabled by default by LanguageTool).
 This setting is language-specific, so use an object of the format
 '(:en-US [\"RULE1\" \"RULE2\"] :de-DE [\"RULE1\" ...]) where the key is the
 language code and the value is a vector of rule IDs."
   :type 'plist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-bibtex-fields nil
+(defcustom lsp-ltex-plus-bibtex-fields nil
   "List of BibTeX fields whose values are to be checked in BibTeX files.
 This setting is an object with the field names as keys and Booleans as values,
 where true means that the field value should be checked and false means that
 the field value should be ignored."
   :type 'alist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-latex-commands nil
+(defcustom lsp-ltex-plus-latex-commands nil
   "List of LaTeX commands to be handled by the LaTeX parser.
 Listed together with empty arguments (e.g., \"\\ref{}\", \"\\documentclass[]{}\").
 This setting is an object with the commands as keys and corresponding actions
 as values (\"default\", \"ignore\", \"dummy\", \"pluralDummy\", \"vowelDummy\")."
   :type 'alist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-latex-environments nil
+(defcustom lsp-ltex-plus-latex-environments nil
   "List of names of LaTeX environments to be handled by the LaTeX parser.
 This setting is an object with the environment names as keys and corresponding
 actions as values (\"default\", \"ignore\")."
   :type 'alist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-markdown-nodes nil
+(defcustom lsp-ltex-plus-markdown-nodes nil
   "List of Markdown node types to be handled by the Markdown parser.
 This setting is an object with the node types as keys and corresponding actions
 as values (\"default\", \"ignore\", \"dummy\", \"pluralDummy\", \"vowelDummy\")."
   :type 'alist
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-additional-rules-enable-picky-rules nil
+(defcustom lsp-ltex-plus-additional-rules-enable-picky-rules nil
   "Enable LanguageTool rules that are marked as picky.
 These are disabled by default, e.g., rules about passive voice, sentence length,
 etc., at the cost of more false positives."
   :type 'boolean
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-additional-rules-mother-tongue ""
+(defcustom lsp-ltex-plus-additional-rules-mother-tongue ""
   "Optional mother tongue of the user (e.g., \"de-DE\").
 If set, additional rules will be checked to detect false friends. Picky rules
 may need to be enabled in order to see an effect."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-additional-rules-language-model ""
+(defcustom lsp-ltex-plus-additional-rules-language-model ""
   "Optional path to a directory with rules of a language model with n-gram counts.
 Set this to the parent directory that contains subdirectories for languages."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-lt-server-uri "https://api.languagetoolplus.com"
+(defcustom lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com"
   "Base URI for the LanguageTool HTTP server.
 Note: ltex-ls-plus appends /v2/check to this, so omit the /v2 suffix here."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-lt-username ""
+(defcustom lsp-ltex-plus-lt-username ""
   "Username/email as used to log in at languagetool.org for Premium API access.
-Only relevant if `ltex-lt-server-uri' is set."
+Only relevant if `lsp-ltex-plus-lt-server-uri' is set."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-lt-api-key ""
+(defcustom lsp-ltex-plus-lt-api-key ""
   "API key for Premium API access.
-Only relevant if `ltex-lt-server-uri' is set."
+Only relevant if `lsp-ltex-plus-lt-server-uri' is set."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-ltex-ls-path ""
+(defcustom lsp-ltex-plus-ltex-ls-path ""
   "Use the path to the root directory of ltex-ls-plus.
 It contains bin and lib subdirectories. If empty, the bundled version is used."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-ltex-ls-log-level "fine"
+(defcustom lsp-ltex-plus-ltex-ls-log-level "fine"
   "Logging level (verbosity) of the ltex-ls-plus server log.
 The levels in descending order are \"severe\", \"warning\", \"info\", \"config\",
 \"fine\", \"finer\", and \"finest\"."
   :type '(choice (const "severe") (const "warning") (const "info")
                  (const "config") (const "fine") (const "finer")
                  (const "finest"))
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-java-path ""
+(defcustom lsp-ltex-plus-java-path ""
   "Path to an existing Java installation on your computer.
 Use the same path as you would use for the JAVA_HOME environment variable."
   :type 'string
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-java-initial-heap 64
+(defcustom lsp-ltex-plus-java-initial-heap 64
   "Initial size of the Java heap memory in megabytes (corresponds to -Xms)."
   :type 'integer
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-java-max-heap 512
+(defcustom lsp-ltex-plus-java-max-heap 512
   "Maximum size of the Java heap memory in megabytes (corresponds to -Xmx)."
   :type 'integer
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-sentence-cache-size 2000
+(defcustom lsp-ltex-plus-sentence-cache-size 2000
   "Size of the LanguageTool ResultCache in sentences.
 Decreasing this might decrease RAM usage. If you set this too small, checking
 time may increase significantly."
   :type 'integer
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-completion-enabled nil
+(defcustom lsp-ltex-plus-completion-enabled nil
   "Controls whether completion is enabled (IntelliSense)."
   :type 'boolean
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-diagnostic-severity "warning"
+(defcustom lsp-ltex-plus-diagnostic-severity "warning"
   "Severity of the diagnostics corresponding to the grammar and spelling errors.
 Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   :type '(choice (const "error") (const "warning") (const "information") (const "hint"))
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-check-frequency "edit"
+(defcustom lsp-ltex-plus-check-frequency "edit"
   "Controls when documents should be checked.
 - \"edit\": checked when opened or edited (on every keystroke).
 - \"save\": checked when opened or saved.
 - \"manual\": use commands to manually trigger checks."
   :type '(choice (const "edit") (const "save") (const "manual"))
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defcustom ltex-clear-diagnostics-when-closing-file t
+(defcustom lsp-ltex-plus-clear-diagnostics-when-closing-file t
   "If set to true, diagnostics of a file are cleared when the file is closed."
   :type 'boolean
-  :group 'ltex)
+  :group 'lsp-ltex-plus)
 
-(defvar ltex-trace-server "off"
+(defvar lsp-ltex-plus-trace-server "off"
   "Debug setting to log the communication between language client and server.
 - \"off\": Don't log any communication.
 - \"messages\": Log the type of requests and responses.
@@ -243,165 +243,165 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 
 ;;;; ── Internal State & Logging ───────────────────────────────────────────────
 
-(defvar ltex--start-time nil
-  "Timestamp of when `ltex--setup' was executed.")
+(defvar lsp-ltex-plus--start-time nil
+  "Timestamp of when `lsp-ltex-plus--setup' was executed.")
 
-(defvar ltex--words nil
+(defvar lsp-ltex-plus--words nil
   "In-memory plist of additional words that should not be spelling errors.")
 
-(defvar ltex--hidden-false-positives nil
+(defvar lsp-ltex-plus--hidden-false-positives nil
   "List of false-positive diagnostics to hide.")
 
-(defun ltex--elapsed ()
-  "Return seconds (float) since `ltex--start-time' or Emacs init."
+(defun lsp-ltex-plus--elapsed ()
+  "Return seconds (float) since `lsp-ltex-plus--start-time' or Emacs init."
   (float-time (time-subtract (current-time)
-                             (or ltex--start-time before-init-time))))
+                             (or lsp-ltex-plus--start-time before-init-time))))
 
-(defun ltex--log-to-buffer (msg)
-  "Write MSG with a timestamp to the *ltex-ls-plus::client* buffer."
-  (with-current-buffer (get-buffer-create "*ltex-ls-plus::client*")
+(defun lsp-ltex-plus--log-to-buffer (msg)
+  "Write MSG with a timestamp to the *lsp-ltex-plus::client* buffer."
+  (with-current-buffer (get-buffer-create "*lsp-ltex-plus::client*")
     (let ((inhibit-read-only t))
       (goto-char (point-max))
-      (insert (format "[%10.3f] %s\n" (ltex--elapsed) msg))
+      (insert (format "[%10.3f] %s\n" (lsp-ltex-plus--elapsed) msg))
       (setq buffer-read-only t))))
 
-(defmacro ltex--log (fmt &rest args)
-  "Log a formatted message if `ltex-debug' is enabled."
-  `(when ltex-debug
-     (ltex--log-to-buffer (format ,fmt ,@args))))
+(defmacro lsp-ltex-plus--log (fmt &rest args)
+  "Log a formatted message if `lsp-ltex-plus-debug' is enabled."
+  `(when lsp-ltex-plus-debug
+     (lsp-ltex-plus--log-to-buffer (format ,fmt ,@args))))
 
 ;;;; ── Dictionary Management ──────────────────────────────────────────────────
 
-(defvar ltex-dictionary-file
+(defvar lsp-ltex-plus-dictionary-file
   (expand-file-name "lsp-ltex-plus/stored-dictionary" user-emacs-directory)
   "Path to the persistent dictionary file (plist format).")
 
-(defun ltex--load-words ()
-  "Load the persistent dictionary from `ltex-dictionary-file'."
-  (ltex--log "Loading dictionary: %s" ltex-dictionary-file)
-  (setq ltex--words
-        (if (not (file-exists-p ltex-dictionary-file))
-            (progn (ltex--log "No dictionary file found; starting fresh.") nil)
+(defun lsp-ltex-plus--load-words ()
+  "Load the persistent dictionary from `lsp-ltex-plus-dictionary-file'."
+  (lsp-ltex-plus--log "Loading dictionary: %s" lsp-ltex-plus-dictionary-file)
+  (setq lsp-ltex-plus--words
+        (if (not (file-exists-p lsp-ltex-plus-dictionary-file))
+            (progn (lsp-ltex-plus--log "No dictionary file found; starting fresh.") nil)
           (condition-case err
               (with-temp-buffer
-                (insert-file-contents ltex-dictionary-file)
+                (insert-file-contents lsp-ltex-plus-dictionary-file)
                 (read (current-buffer)))
             (error
-             (message "[ltex] Failed to read dictionary: %S" err)
+             (message "[lsp-ltex-plus] Failed to read dictionary: %S" err)
              nil)))))
 
-(defun ltex--save-words ()
-  "Write the current in-memory words to `ltex-dictionary-file'."
-  (ltex--log "Saving dictionary to %s" ltex-dictionary-file)
-  (make-directory (file-name-directory ltex-dictionary-file) t)
-  (with-temp-file ltex-dictionary-file
-    (prin1 ltex--words (current-buffer))))
+(defun lsp-ltex-plus--save-words ()
+  "Write the current in-memory words to `lsp-ltex-plus-dictionary-file'."
+  (lsp-ltex-plus--log "Saving dictionary to %s" lsp-ltex-plus-dictionary-file)
+  (make-directory (file-name-directory lsp-ltex-plus-dictionary-file) t)
+  (with-temp-file lsp-ltex-plus-dictionary-file
+    (prin1 lsp-ltex-plus--words (current-buffer))))
 
-(defun ltex--add-words (lang words)
+(defun lsp-ltex-plus--add-words (lang words)
   "Add a list of WORDS to the dictionary for LANG (e.g., \"en-US\")."
-  (ltex--log "Adding words for %s: %S" lang words)
+  (lsp-ltex-plus--log "Adding words for %s: %S" lang words)
   (let* ((key (intern (concat ":" lang)))
-         (current (let ((v (plist-get ltex--words key)))
+         (current (let ((v (plist-get lsp-ltex-plus--words key)))
                     (if (vectorp v) (append v nil) nil)))
          (merged (vconcat (seq-uniq (append words current) #'string=))))
-    (setq ltex--words (plist-put (copy-sequence ltex--words) key merged)))
-  (ltex--save-words))
+    (setq lsp-ltex-plus--words (plist-put (copy-sequence lsp-ltex-plus--words) key merged)))
+  (lsp-ltex-plus--save-words))
 
-(defun ltex-list-words ()
+(defun lsp-ltex-plus-list-words ()
   "Print the current dictionary content to the echo area."
   (interactive)
-  (message "[ltex] Current Dictionary: %S" ltex--words))
+  (message "[lsp-ltex-plus] Current Dictionary: %S" lsp-ltex-plus--words))
 
 ;;;; ── Action Handlers ────────────────────────────────────────────────────────
 
-(defun ltex--action-add-to-dictionary (action)
+(defun lsp-ltex-plus--action-add-to-dictionary (action)
   "Process the _ltex.addToDictionary action from the server."
-  (ltex--log "Action: addToDictionary")
+  (lsp-ltex-plus--log "Action: addToDictionary")
   (let* ((args (gethash "arguments" action))
          (arg0 (and (vectorp args) (aref args 0)))
          (words-by-lang (and arg0 (gethash "words" arg0))))
     (if (null words-by-lang)
-        (message "[ltex] addToDictionary: Malformed arguments %S" args)
+        (message "[lsp-ltex-plus] addToDictionary: Malformed arguments %S" args)
       (maphash (lambda (lang words-arr)
-                 (ltex--add-words lang (append words-arr nil)))
+                 (lsp-ltex-plus--add-words lang (append words-arr nil)))
                words-by-lang)))
   ;; Notify server of config change so it re-fetches the dictionary.
   (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
 
-(defun ltex--action-disable-rules (_action)
+(defun lsp-ltex-plus--action-disable-rules (_action)
   "Process the _ltex.disableRules action (currently transient)."
-  (ltex--log "Action: disableRules (not yet persistent)")
-  (message "[ltex] Rule disabled for this session."))
+  (lsp-ltex-plus--log "Action: disableRules (not yet persistent)")
+  (message "[lsp-ltex-plus] Rule disabled for this session."))
 
-(defun ltex--action-hide-false-positives (_action)
+(defun lsp-ltex-plus--action-hide-false-positives (_action)
   "Process the _ltex.hideFalsePositives action (currently transient)."
-  (ltex--log "Action: hideFalsePositives (not yet persistent)")
-  (message "[ltex] False positive hidden for this session."))
+  (lsp-ltex-plus--log "Action: hideFalsePositives (not yet persistent)")
+  (message "[lsp-ltex-plus] False positive hidden for this session."))
 
 ;;;; ── LSP Registration ───────────────────────────────────────────────────────
 
-(defun ltex--setup ()
+(defun lsp-ltex-plus--setup ()
   "Initialize and register the ltex-ls-plus client with lsp-mode."
-  (setq ltex--start-time (current-time))
-  (ltex--log "Initializing ltex-config...")
+  (setq lsp-ltex-plus--start-time (current-time))
+  (lsp-ltex-plus--log "Initializing lsp-ltex-plus...")
 
-  (ltex--load-words)
+  (lsp-ltex-plus--load-words)
 
   ;; Inherit credentials from environment if not manually set.
   (let ((user (getenv "LANGUAGETOOL_USERNAME"))
         (key  (getenv "LANGUAGETOOL_API_KEY")))
-    (when (and user (string-empty-p (or (bound-and-true-p ltex-lt-username) "")))
-      (setq-default ltex-lt-username user))
-    (when (and key (string-empty-p (or (bound-and-true-p ltex-lt-api-key) "")))
-      (setq-default ltex-lt-api-key key)))
+    (when (and user (string-empty-p (or (bound-and-true-p lsp-ltex-plus-lt-username) "")))
+      (setq-default lsp-ltex-plus-lt-username user))
+    (when (and key (string-empty-p (or (bound-and-true-p lsp-ltex-plus-lt-api-key) "")))
+      (setq-default lsp-ltex-plus-lt-api-key key)))
 
   ;; Apply sticky debug defaults.
-  (when ltex-debug
+  (when lsp-ltex-plus-debug
     (setq lsp-log-io t)
-    (when (string= ltex-trace-server "off")
-      (setq ltex-trace-server "messages")))
+    (when (string= lsp-ltex-plus-trace-server "off")
+      (setq lsp-ltex-plus-trace-server "messages")))
 
-  (ltex--log "Registering settings and client...")
+  (lsp-ltex-plus--log "Registering settings and client...")
   (lsp-register-custom-settings
-   '(("ltex.enabled"                        ltex-enabled)
-     ("ltex.language"                       ltex-language)
-     ("ltex.dictionary"                     ltex--words)
-     ("ltex.enabledRules"                   ltex-enabled-rules)
-     ("ltex.disabledRules"                  ltex-disabled-rules)
-     ("ltex.hiddenFalsePositives"           ltex--hidden-false-positives)
-     ("ltex.bibtex.fields"                  ltex-bibtex-fields)
-     ("ltex.latex.commands"                 ltex-latex-commands)
-     ("ltex.latex.environments"             ltex-latex-environments)
-     ("ltex.markdown.nodes"                 ltex-markdown-nodes)
-     ("ltex.additionalRules.enablePickyRules" ltex-additional-rules-enable-picky-rules)
-     ("ltex.additionalRules.motherTongue"   ltex-additional-rules-mother-tongue)
-     ("ltex.additionalRules.languageModel"  ltex-additional-rules-language-model)
-     ("ltex.languageToolHttpServerUri"      ltex-lt-server-uri)
-     ("ltex.languageToolOrg.username"       ltex-lt-username)
-     ("ltex.ltex-ls.languageToolOrgApiKey"  ltex-lt-api-key)
-     ("ltex.ltex-ls.path"                   ltex-ltex-ls-path)
-     ("ltex.ltex-ls.logLevel"               ltex-ltex-ls-log-level)
-     ("ltex.java.path"                      ltex-java-path)
-     ("ltex.java.initialHeapSize"           ltex-java-initial-heap)
-     ("ltex.java.maximumHeapSize"           ltex-java-max-heap)
-     ("ltex.sentenceCacheSize"              ltex-sentence-cache-size)
-     ("ltex.completionEnabled"              ltex-completion-enabled)
-     ("ltex.diagnosticSeverity"             ltex-diagnostic-severity)
-     ("ltex.checkFrequency"                 ltex-check-frequency)
-     ("ltex.clearDiagnosticsWhenClosingFile" ltex-clear-diagnostics-when-closing-file)
-     ("ltex.trace.server"                   ltex-trace-server)))
+   '(("ltex.enabled"                        lsp-ltex-plus-enabled)
+     ("ltex.language"                       lsp-ltex-plus-language)
+     ("ltex.dictionary"                     lsp-ltex-plus--words)
+     ("ltex.enabledRules"                   lsp-ltex-plus-enabled-rules)
+     ("ltex.disabledRules"                  lsp-ltex-plus-disabled-rules)
+     ("ltex.hiddenFalsePositives"           lsp-ltex-plus--hidden-false-positives)
+     ("ltex.bibtex.fields"                  lsp-ltex-plus-bibtex-fields)
+     ("ltex.latex.commands"                 lsp-ltex-plus-latex-commands)
+     ("ltex.latex.environments"             lsp-ltex-plus-latex-environments)
+     ("ltex.markdown.nodes"                 lsp-ltex-plus-markdown-nodes)
+     ("ltex.additionalRules.enablePickyRules" lsp-ltex-plus-additional-rules-enable-picky-rules)
+     ("ltex.additionalRules.motherTongue"   lsp-ltex-plus-additional-rules-mother-tongue)
+     ("ltex.additionalRules.languageModel"  lsp-ltex-plus-additional-rules-language-model)
+     ("ltex.languageToolHttpServerUri"      lsp-ltex-plus-lt-server-uri)
+     ("ltex.languageToolOrg.username"       lsp-ltex-plus-lt-username)
+     ("ltex.ltex-ls.languageToolOrgApiKey"  lsp-ltex-plus-lt-api-key)
+     ("ltex.ltex-ls.path"                   lsp-ltex-plus-ltex-ls-path)
+     ("ltex.ltex-ls.logLevel"               lsp-ltex-plus-ltex-ls-log-level)
+     ("ltex.java.path"                      lsp-ltex-plus-java-path)
+     ("ltex.java.initialHeapSize"           lsp-ltex-plus-java-initial-heap)
+     ("ltex.java.maximumHeapSize"           lsp-ltex-plus-java-max-heap)
+     ("ltex.sentenceCacheSize"              lsp-ltex-plus-sentence-cache-size)
+     ("ltex.completionEnabled"              lsp-ltex-plus-completion-enabled)
+     ("ltex.diagnosticSeverity"             lsp-ltex-plus-diagnostic-severity)
+     ("ltex.checkFrequency"                 lsp-ltex-plus-check-frequency)
+     ("ltex.clearDiagnosticsWhenClosingFile" lsp-ltex-plus-clear-diagnostics-when-closing-file)
+     ("ltex.trace.server"                   lsp-ltex-plus-trace-server)))
 
   (lsp-register-client
    (make-lsp-client
     :new-connection (lsp-stdio-connection
                      (lambda ()
-                       (if ltex-debug
+                       (if lsp-ltex-plus-debug
                            (list "sh" "-c"
                                  (format "tee %s | %s | tee %s"
-                                         (shell-quote-argument ltex-server-input-log)
-                                         (shell-quote-argument ltex-ls-plus-executable)
-                                         (shell-quote-argument ltex-server-output-log)))
-                         (list ltex-ls-plus-executable))))
+                                         (shell-quote-argument lsp-ltex-plus-server-input-log)
+                                         (shell-quote-argument lsp-ltex-plus-ls-plus-executable)
+                                         (shell-quote-argument lsp-ltex-plus-server-output-log)))
+                         (list lsp-ltex-plus-ls-plus-executable))))
     :major-modes '(markdown-mode gfm-mode latex-mode tex-mode
                                  plain-tex-mode text-mode org-mode
                                  rst-mode git-commit-mode)
@@ -409,39 +409,39 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
     :priority -1
     :add-on? t
     :initialized-fn (lambda (_workspace)
-                      (ltex--log "Server initialized; pushing configuration...")
+                      (lsp-ltex-plus--log "Server initialized; pushing configuration...")
                       (lsp-notify "workspace/didChangeConfiguration"
-                                  `(:settings (:ltex (:enabled ,ltex-enabled
-                                                      :language ,ltex-language
-                                                      :enabledRules ,ltex-enabled-rules
-                                                      :disabledRules ,ltex-disabled-rules
-                                                      :hiddenFalsePositives ,ltex--hidden-false-positives
-                                                      :bibtex (:fields ,ltex-bibtex-fields)
-                                                      :latex (:commands ,ltex-latex-commands
-                                                              :environments ,ltex-latex-environments)
-                                                      :markdown (:nodes ,ltex-markdown-nodes)
-                                                      :additionalRules (:enablePickyRules ,ltex-additional-rules-enable-picky-rules
-                                                                        :motherTongue ,ltex-additional-rules-mother-tongue
-                                                                        :languageModel ,ltex-additional-rules-language-model)
-                                                      :languageToolHttpServerUri ,ltex-lt-server-uri
-                                                      :languageToolOrg (:username ,ltex-lt-username)
-                                                      :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
-                                                                :path ,ltex-ltex-ls-path
-                                                                :logLevel ,ltex-ltex-ls-log-level)
-                                                      :java (:path ,ltex-java-path
-                                                             :initialHeapSize ,ltex-java-initial-heap
-                                                             :maximumHeapSize ,ltex-java-max-heap)
-                                                      :sentenceCacheSize ,ltex-sentence-cache-size
-                                                      :completionEnabled ,ltex-completion-enabled
-                                                      :diagnosticSeverity ,ltex-diagnostic-severity
-                                                      :checkFrequency ,ltex-check-frequency
-                                                      :clearDiagnosticsWhenClosingFile ,ltex-clear-diagnostics-when-closing-file
-                                                      :trace (:server ,ltex-trace-server))))))
+                                  `(:settings (:ltex (:enabled ,lsp-ltex-plus-enabled
+                                                      :language ,lsp-ltex-plus-language
+                                                      :enabledRules ,lsp-ltex-plus-enabled-rules
+                                                      :disabledRules ,lsp-ltex-plus-disabled-rules
+                                                      :hiddenFalsePositives ,lsp-ltex-plus--hidden-false-positives
+                                                      :bibtex (:fields ,lsp-ltex-plus-bibtex-fields)
+                                                      :latex (:commands ,lsp-ltex-plus-latex-commands
+                                                              :environments ,lsp-ltex-plus-latex-environments)
+                                                      :markdown (:nodes ,lsp-ltex-plus-markdown-nodes)
+                                                      :additionalRules (:enablePickyRules ,lsp-ltex-plus-additional-rules-enable-picky-rules
+                                                                        :motherTongue ,lsp-ltex-plus-additional-rules-mother-tongue
+                                                                        :languageModel ,lsp-ltex-plus-additional-rules-language-model)
+                                                      :languageToolHttpServerUri ,lsp-ltex-plus-lt-server-uri
+                                                      :languageToolOrg (:username ,lsp-ltex-plus-lt-username)
+                                                      :ltex-ls (:languageToolOrgApiKey ,lsp-ltex-plus-lt-api-key
+                                                                :path ,lsp-ltex-plus-ltex-ls-path
+                                                                :logLevel ,lsp-ltex-plus-ltex-ls-log-level)
+                                                      :java (:path ,lsp-ltex-plus-java-path
+                                                             :initialHeapSize ,lsp-ltex-plus-java-initial-heap
+                                                             :maximumHeapSize ,lsp-ltex-plus-java-max-heap)
+                                                      :sentenceCacheSize ,lsp-ltex-plus-sentence-cache-size
+                                                      :completionEnabled ,lsp-ltex-plus-completion-enabled
+                                                      :diagnosticSeverity ,lsp-ltex-plus-diagnostic-severity
+                                                      :checkFrequency ,lsp-ltex-plus-check-frequency
+                                                      :clearDiagnosticsWhenClosingFile ,lsp-ltex-plus-clear-diagnostics-when-closing-file
+                                                      :trace (:server ,lsp-ltex-plus-trace-server))))))
     :action-handlers
-    (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
-            ("_ltex.disableRules"       #'ltex--action-disable-rules)
-            ("_ltex.hideFalsePositives" #'ltex--action-hide-false-positives))))
-  (ltex--log "ltex--setup completed."))
+    (lsp-ht ("_ltex.addToDictionary"     #'lsp-ltex-plus--action-add-to-dictionary)
+            ("_ltex.disableRules"       #'lsp-ltex-plus--action-disable-rules)
+            ("_ltex.hideFalsePositives" #'lsp-ltex-plus--action-hide-false-positives))))
+  (lsp-ltex-plus--log "lsp-ltex-plus--setup completed."))
 
 ;; Initialize on lsp-mode load.
 (with-eval-after-load 'lsp-mode
@@ -449,31 +449,7 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
                   (plain-tex-mode  . "latex")
                   (git-commit-mode . "plaintext")))
     (add-to-list 'lsp-language-id-configuration pair))
-  (ltex--setup))
+  (lsp-ltex-plus--setup))
 
-;;;; ── Activation ─────────────────────────────────────────────────────────────
-
-(defun ltex-enable ()
-  "Enable ltex-ls-plus for the current buffer."
-  (interactive)
-  (if (not (executable-find ltex-ls-plus-executable))
-      (message "[ltex] Aborting: %s not found on PATH." ltex-ls-plus-executable)
-    (ltex--log "Enabling LTEX+ in %s" (buffer-name))
-    ;; ltex-ls-plus is not root-aware; auto-guessing avoids prompts for standalone files.
-    (setq-local lsp-auto-guess-root t)
-    ;; Watching is unnecessary and potentially expensive for this server.
-    (setq-local lsp-enable-file-watchers nil)
-    ;; UI and behavior tweaks.
-    (setq-local lsp-idle-delay 0.5)
-    (setq-local lsp-completion-enable nil)
-    (setq-local lsp-ui-sideline-enable t)
-    (setq-local lsp-modeline-code-actions-enable t)
-    (lsp-deferred)))
-
-;; Automatic hooks for supported modes.
-(dolist (hook '(markdown-mode-hook tex-mode-hook text-mode-hook
-                org-mode-hook rst-mode-hook git-commit-mode-hook))
-  (add-hook hook #'ltex-enable))
-
-(provide 'ltex-config)
-;;; ltex-config.el ends here
+(provide 'lsp-ltex-plus)
+;;; lsp-ltex-plus.el ends here
