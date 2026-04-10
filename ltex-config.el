@@ -4,23 +4,11 @@
 ;;
 ;; Direct lsp-mode client for ltex-ls-plus. Does NOT depend on lsp-ltex-plus.
 ;;
-;; Design, based on manual LSP protocol tests:
-;;
-;; - textDocument/didOpen and textDocument/didChange trigger checking
-;;   automatically. No custom scheduling needed.
-;; - Before every check the server sends workspace/configuration; lsp-mode
-;;   responds via lsp-register-custom-settings. This is what delivers the
-;;   language, API credentials, and dictionary to the server.
-;; - _ltex.checkDocument reads from disk, not from the LSP in-memory buffer.
-;;   It fails on unsaved files. We never call it.
-;; - _ltex.addToDictionary / _ltex.disableRules / _ltex.hideFalsePositives
-;;   are handled entirely client-side via lsp action-handlers. The server
-;;   never receives these commands. After updating the dictionary we notify
-;;   the server via workspace/didChangeConfiguration so it re-fetches
-;;   settings and immediately re-checks the document.
-;;
-;; The dictionary file format is compatible with lsp-ltex-plus for easy
-;; migration of existing word lists.
+;; Logic aligned with working Sublime Text client:
+;; - Full settings block matching Sublime's trace.
+;; - Proactive configuration push on initialization.
+;; - Native lsp-mode dispatcher (patched in lsp-core.el) handles bi-directional
+;;   traffic robustly via Kind-First routing.
 
 ;;; Code:
 
@@ -156,16 +144,6 @@ Deduplicates and persists immediately."
   "Register ltex-ls-plus settings and client with lsp-mode."
   (setq ltex--start-time (current-time))
   (ltex--log "ltex--setup called")
-  
-  ;; PROPER FIX: Prevent ID collisions by prefixing client requests with "C-".
-  ;; This ensures Emacs IDs (C-1, C-2) never collide with server IDs (1, 2).
-  (advice-add 'lsp--next-id :around
-              (lambda (orig-fun workspace)
-                (let ((id (funcall orig-fun workspace)))
-                  (if (eq (lsp--client-server-id (lsp-workspace-client workspace)) 
-                          'ltex-ls-plus)
-                      (format "C-%s" id)
-                    id))))
 
   ;; Load words before registering so the symbol has a value on first
   ;; workspace/configuration response.
@@ -227,46 +205,17 @@ Deduplicates and persists immediately."
                                                                 :languageToolOrg (:username ,ltex-lt-username)
                                                                 :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
                                                                                                  :logLevel "fine"))))))
-    :request-handlers
-    (let ((ht (make-hash-table :test 'equal)))
-      (puthash "workspace/configuration"
-               (lambda (workspace params)
-                 (ltex--log "workspace/configuration: custom handler called")
-                 (with-lsp-workspace workspace
-                   (lsp--build-workspace-configuration-response params)))
-               ht)
-      ht)
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
             ("_ltex.disableRules"       #'ltex--action-disable-rules)
             ("_ltex.hideFalsePositives" #'ltex--action-hide-false-positives))))
   (ltex--log "ltex--setup done"))
 
-;; Advise lsp-mode's workspace/configuration handler to log what we actually
-;; send back to the server. This is the most critical path to observe.
-(defun ltex--log-configuration-section (section result)
-  "Log the workspace/configuration response for SECTION."
-  (when (and ltex-debug (stringp section) (string-prefix-p "ltex" section))
-    (message "[ltex] workspace/configuration response for %S => %S" section result))
-  result)
-
 (with-eval-after-load 'lsp-mode
-  (setq lsp-log-io nil)
-  ;; Language-ID overrides for modes lsp-mode doesn't map by default.
   (dolist (pair '((tex-mode        . "latex")
                   (plain-tex-mode  . "latex")
                   (git-commit-mode . "plaintext")))
     (add-to-list 'lsp-language-id-configuration pair))
-
-  ;; Intercept lsp-configuration-section to log what lsp-mode sends back
-  ;; when the server requests workspace/configuration.
-  (advice-add 'lsp-configuration-section :filter-return
-              (lambda (result)
-                ;; We don't have the section name here, so log unconditionally
-                ;; (lsp-mode doesn't pass it through to the return filter).
-                (when ltex-debug
-                  (message "[ltex] lsp-configuration-section result: %S" result))
-                result))
 
   (ltex--setup))
 
@@ -276,19 +225,13 @@ Deduplicates and persists immediately."
   "Start ltex-ls-plus in the current buffer."
   (ltex--log "ltex-enable: buffer=%S major-mode=%S file=%S"
              (buffer-name) major-mode (buffer-file-name))
-  (ltex--log "  language-id for this buffer: %S"
-             (if (fboundp 'lsp-buffer-language) (lsp-buffer-language) "<lsp not loaded yet>"))
-  ;; Suppress lsp-mode's project-root prompt for standalone files (ltex
-  ;; has no concept of a project root), and disable file watchers so
-  ;; lsp-mode never scans a large directory tree for a loose file in $HOME.
   (setq-local lsp-auto-guess-root t)
   (setq-local lsp-enable-file-watchers nil)
-  ;; Debounce: reduce overhead when using the external LanguageTool API.
-  (setq-local lsp-idle-delay 1.0)
+  ;; All features enabled; patched dispatcher in lsp-core prevents deadlocks.
   (setq-local lsp-completion-enable t)
+  (setq-local lsp-idle-delay 0.5)
   (setq-local lsp-ui-sideline-enable t)
   (setq-local lsp-modeline-code-actions-enable t)
-  (ltex--log "  calling lsp-deferred")
   (lsp-deferred))
 
 (dolist (hook '(markdown-mode-hook tex-mode-hook text-mode-hook
