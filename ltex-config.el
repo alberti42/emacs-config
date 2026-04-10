@@ -29,8 +29,10 @@ Comparable to the server's wallClockDuration field in getServerStatus.")
 (defun ltex--log-to-buffer (msg)
   "Append MSG with elapsed timestamp to `*ltex-ls-plus::client*'."
   (with-current-buffer (get-buffer-create "*ltex-ls-plus::client*")
-    (goto-char (point-max))
-    (insert (format "[%10.3f] %s\n" (ltex--elapsed) msg))))
+    (let ((inhibit-read-only t))
+      (goto-char (point-max))
+      (insert (format "[%10.3f] %s\n" (ltex--elapsed) msg))
+      (setq buffer-read-only t))))
 
 (defmacro ltex--log (fmt &rest args)
   "Log FMT with ARGS to `*ltex-ls-plus::client*' when `ltex-debug' is non-nil."
