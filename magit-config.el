@@ -36,12 +36,7 @@
             ;; prefix keys (like C-x) are handled — likely an interaction with
             ;; git-commit-mode's keymap overrides. The exact bug depends on
             ;; which-key's timer firing mid-sequence.
-            (setq-local which-key-inhibit t)
-            ;; text-mode-hook enables soft-wrap with custom fill-column
-            ;; Disable it here; git-commit-mode enforces its own 72-column
-            ;; hard-wrap convention via auto-fill-mode anyway.
-            (when (fboundp 'soft-wrap-mode)
-              (soft-wrap-mode -1))))
+            (setq-local which-key-inhibit t)))
 (add-hook 'git-rebase-mode-hook (lambda () (display-line-numbers-mode -1)))
 
 ;; Side-by-side diff viewer.
