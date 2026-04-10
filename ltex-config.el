@@ -201,7 +201,7 @@ Deduplicates and persists immediately."
     :new-connection (lsp-stdio-connection
                    (lambda ()
                      (list "sh" "-c"
-                           "/opt/homebrew/bin/stdbuf -i0 -o0 -e0 tee /tmp/ltex-stdin-emacs.log | ltex-ls-plus | /opt/homebrew/bin/stdbuf -i0 -o0 -e0 tee /tmp/ltex-stdout-emacs.log")))
+                           "tee /tmp/ltex-stdin-emacs.log | ltex-ls-plus | tee /tmp/ltex-stdout-emacs.log")))
     :major-modes '(markdown-mode gfm-mode
                    latex-mode tex-mode plain-tex-mode
                    text-mode org-mode rst-mode
@@ -243,6 +243,7 @@ Deduplicates and persists immediately."
   result)
 
 (with-eval-after-load 'lsp-mode
+  (setq lsp-log-io t) ; Ensure *lsp-log* is populated
   ;; Language-ID overrides for modes lsp-mode doesn't map by default.
   (dolist (pair '((tex-mode        . "latex")
                   (plain-tex-mode  . "latex")
