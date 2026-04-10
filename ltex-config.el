@@ -182,7 +182,7 @@ Deduplicates and persists immediately."
      ("ltex.languageToolHttpServerUri"   ltex-lt-server-uri)
      ("ltex.languageToolOrg.username"    ltex-lt-username)
      ("ltex.languageToolOrg.apiKey"      ltex-lt-api-key)
-     ("ltex.ltex-ls.languageToolOrgApiKey" ltex-lt-api-key)  ; deprecated but used by Sublime client
+     ("ltex.completionEnabled"           nil)
      ("ltex.ltex-ls.logLevel"            "fine")
      ("ltex.trace.server"                ltex-trace-server)
      ("ltex.java.initialHeapSize"        ltex-java-initial-heap)
@@ -191,7 +191,7 @@ Deduplicates and persists immediately."
   (ltex--log "registering lsp client ltex-ls-plus")
   (lsp-register-client
    (make-lsp-client
-    :new-connection (lsp-stdio-connection "ltex-ls-plus")
+    :new-connection (lsp-stdio-connection '("ltex-ls-plus"))
     :major-modes '(markdown-mode gfm-mode
                    latex-mode tex-mode plain-tex-mode
                    text-mode org-mode rst-mode
@@ -245,6 +245,9 @@ Deduplicates and persists immediately."
   ;; lsp-mode never scans a large directory tree for a loose file in $HOME.
   (setq-local lsp-auto-guess-root t)
   (setq-local lsp-enable-file-watchers nil)
+  ;; Debounce: reduce overhead when using the external LanguageTool API.
+  (setq-local lsp-idle-delay 1.0)
+  (setq-local lsp-modeline-code-actions-enable nil)
   (ltex--log "  calling lsp-deferred")
   (lsp-deferred))
 
