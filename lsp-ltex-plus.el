@@ -455,7 +455,8 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   ;; UI and behavior tweaks for a grammar checker.
   (setq-local lsp-idle-delay 0.5)
   (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
-  (setq-local lsp-ui-sideline-enable t)
+  (if (featurep 'lsp-ui)
+      (setq-local lsp-ui-sideline-enable t))
   (setq-local lsp-modeline-code-actions-enable t))
 
 ;;;###autoload
