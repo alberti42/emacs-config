@@ -31,6 +31,7 @@
 
 (require 'lsp-mode)
 (require 'seq)
+(require 'cl-lib)
 
 ;;;; ── Customization ───────────────────────────────────────────────────────────
 
@@ -287,36 +288,68 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   (expand-file-name "lsp-ltex-plus/stored-dictionary" user-emacs-directory)
   "Path to the persistent dictionary file (plist format).")
 
-(defun lsp-ltex-plus--load-words ()
-  "Load the persistent dictionary from `lsp-ltex-plus-dictionary-file'."
-  (lsp-ltex-plus--log "Loading dictionary: %s" lsp-ltex-plus-dictionary-file)
+(defvar lsp-ltex-plus-disabled-rules-file
+  (expand-file-name "lsp-ltex-plus/disabled-rules" user-emacs-directory)
+  "Path to the persistent disabled rules file (plist format).")
+
+(defvar lsp-ltex-plus-hidden-false-positives-file
+  (expand-file-name "lsp-ltex-plus/hidden-false-positives" user-emacs-directory)
+  "Path to the persistent hidden false positives file (plist format).")
+
+(defun lsp-ltex-plus--load-plist (file-path)
+  "Load a plist from FILE-PATH. Return nil if it doesn't exist or fails."
+  (lsp-ltex-plus--log "Loading plist from %s" file-path)
+  (if (not (file-exists-p file-path))
+      (progn (lsp-ltex-plus--log "File not found: %s" file-path) nil)
+    (condition-case err
+        (with-temp-buffer
+          (insert-file-contents file-path)
+          (read (current-buffer)))
+      (error
+       (message "[lsp-ltex-plus] Failed to read %s: %S" file-path err)
+       nil))))
+
+(defun lsp-ltex-plus--save-plist (plist file-path)
+  "Save PLIST to FILE-PATH."
+  (lsp-ltex-plus--log "Saving plist to %s" file-path)
+  (make-directory (file-name-directory file-path) t)
+  (with-temp-file file-path
+    (let ((print-length nil)
+          (print-level nil))
+      (prin1 plist (current-buffer)))))
+
+(defun lsp-ltex-plus--merge-plists (p1 p2)
+  "Merge plist P2 into P1 and return the result.
+Items in vectors are merged and deduplicated using `string=`."
+  (let ((res (copy-sequence p1)))
+    (cl-loop for (key val) on p2 by #'cddr do
+             (let* ((v1 (plist-get res key))
+                    (l1 (if (vectorp v1) (append v1 nil) nil))
+                    (l2 (if (vectorp val) (append val nil) nil))
+                    (merged (vconcat (seq-uniq (append l1 l2) #'string=))))
+               (setq res (plist-put res key merged))))
+    res))
+
+(defun lsp-ltex-plus--load-persistent-data ()
+  "Load and merge persistent data from disk into current variables."
   (setq lsp-ltex-plus--words
-        (if (not (file-exists-p lsp-ltex-plus-dictionary-file))
-            (progn (lsp-ltex-plus--log "No dictionary file found; starting fresh.") nil)
-          (condition-case err
-              (with-temp-buffer
-                (insert-file-contents lsp-ltex-plus-dictionary-file)
-                (read (current-buffer)))
-            (error
-             (message "[lsp-ltex-plus] Failed to read dictionary: %S" err)
-             nil)))))
+        (lsp-ltex-plus--merge-plists lsp-ltex-plus--words
+                                     (lsp-ltex-plus--load-plist lsp-ltex-plus-dictionary-file)))
+  (setq lsp-ltex-plus-disabled-rules
+        (lsp-ltex-plus--merge-plists lsp-ltex-plus-disabled-rules
+                                     (lsp-ltex-plus--load-plist lsp-ltex-plus-disabled-rules-file)))
+  (setq lsp-ltex-plus--hidden-false-positives
+        (lsp-ltex-plus--merge-plists lsp-ltex-plus--hidden-false-positives
+                                     (lsp-ltex-plus--load-plist lsp-ltex-plus-hidden-false-positives-file))))
 
-(defun lsp-ltex-plus--save-words ()
-  "Write the current in-memory words to `lsp-ltex-plus-dictionary-file'."
-  (lsp-ltex-plus--log "Saving dictionary to %s" lsp-ltex-plus-dictionary-file)
-  (make-directory (file-name-directory lsp-ltex-plus-dictionary-file) t)
-  (with-temp-file lsp-ltex-plus-dictionary-file
-    (prin1 lsp-ltex-plus--words (current-buffer))))
-
-(defun lsp-ltex-plus--add-words (lang words)
-  "Add a list of WORDS to the dictionary for LANG (e.g., \"en-US\")."
-  (lsp-ltex-plus--log "Adding words for %s: %S" lang words)
+(defun lsp-ltex-plus--add-to-plist (plist-sym file-path lang items)
+  "Add ITEMS for LANG to the plist stored in PLIST-SYM and save to FILE-PATH."
+  (lsp-ltex-plus--log "Adding items for %s to %s: %S" lang (symbol-name plist-sym) items)
   (let* ((key (intern (concat ":" lang)))
-         (current (let ((v (plist-get lsp-ltex-plus--words key)))
-                    (if (vectorp v) (append v nil) nil)))
-         (merged (vconcat (seq-uniq (append words current) #'string=))))
-    (setq lsp-ltex-plus--words (plist-put (copy-sequence lsp-ltex-plus--words) key merged)))
-  (lsp-ltex-plus--save-words))
+         (new-data (list key (vconcat items)))
+         (merged (lsp-ltex-plus--merge-plists (symbol-value plist-sym) new-data)))
+    (set plist-sym merged)
+    (lsp-ltex-plus--save-plist merged file-path)))
 
 (defun lsp-ltex-plus-list-words ()
   "Print the current dictionary content to the echo area."
@@ -334,20 +367,42 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
     (if (null words-by-lang)
         (message "[lsp-ltex-plus] addToDictionary: Malformed arguments %S" args)
       (maphash (lambda (lang words-arr)
-                 (lsp-ltex-plus--add-words lang (append words-arr nil)))
+                 (lsp-ltex-plus--add-to-plist 'lsp-ltex-plus--words
+                                              lsp-ltex-plus-dictionary-file
+                                              lang (append words-arr nil)))
                words-by-lang)))
-  ;; Notify server of config change so it re-fetches the dictionary.
+  ;; Notify server of config change so it re-fetches settings.
   (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
 
-(defun lsp-ltex-plus--action-disable-rules (_action)
-  "Process the _ltex.disableRules action (currently transient)."
-  (lsp-ltex-plus--log "Action: disableRules (not yet persistent)")
-  (message "[lsp-ltex-plus] Rule disabled for this session."))
+(defun lsp-ltex-plus--action-disable-rules (action)
+  "Process the _ltex.disableRules action."
+  (lsp-ltex-plus--log "Action: disableRules")
+  (let* ((args (gethash "arguments" action))
+         (arg0 (and (vectorp args) (aref args 0)))
+         (rules-by-lang (and arg0 (gethash "ruleIds" arg0))))
+    (if (null rules-by-lang)
+        (message "[lsp-ltex-plus] disableRules: Malformed arguments %S" args)
+      (maphash (lambda (lang rules-arr)
+                 (lsp-ltex-plus--add-to-plist 'lsp-ltex-plus-disabled-rules
+                                              lsp-ltex-plus-disabled-rules-file
+                                              lang (append rules-arr nil)))
+               rules-by-lang)))
+  (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
 
-(defun lsp-ltex-plus--action-hide-false-positives (_action)
-  "Process the _ltex.hideFalsePositives action (currently transient)."
-  (lsp-ltex-plus--log "Action: hideFalsePositives (not yet persistent)")
-  (message "[lsp-ltex-plus] False positive hidden for this session."))
+(defun lsp-ltex-plus--action-hide-false-positives (action)
+  "Process the _ltex.hideFalsePositives action."
+  (lsp-ltex-plus--log "Action: hideFalsePositives")
+  (let* ((args (gethash "arguments" action))
+         (arg0 (and (vectorp args) (aref args 0)))
+         (fps-by-lang (and arg0 (gethash "falsePositives" arg0))))
+    (if (null fps-by-lang)
+        (message "[lsp-ltex-plus] hideFalsePositives: Malformed arguments %S" args)
+      (maphash (lambda (lang fps-arr)
+                 (lsp-ltex-plus--add-to-plist 'lsp-ltex-plus--hidden-false-positives
+                                              lsp-ltex-plus-hidden-false-positives-file
+                                              lang (append fps-arr nil)))
+               fps-by-lang)))
+  (lsp-notify "workspace/didChangeConfiguration" '(:settings nil)))
 
 ;;;; ── LSP Registration ───────────────────────────────────────────────────────
 
@@ -356,7 +411,7 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   (setq lsp-ltex-plus--start-time (current-time))
   (lsp-ltex-plus--log "Initializing lsp-ltex-plus...")
 
-  (lsp-ltex-plus--load-words)
+  (lsp-ltex-plus--load-persistent-data)
 
   ;; Apply sticky debug defaults.
   (when lsp-ltex-plus-debug

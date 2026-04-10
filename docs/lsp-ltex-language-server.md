@@ -174,6 +174,8 @@ As documented above, this command does not work for in-memory buffers.
 | `ltex-lt-username` | `""` | LanguageTool.org account username |
 | `ltex-lt-api-key` | `""` | LanguageTool.org API key |
 | `ltex-dictionary-file` | `<user-emacs-directory>/lsp-ltex-plus/stored-dictionary` | Dictionary persistence file |
+| `ltex-disabled-rules-file` | `<user-emacs-directory>/lsp-ltex-plus/disabled-rules` | Disabled rules persistence file |
+| `ltex-hidden-false-positives-file` | `<user-emacs-directory>/lsp-ltex-plus/hidden-false-positives` | Hidden false positives persistence file |
 
 Credentials are read from environment variables `LANGUAGETOOL_USERNAME` and
 `LANGUAGETOOL_API_KEY` at startup (inside `ltex--setup`, which runs
@@ -181,33 +183,30 @@ Credentials are read from environment variables `LANGUAGETOOL_USERNAME` and
 
 ---
 
-## Dictionary Persistence
+## Persistence
 
-Words added via the "Add to dictionary" code action are stored in
-`ltex-dictionary-file`. The format is a plain Elisp plist:
+The following items added via code actions are stored in their respective files
+in a plain Elisp plist format:
+
+- **Dictionary**: `ltex-dictionary-file`
+- **Disabled Rules**: `ltex-disabled-rules-file`
+- **Hidden False Positives**: `ltex-hidden-false-positives-file`
+
+The format is:
 
 ```elisp
-(:en-US ["word1" "word2"] :de-DE ["Wort"])
+(:en-US ["item1" "item2"] :de-DE ["item3"])
 ```
 
-This format is intentionally compatible with the `lsp-ltex-plus` package's
-`stored-dictionary` file, making migration seamless.
+The dictionary format is intentionally compatible with the `lsp-ltex-plus`
+package's `stored-dictionary` file, making migration seamless.
 
-The file is read into `ltex--words` at setup time. Because `ltex--words` is
-registered with `lsp-register-custom-settings`, lsp-mode includes its current
-value in every `workspace/configuration` response. Adding a word updates
-`ltex--words` in memory and saves to disk, and the server sees the change on its
-next `workspace/configuration` request (triggered immediately via
+All persisted settings are read at setup time and updated in memory and on disk
+whenever a code action is executed. The server sees the changes immediately on
+its next `workspace/configuration` request (triggered via
 `workspace/didChangeConfiguration`).
 
 To inspect the current dictionary interactively: `M-x ltex-list-words`.
-
-### API-side dictionary
-
-The LanguageTool HTTP API also supports a server-side personal dictionary (via
-`POST /words/add`). ltex-ls-plus does not use this. Words added via
-`_ltex.addToDictionary` are stored locally (in `ltex-dictionary-file`) and sent
-to the server as part of `ltex.dictionary` in `workspace/configuration`.
 
 ---
 
@@ -256,9 +255,6 @@ For packaging on MELPA, the following changes will be needed:
   entry point rather than a bare `with-eval-after-load`.
 - Consider whether `ltex-enable` should be exposed as a proper minor mode so
   users can toggle it per-buffer.
-- Add `ltex--action-disable-rules` and `ltex--action-hide-false-positives`
-  persistence (currently these actions are executed but not saved across
-  sessions).
 - Write ERT tests covering dictionary load/save/add-words round-trips.
 
 ---
