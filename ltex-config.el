@@ -17,6 +17,12 @@
 (defvar ltex-debug t
   "When non-nil, emit verbose [ltex] messages to `*ltex-ls-plus::client*'.")
 
+(defvar ltex-server-input-log "/tmp/ltex-server-input.log"
+  "Log file for input received by the server (commands from Emacs).")
+
+(defvar ltex-server-output-log "/tmp/ltex-server-output.log"
+  "Log file for output produced by the server (responses to Emacs).")
+
 (defvar ltex--start-time nil
   "Time when ltex--setup ran; used as t=0 for log timestamps.
 Comparable to the server's wallClockDuration field in getServerStatus.")
@@ -189,7 +195,14 @@ Deduplicates and persists immediately."
   (ltex--log "registering lsp client ltex-ls-plus")
   (lsp-register-client
    (make-lsp-client
-    :new-connection (lsp-stdio-connection '("ltex-ls-plus"))
+    :new-connection (lsp-stdio-connection
+                     (lambda ()
+                       (if ltex-debug
+                           (list "sh" "-c"
+                                 (format "tee %s | ltex-ls-plus | tee %s"
+                                         (shell-quote-argument ltex-server-input-log)
+                                         (shell-quote-argument ltex-server-output-log)))
+                         '("ltex-ls-plus"))))
     :major-modes '(markdown-mode gfm-mode
                                  latex-mode tex-mode plain-tex-mode
                                  text-mode org-mode rst-mode
