@@ -288,6 +288,10 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
   (expand-file-name "lsp-ltex-plus/stored-dictionary" user-emacs-directory)
   "Path to the external dictionary file (plist format).")
 
+(defvar lsp-ltex-plus-enabled-rules-file
+  (expand-file-name "lsp-ltex-plus/enabled-rules" user-emacs-directory)
+  "Path to the external enabled rules file (plist format).")
+
 (defvar lsp-ltex-plus-disabled-rules-file
   (expand-file-name "lsp-ltex-plus/disabled-rules" user-emacs-directory)
   "Path to the external disabled rules file (plist format).")
@@ -335,6 +339,9 @@ Items in vectors are merged and deduplicated using `string=`."
   (setq lsp-ltex-plus--dictionary
         (lsp-ltex-plus--merge-plists lsp-ltex-plus--dictionary
                                      (lsp-ltex-plus--load-plist lsp-ltex-plus-dictionary-file)))
+  (setq lsp-ltex-plus-enabled-rules
+        (lsp-ltex-plus--merge-plists lsp-ltex-plus-enabled-rules
+                                     (lsp-ltex-plus--load-plist lsp-ltex-plus-enabled-rules-file)))
   (setq lsp-ltex-plus-disabled-rules
         (lsp-ltex-plus--merge-plists lsp-ltex-plus-disabled-rules
                                      (lsp-ltex-plus--load-plist lsp-ltex-plus-disabled-rules-file)))

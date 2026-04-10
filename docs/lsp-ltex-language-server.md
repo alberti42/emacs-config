@@ -174,6 +174,7 @@ As documented above, this command does not work for in-memory buffers.
 | `ltex-lt-username` | `""` | LanguageTool.org account username |
 | `ltex-lt-api-key` | `""` | LanguageTool.org API key |
 | `ltex-dictionary-file` | `<user-emacs-directory>/lsp-ltex-plus/stored-dictionary` | External dictionary persistence file |
+| `ltex-enabled-rules-file` | `<user-emacs-directory>/lsp-ltex-plus/enabled-rules` | External enabled rules persistence file |
 | `ltex-disabled-rules-file` | `<user-emacs-directory>/lsp-ltex-plus/disabled-rules` | External disabled rules persistence file |
 | `ltex-hidden-false-positives-file` | `<user-emacs-directory>/lsp-ltex-plus/hidden-false-positives` | External hidden false positives persistence file |
 
@@ -190,6 +191,7 @@ in a plain Elisp plist format. In LTeX+ terminology, these are **External
 Settings**.
 
 - **Dictionary**: `ltex-dictionary-file`
+- **Enabled Rules**: `ltex-enabled-rules-file`
 - **Disabled Rules**: `ltex-disabled-rules-file`
 - **Hidden False Positives**: `ltex-hidden-false-positives-file`
 
