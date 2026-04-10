@@ -261,6 +261,9 @@ For packaging on MELPA, the following changes will be needed:
   entry point rather than a bare `with-eval-after-load`.
 - Consider whether `ltex-enable` should be exposed as a proper minor mode so
   users can toggle it per-buffer.
+- Expand the merge strategy to support hierarchical scopes (User, Workspace,
+  Folder) as described in the LTeX+ documentation, moving beyond the current
+  simplified Global Code + Global External Settings model.
 - Write ERT tests covering dictionary load/save/add-words round-trips.
 
 ---
