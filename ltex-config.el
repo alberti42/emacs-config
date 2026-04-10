@@ -110,11 +110,11 @@ Deduplicates and persists immediately."
 (defvar ltex-check-frequency "edit"
   "When to check: \"edit\", \"save\", or \"manual\".")
 (defvar ltex-diagnostic-severity "warning")
+(defvar ltex-sentence-cache-size 2000)
 (defvar ltex-java-initial-heap 64)
 (defvar ltex-java-max-heap 512)
 ;; ltex-ls-plus appends /v2/check to this URI, so omit the /v2 suffix.
-;; A trailing slash is recommended.
-(defvar ltex-lt-server-uri "https://api.languagetoolplus.com/")
+(defvar ltex-lt-server-uri "https://api.languagetoolplus.com")
 (defvar ltex-lt-username "")
 (defvar ltex-lt-api-key "")
 (defvar ltex--disabled-rules nil)
@@ -176,17 +176,24 @@ Deduplicates and persists immediately."
      ("ltex.enabled"                     ltex-enabled)
      ("ltex.checkFrequency"              ltex-check-frequency)
      ("ltex.diagnosticSeverity"          ltex-diagnostic-severity)
+     ("ltex.sentenceCacheSize"           ltex-sentence-cache-size)
      ("ltex.dictionary"                  ltex--words)
      ("ltex.disabledRules"               ltex--disabled-rules)
      ("ltex.hiddenFalsePositives"        ltex--hidden-false-positives)
      ("ltex.languageToolHttpServerUri"   ltex-lt-server-uri)
      ("ltex.languageToolOrg.username"    ltex-lt-username)
-     ("ltex.languageToolOrg.apiKey"      ltex-lt-api-key)
+     ("ltex.ltex-ls.languageToolOrgApiKey" ltex-lt-api-key)
      ("ltex.completionEnabled"           nil)
      ("ltex.ltex-ls.logLevel"            "fine")
      ("ltex.trace.server"                ltex-trace-server)
      ("ltex.java.initialHeapSize"        ltex-java-initial-heap)
-     ("ltex.java.maximumHeapSize"        ltex-java-max-heap)))
+     ("ltex.java.maximumHeapSize"        ltex-java-max-heap)
+     ;; Missing fields to satisfy server requests
+     ("ltex.additionalRules.languageModel" "")
+     ("ltex.additionalRules.motherTongue"  "")
+     ("ltex.additionalRules.neuralNetworkModel" "")
+     ("ltex.additionalRules.word2VecModel" "")
+     ("ltex.clearDiagnosticsWhenClosingFile" t)))
 
   (ltex--log "registering lsp client ltex-ls-plus")
   (lsp-register-client
@@ -200,8 +207,27 @@ Deduplicates and persists immediately."
                    text-mode org-mode rst-mode
                    git-commit-mode)
     :server-id 'ltex-ls-plus
-    :priority -1  ; add-on: run alongside other servers (e.g. texlab)
+    :priority -1
     :add-on? t
+    :initialized-fn (lambda (_workspace)
+                      (ltex--log "initialized: pushing configuration")
+                      (lsp-notify "workspace/didChangeConfiguration"
+                                  `(:settings (:ltex (:language ,ltex-language
+                                                      :enabled ,ltex-enabled
+                                                      :checkFrequency ,ltex-check-frequency
+                                                      :languageToolHttpServerUri ,ltex-lt-server-uri
+                                                      :languageToolOrg (:username ,ltex-lt-username)
+                                                      :ltex-ls (:languageToolOrgApiKey ,ltex-lt-api-key
+                                                                :logLevel "fine"))))))
+    :request-handlers
+    (let ((ht (make-hash-table :test 'equal)))
+      (puthash "workspace/configuration"
+               (lambda (workspace params)
+                 (ltex--log "workspace/configuration: custom handler called")
+                 (with-lsp-workspace workspace
+                   (lsp--build-workspace-configuration-response params)))
+               ht)
+      ht)
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'ltex--action-add-to-dictionary)
              ("_ltex.disableRules"       #'ltex--action-disable-rules)
@@ -250,6 +276,8 @@ Deduplicates and persists immediately."
   (setq-local lsp-enable-file-watchers nil)
   ;; Debounce: reduce overhead when using the external LanguageTool API.
   (setq-local lsp-idle-delay 1.0)
+  (setq-local lsp-completion-enable nil)
+  (setq-local lsp-ui-sideline-enable nil)
   (setq-local lsp-modeline-code-actions-enable nil)
   (ltex--log "  calling lsp-deferred")
   (lsp-deferred))
