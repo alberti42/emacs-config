@@ -6,12 +6,12 @@
 [ltex-ls-plus](https://github.com/ltex-plus/ltex-ls-plus), the LanguageTool-based
 grammar and spell checker for Markdown, LaTeX, Org, plain text, and
 reStructuredText. It replaces the
-[lsp-ltex-plus](https://github.com/emacs-languagetool/lsp-ltex-plus) package with
+[lsp-ltex](https://github.com/emacs-languagetool/lsp-ltex) package with
 a much smaller, more transparent implementation.
 
-### Why not lsp-ltex-plus?
+### Why not lsp-ltex?
 
-The `lsp-ltex-plus` package has several problems discovered during debugging:
+The `lsp-ltex` package has several problems discovered during debugging:
 
 - It calls `_ltex.checkDocument` to trigger diagnostic checks. This command reads
   the file **from disk**, not from the LSP in-memory buffer. It silently fails

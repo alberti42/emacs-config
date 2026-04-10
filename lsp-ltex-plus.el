@@ -7,10 +7,10 @@
 ;;
 ;; ── DESIGN PRINCIPLES ────────────────────────────────────────────────────────
 ;;
-;; 1. Standard Protocol Compliance: Unlike lsp-ltex-plus, this client relies on
-;;    standard textDocument/didOpen and didChange notifications. It avoids
-;;    _ltex.checkDocument, which incorrectly reads from disk rather than the
-;;    in-memory buffer.
+;; 1. Standard Protocol Compliance: Unlike the lsp-ltex package, this client
+;;    relies on standard textDocument/didOpen and didChange notifications.
+;;    It avoids _ltex.checkDocument, which incorrectly reads from disk rather
+;;    than the in-memory buffer.
 ;;
 ;; 2. Kind-First Routing: Built-in lsp-mode can deadlock when server-initiated
 ;;    requests (like workspace/configuration) collide with client requests.
