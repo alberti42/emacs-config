@@ -359,33 +359,33 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 
   (lsp-ltex-plus--log "Registering settings and client...")
   (lsp-register-custom-settings
-   '(("ltex.enabled"                        lsp-ltex-plus-enabled)
-     ("ltex.language"                       lsp-ltex-plus-language)
-     ("ltex.dictionary"                     lsp-ltex-plus--words)
-     ("ltex.enabledRules"                   lsp-ltex-plus-enabled-rules)
-     ("ltex.disabledRules"                  lsp-ltex-plus-disabled-rules)
-     ("ltex.hiddenFalsePositives"           lsp-ltex-plus--hidden-false-positives)
-     ("ltex.bibtex.fields"                  lsp-ltex-plus-bibtex-fields)
-     ("ltex.latex.commands"                 lsp-ltex-plus-latex-commands)
-     ("ltex.latex.environments"             lsp-ltex-plus-latex-environments)
-     ("ltex.markdown.nodes"                 lsp-ltex-plus-markdown-nodes)
-     ("ltex.additionalRules.enablePickyRules" lsp-ltex-plus-additional-rules-enable-picky-rules)
-     ("ltex.additionalRules.motherTongue"   lsp-ltex-plus-additional-rules-mother-tongue)
-     ("ltex.additionalRules.languageModel"  lsp-ltex-plus-additional-rules-language-model)
-     ("ltex.languageToolHttpServerUri"      lsp-ltex-plus-lt-server-uri)
-     ("ltex.languageToolOrg.username"       lsp-ltex-plus-lt-username)
-     ("ltex.ltex-ls.languageToolOrgApiKey"  lsp-ltex-plus-lt-api-key)
-     ("ltex.ltex-ls.path"                   lsp-ltex-plus-ltex-ls-path)
-     ("ltex.ltex-ls.logLevel"               lsp-ltex-plus-ltex-ls-log-level)
-     ("ltex.java.path"                      lsp-ltex-plus-java-path)
-     ("ltex.java.initialHeapSize"           lsp-ltex-plus-java-initial-heap)
-     ("ltex.java.maximumHeapSize"           lsp-ltex-plus-java-max-heap)
-     ("ltex.sentenceCacheSize"              lsp-ltex-plus-sentence-cache-size)
-     ("ltex.completionEnabled"              lsp-ltex-plus-completion-enabled)
-     ("ltex.diagnosticSeverity"             lsp-ltex-plus-diagnostic-severity)
-     ("ltex.checkFrequency"                 lsp-ltex-plus-check-frequency)
-     ("ltex.clearDiagnosticsWhenClosingFile" lsp-ltex-plus-clear-diagnostics-when-closing-file)
-     ("ltex.trace.server"                   lsp-ltex-plus-trace-server)))
+   '(("ltex.enabled"                             lsp-ltex-plus-enabled)
+     ("ltex.language"                            lsp-ltex-plus-language)
+     ("ltex.dictionary"                          lsp-ltex-plus--words)
+     ("ltex.enabledRules"                        lsp-ltex-plus-enabled-rules)
+     ("ltex.disabledRules"                       lsp-ltex-plus-disabled-rules)
+     ("ltex.hiddenFalsePositives"                lsp-ltex-plus--hidden-false-positives)
+     ("ltex.bibtex.fields"                       lsp-ltex-plus-bibtex-fields)
+     ("ltex.latex.commands"                      lsp-ltex-plus-latex-commands)
+     ("ltex.latex.environments"                  lsp-ltex-plus-latex-environments)
+     ("ltex.markdown.nodes"                      lsp-ltex-plus-markdown-nodes)
+     ("ltex.additionalRules.enablePickyRules"    lsp-ltex-plus-additional-rules-enable-picky-rules)
+     ("ltex.additionalRules.motherTongue"        lsp-ltex-plus-additional-rules-mother-tongue)
+     ("ltex.additionalRules.languageModel"       lsp-ltex-plus-additional-rules-language-model)
+     ("ltex.languageToolHttpServerUri"           lsp-ltex-plus-lt-server-uri)
+     ("ltex.languageToolOrg.username"            lsp-ltex-plus-lt-username)
+     ("ltex.ltex-ls.languageToolOrgApiKey"       lsp-ltex-plus-lt-api-key)
+     ("ltex.ltex-ls.path"                        lsp-ltex-plus-ltex-ls-path)
+     ("ltex.ltex-ls.logLevel"                    lsp-ltex-plus-ltex-ls-log-level)
+     ("ltex.java.path"                           lsp-ltex-plus-java-path)
+     ("ltex.java.initialHeapSize"                lsp-ltex-plus-java-initial-heap)
+     ("ltex.java.maximumHeapSize"                lsp-ltex-plus-java-max-heap)
+     ("ltex.sentenceCacheSize"                   lsp-ltex-plus-sentence-cache-size)
+     ("ltex.completionEnabled"                   lsp-ltex-plus-completion-enabled)
+     ("ltex.diagnosticSeverity"                  lsp-ltex-plus-diagnostic-severity)
+     ("ltex.checkFrequency"                      lsp-ltex-plus-check-frequency)
+     ("ltex.clearDiagnosticsWhenClosingFile"     lsp-ltex-plus-clear-diagnostics-when-closing-file)
+     ("ltex.trace.server"                        lsp-ltex-plus-trace-server)))
 
   (lsp-register-client
    (make-lsp-client
@@ -406,31 +406,31 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
                       (lsp-ltex-plus--log "Server initialized; pushing configuration...")
                       (lsp-notify "workspace/didChangeConfiguration"
                                   `(:settings (:ltex (:enabled ,lsp-ltex-plus-enabled
-                                                      :language ,lsp-ltex-plus-language
-                                                      :enabledRules ,lsp-ltex-plus-enabled-rules
-                                                      :disabledRules ,lsp-ltex-plus-disabled-rules
-                                                      :hiddenFalsePositives ,lsp-ltex-plus--hidden-false-positives
-                                                      :bibtex (:fields ,lsp-ltex-plus-bibtex-fields)
-                                                      :latex (:commands ,lsp-ltex-plus-latex-commands
-                                                              :environments ,lsp-ltex-plus-latex-environments)
-                                                      :markdown (:nodes ,lsp-ltex-plus-markdown-nodes)
-                                                      :additionalRules (:enablePickyRules ,lsp-ltex-plus-additional-rules-enable-picky-rules
-                                                                        :motherTongue ,lsp-ltex-plus-additional-rules-mother-tongue
-                                                                        :languageModel ,lsp-ltex-plus-additional-rules-language-model)
-                                                      :languageToolHttpServerUri ,lsp-ltex-plus-lt-server-uri
-                                                      :languageToolOrg (:username ,lsp-ltex-plus-lt-username)
-                                                      :ltex-ls (:languageToolOrgApiKey ,lsp-ltex-plus-lt-api-key
-                                                                :path ,lsp-ltex-plus-ltex-ls-path
-                                                                :logLevel ,lsp-ltex-plus-ltex-ls-log-level)
-                                                      :java (:path ,lsp-ltex-plus-java-path
-                                                             :initialHeapSize ,lsp-ltex-plus-java-initial-heap
-                                                             :maximumHeapSize ,lsp-ltex-plus-java-max-heap)
-                                                      :sentenceCacheSize ,lsp-ltex-plus-sentence-cache-size
-                                                      :completionEnabled ,lsp-ltex-plus-completion-enabled
-                                                      :diagnosticSeverity ,lsp-ltex-plus-diagnostic-severity
-                                                      :checkFrequency ,lsp-ltex-plus-check-frequency
-                                                      :clearDiagnosticsWhenClosingFile ,lsp-ltex-plus-clear-diagnostics-when-closing-file
-                                                      :trace (:server ,lsp-ltex-plus-trace-server))))))
+                                                               :language ,lsp-ltex-plus-language
+                                                               :enabledRules ,lsp-ltex-plus-enabled-rules
+                                                               :disabledRules ,lsp-ltex-plus-disabled-rules
+                                                               :hiddenFalsePositives ,lsp-ltex-plus--hidden-false-positives
+                                                               :bibtex (:fields ,lsp-ltex-plus-bibtex-fields)
+                                                               :latex (:commands ,lsp-ltex-plus-latex-commands
+                                                                                 :environments ,lsp-ltex-plus-latex-environments)
+                                                               :markdown (:nodes ,lsp-ltex-plus-markdown-nodes)
+                                                               :additionalRules (:enablePickyRules ,lsp-ltex-plus-additional-rules-enable-picky-rules
+                                                                                                   :motherTongue ,lsp-ltex-plus-additional-rules-mother-tongue
+                                                                                                   :languageModel ,lsp-ltex-plus-additional-rules-language-model)
+                                                               :languageToolHttpServerUri ,lsp-ltex-plus-lt-server-uri
+                                                               :languageToolOrg (:username ,lsp-ltex-plus-lt-username)
+                                                               :ltex-ls (:languageToolOrgApiKey ,lsp-ltex-plus-lt-api-key
+                                                                                                :path ,lsp-ltex-plus-ltex-ls-path
+                                                                                                :logLevel ,lsp-ltex-plus-ltex-ls-log-level)
+                                                               :java (:path ,lsp-ltex-plus-java-path
+                                                                            :initialHeapSize ,lsp-ltex-plus-java-initial-heap
+                                                                            :maximumHeapSize ,lsp-ltex-plus-java-max-heap)
+                                                               :sentenceCacheSize ,lsp-ltex-plus-sentence-cache-size
+                                                               :completionEnabled ,lsp-ltex-plus-completion-enabled
+                                                               :diagnosticSeverity ,lsp-ltex-plus-diagnostic-severity
+                                                               :checkFrequency ,lsp-ltex-plus-check-frequency
+                                                               :clearDiagnosticsWhenClosingFile ,lsp-ltex-plus-clear-diagnostics-when-closing-file
+                                                               :trace (:server ,lsp-ltex-plus-trace-server))))))
     :action-handlers
     (lsp-ht ("_ltex.addToDictionary"     #'lsp-ltex-plus--action-add-to-dictionary)
             ("_ltex.disableRules"       #'lsp-ltex-plus--action-disable-rules)
