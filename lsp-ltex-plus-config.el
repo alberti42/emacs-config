@@ -8,8 +8,8 @@
 ;;; Code:
 
 (use-package lsp-ltex-plus
-  :straight (:type git
-             :local-repo emacs-config-dir
+  :straight `(:type git
+             :local-repo ,emacs-config-dir
              :files ("lsp-ltex-plus.el"))
   :config
   ;;;; ── Credentials ────────────────────────────────────────────────────────────
