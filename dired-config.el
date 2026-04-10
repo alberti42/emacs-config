@@ -21,5 +21,27 @@
   :bind (:map dired-mode-map
          ("/" . dired-narrow)))
 
+;; Custom macOS 'Open With' functionality.
+(when (eq system-type 'darwin)
+  (defun dired-macos-open-with ()
+    "Prompt to open the file at point with the system default or reveal it in Finder."
+    (interactive)
+    (unless (eq system-type 'darwin)
+      (user-error "This command is only available on macOS"))
+    (let* ((file (dired-get-file-for-visit))
+           (options '("Open" "Reveal in Finder"))
+           ;; Disable sorting to preserve the defined order
+           (selected (let ((completion-extra-properties '(:display-sort-function identity)))
+                       (completing-read "Action: " options nil t))))
+      (cond
+       ((string-equal selected "Open")
+        (start-process "dired-macos-open" nil "open" file))
+       ((string-equal selected "Reveal in Finder")
+        (start-process "dired-macos-reveal" nil "open" "-R" file)))
+      (message "Applied '%s' to %s" selected (file-name-nondirectory file))))
+
+(with-eval-after-load 'dired
+    (define-key dired-mode-map (kbd "O") #'dired-macos-open-with)))
+
 (provide 'dired-config)
 ;;; dired-config.el ends here
