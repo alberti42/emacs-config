@@ -258,8 +258,8 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 (defvar lsp-ltex-plus--start-time nil
   "Timestamp of when `lsp-ltex-plus--setup' was executed.")
 
-(defvar lsp-ltex-plus--words nil
-  "In-memory plist of additional words that should not be spelling errors.")
+(defvar lsp-ltex-plus--dictionary nil
+  "In-memory plist of additional dictionary words.")
 
 (defvar lsp-ltex-plus--hidden-false-positives nil
   "List of false-positive diagnostics to hide.")
@@ -286,15 +286,15 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 
 (defvar lsp-ltex-plus-dictionary-file
   (expand-file-name "lsp-ltex-plus/stored-dictionary" user-emacs-directory)
-  "Path to the persistent dictionary file (plist format).")
+  "Path to the external dictionary file (plist format).")
 
 (defvar lsp-ltex-plus-disabled-rules-file
   (expand-file-name "lsp-ltex-plus/disabled-rules" user-emacs-directory)
-  "Path to the persistent disabled rules file (plist format).")
+  "Path to the external disabled rules file (plist format).")
 
 (defvar lsp-ltex-plus-hidden-false-positives-file
   (expand-file-name "lsp-ltex-plus/hidden-false-positives" user-emacs-directory)
-  "Path to the persistent hidden false positives file (plist format).")
+  "Path to the external hidden false positives file (plist format).")
 
 (defun lsp-ltex-plus--load-plist (file-path)
   "Load a plist from FILE-PATH. Return nil if it doesn't exist or fails."
@@ -330,10 +330,10 @@ Items in vectors are merged and deduplicated using `string=`."
                (setq res (plist-put res key merged))))
     res))
 
-(defun lsp-ltex-plus--load-persistent-data ()
-  "Load and merge persistent data from disk into current variables."
-  (setq lsp-ltex-plus--words
-        (lsp-ltex-plus--merge-plists lsp-ltex-plus--words
+(defun lsp-ltex-plus--load-external-settings ()
+  "Load and merge external settings from disk into current variables."
+  (setq lsp-ltex-plus--dictionary
+        (lsp-ltex-plus--merge-plists lsp-ltex-plus--dictionary
                                      (lsp-ltex-plus--load-plist lsp-ltex-plus-dictionary-file)))
   (setq lsp-ltex-plus-disabled-rules
         (lsp-ltex-plus--merge-plists lsp-ltex-plus-disabled-rules
@@ -351,10 +351,10 @@ Items in vectors are merged and deduplicated using `string=`."
     (set plist-sym merged)
     (lsp-ltex-plus--save-plist merged file-path)))
 
-(defun lsp-ltex-plus-list-words ()
-  "Print the current dictionary content to the echo area."
+(defun lsp-ltex-plus-list-dictionary ()
+  "Print the current external dictionary content to the echo area."
   (interactive)
-  (message "[lsp-ltex-plus] Current Dictionary: %S" lsp-ltex-plus--words))
+  (message "[lsp-ltex-plus] External Dictionary: %S" lsp-ltex-plus--dictionary))
 
 ;;;; ── Action Handlers ────────────────────────────────────────────────────────
 
@@ -367,7 +367,7 @@ Items in vectors are merged and deduplicated using `string=`."
     (if (null words-by-lang)
         (message "[lsp-ltex-plus] addToDictionary: Malformed arguments %S" args)
       (maphash (lambda (lang words-arr)
-                 (lsp-ltex-plus--add-to-plist 'lsp-ltex-plus--words
+                 (lsp-ltex-plus--add-to-plist 'lsp-ltex-plus--dictionary
                                               lsp-ltex-plus-dictionary-file
                                               lang (append words-arr nil)))
                words-by-lang)))
@@ -411,7 +411,7 @@ Items in vectors are merged and deduplicated using `string=`."
   (setq lsp-ltex-plus--start-time (current-time))
   (lsp-ltex-plus--log "Initializing lsp-ltex-plus...")
 
-  (lsp-ltex-plus--load-persistent-data)
+  (lsp-ltex-plus--load-external-settings)
 
   ;; Apply sticky debug defaults.
   (when lsp-ltex-plus-debug
@@ -423,7 +423,7 @@ Items in vectors are merged and deduplicated using `string=`."
   (lsp-register-custom-settings
    '(("ltex.enabled"                             lsp-ltex-plus-enabled)
      ("ltex.language"                            lsp-ltex-plus-language)
-     ("ltex.dictionary"                          lsp-ltex-plus--words)
+     ("ltex.dictionary"                          lsp-ltex-plus--dictionary)
      ("ltex.enabledRules"                        lsp-ltex-plus-enabled-rules)
      ("ltex.disabledRules"                       lsp-ltex-plus-disabled-rules)
      ("ltex.hiddenFalsePositives"                lsp-ltex-plus--hidden-false-positives)

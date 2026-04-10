@@ -173,9 +173,9 @@ As documented above, this command does not work for in-memory buffers.
 | `ltex-lt-server-uri` | `"https://api.languagetoolplus.com"` | LanguageTool HTTP server base URI (no `/v2`) |
 | `ltex-lt-username` | `""` | LanguageTool.org account username |
 | `ltex-lt-api-key` | `""` | LanguageTool.org API key |
-| `ltex-dictionary-file` | `<user-emacs-directory>/lsp-ltex-plus/stored-dictionary` | Dictionary persistence file |
-| `ltex-disabled-rules-file` | `<user-emacs-directory>/lsp-ltex-plus/disabled-rules` | Disabled rules persistence file |
-| `ltex-hidden-false-positives-file` | `<user-emacs-directory>/lsp-ltex-plus/hidden-false-positives` | Hidden false positives persistence file |
+| `ltex-dictionary-file` | `<user-emacs-directory>/lsp-ltex-plus/stored-dictionary` | External dictionary persistence file |
+| `ltex-disabled-rules-file` | `<user-emacs-directory>/lsp-ltex-plus/disabled-rules` | External disabled rules persistence file |
+| `ltex-hidden-false-positives-file` | `<user-emacs-directory>/lsp-ltex-plus/hidden-false-positives` | External hidden false positives persistence file |
 
 Credentials are read from environment variables `LANGUAGETOOL_USERNAME` and
 `LANGUAGETOOL_API_KEY` at startup (inside `ltex--setup`, which runs
@@ -183,10 +183,11 @@ Credentials are read from environment variables `LANGUAGETOOL_USERNAME` and
 
 ---
 
-## Persistence
+## Persistence (External Settings)
 
 The following items added via code actions are stored in their respective files
-in a plain Elisp plist format:
+in a plain Elisp plist format. In LTeX+ terminology, these are **External
+Settings**.
 
 - **Dictionary**: `ltex-dictionary-file`
 - **Disabled Rules**: `ltex-disabled-rules-file`
@@ -201,12 +202,15 @@ The format is:
 The dictionary format is intentionally compatible with the `lsp-ltex-plus`
 package's `stored-dictionary` file, making migration seamless.
 
-All persisted settings are read at setup time and updated in memory and on disk
-whenever a code action is executed. The server sees the changes immediately on
-its next `workspace/configuration` request (triggered via
-`workspace/didChangeConfiguration`).
+All **External Settings** are read at setup time via
+`lsp-ltex-plus--load-external-settings`. This function merges the file content
+with any settings already defined in your `init.el`, ensuring that your
+declarative configuration is not overwritten by interactive choices.
 
-To inspect the current dictionary interactively: `M-x ltex-list-words`.
+The server sees the changes immediately on its next `workspace/configuration`
+request (triggered via `workspace/didChangeConfiguration`).
+
+To inspect the current dictionary interactively: `M-x lsp-ltex-plus-list-dictionary`.
 
 ---
 
