@@ -7,22 +7,25 @@
 
 ;;; Code:
 
-(require 'lsp-ltex-plus)
+(use-package lsp-ltex-plus
+  :straight (:type git
+             :local-repo emacs-config-dir
+             :files ("lsp-ltex-plus.el"))
+  :config
+  ;;;; ── Credentials ────────────────────────────────────────────────────────────
 
-;;;; ── Credentials ────────────────────────────────────────────────────────────
+  ;; Use credentials from the environment if they are not already set.
+  (let ((user (getenv "LANGUAGETOOL_USERNAME"))
+        (key  (getenv "LANGUAGETOOL_API_KEY")))
+    (when (and user (string-empty-p lsp-ltex-plus-lt-username))
+      (setq lsp-ltex-plus-lt-username user))
+    (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
+      (setq lsp-ltex-plus-lt-api-key key)))
 
-;; Use credentials from the environment if they are not already set.
-(let ((user (getenv "LANGUAGETOOL_USERNAME"))
-      (key  (getenv "LANGUAGETOOL_API_KEY")))
-  (when (and user (string-empty-p lsp-ltex-plus-lt-username))
-    (setq lsp-ltex-plus-lt-username user))
-  (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
-    (setq lsp-ltex-plus-lt-api-key key)))
+  ;;;; ── Setup ──────────────────────────────────────────────────────────────────
 
-;;;; ── Setup ──────────────────────────────────────────────────────────────────
-
-;; Activate LTEX+ for the configured major modes.
-(lsp-ltex-plus-setup-hooks)
+  ;; Activate LTEX+ for the configured major modes.
+  (lsp-ltex-plus-setup-hooks))
 
 (provide 'lsp-ltex-plus-config)
 ;;; lsp-ltex-plus-config.el ends here
