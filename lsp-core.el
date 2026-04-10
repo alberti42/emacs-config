@@ -41,20 +41,40 @@
     "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
 This prevents server-initiated requests from being misrouted as responses
 to client requests when IDs collide."
+    ;; Silently catch and log any errors during message processing. This prevents
+    ;; a single malformed message from crashing the entire LSP client.
     (with-demoted-errors "Error processing message %S."
       (with-lsp-workspace workspace
+        ;; Bind local variables for the current message.
         (-let* ((client (lsp--workspace-client workspace))
+                ;; 1. DETERMINE MESSAGE TYPE (The "Kind-First" Logic)
+                ;; This is the core of the patch. It checks for a 'method' field
+                ;; first to identify server-initiated messages before checking
+                ;; for an 'id' to identify responses.
                 (message-type (cond
+                               ;; A) If a 'method' field exists, it's from the server.
                                ((lsp:json-message-method? json-data)
+                                ;; If it also has an 'id', it's a REQUEST that expects a response.
+                                ;; Otherwise, it's a NOTIFICATION.
                                 (if (lsp:json-message-id? json-data) 'request 'notification))
+                               ;; B) If no 'method' but an 'id' exists, it's a response from the server
+                               ;;    to a request previously sent by the client (Emacs).
                                ((lsp:json-message-id? json-data)
+                                ;; If it has an 'error' field, it's an error response.
                                 (if (lsp:json-message-error? json-data) 'response-error 'response))
+                               ;; C) Default to 'notification' if none of the above match.
                                (t 'notification)))
-                (id (--when-let (if (eq message-type 'request)
-                                    (lsp:json-message-id json-data)
-                                  (lsp:json-response-id json-data))
+                (id (--when-let (gethash "id" json-data)
+                      ;; The ID from the server is often a string, so we convert it to a number
+                      ;; to match the numeric IDs Emacs tracks for its own requests.
                       (if (stringp it) (string-to-number it) it)))
-                (data (lsp:json-response-result json-data)))
+                ;; 3. EXTRACT MESSAGE DATA
+                ;; This extracts the primary payload ('result') of a response message.
+                ;; For requests, this will be nil, as they have 'params' instead.
+                (data (gethash "result" json-data)))
+          ;; 4. DISPATCH BASED ON MESSAGE TYPE
+          ;; Finally, call the appropriate lsp-mode handler based on the
+          ;; message type determined in step 1.
           (pcase message-type
             ('response
              (cl-assert id)
