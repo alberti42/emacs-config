@@ -437,6 +437,43 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
             ("_ltex.hideFalsePositives" #'lsp-ltex-plus--action-hide-false-positives))))
   (lsp-ltex-plus--log "lsp-ltex-plus--setup completed."))
 
+;;;; ── Activation ─────────────────────────────────────────────────────────────
+
+;;;###autoload
+(define-minor-mode lsp-ltex-plus-mode
+  "Minor mode for LTEX+ grammar checking via lsp-mode.
+
+When enabled, this mode configures the buffer for ltex-ls-plus and
+calls `lsp-deferred` to start the server.  It sets several buffer-local
+LSP variables to ensure optimal performance for a grammar checker."
+  :lighter " LTeX+"
+  :group 'lsp-ltex-plus
+  (if lsp-ltex-plus-mode
+      (if (not (executable-find lsp-ltex-plus-ls-plus-executable))
+          (progn
+            (message "[lsp-ltex-plus] Aborting: %s not found on PATH." lsp-ltex-plus-ls-plus-executable)
+            (setq lsp-ltex-plus-mode nil))
+        (lsp-ltex-plus--log "Enabling LTEX+ in %s" (buffer-name))
+        ;; ltex-ls-plus is not root-aware; auto-guessing avoids prompts for standalone files.
+        (setq-local lsp-auto-guess-root t)
+        ;; Watching is unnecessary and potentially expensive for this server.
+        (setq-local lsp-enable-file-watchers nil)
+        ;; UI and behavior tweaks.
+        (setq-local lsp-idle-delay 0.5)
+        (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
+        (setq-local lsp-ui-sideline-enable t)
+        (setq-local lsp-modeline-code-actions-enable t)
+        (lsp-deferred))
+    ;; When disabling, we add the server to disabled clients so it doesn't restart.
+    (setq-local lsp-disabled-clients (add-to-list 'lsp-disabled-clients 'ltex-ls-plus))))
+
+(defun lsp-ltex-plus-setup-hooks ()
+  "Set up activation hooks for all modes in `lsp-ltex-plus-major-modes'."
+  (interactive)
+  (dolist (mode lsp-ltex-plus-major-modes)
+    (let ((hook (intern (concat (symbol-name mode) "-hook"))))
+      (add-hook hook #'lsp-ltex-plus-mode))))
+
 ;; Initialize on lsp-mode load.
 (with-eval-after-load 'lsp-mode
   (dolist (pair '((tex-mode        . "latex")
