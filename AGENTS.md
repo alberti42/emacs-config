@@ -54,7 +54,6 @@ Key files:
 Local modules loaded from `init.el` (via `emacs-config-load-module`):
 
 - `env-config.el`: shell environment import for non-daemon GUI Emacs. When `(not (daemonp))`, parses `export KEY='VALUE'` lines from `$XDG_CACHE_HOME/zsh/interactive-shell-env.sh` and `$XDG_CONFIG_HOME/envs/LanguageTools.sh`, sets them via `setenv` (updates `exec-path` for PATH), and sets `COLORTERM=truecolor` + `TERM=xterm-256color`. Skipped when running as a daemon (the launcher already set up the environment). Loaded from `early-init.el` so PATH is correct before `straight.el` and any package lookups run.
-- `treesitter-config.el`: tree-sitter grammar bootstrap. Checks `(treesit-available-p)` and installs missing grammars from `treesit-language-source-alist` (e.g. JSON) at load time.
 - `ui-config.el`: UI chrome (menu/tool/scroll bars), window dividers, frame chrome, fonts, frame centering, TTY mode-line separator, truncation/continuation glyphs.
 - `auto-revert-config.el`: file-system watcher that silently reverts clean buffers on external change and prompts when there are unsaved edits. Watches the parent **directory** (not the file itself) so that atomic writes via `rename(2)` are detected. Handles `renamed` events by updating `buffer-file-name` and re-attaching the watcher to the new path; handles `deleted` events by emitting a warning and tearing down the watcher.
 - `buffer-kill-config.el`: smart kill-buffer behaviour — suppresses the "Buffer modified; kill anyway?" prompt when the buffer content is identical to the file on disk (edits were made and then fully undone). Hooks into `kill-buffer-query-functions` and clears the modified flag before the prompt fires.
@@ -76,25 +75,29 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`). Includes a global surgical patch for `lsp--parser-on-message` to implement "Kind-First Routing" (prioritizing the `method` field over `id`), which prevents protocol deadlocks when server-initiated requests (e.g. `workspace/configuration`) collide with client IDs (e.g. completions). See `docs/lsp-mode-collision-resolution.md` for details.
 - `lsp-python-config.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
+- `lsp-c-config.el`: C/C++ LSP configuration via `lsp-clangd`.
 - `lsp-web-config.el`: JS/TS LSP (`typescript-mode`, built-in `js`).
 - `lsp-json-config.el`: JSON LSP via `vscode-json-language-server` with SchemaStore auto-detection.
-- `lsp-ltex-plus.el`: Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, plain text, Org, reStructuredText).
+- `lsp-ltex-plus.el`: Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, Org, HTML, etc.). Replaces the heavy `lsp-ltex` package with a transparent implementation that uses proactive configuration pushing.
 - `lsp-ltex-plus-config.el`: User configuration and activation for `lsp-ltex-plus`.
-- `lsp-ltex-plus.el`: [REPLACED by lsp-ltex-plus.el] Minimal `lsp-mode` client for `ltex-ls-plus` (Markdown, LaTeX, plain text, Org, reStructuredText). Replaces `lsp-ltex-plus` with a more transparent implementation that matches Sublime Text client logic (e.g. proactive configuration push).
+- `latex-config.el`: LaTeX specific editing configuration and PDF viewer integration.
 - `markdown-config.el`: Markdown reading and authoring experience. Installs `markdown-mode` with `markdown-enable-wiki-links t` and `markdown-wiki-link-alias-first nil` (so wiki links use `[[url|label]]` order, not `[[label|url]]`); enables `markdown-hide-markup` on mode entry (which is a superset of URL hiding — hides brackets, asterisks, URLs, etc.). Custom link-following logic (symmetric for both wiki links and standard `[label](path)` links): Markdown targets open with `find-file`; non-Markdown local files open `dired` with the cursor on the file; missing files signal a `user-error` with the resolved path; full URLs open in the browser unchanged. The default `markdown-follow-wiki-link` is replaced via `:override` advice (`markdown-config--follow-wiki-link`) to avoid its bugs (appending the buffer extension to the link name, replacing spaces with dashes). Standard links are intercepted via `markdown-follow-link-functions` (`markdown-config--follow-local-link`). Includes a disabled `obsidian` block (wrapped in `(when nil ...)`) for Obsidian vault integration — currently disabled due to bugs. Installs `grip-mode` for live GitHub-flavored Markdown preview in a browser (bound to `C-c C-c g`). Visual line wrapping is handled by `syntaxes/markdown.el` via `soft-wrap-mode`.
 - `lsp-swift-config.el`: Swift LSP via `lsp-sourcekit` (SourceKit-LSP). Locates the server via `PATH` or `xcrun -f sourcekit-lsp` on macOS.
 - `lsp-rust-config.el`: Rust LSP via `rustic-mode` + `rust-analyzer` (lsp-mode built-in `lsp-rust`). Enables `rustfmt` on save.
 - `git-gutter-config.el`: VCS gutter indicators in both TTY and GUI frames. Loads a local copy of `git-gutter.el` (patched fork, kept in-repo until changes land upstream) via `:straight nil` + `:load-path emacs-config-dir`.
 - `scroll-config.el`: scroll parameters and `ultra-scroll` for pixel-precise GUI scrolling.
 - `windows-config.el`: window navigation, resizing, joining, and swapping — parallels tmux pane operations. `C-c <arrow>` navigates between Emacs windows and falls through to `tmux select-pane` at the edge. `C-c C-<arrow>` resizes (moves the shared border in the arrow direction, tmux convention). `C-c S-<arrow>` joins the current window as a split adjacent to the neighbour in that direction. `C-c M-<arrow>` swaps buffers with an adjacent window. Resize bindings support `repeat-mode` for repeated presses. `C-c <left>` and `C-c <right>` are explicitly unbound from `markdown-mode-map` in `syntaxes/markdown.el` to prevent `markdown-promote`/`markdown-demote` from shadowing the global navigation bindings; those commands are rebound to `C-c M-<` / `C-c M->`.
-- `theme-harmonize.el`: synchronizes package faces with the active theme after every theme change. Sets `line-number` background (TTY only, via `theme-harmonize-tty-line-number`) to match the terminal emulator's padding color. Propagates the `line-number` background to git-gutter faces so the gutter column blends uniformly. Sets the background of `compilation-error`, `compilation-warning`, and `compilation-info` to match `line-number` so flymake left-margin indicators blend with the gutter column. Also propagates the `line-number` background to the `margin` face (guarded by `(facep 'margin)`) — this face is introduced by a pending Emacs patch (bug#80693) that allows customizing the margin background color; the guard makes the block a no-op on unpatched builds. Hooks into `enable-theme-functions` (Emacs 29+).
 - `themes-config.el`: theme loading pipeline — loads `theme-harmonize` and `zac-theme-autodetection` via `use-package` (`:straight nil`, `:load-path emacs-config-dir`), sets `theme-harmonize-tty-line-number` and `zac-load-theme-callback`, installs and configures `modus-themes`, then loads `zac-theme-autodetection` last.
-- `zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; invokes `zac-load-theme-callback` (user-supplied callback). Contains no theme or color choices itself. Loaded via `use-package` (`:straight nil`) with `zac-load-theme-callback` set in `:init` so the watcher picks it up on first application.
+- `theme-harmonize.el`: synchronizes package faces with the active theme after every theme change. Sets `line-number` background (TTY only, via `theme-harmonize-tty-line-number`) to match the terminal emulator's padding color. Propagates the `line-number` background to git-gutter faces so the gutter column blends uniformly. Sets the background of `compilation-error`, `compilation-warning`, and `compilation-info` to match `line-number` so flymake left-margin indicators blend with the gutter column. Also propagates the `line-number` background to the `margin` face (guarded by `(facep 'margin)`) — this face is introduced by a pending Emacs patch (bug#80693) that allows customizing the margin background color; the guard makes the block a no-op on unpatched builds. Hooks into `enable-theme-functions` (Emacs 29+).
+- `agent-shell-config.el`: Agent shell configuration (environment and mode integration).
+- `utils.el`: Generic Emacs Lisp utility functions for the configuration.
 
 Local package overrides (`local/`):
 
 - `local/vdiff-magit.el`: local patched copy of the unmaintained `vdiff-magit` package. Fixes two Magit API breakages: `magit-get-revision-buffer` removed (replaced by `magit--get-blob-buffer`); `magit-find-file-index-noselect` dropped its second argument. Loaded via `:straight nil` with `:load-path`. TODO: file a PR upstream if the project shows signs of life.
 - `local/better-jumper.el`: local patched copy of `better-jumper`. Adds `(require 'ring)` and `declare-function` declarations for optional `evil-visual-state-p`, `get-current-persp`, and `safe-persp-name` to silence native-compiler warnings. Loaded via `:straight nil` with `:load-path`.
+- `local/zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; invokes `zac-load-theme-callback` (user-supplied callback). Contains no theme or color choices itself. Loaded via `use-package` (`:straight nil`) with `zac-load-theme-callback` set in `:init` so the watcher picks it up on first application.
+
 
 Packages configured directly in `init.el` (not extracted into modules):
 
@@ -319,37 +322,17 @@ Design choice:
 
 ## LTEX+ Module Notes
 
-`lsp-ltex-plus.el` contains non-trivial glue code to:
+`lsp-ltex-plus.el` provides a streamlined `lsp-mode` client with these key characteristics:
 
-- ensure `_ltex.*` commands are executed against the LTEX+ workspace (buffers
-  may have multiple LSP workspaces, e.g. TeX + LTEX+)
-- trigger a one-shot check on open so diagnostics appear immediately
-- handle `emacs --daemon` / `emacsclient` where buffers can persist
-- nudge Flymake rendering when diagnostics timing is awkward
+- **Add-on Design**: Registered with `:add-on? t` and `:priority -1` to run alongside primary servers (e.g., `texlab`).
+- **Proactive Configuration**: Pushes the full `ltex.*` settings namespace on server initialization and after any dictionary updates, ensuring the server is always in sync with Emacs variables.
+- **Kind-First Routing**: Relies on the `lsp-core.el` patch to handle bi-directional JSON-RPC traffic (like `workspace/configuration` requests) without deadlocks.
+- **Simplified Actions**: Uses standard `lsp-mode` `:action-handlers` for `_ltex.*` commands, bypassing complex manual dispatch logic.
 
-If you change this module, preserve those invariants unless explicitly
-requested.
+### Dictionary and Action Invariants
 
-### `my--lsp-ltex-plus-execute-code-action` — invariants (do not regress)
-
-**No diagnostics guard.** Do NOT add a guard like
-`(when (seq-empty-p diagnostics) (user-error "No diagnostics at point"))`.
-LTEX+ generates code actions from its own server-side cache, not from the
-`context.diagnostics` field in the codeAction request. After applying a
-correction, LTEX+ briefly sends `publishDiagnostics []` before republishing
-fresh ones, so the client diagnostic list is transiently empty. A guard during
-this window makes the command appear permanently broken.
-
-**Capture workspace at invocation; pass it through all callbacks.** Do NOT
-re-fetch the workspace inside `dispatch-code-actions` or its async callback.
-After `_ltex.checkDocument` completes, the workspace status can briefly
-fluctuate, causing `my--lsp-ltex-plus--initialized-workspace` to return nil
-and dispatch to silently do nothing.
-
-**Wrap `lsp--execute-code-action` in `(with-lsp-workspace ws ...)`.** The
-action-execution callback runs outside any workspace binding; without this,
-`workspace/applyEdit` or `workspace/executeCommand` can target the wrong
-attached server.
+- **No diagnostics guard**: Do NOT add a guard like `(when (seq-empty-p diagnostics) ...)` to code actions. LTEX+ generates actions from its own cache; diagnostics may be transiently empty while the server re-checks the document.
+- **Persistence**: Words added via code actions are persisted to `lsp-ltex-plus-dictionary-file` in a plist format compatible with the original `lsp-ltex-plus` package.
 
 ## Common Tasks
 
