@@ -8,9 +8,10 @@
 ;;; Code:
 
 (use-package lsp-ltex-plus
-  :straight `(:type git
-             :local-repo ,emacs-config-dir
-             :files ("lsp-ltex-plus.el"))
+  :straight nil
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
+  :custom
+  (lsp-ltex-plus-debug t)
   :config
   ;;;; ── Credentials ────────────────────────────────────────────────────────────
 
