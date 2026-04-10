@@ -391,7 +391,7 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
    (make-lsp-client
     :new-connection (lsp-stdio-connection
                      (lambda ()
-                       (if lsp-ltex-plus-debug
+                       (if (and lsp-ltex-plus-debug (executable-find "tee"))
                            (list "sh" "-c"
                                  (format "tee %s | %s | tee %s"
                                          (shell-quote-argument lsp-ltex-plus-server-input-log)
