@@ -9,6 +9,16 @@
 
 (require 'lsp-ltex-plus)
 
+;;;; ── Credentials ────────────────────────────────────────────────────────────
+
+;; Use credentials from the environment if they are not already set.
+(let ((user (getenv "LANGUAGETOOL_USERNAME"))
+      (key  (getenv "LANGUAGETOOL_API_KEY")))
+  (when (and user (string-empty-p lsp-ltex-plus-lt-username))
+    (setq lsp-ltex-plus-lt-username user))
+  (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
+    (setq lsp-ltex-plus-lt-api-key key)))
+
 ;;;; ── Activation ─────────────────────────────────────────────────────────────
 
 (defun lsp-ltex-plus-enable ()

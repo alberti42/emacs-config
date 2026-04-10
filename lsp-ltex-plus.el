@@ -347,14 +347,6 @@ Possible severities are \"error\", \"warning\", \"information\", and \"hint\"."
 
   (lsp-ltex-plus--load-words)
 
-  ;; Inherit credentials from environment if not manually set.
-  (let ((user (getenv "LANGUAGETOOL_USERNAME"))
-        (key  (getenv "LANGUAGETOOL_API_KEY")))
-    (when (and user (string-empty-p (or (bound-and-true-p lsp-ltex-plus-lt-username) "")))
-      (setq-default lsp-ltex-plus-lt-username user))
-    (when (and key (string-empty-p (or (bound-and-true-p lsp-ltex-plus-lt-api-key) "")))
-      (setq-default lsp-ltex-plus-lt-api-key key)))
-
   ;; Apply sticky debug defaults.
   (when lsp-ltex-plus-debug
     (setq lsp-log-io t)
