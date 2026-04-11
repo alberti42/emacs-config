@@ -9,11 +9,11 @@
 ;;; Code:
 
 (use-package consult
-  :straight (consult
-             :type git
-             :host github
-             :branch "fix-suppressed-hooks"
-             :repo "alberti42/fork-consult")
+  ;; :straight (consult
+  ;;            :type git
+  ;;            :host github
+  ;;            :branch "fix-suppressed-hooks"
+  ;;            :repo "alberti42/fork-consult")
   :bind (
          ;; Replace default switch-to-buffer with consult-buffer.
          ("C-x b" . consult-buffer)
