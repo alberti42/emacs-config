@@ -71,7 +71,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `magit-config.el`: Magit Git porcelain + Forge (GitHub/GitLab) integration. Includes `vdiff` and a local patched copy of `vdiff-magit` for side-by-side diffs; `e`/`E` in Magit buffers open vdiff instead of Ediff. Disables line numbers in `git-commit-mode` and `git-rebase-mode` buffers.
 - `project-config.el`: project.el settings — sets `project-vc-merge-submodules nil` so git submodules are treated as independent project roots rather than merged into the parent repo.
 - `search-config.el`: prefer ripgrep for project/xref search; isearch edge-triggered context scrolling (scrolls the minimum amount to keep `search-recenter-context-lines` of context visible when the match lands within `search-recenter-edge-threshold` lines of the window edge).
-- `navigation-config.el`: cursor position jump history via `better-jumper`. Provides forward/backward jump list (`C-c [` / `C-c ]`), similar to Vim's C-o/C-i. Integrates automatically with xref/LSP jumps. Uses a local patched copy (`local/better-jumper.el`) that adds `(require 'ring)` and `declare-function` declarations for optional evil/persp-mode functions to silence native-compiler warnings.
+- `navigation-config.el`: smart Home/End keys (first press goes to line start/end, repeated press toggles to first/last non-whitespace character). xref back/forward navigation is provided by the built-in `xref-go-back` (`M-,`) and `xref-go-forward` (`C-M-,`).
 - `treemacs-config.el`: project file tree (Treemacs), TTY-friendly.
 - `lsp-core.el`: shared LSP configuration (`lsp-mode`, `lsp-ui`, `yasnippet`). Includes a global surgical patch for `lsp--parser-on-message` to implement "Kind-First Routing" (prioritizing the `method` field over `id`), which prevents protocol deadlocks when server-initiated requests (e.g. `workspace/configuration`) collide with client IDs (e.g. completions). See `docs/lsp-mode-collision-resolution.md` for details.
 - `lsp-python-config.el`: Python LSP via `lsp-pyright` (configured for basedpyright).
@@ -95,7 +95,6 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 Local package overrides (`local/`):
 
 - `local/vdiff-magit.el`: local patched copy of the unmaintained `vdiff-magit` package. Fixes two Magit API breakages: `magit-get-revision-buffer` removed (replaced by `magit--get-blob-buffer`); `magit-find-file-index-noselect` dropped its second argument. Loaded via `:straight nil` with `:load-path`. TODO: file a PR upstream if the project shows signs of life.
-- `local/better-jumper.el`: local patched copy of `better-jumper`. Adds `(require 'ring)` and `declare-function` declarations for optional `evil-visual-state-p`, `get-current-persp`, and `safe-persp-name` to silence native-compiler warnings. Loaded via `:straight nil` with `:load-path`.
 - `local/zac-theme-autodetection.el`: watches the OS appearance state file written by `zsh-appearance-control`; invokes `zac-load-theme-callback` (user-supplied callback). Contains no theme or color choices itself. Loaded via `use-package` (`:straight nil`) with `zac-load-theme-callback` set in `:init` so the watcher picks it up on first application.
 
 

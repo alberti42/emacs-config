@@ -32,14 +32,6 @@ If repeated, cycle to the last non-whitespace character instead."
 (global-set-key [home] #'emacs-config--smart-beginning-of-line)
 (global-set-key [end]  #'emacs-config--smart-end-of-line)
 
-(use-package better-jumper
-  :straight nil
-  :load-path emacs-config-dir
-  :config
-  (better-jumper-mode 1)
-  :bind (("C-c [" . better-jumper-jump-backward)
-         ("C-c ]" . better-jumper-jump-forward)))
-
 (provide 'navigation-config)
 
 ;;; navigation-config.el ends here
