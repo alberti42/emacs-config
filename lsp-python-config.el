@@ -8,13 +8,13 @@
 
 ;;; Code:
 
-(use-package lsp-pyright
-  :after lsp-mode
-  :init
-  (setq lsp-pyright-langserver-command "basedpyright")
-  :hook ((python-mode . (lambda ()
-                 (require 'lsp-pyright)
-                 (lsp-deferred)))))
+;; (use-package lsp-pyright
+;;   :after lsp-mode
+;;   :init
+;;   (setq lsp-pyright-langserver-command "basedpyright")
+;;   :hook ((python-mode . (lambda ()
+;;                  (require 'lsp-pyright)
+;;                  (lsp-deferred)))))
 
 (provide 'lsp-python-config)
 
