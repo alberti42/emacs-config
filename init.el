@@ -243,6 +243,10 @@
     :init    
     ))
 
+(emacs-config-load-module
+ 'apheleia-config
+ "Could not load apheleia-config.el; formatters are disabled.")
+
 ;; LSP modules
 (emacs-config-load-module
  'lsp-core
