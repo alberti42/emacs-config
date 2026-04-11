@@ -91,6 +91,10 @@ When nil, the current value of `fill-column' is used when enabling.")
 (defvar soft-wrap-mode-map (make-sparse-keymap)
   "Keymap for `soft-wrap-mode'.")
 
+;; Disable manual horizontal trackpad/mouse scrolling while soft-wrap is active.
+(define-key soft-wrap-mode-map (kbd "<wheel-left>") #'ignore)
+(define-key soft-wrap-mode-map (kbd "<wheel-right>") #'ignore)
+
 (easy-menu-define soft-wrap-mode-menu soft-wrap-mode-map
   "Menu for `soft-wrap-mode'."
   '("Soft Wrap Mode"
