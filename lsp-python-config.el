@@ -17,7 +17,7 @@
   (setq lsp-pyright-python-executable-cmd (expand-file-name "~/.pyenv/versions/py313/bin/python"))
   (setq lsp-pyright-type-checking-mode "basic")
   (setq lsp-pyright-diagnostic-severity-overrides
-        '((reportOptionalSubscript . "error")))
+        '(("reportOptionalSubscript" . "error")))
 
   ;; Performance and stability settings
   (setq lsp-pyright-use-library-code-for-types nil)
@@ -27,15 +27,9 @@
   ;; Disable multi-root if it's causing project detection issues
   (setq lsp-pyright-multi-root nil))
 
-(defun lsp-python-config-enable ()
-  "Enable LSP for Python buffers."
-  (interactive)
-  (message "LSP-Python: Enabling LSP for %s" (buffer-name))
-  (require 'lsp-pyright)
-  (lsp))
-
-(add-hook 'python-mode-hook #'lsp-python-config-enable)
-(add-hook 'python-ts-mode-hook #'lsp-python-config-enable)
+(let ((basedpyright-enable (lambda () (require 'lsp-pyright) (lsp-deferred))))
+      (add-hook 'python-mode-hook basedpyright-enable)
+      (add-hook 'python-ts-mode-hook basedpyright-enable))
 
 (provide 'lsp-python-config)
 ;;; lsp-python-config.el ends here
