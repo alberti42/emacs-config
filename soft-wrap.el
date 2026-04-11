@@ -70,6 +70,13 @@ when a window is reused."
 (defvar-local soft-wrap--saved-auto-fill nil
   "Value of `auto-fill-function' before soft wrap was enabled.")
 
+(defvar-local soft-wrap--saved-vars-state nil
+  "Alist of (VAR . (WAS-LOCAL-P . VALUE)) for managed variables.")
+
+(defconst soft-wrap--managed-vars
+  '(word-wrap truncate-lines auto-hscroll-mode)
+  "List of variables whose state is managed by `soft-wrap-mode'.")
+
 (defvar-local soft-wrap--target-width nil
   "Target wrap width for the current buffer.
 
@@ -265,6 +272,24 @@ font metrics."
   "Hook: keep soft-wrap margins correct for WINDOW."
   (soft-wrap--adjust-window-margins window))
 
+(defun soft-wrap--save-state ()
+  "Save the current state of managed variables."
+  (setq-local soft-wrap--saved-vars-state
+              (mapcar (lambda (var)
+                        (cons var (cons (local-variable-p var) (symbol-value var))))
+                      soft-wrap--managed-vars)))
+
+(defun soft-wrap--restore-state ()
+  "Restore the saved state of managed variables."
+  (dolist (entry soft-wrap--saved-vars-state)
+    (let ((var (car entry))
+          (was-local (cadr entry))
+          (val (cddr entry)))
+      (if was-local
+          (set (make-local-variable var) val)
+        (kill-local-variable var))))
+  (setq-local soft-wrap--saved-vars-state nil))
+
 (defun soft-wrap--window-buffer-change (window &rest _args)
   "Hook: keep margins correct when WINDOW changes buffers."
   (when (window-live-p window)
@@ -277,6 +302,7 @@ font metrics."
                   (visual-line-mode 1))
                 (setq-local word-wrap t)
                 (setq-local truncate-lines nil)
+                (setq-local auto-hscroll-mode nil)
                 (when (and soft-wrap-enable-wrap-prefix
                            (fboundp 'visual-wrap-prefix-mode))
                   (visual-wrap-prefix-mode 1))
@@ -295,13 +321,16 @@ font metrics."
   (setq-local soft-wrap--saved-auto-fill auto-fill-function)
   (auto-fill-mode -1)
 
+  (soft-wrap--save-state)
+  (setq-local word-wrap t)
+  (setq-local truncate-lines nil)
+  (setq-local auto-hscroll-mode nil)
+
   (setq-local soft-wrap--target-width
               (or soft-wrap-default-width fill-column))
   (setq-local soft-wrap--warned-mismatch nil)
 
   (visual-line-mode 1)
-  (setq-local word-wrap t)
-  (setq-local truncate-lines nil)
   (when (fboundp 'visual-wrap-prefix-mode)
     (setq-local soft-wrap--saved-visual-wrap-prefix-mode
                 (bound-and-true-p visual-wrap-prefix-mode))
@@ -331,16 +360,14 @@ font metrics."
     (visual-wrap-prefix-mode (if soft-wrap--saved-visual-wrap-prefix-mode 1 -1)))
   (visual-line-mode -1)
 
+  ;; Restore managed variables.
+  (soft-wrap--restore-state)
+
   ;; Restore right margin to 0 while preserving any reserved left margin.
   (dolist (w (get-buffer-window-list (current-buffer) nil t))
     (let* ((m (window-margins w))
            (left (or (car m) 0)))
       (set-window-margins w left 0)))
-
-  ;; Remove local variables.
-  (dolist (var '(word-wrap truncate-lines))
-    (when (local-variable-p var)
-      (kill-local-variable var)))
 
   ;; Restore hard-wrap state if it was active before soft wrap was enabled.
   (when soft-wrap--saved-auto-fill
