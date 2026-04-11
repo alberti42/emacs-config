@@ -20,13 +20,13 @@
 
 ;;; Code:
 
-(use-package lsp-ellsp
-  :straight (lsp-ellsp :type git :host github :repo "elisp-lsp/lsp-ellsp")
-  :init
-  (add-hook 'emacs-lisp-mode-hook
-            (lambda ()
-              (require 'lsp-ellsp)
-              (lsp-deferred))))
+;; (use-package lsp-ellsp
+;;   :straight (lsp-ellsp :type git :host github :repo "elisp-lsp/lsp-ellsp")
+;;   :init
+;;   (add-hook 'emacs-lisp-mode-hook
+;;             (lambda ()
+;;               (require 'lsp-ellsp)
+;;               (lsp-deferred))))
 
 (provide 'lsp-elisp-config)
 

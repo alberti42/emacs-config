@@ -15,12 +15,14 @@
   ;; appear and disappear with diagnostics, causing layout jitter.
   ;; Diagnostics remain visible via the modeline and lsp-ui sideline.
   (setq flymake-fringe-indicator-position nil)
-  ;; Suppress "no server installed" popups for file types like plist/XML.
-  (setq lsp-warn-no-matched-clients nil)
+  ;; Whether to suppress "no server installed" popups for file types like plist/XML.
+  (setq lsp-warn-no-matched-clients t)
   ;; All servers are managed externally (zinit/system); never prompt to
   ;; download or auto-install them via lsp-mode.  This also prevents lsp-mode
   ;; from creating empty store directories that confuse server-present? checks.
-  (setq lsp-enable-suggest-server-download nil)
+  (setq lsp-enable-suggest-server-download t)
+  ;; Whether to use file watchers
+  (setq lsp-enable-file-watchers t)
   ;; Completion is handled by corfu+cape, not company-mode.
   ;; The command below prevents lsp-mode from trying to configure
   ;; company-mode for completion. Without it, lsp-mode assumes
@@ -29,11 +31,11 @@
   (setq lsp-completion-provider :none)
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
-  (setq read-process-output-max (* 1024 1024))
+  (setq read-process-output-max (* 4 1024 1024))
   ;; Breadcrumb headers are unreliable: multiple LSP servers fighting over
   ;; header-line-format cause partial overwrites, and the header line shifts
   ;; point by one when opening a file at a specific line number.
-  (setq lsp-headerline-breadcrumb-enable nil)
+  (setq lsp-headerline-breadcrumb-enable t)
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 
