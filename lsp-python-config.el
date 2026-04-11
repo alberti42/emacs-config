@@ -16,8 +16,8 @@
   ;; Python Interpreter and Analysis Settings
   (setq lsp-pyright-python-executable-cmd (expand-file-name "~/.pyenv/versions/py313/bin/python"))
   (setq lsp-pyright-type-checking-mode "basic")
-  (setq lsp-pyright-diagnostic-severity-overrides
-        '(("reportOptionalSubscript" . "error")))
+  ;; (setq lsp-pyright-diagnostic-severity-overrides
+  ;;       '(("reportOptionalSubscript" . "error")))
 
   ;; Performance and stability settings
   (setq lsp-pyright-use-library-code-for-types nil)
@@ -28,8 +28,8 @@
   (setq lsp-pyright-multi-root nil))
 
 (let ((basedpyright-enable (lambda () (require 'lsp-pyright) (lsp-deferred))))
-      (add-hook 'python-mode-hook basedpyright-enable)
-      (add-hook 'python-ts-mode-hook basedpyright-enable))
+  (add-hook 'python-mode-hook basedpyright-enable)
+  (add-hook 'python-ts-mode-hook basedpyright-enable))
 
 (provide 'lsp-python-config)
 ;;; lsp-python-config.el ends here
