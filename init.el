@@ -253,6 +253,10 @@
  "Could not load lsp-python-config.el; Python LSP is disabled.")
 
 (emacs-config-load-module
+ 'lsp-elisp-config
+ "Could not load lsp-elisp-config.el; Elisp LSP is disabled.")
+
+(emacs-config-load-module
  'lsp-web-config
  "Could not load lsp-web-config.el; TypeScript/JavaScript LSP is disabled.")
 
