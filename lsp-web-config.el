@@ -16,7 +16,12 @@
 ;; trigger the loading of `lsp-mode` when a file is opened.
 
 (use-package typescript-mode
-  :hook (typescript-mode . lsp-deferred))
+  :hook ((typescript-mode . lsp-deferred)
+         (typescript-ts-mode . lsp-deferred)
+         (tsx-ts-mode . lsp-deferred))
+  :config
+  (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
+  (add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode)))
 
 (use-package js
   :straight nil

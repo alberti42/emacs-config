@@ -7,7 +7,8 @@
   (dolist (hook '(js-mode-hook
                   js-ts-mode-hook
                   typescript-mode-hook
-                  typescript-ts-mode-hook))
+                  typescript-ts-mode-hook
+                  tsx-ts-mode-hook))
     (add-hook hook
               (lambda ()
                 (setq js-indent-level 2)
