@@ -4,10 +4,11 @@
   "Whether to enable shell settings from syntaxes/sh.el.")
 
 (when emacs-config-syntaxes-enable-sh
-  (add-hook 'sh-mode-hook
-            (lambda ()
-              (setq sh-basic-offset 2)
-              (setq indent-tabs-mode nil))))
+  (dolist (hook '(sh-mode-hook bash-ts-mode-hook))
+    (add-hook hook
+              (lambda ()
+                (setq sh-basic-offset 2)
+                (setq indent-tabs-mode nil)))))
 
 (provide 'syntaxes-sh)
 

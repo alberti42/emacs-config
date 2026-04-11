@@ -4,10 +4,11 @@
   "Whether to enable Python settings from syntaxes/python.el.")
 
 (when emacs-config-syntaxes-enable-python
-  (add-hook 'python-mode-hook
-            (lambda ()
-              (setq python-indent-offset 4)
-              (setq indent-tabs-mode nil))))
+  (dolist (hook '(python-mode-hook python-ts-mode-hook))
+    (add-hook hook
+              (lambda ()
+                (setq python-indent-offset 4)
+                (setq indent-tabs-mode nil)))))
 
 (provide 'syntaxes-python)
 

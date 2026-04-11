@@ -27,6 +27,8 @@
           (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
           (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
           (bash "https://github.com/tree-sitter/tree-sitter-bash")
+          (zsh "https://github.com/tree-sitter-grammars/tree-sitter-zsh")
+          (python "https://github.com/tree-sitter/tree-sitter-python")
           (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
           (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
 
@@ -37,7 +39,10 @@
           (yaml-mode . yaml-ts-mode)
           (toml-mode . toml-ts-mode)
           (typescript-mode . typescript-ts-mode)
-          (tsx-mode . tsx-ts-mode)))
+          (tsx-mode . tsx-ts-mode)
+          (sh-mode . bash-ts-mode)
+          (zsh-mode . bash-ts-mode)
+          (python-mode . python-ts-mode)))
 
   (defun treesitter-config-reinstall-grammars ()
     "Force reinstallation of all grammars in `treesit-language-source-alist'.
