@@ -45,7 +45,24 @@
     (add-to-list 'savehist-additional-variables var))
   
   ;; Include hidden directories in fd search, but exclude .git.
-  (setq consult-fd-args '("fd" "--hidden" "--exclude" ".git" "--color=never" "--full-path")))
+  (setq consult-fd-args '("fd" "--hidden" "--exclude" ".git" "--color=never" "--full-path"))
+
+  ;; Consult filters `find-file-hook` and allow only a few hooks during previews
+  ;; to maintain performance and avoid polluting session state (e.g. it does not
+  ;; trigger recentf for each file consulted). However, when selecting a match,
+  ;; it does switch to a buffer without re-triggering the full hook. We advice
+  ;; `consult--jump' (which is the final jump function) to run the "blocked"
+  ;; hooks manually.  Note: we exclude hooks that Consult *already* ran during
+  ;; preview (like `save-place`) to avoid moving the point away from the match.
+  ;; We have filed a PR to correct this behavior upstream. When the PR is
+  ;; merged, this advice is no longer necessary.
+  (defun emacs-config-consult-after-jump-run-hooks (&rest _args)
+    "Run `find-file-hook' functions that were blocked during Consult preview."
+    (dolist (hook find-file-hook)
+      (unless (memq hook consult-preview-allowed-hooks)
+        (when (and (symbolp hook) (fboundp hook))
+          (funcall hook))))
+    (advice-add #'consult--jump :after #'emacs-config-consult-after-jump-run-hooks)))
 
 (provide 'completions-consult)
 ;;; consult.el ends here
