@@ -22,7 +22,7 @@
   ;; from creating empty store directories that confuse server-present? checks.
   (setq lsp-enable-suggest-server-download t)
   ;; Whether to use file watchers
-  (setq lsp-enable-file-watchers nil)
+  (setq lsp-enable-file-watchers t)
   ;; Completion is handled by corfu+cape, not company-mode.
   ;; The command below prevents lsp-mode from trying to configure
   ;; company-mode for completion. Without it, lsp-mode assumes
@@ -125,7 +125,7 @@ to client requests when IDs collide."
   ;; - TTY: Lacks child-frames; lsp-ui falls back to a standard window split.
   ;;        We explicitly set 'top' for TTY to avoid the failed 'at-point' math
   ;;        and keep the behavior predictable and transparent.
-  (setq lsp-ui-doc-position (if (display-graphic-p) 'at-point 'top))
+  (setq lsp-ui-doc-position 'at-point)
 
   ;; Use child-frames where available (GUI).
   (setq lsp-ui-doc-use-childframe t)
