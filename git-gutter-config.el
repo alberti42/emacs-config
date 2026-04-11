@@ -23,7 +23,7 @@
              :files ("git-gutter.el"))
   :config
   ;; Live-ish updates (idle timer).
-  (setq git-gutter:update-interval 0.5)
+  (setq git-gutter:update-interval 0)
 
   ;; One glyph, colored by face.  Appearance is handled by theme-harmonize.
   (setq git-gutter:modified-sign "▐")
@@ -37,7 +37,7 @@
   ;; Separator sign following the change sign; it is appended, but will be
   ;; clipped unless window-width >= 2; thus it is effectively only displayed if we reserved a larger window-width than 1; it can be used to separate the
   ;; change signs from the rest.
-  (setq git-gutter:separator-sign "")
+  (setq git-gutter:separator-sign nil)
   ;; Determines whether to show the separator-sign and the unchanged-sign for
   ;; buffers with no modifications yet (no 'diffinfos).
   (setq git-gutter:always-show-separator nil)
