@@ -34,6 +34,16 @@ to org.freedesktop.FileManager1."
                   "string:"))
    (t (user-error "reveal-file: unsupported system type `%s'" system-type))))
 
+(defun open-file-with-os-default (path)
+  "Open PATH with the OS default application.
+On macOS uses `open'; on Linux uses `xdg-open'."
+  (cond
+   ((eq system-type 'darwin)
+    (call-process "open" nil 0 nil (expand-file-name path)))
+   ((eq system-type 'gnu/linux)
+    (call-process "xdg-open" nil 0 nil (expand-file-name path)))
+   (t (user-error "open-file-with-os-default: unsupported system type `%s'" system-type))))
+
 (defun reveal-buffer-file ()
   "Reveal the file visited by the current buffer in the system file manager.
 Does nothing if the buffer does not visit a file."
