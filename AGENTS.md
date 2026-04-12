@@ -63,7 +63,7 @@ Local modules loaded from `init.el` (via `emacs-config-load-module`):
 - `treesitter-config.el`: tree-sitter grammar bootstrap. Checks `(treesit-available-p)` and automatically installs missing grammars from `treesit-language-source-alist` (JSON, YAML, TOML, Markdown) at load time. Uses `major-mode-remap-alist` to promote `-ts-mode` variants for JSON, YAML, and TOML. Markdown is intentionally NOT remapped to `markdown-ts-mode` because `markdown-mode` has richer features (markup hiding, wiki links, obsidian integration) that `markdown-ts-mode` does not support. Provides `treesitter-config-reinstall-grammars` for manual updates.
 - `completion.el`: completion orchestration (styles + minibuffer UI + in-buffer completion).
 - `nerd-icons-config.el`: Nerd Fonts icon integrations (used by Corfu kind-icon, Treemacs, dired, etc.). Configures `nerd-icons-font-family` to "Symbols Nerd Font Mono" (standalone icon-only font with correct monospace metrics). In GUI frames, calls `set-fontset-font` to map the Private Use Area (`#xe000–#xffff`) to that font, preventing fallback to fonts with wrong glyph metrics (which causes horizontal truncation of icons in dired and elsewhere).
-- `soft-wrap.el`: `soft-wrap-mode` (buffer-local minor mode) and `global-soft-wrap-mode` for visual-only soft wrapping. Used by text/Markdown configs.
+- `soft-wrap.el`: `soft-wrap-mode` (buffer-local minor mode), `global-soft-wrap-mode`, and `soft-wrap-set-width` for visual-only soft wrapping. Used by text/Markdown configs. Optional diagnostics live in `soft-wrap-diagnostic.el`, loaded when `soft-wrap-load-diagnostics` is non-nil.
 - `syntaxes.el`: loads per-major-mode settings from `syntaxes/`.
 - `csi-u-keys.el`: terminal key decoding for CSI-u sequences. Adds explicit decoders for Backspace variants (`S-backspace`, `C-backspace`, `C-S-backspace`), Ctrl+Tab (`\e[9;5u`), and Shift+Enter (`\e[13;2u`). Requires the application to opt in to CSI-u mode via `printf '\e[>4;1m'` (sent from zsh on startup); without this, tmux and terminals correctly fall back to legacy encoding.
 - `dired-config.el`: Dired customizations (`dired-narrow`).
@@ -125,7 +125,7 @@ Current syntax modules:
 
 - `syntaxes/js.el`: JS/TS indentation settings.
 - `syntaxes/json.el`: JSON indentation (supports `js-json-mode`, `json-mode`, `json-ts-mode`).
-- `syntaxes/markdown.el`: General Emacs editing settings for Markdown (`fill-column 72`, `soft-wrap-mode`). Package-level configuration (markup hiding, wiki links, obsidian, grip-mode) lives in `markdown-config.el`.
+- `syntaxes/markdown.el`: Overrides `fill-column` to 100 for Markdown buffers. `soft-wrap-mode` is inherited from `text-mode-hook` (via `syntaxes/text.el`). Package-level configuration (markup hiding, wiki links, obsidian, grip-mode) lives in `markdown-config.el`.
 - `syntaxes/python.el`: Python indentation settings.
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
 - `syntaxes/text.el`: visual soft wrap at 100 columns for `text-mode`.
@@ -136,9 +136,10 @@ Current syntax modules:
 
 Wrapping:
 
-- `soft-wrap.el` provides `soft-wrap-mode` (buffer-local) and `global-soft-wrap-mode` for visual-only wrapping. The target column is controlled via `soft-wrap-default-width` (defcustom) or `fill-column`. `soft-wrap--debug-dump` is an internal helper for debugging.
-- Wrap-at-column is implemented with a window right margin (no newlines inserted). The left margin is preserved so TTY gutters (e.g. git-gutter) keep working.
+- `soft-wrap.el` provides `soft-wrap-mode` (buffer-local), `global-soft-wrap-mode`, and `soft-wrap-set-width` for visual-only wrapping. The target column is controlled via `soft-wrap-default-width` (defcustom) or `fill-column` (read dynamically when nil).
+- Wrap-at-column is implemented with a window right margin (no newlines inserted). The left margin is always preserved so TTY gutters (e.g. git-gutter) keep working.
 - Continuation indentation uses built-in `visual-wrap-prefix-mode` (Emacs 30+). No external packages required.
+- `soft-wrap-diagnostic.el` provides debugging tools (`soft-wrap-debug-dump`, `soft-wrap-diagnose`, `soft-wrap-trace-start/stop`). Loaded only when `soft-wrap-load-diagnostics` is non-nil.
 
 Completion submodules (loaded by `completion.el`):
 
