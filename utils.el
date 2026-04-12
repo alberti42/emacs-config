@@ -154,5 +154,48 @@ It provides specialized formatting for:
 ;; standard "You can customize this variable" line.
 (add-hook 'help-fns-describe-variable-functions #'my/help-fns-describe-custom-type t)
 
+;; -- Testing the new smart comment  ---------------------------------------------------------------------
+
+;;; M-; enhancement: reformat `;;;' section-header lines.
+;;
+;; When `comment-dwim' is invoked on a line of the form
+;;   ;;; ---- LABEL ----
+;; (any number of leading/trailing dashes and spaces, including zero),
+;; the line is replaced with a filled banner:
+;;   ;; -- LABEL --------
+;; where trailing dashes extend the line exactly to `fill-column'.
+;; Falls through to the original `comment-dwim' in all other cases.
+
+(defun my/comment-dwim-section-header (orig-fun &rest args)
+  "Around advice for `comment-dwim' that converts `;;;' section-header lines.
+When point is on a line of the form (any number of dashes, including zero):
+  ;;; ---- LABEL ----
+replace it with a filled banner line:
+  ;; -- LABEL --------
+where trailing dashes extend the line to `fill-column'.
+Falls through to the original command in all other cases."
+  (let* ((line (buffer-substring-no-properties
+                (line-beginning-position) (line-end-position)))
+         (text (and (not (use-region-p))
+                    (string-prefix-p ";;;" line)
+                    (let* ((rest  (substring line 3))
+                           (inner (string-trim
+                                   (replace-regexp-in-string
+                                    "[ \t-]+\\'" ""
+                                    (replace-regexp-in-string
+                                     "\\`[ \t-]+" "" rest)))))
+                      (and (not (string-empty-p inner)) inner)))))
+    (if text
+        (let* ((base     (concat ";; -- " text " "))
+               (new-line (concat base (make-string
+                                       (max 0 (- fill-column (length base)))
+                                       ?-))))
+          (save-excursion
+            (delete-region (line-beginning-position) (line-end-position))
+            (insert new-line)))
+      (apply orig-fun args))))
+
+(advice-add 'comment-dwim :around #'my/comment-dwim-section-header)
+
 (provide 'utils)
 ;;; utils.el ends here
