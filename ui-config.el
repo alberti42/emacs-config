@@ -11,14 +11,16 @@
 
 ;; UI chrome
 ;; Keep window UI minimal and consistent across GUI/TTY.
+(setq inhibit-startup-screen t)   ; inhibit splash screen at startup
 (setq ring-bell-function 'ignore) ; disable all bells
-(menu-bar-mode -1) ; turn off menu bar
+(when (fboundp 'menu-bar-mode)
+  (menu-bar-mode -1))             ; turn off menu bar
 (when (fboundp 'tool-bar-mode)
-  (tool-bar-mode -1)) ; turn off tool bar icons
+  (tool-bar-mode -1))             ; turn off tool bar icons
 (when (fboundp 'scroll-bar-mode)
-  (scroll-bar-mode -1)) ; turn off scroll bars
+  (scroll-bar-mode -1))           ; turn off scroll bars
 (when (fboundp 'tooltip-mode)
-  (tooltip-mode -1)) ; turn off tooltips
+  (tooltip-mode -1))              ; turn off tooltips
 
 ;; Always use minibuffer prompts (no GUI dialog boxes).
 (setq use-dialog-box nil)
@@ -60,18 +62,18 @@
 ;; truncated to window width).
 (defun emacs-config--tty-mode-line-separator ()
   (setq-default mode-line-end-spaces
-    '(:eval (unless (display-graphic-p) ""))))
+                '(:eval (unless (display-graphic-p) ""))))
 (add-hook 'after-init-hook #'emacs-config--tty-mode-line-separator)
 
 ;; Frame chrome
 (cond
-  ((eq system-type 'darwin)
-    ;; emacs-plus: frameless window with native macOS rounded corners.
-    (add-to-list 'default-frame-alist '(undecorated-round . t)))
-  (t
-    ;; On other GUI builds, fall back to a frameless (undecorated) window.
-    (add-to-list 'default-frame-alist '(undecorated . t))
-    (add-to-list 'default-frame-alist '(internal-border-width . 10))))
+ ((eq system-type 'darwin)
+  ;; emacs-plus: frameless window with native macOS rounded corners.
+  (add-to-list 'default-frame-alist '(undecorated-round . t)))
+ (t
+  ;; On other GUI builds, fall back to a frameless (undecorated) window.
+  (add-to-list 'default-frame-alist '(undecorated . t))
+  (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 160))
@@ -86,12 +88,12 @@
     (when (display-graphic-p frame)
       (with-selected-frame frame
         (run-at-time
-          0 nil
-          (lambda (f)
-            (when (frame-live-p f)
-              (select-frame-set-input-focus f)
-              (raise-frame f)))
-          frame)))))
+         0 nil
+         (lambda (f)
+           (when (frame-live-p f)
+             (select-frame-set-input-focus f)
+             (raise-frame f)))
+         frame)))))
 
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
@@ -100,18 +102,18 @@
   "Center FRAME on its current monitor (GUI only)."
   (when (display-graphic-p)
     (let* ((frame (or frame (selected-frame)))
-            (wa (and (fboundp 'frame-monitor-workarea)
-                  (frame-monitor-workarea frame))))
+           (wa (and (fboundp 'frame-monitor-workarea)
+                    (frame-monitor-workarea frame))))
       (when (and wa (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
         (let* ((mx (nth 0 wa))
-                (my (nth 1 wa))
-                (mw (nth 2 wa))
-                (mh (nth 3 wa))
-                (fw (frame-outer-width frame))
-                (fh (frame-outer-height frame)))
+               (my (nth 1 wa))
+               (mw (nth 2 wa))
+               (mh (nth 3 wa))
+               (fw (frame-outer-width frame))
+               (fh (frame-outer-height frame)))
           (set-frame-position frame
-            (+ mx (/ (- mw fw) 2))
-            (+ my (/ (- mh fh) 2))))))))
+                              (+ mx (/ (- mw fw) 2))
+                              (+ my (/ (- mh fh) 2))))))))
 
 (defun emacs-config-setup-frame (&optional frame)
   "Apply per-frame settings to FRAME.

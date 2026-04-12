@@ -15,11 +15,11 @@
 ;; this reduces the number of read() calls Emacs has to make.
 (setq read-process-output-max (* 4 1024 1024))
 
-(setq backup-inhibited t)    ; disable backup
-(setq make-backup-files nil) ; stop creating ~ files
-(setq auto-save-default nil) ; disable auto-save completely (no #…# files)
-(setq create-lockfiles nil)  ; stop lock files (.#filename)
-(setq vc-follow-symlinks t)  ; do not ask confirmation before following symbolic links
+(setq backup-inhibited t)         ; disable backup
+(setq make-backup-files nil)      ; stop creating ~ files
+(setq auto-save-default nil)      ; disable auto-save completely (no #…# files)
+(setq create-lockfiles nil)       ; stop lock files (.#filename)
+(setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
 ;; Add reference to Emacs C source files
 (let ((src "~/Documents/Programming/Others/fork-emacs"))
