@@ -38,9 +38,9 @@
   :demand t
   :load-path emacs-config-dir
   :config
-  ;; TTY line-number background colors to match WezTerm's padding (Catppuccin),
-  ;; so the gutter column blends with the terminal border in both appearances.
-  (setq theme-harmonize-tty-line-number
+  ;; Line-number background colors (Catppuccin) applied to both TTY and GUI
+  ;; frames: gutter column, left margin, and fringes all share this color.
+  (setq theme-harmonize-line-number-bg
         (list :light "#eff1f5"    ; Catppuccin Latte
               :dark "#303446"))   ; Catppuccin Frappe
   (setq theme-harmonize-git-gutter-colors

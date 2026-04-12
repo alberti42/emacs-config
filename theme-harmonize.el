@@ -2,11 +2,10 @@
 
 ;;; Code:
 
-(defvar theme-harmonize-tty-line-number nil
-  "Plist specifying TTY line-number face background color for :light and
-:dark appearance. It is used to override the theme default to match the
-terminal emulator's padding color (e.g. WezTerm border) so the gutter
-blends with the frame edge.
+(defvar theme-harmonize-line-number-bg nil
+  "Plist specifying line-number face background color for :light and :dark
+appearance.  Applied to both TTY and GUI frames so the gutter column, left
+margin, and fringes share a single consistent color regardless of frame type.
 
 When nil, this theme customization is ignored.
 
@@ -20,25 +19,27 @@ Example: (:light \"#eff1f5\" :dark \"#303446\") for Catppuccin.")
 
 (defun theme-harmonize-theme (&rest _)
   "Synchronize package faces with the active theme.
-Called after every theme change and once at startup.
+Called after every theme change and on new frame creation.
 Add face propagation here as new packages need harmonizing."
-  ;; TTY only: override line-number background to match the terminal emulator's
-  ;; padding color, so the gutter column blends with the terminal border.
-  (when (not (display-graphic-p))
-    (let* ((dark-p (eq (frame-parameter nil 'background-mode) 'dark))
-           (line-number-bg-color (if theme-harmonize-tty-line-number
-                                     (if dark-p
-                                         (plist-get theme-harmonize-tty-line-number :dark)
-                                       (plist-get theme-harmonize-tty-line-number :light))
-                                   nil)))
-      (when line-number-bg-color
-        (set-face-background 'line-number line-number-bg-color))))
+  ;; Override line-number background for both TTY and GUI to ensure a single
+  ;; consistent visual style (e.g. Catppuccin) regardless of frame type.
+  ;; This also prevents daemon mode from producing different results depending
+  ;; on whether the triggering frame was a TTY or GUI client.
+  (let* ((dark-p (eq (frame-parameter nil 'background-mode) 'dark))
+         (line-number-bg-color (when theme-harmonize-line-number-bg
+                                 (if dark-p
+                                     (plist-get theme-harmonize-line-number-bg :dark)
+                                   (plist-get theme-harmonize-line-number-bg :light)))))
+    (when line-number-bg-color
+      (set-face-background 'line-number line-number-bg-color)))
 
-  ;; customize margin color after bug#80693
+  ;; Propagate line-number background to margin (bug#80693) and fringes so all
+  ;; three columns share the same color in both TTY and GUI frames.
   (let ((bg (face-background 'line-number nil t)))
-    ;; guard against the patch being installed
     (when (facep 'margin)
-      (set-face-background 'margin bg)))
+      (set-face-background 'margin bg))
+    (when (facep 'fringe)
+      (set-face-background 'fringe bg)))
 
   ;; flymake margin indicators: set background to match the line-number face so
   ;; the indicator characters blend with the left-margin column background.
@@ -80,6 +81,14 @@ Add face propagation here as new packages need harmonizing."
 
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'theme-harmonize-theme)
+
+;; Fire on new frame creation so that emacsclient GUI frames (connecting to a
+;; daemon that may have initialized without a graphical frame) and TTY frames
+;; opened alongside an existing GUI session both receive the correct faces.
+(add-hook 'after-make-frame-functions
+          (lambda (frame)
+            (with-selected-frame frame
+              (theme-harmonize-theme))))
 
 (provide 'theme-harmonize)
 ;;; theme-harmonize.el ends here
