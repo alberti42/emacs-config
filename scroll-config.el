@@ -115,22 +115,34 @@ Mirrors the logic in xdisp.c init_iterator."
            ;; scrolling can actually reveal hidden content.
            (scroll-config--hscroll-applicable-p))
           (if delta-info
-              ;; --- Pixel-precise path (trackpad / Magic Mouse) ---
-              ;; The trackpad reports sub-character pixel deltas.  We accumulate
-              ;; the remainder across events so that slow swipes are not
-              ;; silently dropped; each event contributes its full pixel count
-              ;; to the running total, and only whole columns are forwarded to
-              ;; scroll-left/scroll-right.
-              (let* ((pixels (abs (cdr delta-info)))
-                     (total  (+ scroll-config--hscroll-residual pixels))
-                     (char-w (frame-char-width))
-                     (cols   (truncate (/ total char-w))))
-                ;; Carry the sub-column remainder into the next event.
-                (setq scroll-config--hscroll-residual (- total (* cols char-w)))
-                (unless (zerop cols)
-                  (if (eq direction 'wheel-left)
-                      (scroll-right cols t)
-                    (scroll-left cols t))))
+              (let* ((raw-pixels (abs (cdr delta-info)))
+                     (raw-cols   (abs (car delta-info))))
+                (if (> raw-pixels 0)
+                    ;; --- Pixel-precise path (trackpad / Magic Mouse) ---
+                    ;; The trackpad reports sub-character pixel deltas.  We
+                    ;; accumulate the remainder across events so that slow
+                    ;; swipes are not silently dropped; each event contributes
+                    ;; its full pixel count to the running total, and only
+                    ;; whole columns are forwarded to scroll-left/scroll-right.
+                    (let* ((total  (+ scroll-config--hscroll-residual raw-pixels))
+                           (char-w (frame-char-width))
+                           (cols   (truncate (/ total char-w))))
+                      ;; Carry the sub-column remainder into the next event.
+                      (setq scroll-config--hscroll-residual (- total (* cols char-w)))
+                      (unless (zerop cols)
+                        (if (eq direction 'wheel-left)
+                            (scroll-right cols t)
+                          (scroll-left cols t))))
+                  ;; --- Column-delta path ---
+                  ;; The NS port encoded the gesture as column units directly
+                  ;; (cdr is 0.0); use the car value without pixel conversion.
+                  ;; No sub-column remainder to carry.
+                  (let ((cols (round raw-cols)))
+                    (setq scroll-config--hscroll-residual 0)
+                    (unless (zerop cols)
+                      (if (eq direction 'wheel-left)
+                          (scroll-right cols t)
+                        (scroll-left cols t))))))
             ;; --- Fallback path (physical tilt wheel, no pixel data) ---
             ;; No pixel delta available; step by a fixed number of columns.
             (if (eq direction 'wheel-left)
