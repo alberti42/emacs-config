@@ -278,9 +278,9 @@
  'lsp-json-config
  "Could not load lsp-json-config.el; JSON LSP is disabled.")
 
-;; (emacs-config-load-module
-;;  'lsp-ltex-plus-config
-;;  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
+(emacs-config-load-module
+ 'lsp-ltex-plus-config
+ "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 (emacs-config-load-module
  'lsp-swift-config
