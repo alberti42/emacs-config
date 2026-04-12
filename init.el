@@ -134,10 +134,16 @@
 (setq display-line-numbers-type t) ; (t displays absolute line numbers; alternatives: 'relative or 'visual)
 ;; Non-nil keeps current line absolute while others are relative.
 (setq display-line-numbers-current-absolute t)
-;; If this option is non-nil, ‘display-line-numbers-width’ is set up
-;; from the start to a width necessary to display all line numbers in
-;; the buffer.
-(setq display-line-numbers-width-start t)
+;; Fix the gutter to a constant width so it never reflows mid-scroll.
+;; display-line-numbers-width is buffer-local, so setq-default is required.
+;; display-line-numbers-width-start computed width from visible lines at
+;; mode-activation time, causing the gutter to jump from 2→3 columns when
+;; line 10 first scrolled into view.  A fixed value of 4 covers up to
+;; 9999-line buffers with no dynamic resizing.
+(setq-default display-line-numbers-width 4)
+;; Reserve 1 column for the git-gutter indicator in all buffers so the layout
+;; never shifts when switching between VC and non-VC buffers.
+(setq-default left-margin-width 1)
 ;; display-line-numbers mode is enabled in all buffers where
 (global-display-line-numbers-mode 1)
 ;; Disable line numbers in terminal/shell buffers.
@@ -270,9 +276,9 @@
  'lsp-json-config
  "Could not load lsp-json-config.el; JSON LSP is disabled.")
 
-(emacs-config-load-module
- 'lsp-ltex-plus-config
- "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
+;; (emacs-config-load-module
+;;  'lsp-ltex-plus-config
+;;  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 (emacs-config-load-module
  'lsp-swift-config
