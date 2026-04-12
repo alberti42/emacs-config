@@ -56,39 +56,75 @@
 (defun scroll-config--hscroll-applicable-p ()
   "Return non-nil when the selected window truncates long lines.
 Mirrors the logic in xdisp.c init_iterator."
-  (or truncate-lines
-      (and (not (window-full-width-p))
-           truncate-partial-width-windows
-           (if (integerp truncate-partial-width-windows)
-               (< (window-total-width) truncate-partial-width-windows)
-             t))))
+  (or
+   ;; Explicit per-buffer truncation: the buffer asked for truncation
+   ;; regardless of window geometry.
+   truncate-lines
+
+   ;; Implicit truncation via `truncate-partial-width-windows': Emacs
+   ;; automatically truncates lines in windows that do not occupy the full
+   ;; frame width (i.e. side-by-side splits), to avoid confusing wrapped text.
+   ;; Three sub-conditions must all hold:
+   (and
+    ;; 1. The window is narrower than the frame.  Full-width windows are
+    ;;    exempt: `truncate-partial-width-windows' only applies to splits.
+    (not (window-full-width-p))
+    ;; 2. The feature is enabled at all (nil disables it entirely).
+    truncate-partial-width-windows
+    ;; 3. Width threshold check.  The variable can be t (truncate all
+    ;;    partial-width windows unconditionally) or an integer N (truncate
+    ;;    only when the window is narrower than N columns).  When it is an
+    ;;    integer, a wide-enough split is still allowed to wrap.
+    (if (integerp truncate-partial-width-windows)
+        (< (window-total-width) truncate-partial-width-windows)
+      t))))
 
 (defun scroll-config-horizontal (event &optional _arg)
   "Horizontal scroll EVENT with pixel-proportional column steps."
   (interactive "e")
-  (let* ((window (mwheel-event-window event))
+  (let* (;; mwheel-event-window may return a frame when the pointer is over the
+         ;; internal border; normalise to a window below.
+         (window (mwheel-event-window event))
+         ;; On the NS port (macOS) the 5th event slot carries a cons
+         ;; (COLS . PIXELS) with the raw pixel delta from the trackpad.
+         ;; Its presence signals that pixel-precise scrolling is possible.
          (delta-info (nth 4 event))
+         ;; wheel-left / wheel-right — tells us which direction to scroll.
          (direction (event-basic-type event)))
     (when (framep window) (setq window (frame-selected-window window)))
     (with-selected-window window
-      (when (or (> (window-hscroll) 0)
-                (> scroll-config--hscroll-residual 0)
-                (scroll-config--hscroll-applicable-p))
-        (if delta-info
-            ;; Pixel-precise path: convert pixels → columns, carry the remainder.
-            (let* ((pixels (abs (cdr delta-info)))
-                   (total  (+ scroll-config--hscroll-residual pixels))
-                   (char-w (frame-char-width))
-                   (cols   (truncate (/ total char-w))))
-              (setq scroll-config--hscroll-residual (- total (* cols char-w)))
-              (unless (zerop cols)
-                (if (eq direction 'wheel-left)
-                    (scroll-right cols t)
-                  (scroll-left cols t))))
-          ;; Fallback for events without pixel data (e.g. physical tilt wheel).
-          (if (eq direction 'wheel-left)
-              (scroll-right 3 t)
-            (scroll-left 3 t)))))))
+      (if (or ;; The window is already hscrolled: allow scrolling back to
+           ;; column 0 even if truncation mode is no longer active.
+           (> (window-hscroll) 0)
+           ;; Truncation is active in this window, so horizontal
+           ;; scrolling can actually reveal hidden content.
+           (scroll-config--hscroll-applicable-p))
+          (if delta-info
+              ;; --- Pixel-precise path (trackpad / Magic Mouse) ---
+              ;; The trackpad reports sub-character pixel deltas.  We accumulate
+              ;; the remainder across events so that slow swipes are not
+              ;; silently dropped; each event contributes its full pixel count
+              ;; to the running total, and only whole columns are forwarded to
+              ;; scroll-left/scroll-right.
+              (let* ((pixels (abs (cdr delta-info)))
+                     (total  (+ scroll-config--hscroll-residual pixels))
+                     (char-w (frame-char-width))
+                     (cols   (truncate (/ total char-w))))
+                ;; Carry the sub-column remainder into the next event.
+                (setq scroll-config--hscroll-residual (- total (* cols char-w)))
+                (unless (zerop cols)
+                  (if (eq direction 'wheel-left)
+                      (scroll-right cols t)
+                    (scroll-left cols t))))
+            ;; --- Fallback path (physical tilt wheel, no pixel data) ---
+            ;; No pixel delta available; step by a fixed number of columns.
+            (if (eq direction 'wheel-left)
+                (scroll-right 3 t)
+              (scroll-left 3 t)))
+        ;; Suppressed: the window wraps lines, so horizontal scrolling would
+        ;; have no visible effect.  Clear any accumulated residual so a stale
+        ;; carry from a previous window cannot leak through.
+        (setq scroll-config--hscroll-residual 0)))))
 
 (global-set-key (kbd "<wheel-left>")  #'scroll-config-horizontal)
 (global-set-key (kbd "<wheel-right>") #'scroll-config-horizontal)
