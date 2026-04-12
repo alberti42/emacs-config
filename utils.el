@@ -16,6 +16,32 @@
 
 ;;; -- Utilities to interact with current buffer -------------------------------
 
+(defun reveal-file (path)
+  "Reveal PATH in the system file manager, selecting it.
+On macOS uses `open -R'; on Linux sends a D-Bus ShowItems request
+to org.freedesktop.FileManager1."
+  (cond
+   ((eq system-type 'darwin)
+    (call-process "open" nil 0 nil "-R" (expand-file-name path)))
+   ((eq system-type 'gnu/linux)
+    (call-process "dbus-send" nil 0 nil
+                  "--session"
+                  "--dest=org.freedesktop.FileManager1"
+                  "--type=method_call"
+                  "/org/freedesktop/FileManager1"
+                  "org.freedesktop.FileManager1.ShowItems"
+                  (concat "array:string:file://" (expand-file-name path))
+                  "string:"))
+   (t (user-error "reveal-file: unsupported system type `%s'" system-type))))
+
+(defun reveal-buffer-file ()
+  "Reveal the file visited by the current buffer in the system file manager.
+Does nothing if the buffer does not visit a file."
+  (interactive)
+  (if-let* ((path (buffer-file-name (window-buffer (minibuffer-selected-window)))))
+      (reveal-file path)
+    (message "Buffer has no file name")))
+
 ;; Copy the current buffer's file path to the kill ring.
 (defun copy-buffer-file-name ()
   "Copy the absolute path of the current buffer's file to the kill ring.
