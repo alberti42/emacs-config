@@ -9,11 +9,11 @@
 ;;; Code:
 
 (use-package consult
-  :straight (consult
-             :type git
-             :host github
-             :branch "fix-suppressed-hooks"
-             :repo "alberti42/fork-consult")
+  ;; :straight (consult
+  ;;            :type git
+  ;;            :host github
+  ;;            :branch "fix-suppressed-hooks"
+  ;;            :repo "alberti42/fork-consult")
   :bind (
          ;; Replace default switch-to-buffer with consult-buffer.
          ("C-x b" . consult-buffer)
@@ -57,17 +57,18 @@
   ;; preview (like `save-place`) to avoid moving the point away from the match.
   ;; We have filed a PR to correct this behavior upstream. When the PR is
   ;; merged, this advice is no longer necessary.
-  ;; (defun emacs-config-consult-after-jump-run-hooks (&rest _args)
-  ;;   "Run `find-file-hook' functions that were blocked during Consult preview."
-  ;;   (dolist (hook find-file-hook)
-  ;;     (unless (memq hook consult-preview-allowed-hooks)
-  ;;       (when (and (symbolp hook) (fboundp hook))
-  ;;         (funcall hook))))
-  ;;   (advice-add #'consult--jump :after #'emacs-config-consult-after-jump-run-hooks))
+  (defun emacs-config-consult-after-jump-run-hooks (&rest _args)
+    "Run `find-file-hook' functions that were blocked during Consult preview."
+    (dolist (hook find-file-hook)
+      (unless (memq hook consult-preview-allowed-hooks)
+        (when (and (symbolp hook) (fboundp hook))
+          (funcall hook))))
+    (advice-add #'consult--jump :after #'emacs-config-consult-after-jump-run-hooks))
 
   ;; Use our new hook API from the consult fork to ensure full initialization
   ;; (recentf, vc-refresh, etc.) when we finally select a file.
-  (add-hook 'consult-after-final-jump-hook #'consult-run-suppressed-hooks))
+  ;; (add-hook 'consult-after-final-jump-hook #'consult-run-suppressed-hooks)
+  )
 
-(provide 'completions-consult)
+  (provide 'completions-consult)
 ;;; consult.el ends here
