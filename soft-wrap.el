@@ -47,14 +47,6 @@ If nil, use `fill-column'. If an integer, that value is used when
   :type 'boolean
   :group 'soft-wrap)
 
-;; Andrea: the name is ridicolously long
-(defcustom soft-wrap-reset-right-margin-in-non-soft-wrap-buffers t
-  "Whether to reset a window's right margin for non-soft-wrap buffers.
-
-This prevents right margins set for one buffer from leaking into other buffers
-when a window is reused."
-  :type 'boolean
-  :group 'soft-wrap)
 
 (defvar-local soft-wrap--saved-vars-state nil
   "Alist of (VAR . (WAS-LOCAL-P . VALUE)) for managed variables.")
@@ -146,11 +138,8 @@ Not intended for direct use — `soft-wrap-mode' activates this automatically."
   :group 'soft-wrap
   (if soft-wrap--hooks-mode
       (progn
-        (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-        (when (boundp 'window-buffer-change-functions)
-          (add-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)))
-    (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-    (remove-hook 'window-buffer-change-functions #'soft-wrap--window-buffer-change)))
+        (add-hook 'window-state-change-functions #'soft-wrap--window-state-change))
+    (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)))
 
 (defun soft-wrap--window-target-width (_window)
   "Return the target wrap width for the current buffer."
@@ -287,32 +276,6 @@ absence of the parameter (not yet saved)."
           (set (make-local-variable var) val)
         (kill-local-variable var))))
   (setq-local soft-wrap--saved-vars-state nil))
-
-(defun soft-wrap--window-buffer-change (window &rest _args)
-  "Hook: keep margins correct when WINDOW changes buffers."
-  (when (window-live-p window)
-    (let ((buf (window-buffer window)))
-      (when (buffer-live-p buf)
-        (with-current-buffer buf
-          (if soft-wrap-mode
-              (progn
-                (unless (bound-and-true-p visual-line-mode)
-                  (visual-line-mode 1))
-                (setq-local word-wrap t)
-                (setq-local truncate-lines nil)
-                (setq-local auto-hscroll-mode nil)
-                (when (and soft-wrap-enable-wrap-prefix
-                           (fboundp 'visual-wrap-prefix-mode))
-                  (visual-wrap-prefix-mode 1))
-                (soft-wrap--save-window-right-margin window)
-                (soft-wrap--adjust-window-margins window))
-            ;; Not a soft-wrap buffer: ensure we don't leak right margins.
-            (when soft-wrap-reset-right-margin-in-non-soft-wrap-buffers
-              (let* ((m (window-margins window))
-                     (left (or (car m) 0))
-                     (right (or (cdr m) 0)))
-                (when (> right 0)
-                  (set-window-margins window left 0))))))))))
 
 (defun soft-wrap--do-enable ()
   "Enable soft wrapping in the current buffer (internal helper)."
