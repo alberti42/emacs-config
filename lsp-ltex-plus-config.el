@@ -12,7 +12,7 @@
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :custom
   (lsp-ltex-plus-debug nil)
-  (lsp-ltex-plus-completion-enabled t)
+  (lsp-ltex-plus-completion-enabled nil)
   (lsp-ltex-plus-lt-server-uri "")
   :config
 
