@@ -38,9 +38,9 @@
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
   (setq read-process-output-max (* 4 1024 1024))
-  ;; Breadcrumb headers are unreliable: multiple LSP servers fighting over
-  ;; header-line-format cause partial overwrites, and the header line shifts
-  ;; point by one when opening a file at a specific line number.
+  ;; Whether to display breadcrumb headers.  Note: multiple LSP servers may
+  ;; fight over header-line-format, resulting in conflicts and partial
+  ;; overwrites.
   (setq lsp-headerline-breadcrumb-enable t)
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
@@ -184,7 +184,7 @@ flymake message, enabling precise `pyright: ignore[]' suppression comments."
   (setq lsp-ui-doc-show-with-cursor nil)
   (setq lsp-ui-doc-show-with-mouse nil)
   :bind (:map lsp-ui-mode-map
-         ("C-c l h g" . lsp-ui-doc-glance)))
+              ("C-c l h g" . lsp-ui-doc-glance)))
 
 ;; yasnippet: Snippet engine for interactive LSP expansions.
 ;;
