@@ -15,7 +15,8 @@
   (lsp-ltex-plus-completion-enabled t)
   (lsp-ltex-plus-lt-server-uri "")
   :config
-  ;;;; ── Credentials ────────────────────────────────────────────────────────────
+
+;;;; -- Credentials ------------------------------------------------------------
 
   ;; Use credentials from the environment if they are not already set.
   (let ((user (getenv "LANGUAGETOOL_USERNAME"))
@@ -25,7 +26,7 @@
     (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
       (setq lsp-ltex-plus-lt-api-key key)))
 
-  ;;;; ── Setup ──────────────────────────────────────────────────────────────────
+;;;; -- Setup ------------------------------------------------------------------
 
   ;; Activate LTEX+ for the configured major modes.
   (lsp-ltex-plus-setup-hooks))
