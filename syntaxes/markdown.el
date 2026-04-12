@@ -8,8 +8,7 @@
     (add-hook hook
               (lambda ()
                 ;; Visual soft wrap at 100 columns.
-                (setq-local fill-column 100)
-                (soft-wrap-mode 1)))))
+                (setq-local fill-column 100)))))
 
 (provide 'syntaxes-markdown)
 ;;; syntaxes/markdown.el ends here
