@@ -136,10 +136,12 @@
 (setq display-line-numbers-current-absolute t)
 ;; Fix the gutter to a constant width so it never reflows mid-scroll.
 ;; display-line-numbers-width is buffer-local, so setq-default is required.
-;; display-line-numbers-width-start computed width from visible lines at
-;; mode-activation time, causing the gutter to jump from 2→3 columns when
-;; line 10 first scrolled into view.  A fixed value of 4 covers up to
-;; 9999-line buffers with no dynamic resizing.
+;; Without a fixed value, Emacs recomputes the width on every redisplay from the
+;; last visible line number (not the total buffer size), causing the gutter to
+;; jump whenever scrolling causes the last visible line to cross a power-of-10
+;; boundary.  A fixed value of 4 is treated as a minimum: for buffers exceeding
+;; 9999 lines Emacs still expands the width automatically.  This mimics neovim,
+;; which also reserves a fixed 4 digits by default.
 (setq-default display-line-numbers-width 4)
 ;; Reserve 1 column for the git-gutter indicator in all buffers so the layout
 ;; never shifts when switching between VC and non-VC buffers.
