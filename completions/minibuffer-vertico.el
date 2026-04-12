@@ -14,7 +14,9 @@
   (setq vertico-resize 'grow-only)
   (vertico-mode 1)
   (setq vertico-multiform-commands
-        '((find-file (vertico-count . 20))))
+        '((find-file (vertico-count . 20))
+          ;; Preserve recentf-list order (most-recently-opened first).
+          (recentf-open (vertico-sort-function . nil))))
   (vertico-multiform-mode 1))
 
 (provide 'completions-minibuffer-vertico)
