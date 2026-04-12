@@ -238,6 +238,10 @@ absence of the parameter (not yet saved)."
       (when (buffer-live-p buf)
         (with-current-buffer buf
           (when soft-wrap-mode
+            ;; Save the original right margin before the first adjustment.
+            ;; The once-only guard in the save function makes this a no-op
+            ;; on subsequent calls.
+            (soft-wrap--save-window-right-margin window)
             (let* ((target (soft-wrap--window-target-width window))
                    (margins (window-margins window))
                    (left (or (car margins) 0))
@@ -303,10 +307,9 @@ absence of the parameter (not yet saved)."
             'append
             'local)
 
-  ;; Save and adjust all windows currently showing this buffer.
-  (dolist (w (get-buffer-window-list (current-buffer) nil t))
-    (soft-wrap--save-window-right-margin w)
-    (soft-wrap--adjust-window-margins w)))
+  ;; Adjust all windows currently showing this buffer. The save of the original
+  ;; right margin happens inside soft-wrap--adjust-window-margins.
+  (soft-wrap--refresh-buffer-windows))
 
 (defun soft-wrap--do-disable ()
   "Disable soft wrapping in the current buffer (internal helper)."
