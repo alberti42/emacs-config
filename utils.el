@@ -1,5 +1,7 @@
 ;;; utils.el --- General-purpose interactive utilities -*- lexical-binding: t; -*-
 
+;;; -- Utilities to produce UUID -----------------------------------------------
+
 ;; Generate and insert a UUID v4 at point.
 (defun insert-uuid ()
   "Generate a random UUID v4 and insert it at point."
@@ -12,6 +14,8 @@
            (logior #x8000 (logand #xbfff (random (expt 16 4))))
            (random (expt 16 12)))))
 
+;;; -- Utilities to interact with current buffer -------------------------------
+
 ;; Copy the current buffer's file path to the kill ring.
 (defun copy-buffer-file-name ()
   "Copy the absolute path of the current buffer's file to the kill ring.
@@ -21,6 +25,10 @@ before entering it.  Does nothing if the buffer does not visit a file."
   (if-let* ((name (buffer-file-name (window-buffer (minibuffer-selected-window)))))
       (progn (kill-new name) (message "%s" name))
     (message "Buffer has no file name")))
+
+;;; -- Set of opinionated utilities --------------------------------------------
+;;
+;; This package was not tested yet, therefore it is commented out for now.
 
 (when nil
   (use-package crux
@@ -72,10 +80,8 @@ before entering it.  Does nothing if the buffer does not visit a file."
      ;; ("C-g"             . crux-keyboard-quit-dwim)                           ; Smarter C-g: dismisses the minibuffer or *Completions* buffer even when focus is elsewhere. Replaces built-in C-g.
      )))
 
-;;; Miscellaneous commands
-;;
-;; Command to obtain the number of characters in the selected region; obtained
-;; from https://www.emacswiki.org/emacs/misc-cmds.el
+;;; -- Miscellaneous commands to extract and check line length -----------------
+
 ;;;###autoload
 (defun region-length ()
   "Display the number of characters in the region in a message."
@@ -86,7 +92,11 @@ before entering it.  Does nothing if the buffer does not visit a file."
 
 (defun check-long-lines (max-col)
   "Check lines in the region (or buffer) for lines exceeding MAX-COL characters.
-Displays a report buffer listing each offending line number and content."
+Displays a report buffer listing each offending line number and content.
+
+This function is especially useful when coding for Emacs C functions
+where a maximum length of 79 characters must be enforced.
+"
   (interactive (list (read-number "Max columns: " 79)))
   (let* ((start (if (use-region-p) (region-beginning) (point-min)))
          (end   (if (use-region-p) (region-end)       (point-max)))
@@ -120,7 +130,8 @@ Displays a report buffer listing each offending line number and content."
           (goto-char (point-min)))
         (pop-to-buffer report)))))
 
-;;; Help system enhancements: Schema-aware documentation.
+
+;;; -- Help system enhancements: Schema-aware documentation. -------------------
 ;;
 ;; This feature enhances `describe-variable' (C-h v) by automatically extracting
 ;; and rendering the machine-readable schema (custom-type) of customizable
@@ -154,45 +165,50 @@ It provides specialized formatting for:
 ;; standard "You can customize this variable" line.
 (add-hook 'help-fns-describe-variable-functions #'my/help-fns-describe-custom-type t)
 
-;; -- Testing the new smart comment  ---------------------------------------------------------------------
-
-;;; M-; enhancement: reformat `;;;' section-header lines.
-;;
-;; When `comment-dwim' is invoked on a line of the form
-;;   ;;; ---- LABEL ----
-;; (any number of leading/trailing dashes and spaces, including zero),
-;; the line is replaced with a filled banner:
-;;   ;; -- LABEL --------
-;; where trailing dashes extend the line exactly to `fill-column'.
-;; Falls through to the original `comment-dwim' in all other cases.
+;;; -- Smarter dwim comment ----------------------------------------------------
 
 (defun my/comment-dwim-section-header (orig-fun &rest args)
-  "Around advice for `comment-dwim' that converts `;;;' section-header lines.
-When point is on a line of the form (any number of dashes, including zero):
-  ;;; ---- LABEL ----
-replace it with a filled banner line:
-  ;; -- LABEL --------
-where trailing dashes extend the line to `fill-column'.
+  "Around advice for `comment-dwim' that converts `;;;+' section-header lines.
+When point is on a line whose leading run of semicolons is three or longer:
+
+  ;;;+ ---- LABEL ----
+
+replace it with a filled banner line, preserving the semicolon count:
+
+  ;;;+ -- LABEL --------
+
+where trailing dashes extend the line to `fill-column'. The cursor is
+repositioned at the same offset within LABEL as before.
+
 Falls through to the original command in all other cases."
-  (let* ((line (buffer-substring-no-properties
-                (line-beginning-position) (line-end-position)))
-         (text (and (not (use-region-p))
-                    (string-prefix-p ";;;" line)
-                    (let* ((rest  (substring line 3))
-                           (inner (string-trim
-                                   (replace-regexp-in-string
-                                    "[ \t-]+\\'" ""
-                                    (replace-regexp-in-string
-                                     "\\`[ \t-]+" "" rest)))))
-                      (and (not (string-empty-p inner)) inner)))))
-    (if text
-        (let* ((base     (concat ";; -- " text " "))
-               (new-line (concat base (make-string
-                                       (max 0 (- fill-column (length base)))
-                                       ?-))))
-          (save-excursion
-            (delete-region (line-beginning-position) (line-end-position))
-            (insert new-line)))
+  (let* ((line       (buffer-substring-no-properties
+                      (line-beginning-position) (line-end-position)))
+         (line-start (line-beginning-position))
+         (pt-offset  (- (point) line-start)))
+    (if (and (not (use-region-p))
+             (string-match "\\`\\(;\\{3,\\}\\)" line))
+        (let* ((semis         (match-string 1 line))
+               (n             (length semis))
+               (rest          (substring line n))
+               (rest-no-lead  (replace-regexp-in-string "\\`[ \t-]+" "" rest))
+               (inner         (replace-regexp-in-string "[ \t-]+\\'" "" rest-no-lead))
+               (text          (string-trim inner)))
+          (if (string-empty-p text)
+              (apply orig-fun args)
+            (let* ((prefix     (concat semis " -- "))
+                   ;; Column where LABEL begins in the original line
+                   (text-start (+ n (- (length rest) (length rest-no-lead))))
+                   ;; Cursor offset relative to LABEL, clamped to [0 .. (length text)]
+                   (rel-offset (max 0 (min (length text) (- pt-offset text-start))))
+                   ;; Build the replacement line
+                   (base       (concat prefix text " "))
+                   (new-line   (concat base (make-string
+                                             (max 0 (- fill-column (length base)))
+                                             ?-))))
+              (delete-region line-start (line-end-position))
+              (insert new-line)
+              ;; LABEL starts at column (length prefix) in the new line
+              (goto-char (+ line-start (length prefix) rel-offset)))))
       (apply orig-fun args))))
 
 (advice-add 'comment-dwim :around #'my/comment-dwim-section-header)
