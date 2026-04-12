@@ -181,8 +181,10 @@ flymake message, enabling precise `pyright: ignore[]' suppression comments."
   ;; Use child-frames where available (GUI).
   (setq lsp-ui-doc-use-childframe t)
   ;; Automatically show doc when cursor is over a symbol.
-  (setq lsp-ui-doc-show-with-cursor t)
-  (setq lsp-ui-doc-show-with-mouse t))
+  (setq lsp-ui-doc-show-with-cursor nil)
+  (setq lsp-ui-doc-show-with-mouse nil)
+  :bind (:map lsp-ui-mode-map
+         ("C-c l h g" . lsp-ui-doc-glance)))
 
 ;; yasnippet: Snippet engine for interactive LSP expansions.
 ;;
