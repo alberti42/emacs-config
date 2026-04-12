@@ -153,7 +153,9 @@
 (use-package soft-wrap
   :straight nil
   :load-path emacs-config-dir
-  :commands (soft-wrap-mode global-soft-wrap-mode))
+  :commands (soft-wrap-mode global-soft-wrap-mode)
+  :custom
+  (soft-wrap-load-diagnostics nil))
 
 ;; Tree-sitter grammars (auto-install missing ones)
 (emacs-config-load-module
