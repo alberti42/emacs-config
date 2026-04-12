@@ -153,8 +153,12 @@ Mirrors the logic in xdisp.c init_iterator."
         ;; carry from a previous window cannot leak through.
         (setq scroll-config--hscroll-residual 0)))))
 
-(global-set-key (kbd "<wheel-left>")  #'scroll-config-horizontal)
-(global-set-key (kbd "<wheel-right>") #'scroll-config-horizontal)
+;; Bind all three speed tiers (Emacs reclassifies rapid successive wheel events
+;; as double- then triple- variants, like it does for mouse clicks).
+(dolist (dir '("left" "right"))
+  (dolist (speed '("" "double-" "triple-"))
+    (global-set-key (kbd (format "<%swheel-%s>" speed dir))
+                    #'scroll-config-horizontal)))
 
 ;;; -- Disable zoom bindings ---------------------------------------------------
 
