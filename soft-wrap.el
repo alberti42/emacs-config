@@ -36,16 +36,6 @@ If nil, use `fill-column'. If an integer, that value is used when
                  (integer :tag "Column" 100))
   :group 'soft-wrap)
 
-;; Andrea not clear what it does; what does it mean that it keeps the current left margin? Otherwise? We change it arbitrarily?
-(defcustom soft-wrap-preserve-left-margin t
-  "Whether to preserve the existing left window margin.
-
-When non-nil, soft-wrap keeps the current left margin and only changes
-the right margin. This is useful in TTY where other packages may reserve
-the left margin for gutters. When nil, soft-wrap uses a left margin of
-0."
-  :type 'boolean
-  :group 'soft-wrap)
 
 (defcustom soft-wrap-enable-wrap-prefix t
   "Whether to enable `visual-wrap-prefix-mode' when available."
@@ -57,7 +47,7 @@ the left margin for gutters. When nil, soft-wrap uses a left margin of
   :type 'boolean
   :group 'soft-wrap)
 
-;; Andrea: the nane is ridicolously long
+;; Andrea: the name is ridicolously long
 (defcustom soft-wrap-reset-right-margin-in-non-soft-wrap-buffers t
   "Whether to reset a window's right margin for non-soft-wrap buffers.
 
@@ -66,16 +56,22 @@ when a window is reused."
   :type 'boolean
   :group 'soft-wrap)
 
-;; Andrea: what is the default? I think we should save it by default.
-(defvar-local soft-wrap--saved-auto-fill nil
-  "Value of `auto-fill-function' before soft wrap was enabled.")
-
 (defvar-local soft-wrap--saved-vars-state nil
   "Alist of (VAR . (WAS-LOCAL-P . VALUE)) for managed variables.")
 
 (defconst soft-wrap--managed-vars
-  '(word-wrap truncate-lines auto-hscroll-mode)
-  "List of variables whose state is managed by `soft-wrap-mode'.")
+  '(word-wrap truncate-lines auto-hscroll-mode auto-fill-function)
+  "List of variables whose state is managed by `soft-wrap-mode'.
+
+Two things are handled separately rather than via this list:
+
+`visual-wrap-prefix-mode': it is a minor mode whose disable path runs cleanup
+hooks (e.g. removing text properties). Restoring the variable directly would
+skip those hooks and leave artifacts. Saved in `soft-wrap--saved-visual-wrap-prefix-mode'.
+
+Window right margin: it is per-window, not per-buffer, so it cannot be stored
+as a buffer-local variable. Saved as a window parameter
+`soft-wrap--saved-right-margin' on each window showing the buffer.")
 
 (defvar-local soft-wrap--target-width nil
   "Target wrap width for the current buffer.
@@ -185,7 +181,7 @@ font metrics."
                            1))
            (line-number-cols
             (if (fboundp 'line-number-display-width)
-                (ceiling (line-number-display-width window))
+                (ceiling (line-number-display-width))
               0))
            (ncols (- (/ window-width font-width) line-number-cols)))
       (- ncols (soft-wrap--reserved-continuation-cols window)))))
@@ -227,6 +223,25 @@ font metrics."
          :line-prefix-width (string-width (format-mode-line (or line-prefix "")))))
       wins))))
 
+(defun soft-wrap--save-window-right-margin (window)
+  "Save WINDOW's current right margin as a window parameter (once only).
+The value is wrapped in a list so nil (not set) is distinguished from
+absence of the parameter (not yet saved)."
+  (when (window-live-p window)
+    (unless (window-parameter window 'soft-wrap--saved-right-margin)
+      (set-window-parameter window 'soft-wrap--saved-right-margin
+                            (list (cdr (window-margins window)))))))
+
+(defun soft-wrap--restore-window-right-margin (window)
+  "Restore WINDOW's right margin from the saved window parameter."
+  (when (window-live-p window)
+    (let ((saved (window-parameter window 'soft-wrap--saved-right-margin)))
+      (when saved
+        (let* ((m (window-margins window))
+               (left (or (car m) 0)))
+          (set-window-margins window left (car saved)))
+        (set-window-parameter window 'soft-wrap--saved-right-margin nil)))))
+
 (defun soft-wrap--adjust-window-margins (window)
   "Adjust WINDOW's right margin to hit the target wrap width."
   (when (window-live-p window)
@@ -236,36 +251,15 @@ font metrics."
           (when soft-wrap-mode
             (let* ((target (soft-wrap--window-target-width window))
                    (margins (window-margins window))
-                   (left (if soft-wrap-preserve-left-margin (or (car margins) 0) 0))
+                   (left (or (car margins) 0))
                    (right (or (cdr margins) 0))
-                   (cur (soft-wrap--computed-max-chars-per-line window))
-                   (window-too-narrow (< cur target))
+                   (cur (window-max-chars-per-line window))
                    (delta (- cur target))
                    (new-right (max 0 (+ right delta))))
+              (soft-wrap--trace-log "adjust: margins-at-entry=%S left=%d right=%d cur=%d target=%d new-right=%d"
+                                    margins left right cur target new-right)
               (unless (= new-right right)
-                (set-window-margins window left new-right))
-              (when (and soft-wrap-verify-width (not window-too-narrow))
-                ;; Verify against Emacs' computed value and apply a single
-                ;; corrective adjustment if needed.
-                (let* ((after (window-max-chars-per-line window))
-                       (cur-right (or (cdr (window-margins window)) 0)))
-                  (when (/= after target)
-                    (let* ((correction (- after target))
-                           (corrected-right (max 0 (+ cur-right correction))))
-                      (unless (= corrected-right cur-right)
-                        (set-window-margins window left corrected-right)
-                        (setq after (window-max-chars-per-line window)))))
-                  (when (and (not soft-wrap--warned-mismatch)
-                             (/= after target))
-                    (setq-local soft-wrap--warned-mismatch t)
-                    (display-warning
-                     'soft-wrap
-                     (concat
-                      "soft-wrap: could not reach target width.\n"
-                      (format "target=%s computed-cur=%s after=%s margins=%S\n"
-                              target cur after (window-margins window))
-                      (pp-to-string (soft-wrap--debug-data window)))
-                     :warning)))))))))))
+                (set-window-margins window left new-right)))))))))
 
 (defun soft-wrap--refresh-buffer-windows ()
   "Refresh margins for all windows showing the current buffer."
@@ -310,11 +304,12 @@ font metrics."
                 (when (and soft-wrap-enable-wrap-prefix
                            (fboundp 'visual-wrap-prefix-mode))
                   (visual-wrap-prefix-mode 1))
+                (soft-wrap--save-window-right-margin window)
                 (soft-wrap--adjust-window-margins window))
             ;; Not a soft-wrap buffer: ensure we don't leak right margins.
             (when soft-wrap-reset-right-margin-in-non-soft-wrap-buffers
               (let* ((m (window-margins window))
-                     (left (if soft-wrap-preserve-left-margin (or (car m) 0) 0))
+                     (left (or (car m) 0))
                      (right (or (cdr m) 0)))
                 (when (> right 0)
                   (set-window-margins window left 0))))))))))
@@ -322,16 +317,14 @@ font metrics."
 (defun soft-wrap--do-enable ()
   "Enable soft wrapping in the current buffer (internal helper)."
   (soft-wrap--hooks-mode 1)
-  (setq-local soft-wrap--saved-auto-fill auto-fill-function)
-  (auto-fill-mode -1)
 
   (soft-wrap--save-state)
+  (auto-fill-mode -1)
   (setq-local word-wrap t)
   (setq-local truncate-lines nil)
   (setq-local auto-hscroll-mode nil)
 
-  (setq-local soft-wrap--target-width
-              (or soft-wrap-default-width fill-column))
+  (setq-local soft-wrap--target-width soft-wrap-default-width)
   (setq-local soft-wrap--warned-mismatch nil)
 
   (visual-line-mode 1)
@@ -347,9 +340,10 @@ font metrics."
             'append
             'local)
 
-  ;; Adjust immediately if already displayed; otherwise window-buffer-change
-  ;; will handle the first display.
-  (soft-wrap--refresh-buffer-windows))
+  ;; Save and adjust all windows currently showing this buffer.
+  (dolist (w (get-buffer-window-list (current-buffer) nil t))
+    (soft-wrap--save-window-right-margin w)
+    (soft-wrap--adjust-window-margins w)))
 
 (defun soft-wrap--do-disable ()
   "Disable soft wrapping in the current buffer (internal helper)."
@@ -364,19 +358,13 @@ font metrics."
     (visual-wrap-prefix-mode (if soft-wrap--saved-visual-wrap-prefix-mode 1 -1)))
   (visual-line-mode -1)
 
-  ;; Restore managed variables.
+  ;; Restore managed variables (includes auto-fill-function).
   (soft-wrap--restore-state)
 
-  ;; Restore right margin to 0 while preserving any reserved left margin.
+  ;; Restore each window's right margin to what it was before soft-wrap enabled.
   (dolist (w (get-buffer-window-list (current-buffer) nil t))
-    (let* ((m (window-margins w))
-           (left (or (car m) 0)))
-      (set-window-margins w left 0)))
+    (soft-wrap--restore-window-right-margin w))
 
-  ;; Restore hard-wrap state if it was active before soft wrap was enabled.
-  (when soft-wrap--saved-auto-fill
-    (auto-fill-mode 1))
-  (kill-local-variable 'soft-wrap--saved-auto-fill)
   (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode))
 
 (defun soft-wrap--debug-dump (&optional window)
@@ -391,6 +379,107 @@ windows showing the current buffer."
         (erase-buffer)
         (pp data (current-buffer))))
     (message "Wrote soft-wrap debug to *Soft Wrap Debug*")))
+
+;;; Diagnostics ----------------------------------------------------------------
+
+(defun soft-wrap-diagnose ()
+  "Print window margin diagnostic info to *soft-wrap-diag* without side effects."
+  (interactive)
+  (let* ((window (selected-window))
+         (target (or soft-wrap--target-width fill-column))
+         (margins (window-margins window))
+         (left (or (car margins) 0))
+         (right (or (cdr margins) 0))
+         (body-px (window-body-width window t))
+         (font-w (or (window-font-width window nil) (frame-char-width)))
+         (body-cols (/ body-px font-w))
+         (cur (soft-wrap--computed-max-chars-per-line window))
+         (proposed (max 0 (- cur left target))))
+    (with-current-buffer (get-buffer-create "*soft-wrap-diag*")
+      (goto-char (point-max))
+      (insert (format "target=%d left=%d right=%d body-px=%d font-w=%d body-cols=%d cur=%d proposed=%d emacs-max=%d\n"
+                      target left right body-px font-w body-cols cur proposed
+                      (window-max-chars-per-line window))))))
+
+(define-key soft-wrap-mode-map (kbd "C-c W") #'soft-wrap-diagnose)
+
+;;; Margin-change tracing -------------------------------------------------------
+;;
+;; Enable with M-x soft-wrap-trace-start, disable with M-x soft-wrap-trace-stop.
+;; Every call to `set-window-margins' is logged to *soft-wrap-trace* with the
+;; window, old/new margin values, and a short backtrace so you can see who is
+;; responsible for each change.
+
+(defvar soft-wrap--trace-active nil
+  "Non-nil when margin-change tracing is active.")
+
+(defun soft-wrap--trace-log (fmt &rest args)
+  "Append a formatted line to *soft-wrap-trace*."
+  (with-current-buffer (get-buffer-create "*soft-wrap-trace*")
+    (goto-char (point-max))
+    (insert (apply #'format fmt args) "\n")))
+
+(defun soft-wrap--trace-set-window-margins (orig window &optional left right)
+  "Advice around `set-window-margins' that logs every call."
+  (let* ((old (window-margins window))
+         (old-l (or (car old) 0))
+         (old-r (or (cdr old) 0))
+         (new-l (or left 0))
+         (new-r (or right 0))
+         (changed (or (/= old-l new-l) (/= old-r new-r))))
+    (when changed
+      (soft-wrap--trace-log
+       "\n[set-window-margins] buf=%s  margins: (%d . %d) -> (%d . %d)"
+       (buffer-name (window-buffer window))
+       old-l old-r new-l new-r)
+      ;; Short backtrace: skip the advice wrapper frames, show 6 meaningful frames.
+      (let ((i 0))
+        (mapbacktrace
+         (lambda (_evald func _args _flags)
+           (when (and (> i 2) (< i 10))
+             (soft-wrap--trace-log "  #%d %s" i func))
+           (setq i (1+ i))))))
+    (funcall orig window left right)))
+
+(defun soft-wrap--trace-hook (name)
+  "Return a lambda that logs when the hook named NAME runs."
+  (lambda (&rest args)
+    (soft-wrap--trace-log "[hook] %s  args=%S  buf=%s"
+                          name args (buffer-name (current-buffer)))))
+
+(defvar soft-wrap--trace-hook-fns nil
+  "Alist of (hook . fn) pairs added for tracing.")
+
+(defun soft-wrap-trace-start ()
+  "Start tracing all `set-window-margins' calls and soft-wrap hook entries.
+Results appear in *soft-wrap-trace*."
+  (interactive)
+  (unless soft-wrap--trace-active
+    (setq soft-wrap--trace-active t)
+    (advice-add 'set-window-margins :around #'soft-wrap--trace-set-window-margins)
+    ;; Trace each hook that soft-wrap registers so we can see what triggers what.
+    (setq soft-wrap--trace-hook-fns nil)
+    (dolist (hook '(window-configuration-change-hook
+                    window-state-change-functions
+                    window-buffer-change-functions))
+      (let ((fn (soft-wrap--trace-hook hook)))
+        (push (cons hook fn) soft-wrap--trace-hook-fns)
+        (add-hook hook fn)))
+    (with-current-buffer (get-buffer-create "*soft-wrap-trace*")
+      (erase-buffer)
+      (insert ";; soft-wrap trace started\n"))
+    (message "soft-wrap tracing started → *soft-wrap-trace*")))
+
+(defun soft-wrap-trace-stop ()
+  "Stop soft-wrap margin tracing."
+  (interactive)
+  (when soft-wrap--trace-active
+    (setq soft-wrap--trace-active nil)
+    (advice-remove 'set-window-margins #'soft-wrap--trace-set-window-margins)
+    (dolist (pair soft-wrap--trace-hook-fns)
+      (remove-hook (car pair) (cdr pair)))
+    (setq soft-wrap--trace-hook-fns nil)
+    (message "soft-wrap tracing stopped")))
 
 (provide 'soft-wrap)
 ;;; soft-wrap.el ends here
