@@ -8,6 +8,7 @@
 ;; Public entry points:
 ;; - `soft-wrap-mode'         Buffer-local minor mode; toggles soft wrapping.
 ;; - `global-soft-wrap-mode'  Global minor mode; enables soft-wrap-mode everywhere.
+;; - `soft-wrap-set-width'    Interactively change the wrap width for the current buffer.
 ;;
 ;; Implementation notes:
 ;; - Soft wrapping is implemented using `visual-line-mode' and a window right
@@ -15,9 +16,11 @@
 ;; - Continuation indentation is handled by built-in `visual-wrap-prefix-mode'
 ;;   when available (Emacs 30+).
 ;; - Margins are per-window. This module installs hooks to keep margins correct
-;;   across resizes and buffer switches.
-;; - The left margin is preserved by default so TTY gutters that reserve it
+;;   across resizes and window configuration changes.
+;; - The left margin is always preserved so TTY gutters that reserve it
 ;;   (e.g. git-gutter) keep working. This module only manages the right margin.
+;; - Optional diagnostic and tracing tools live in `soft-wrap-diagnostic.el'.
+;;   Load them by setting `soft-wrap-load-diagnostics' to t before loading this file.
 
 ;;; Code:
 
