@@ -42,11 +42,6 @@ If nil, use `fill-column'. If an integer, that value is used when
   :type 'boolean
   :group 'soft-wrap)
 
-(defcustom soft-wrap-verify-width t
-  "Whether to verify the resulting wrap width and warn on mismatch."
-  :type 'boolean
-  :group 'soft-wrap)
-
 
 (defvar-local soft-wrap--saved-vars-state nil
   "Alist of (VAR . (WAS-LOCAL-P . VALUE)) for managed variables.")
@@ -69,9 +64,6 @@ as a buffer-local variable. Saved as a window parameter
   "Target wrap width for the current buffer.
 
 When nil, the current value of `fill-column' is used when enabling.")
-
-(defvar-local soft-wrap--warned-mismatch nil
-  "Automatically set to non-nil after first warning about a wrap-width mismatch.")
 
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
@@ -128,6 +120,7 @@ otherwise from `fill-column'."
 ;;;###autoload
 (define-globalized-minor-mode global-soft-wrap-mode
   soft-wrap-mode soft-wrap-mode
+  "Global minor mode that enables `soft-wrap-mode' in every buffer."
   :group 'soft-wrap)
 
 (define-minor-mode soft-wrap--hooks-mode
@@ -260,7 +253,8 @@ absence of the parameter (not yet saved)."
     (soft-wrap--adjust-window-margins w)))
 
 (defun soft-wrap--window-state-change (window)
-  "Hook: keep soft-wrap margins correct for WINDOW."
+  "Run on `window-state-change-functions'; re-adjust margins for WINDOW.
+Called whenever Emacs detects a window state change (resize, split, etc.)."
   (soft-wrap--adjust-window-margins window))
 
 (defun soft-wrap--save-state ()
@@ -282,7 +276,10 @@ absence of the parameter (not yet saved)."
   (setq-local soft-wrap--saved-vars-state nil))
 
 (defun soft-wrap--do-enable ()
-  "Enable soft wrapping in the current buffer (internal helper)."
+  "Enable soft wrapping in the current buffer.
+Saves the state of all managed variables, enables visual-line-mode and
+visual-wrap-prefix-mode, and adjusts window margins to match the target width.
+Called by `soft-wrap-mode' when toggled on."
   (soft-wrap--hooks-mode 1)
 
   (soft-wrap--save-state)
@@ -312,7 +309,10 @@ absence of the parameter (not yet saved)."
   (soft-wrap--refresh-buffer-windows))
 
 (defun soft-wrap--do-disable ()
-  "Disable soft wrapping in the current buffer (internal helper)."
+  "Disable soft wrapping in the current buffer.
+Restores all managed variables, disables visual-line-mode and
+visual-wrap-prefix-mode, and restores window margins to their original values.
+Called by `soft-wrap-mode' when toggled off."
   (setq-local soft-wrap--target-width nil)
   (setq-local soft-wrap--warned-mismatch nil)
 
