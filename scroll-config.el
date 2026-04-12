@@ -8,20 +8,23 @@
 
 ;;; Code:
 
-;; ultra-scroll requires scroll-margin 0 and works best with a low
-;; scroll-conservatively value; it handles pixel-precise scrolling itself.
-(setq scroll-margin 0)
-(setq scroll-conservatively 101)
-(setq scroll-step 1)
-(setq scroll-preserve-screen-position t)
-
-;; Smoother horizontal scrolling too
-(setq hscroll-margin 2)
-(setq hscroll-step 1)
+;;; -- Setting up pixel-precise scrolling with ultra-scroll --------------------
 
 ;; Pixel-precise, glitch-free smooth scrolling.
 ;; Replaces pixel-scroll-precision-mode (ultra-scroll activates it internally).
 (use-package ultra-scroll
+  :init
+  ;; ultra-scroll requires scroll-margin 0 and works best with a low
+  ;; scroll-conservatively value; it handles pixel-precise scrolling itself.
+  (setq scroll-margin 0)
+  (setq scroll-conservatively 101)
+  (setq scroll-step 1)
+  (setq scroll-preserve-screen-position t)
+
+  ;; Smoother horizontal scrolling too
+  (setq hscroll-margin 2)
+  (setq hscroll-step 1)
+  
   :config
   ;; Whether to hide the cursor while scrolling and restore it afterwards (default: t).
   (setq ultra-scroll-hide-cursor t)
@@ -89,6 +92,8 @@ Mirrors the logic in xdisp.c init_iterator."
 
 (global-set-key (kbd "<wheel-left>")  #'scroll-config-horizontal)
 (global-set-key (kbd "<wheel-right>") #'scroll-config-horizontal)
+
+;;; -- Disable zoom bindings ---------------------------------------------------
 
 ;; Disable ctrl+scroll zoom (too fast; use keyboard to change font size instead).
 (global-set-key (kbd "<C-wheel-up>") 'ignore)
