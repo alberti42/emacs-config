@@ -23,6 +23,8 @@
 
 (require 'pp)
 
+;;; Customization --------------------------------------------------------------
+
 (defgroup soft-wrap nil
   "Soft wrap at a target column using window margins."
   :group 'convenience)
@@ -42,6 +44,8 @@ If nil, use `fill-column'. If an integer, that value is used when
   :type 'boolean
   :group 'soft-wrap)
 
+
+;;; Internal state ------------------------------------------------------------
 
 (defvar-local soft-wrap--saved-vars-state nil
   "Alist of (VAR . (WAS-LOCAL-P . VALUE)) for managed variables.")
@@ -67,6 +71,8 @@ When nil, the current value of `fill-column' is used when enabling.")
 
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
+
+;;; Mode definitions ----------------------------------------------------------
 
 (defvar soft-wrap-mode-map (make-sparse-keymap)
   "Keymap for `soft-wrap-mode'.")
@@ -134,6 +140,8 @@ Not intended for direct use — `soft-wrap-mode' activates this automatically."
         (add-hook 'window-state-change-functions #'soft-wrap--window-state-change))
     (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)))
 
+;;; Width calculation ---------------------------------------------------------
+
 (defun soft-wrap--window-target-width (_window)
   "Return the target wrap width for the current buffer."
   (or soft-wrap--target-width fill-column))
@@ -167,6 +175,8 @@ font metrics."
               0))
            (ncols (- (/ window-width font-width) line-number-cols)))
       (- ncols (soft-wrap--reserved-continuation-cols window)))))
+
+;;; Window margin management --------------------------------------------------
 
 (defun soft-wrap--save-window-right-margin (window)
   "Save WINDOW's current right margin as a window parameter (once only).
@@ -221,6 +231,8 @@ absence of the parameter (not yet saved)."
 Called whenever Emacs detects a window state change (resize, split, etc.)."
   (soft-wrap--adjust-window-margins window))
 
+;;; Buffer state save/restore -------------------------------------------------
+
 (defun soft-wrap--save-state ()
   "Save the current state of managed variables."
   (setq-local soft-wrap--saved-vars-state
@@ -238,6 +250,8 @@ Called whenever Emacs detects a window state change (resize, split, etc.)."
           (set (make-local-variable var) val)
         (kill-local-variable var))))
   (setq-local soft-wrap--saved-vars-state nil))
+
+;;; Enable/disable ------------------------------------------------------------
 
 (defun soft-wrap--do-enable ()
   "Enable soft wrapping in the current buffer.
