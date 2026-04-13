@@ -41,9 +41,8 @@
 ;; workaround: it pre-approves this specific pair so Emacs skips the
 ;; prompt.
 (setq safe-local-variable-values
-      '((magit-ediff-word-wrap . t)
-        (elisp-lint-indent-specs (git-gutter:awhen . 1))
-        (buffer-file-coding-system . utf-8-unix))))
+      '((elisp-lint-indent-specs (git-gutter:awhen . 1))
+        (buffer-file-coding-system . utf-8-unix)))
 
 ;; Bootstrap
 ;; Keep init.el compact; details live in emacs-config-core.el.
