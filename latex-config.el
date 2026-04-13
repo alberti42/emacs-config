@@ -55,6 +55,18 @@ Scans the first 10 lines of the buffer, case-insensitively.
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
   (setq-default TeX-master t)
+
+  ;; Work around a latexenc.el bug (present in Emacs ≤31): when TeX-master is a
+  ;; string (e.g. set via the % -*- modeline or dir-locals), the fallback path in
+  ;; `latexenc-find-file-coding-system' returns t instead of the string, then
+  ;; passes t to `concat', crashing on `revert-buffer'.  Catch the error and
+  ;; return nil (undecided) so Emacs falls back to normal coding-system detection.
+  ;; TeX-master is left untouched; compilation is unaffected.
+  (define-advice latexenc-find-file-coding-system
+      (:around (orig arg-list) fix-tex-master-type-bug)
+    (condition-case nil
+        (funcall orig arg-list)
+      (wrong-type-argument nil)))
   ;; Show the compilation output buffer only on errors.
   (setq TeX-show-compilation nil)
   ;; Save the buffer automatically before compiling without asking.
