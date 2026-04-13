@@ -41,12 +41,12 @@ Add face propagation here as new packages need harmonizing."
     (when (facep 'fringe)
       (set-face-background 'fringe bg)))
 
-  ;; flymake margin indicators: set background to match the line-number face so
-  ;; the indicator characters blend with the left-margin column background.
-  ;; The three faces cover error, warning, and note severity levels.
+  ;; flycheck fringe indicators: set background to match the line-number face so
+  ;; the indicator bitmaps blend with the left fringe/margin column background.
+  ;; The three faces cover error, warning, and info severity levels.
   (let ((bg (face-background 'line-number nil t)))
     (when bg
-      (dolist (face '(compilation-error compilation-warning compilation-info))
+      (dolist (face '(flycheck-fringe-error flycheck-fringe-warning flycheck-fringe-info))
         (when (facep face)
           (set-face-background face bg)))))
 

@@ -17,10 +17,8 @@
   :commands (lsp lsp-deferred)
   :init
   (setq lsp-keymap-prefix "C-c l")
-  ;; Disable flymake's margin/fringe indicator column so it doesn't
-  ;; appear and disappear with diagnostics, causing layout jitter.
-  ;; Diagnostics remain visible via the modeline and lsp-ui sideline.
-  (setq flymake-fringe-indicator-position nil)
+  ;; Use flycheck for diagnostics (richer display, fringe stays fixed — no jitter).
+  (setq lsp-diagnostics-provider :flycheck)
   ;; Whether to suppress "no server installed" popups for file types like plist/XML.
   (setq lsp-warn-no-matched-clients t)
   ;; All servers are managed externally (zinit/system); never prompt to
@@ -119,50 +117,15 @@ to client requests when IDs collide."
             ('request
              (lsp--on-request workspace json-data))))))))
 
-;; lsp-diagnostics--flymake-update-diagnostics builds flymake diagnostics from
-;; the LSP diagnostic objects but only extracts :message, silently dropping
-;; :code? (the rule name, e.g. "reportPossiblyUnbound").  Without the code,
-;; there is no way to write a precise `# pyright: ignore[<rule>]' comment
-;; directly from the error message.  This override is identical to the
-;; original except it also binds :code? and appends "[code]" to the text when
-;; the server supplies one.
-(defun lsp-core--flymake-update-diagnostics-with-code ()
-  "Like `lsp-diagnostics--flymake-update-diagnostics' but appends the diagnostic code.
-Patched so the rule name (e.g. reportPossiblyUnbound) is visible in the
-flymake message, enabling precise `pyright: ignore[]' suppression comments."
-  (funcall lsp-diagnostics--flymake-report-fn
-           (-some->> (lsp-diagnostics t)
-             (gethash (lsp--fix-path-casing buffer-file-name))
-             (--map (-let* (((&Diagnostic :message :severity? :code?
-                                          :range (range &as &Range
-                                                        :start (&Position :line start-line :character)
-                                                        :end (&Position :line end-line))) it)
-                            ((start . end) (lsp--range-to-region range))
-                            (text (if code?
-                                      (format "%s [%s]" message code?)
-                                    message)))
-                      (when (= start end)
-                        (if-let* ((region (flymake-diag-region (current-buffer)
-                                                               (1+ start-line)
-                                                               character)))
-                            (setq start (car region)
-                                  end (cdr region))
-                          (lsp-save-restriction-and-excursion
-                            (goto-char (point-min))
-                            (setq start (line-beginning-position (1+ start-line)))
-                            (setq end (line-end-position (1+ end-line))))))
-                      (flymake-make-diagnostic (current-buffer)
-                                               start end
-                                               (cl-case severity?
-                                                 (1 :error)
-                                                 (2 :warning)
-                                                 (t :note))
-                                               text))))
-           :region (cons (point-min) (point-max))))
-
-(with-eval-after-load 'lsp-diagnostics
-  (advice-add 'lsp-diagnostics--flymake-update-diagnostics
-              :override #'lsp-core--flymake-update-diagnostics-with-code))
+;; flycheck: lsp-mode's flycheck integration already passes :id code? to
+;; flycheck-error-new (see lsp-diagnostics--flycheck-start), so diagnostic
+;; codes (e.g. "reportPossiblyUnbound") are natively available in flycheck
+;; via flycheck-error-id — no override needed here.
+(use-package flycheck
+  :init
+  ;; left-fringe: fringes are always present in GUI frames (no layout jitter)
+  ;; and degrade gracefully in TTY.
+  (setq flycheck-indication-mode 'left-fringe))
 
 (use-package lsp-ui
   :after lsp-mode
