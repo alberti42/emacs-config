@@ -26,7 +26,7 @@
   ;; from creating empty store directories that confuse server-present? checks.
   (setq lsp-enable-suggest-server-download t)
   ;; Whether to use file watchers
-  (setq lsp-enable-file-watchers t)
+  (setq lsp-enable-file-watchers nil)
   ;; Completion is handled by corfu+cape, not company-mode.
   ;; The command below prevents lsp-mode from trying to configure
   ;; company-mode for completion. Without it, lsp-mode assumes
