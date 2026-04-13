@@ -26,6 +26,10 @@
   (setq modus-themes-italic-constructs t
         modus-themes-bold-constructs t
         modus-themes-mixed-fonts t)
+  (setq modus-operandi-palette-overrides
+        '((fg-heading-1 "#2e6b6a")))
+  (setq modus-vivendi-tinted-palette-overrides
+        '((fg-heading-1 "#8fbcbb")))
   ;; Theme selection is delegated to zac-theme-autodetection, which picks
   ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
   )
