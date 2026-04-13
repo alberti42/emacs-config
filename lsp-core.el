@@ -26,7 +26,7 @@
   ;; from creating empty store directories that confuse server-present? checks.
   (setq lsp-enable-suggest-server-download t)
   ;; Whether to use file watchers
-  (setq lsp-enable-file-watchers nil)
+  (setq lsp-enable-file-watchers t)
   ;; Completion is handled by corfu+cape, not company-mode.
   ;; The command below prevents lsp-mode from trying to configure
   ;; company-mode for completion. Without it, lsp-mode assumes
@@ -40,6 +40,13 @@
   ;; fight over header-line-format, resulting in conflicts and partial
   ;; overwrites.
   (setq lsp-headerline-breadcrumb-enable t)
+  ;; auto-guess-root makes lsp-mode use project.el to detect the workspace root
+  ;; instead of using cache.
+  (setq lsp-auto-guess-root t)
+  ;; without-session stops lsp-mode from consulting/updating the session file
+  ;; `~/.config/emacs/.lsp-session-v1' at all. The session file becomes
+  ;; irrelevant and stops growing.
+  (setq lsp-guess-root-without-session t)
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 
