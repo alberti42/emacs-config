@@ -3,9 +3,21 @@
 ## Summary
 
 `latexenc-find-file-coding-system` crashes with a `wrong-type-argument sequencep t`
-error whenever `TeX-master` is set to a string buffer-locally (e.g. via AUCTeX
-dir-locals or a file-local `% !TeX root =` magic comment) and the file does not
-contain an explicit `TeX-master:` entry in its `Local Variables:` section.
+error whenever `TeX-master` is set to a string buffer-locally and the file does
+not contain an explicit `TeX-master:` entry in a `Local Variables:` block.
+
+The most common trigger is the standard Emacs first-line modeline:
+
+```tex
+% -*- mode: latex; TeX-master: "main.tex"; -*-
+```
+
+Emacs reads this modeline and sets `TeX-master` buffer-locally to the string
+`"main.tex"`.  `latexenc` performs only a literal text scan for a `Local
+Variables:` block and never looks at the modeline, so it finds no `TeX-master`
+in the file text, falls back to the buffer-local variable, and crashes.  The
+modeline is what arms the bug; `latexenc`'s own search is what fails to defuse
+it.
 
 The bug is triggered by any operation that calls `insert-file-contents` on a
 `.tex` file, including the common case of `revert-buffer`.
@@ -27,11 +39,13 @@ files.
 2. Call `M-x revert-buffer` and confirm with `y`.
 
 The bug also triggers whenever `TeX-master` is set to a string by any other
-mechanism that does not write a `Local Variables:` block to the file, for
-example:
-- AUCTeX dir-locals: `((LaTeX-mode . ((TeX-master . "main"))))`
-- A hook that calls `(setq-local TeX-master "main")` in response to a
-  tool-specific magic comment such as `% !TeX root = main.tex`
+standard Emacs mechanism that does not write a `Local Variables:` block to the
+file, for example dir-locals:
+
+```elisp
+;; .dir-locals.el
+((LaTeX-mode . ((TeX-master . "main"))))
+```
 
 **Result:**
 ```
@@ -67,12 +81,20 @@ buffer's `Local Variables:` section for an explicit `TeX-master:` or
 % End:
 ```
 
-It does **not** recognise the first-line modeline format (`% -*- ... -*-`),
-even though Emacs itself reads both formats and applies them identically as
-file-local variables.  When the file uses the modeline format, Emacs sets
-`TeX-master` buffer-locally before `latexenc` runs, so the variable is
-present — but `latexenc`'s text search finds nothing, and it falls back to
-the buffer-local *variable* `TeX-master`:
+It does **not** recognise the first-line modeline format (`% -*- ... -*-`).
+The search is a literal scan of the last 3000 bytes of the buffer:
+
+```elisp
+;; latexenc.el, lines 151-154
+(goto-char (point-max))
+(search-backward "\n\^L" (max (- (point-max) 3000) (point-min)) 'move)
+(re-search-forward "^%+ *Local Variables:" nil t)
+```
+
+Emacs reads both formats and applies them identically as file-local variables,
+so when the file uses the modeline format, `TeX-master` is already set as a
+buffer-local string by the time `latexenc` runs — but `latexenc`'s text search
+finds nothing, and it falls back to the buffer-local *variable* `TeX-master`:
 
 ```elisp
 ;; latexenc.el, lines 155–168
