@@ -67,6 +67,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
     (condition-case nil
         (funcall orig arg-list)
       (wrong-type-argument nil)))
+  
   ;; Show the compilation output buffer only on errors.
   (setq TeX-show-compilation nil)
   ;; Save the buffer automatically before compiling without asking.
