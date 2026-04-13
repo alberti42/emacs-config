@@ -74,12 +74,27 @@ identifiers for which LTeX+ should be enabled."
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-major-modes
-  '(markdown-mode gfm-mode latex-mode tex-mode plain-tex-mode
-                  text-mode org-mode rst-mode git-commit-mode
-                  bibtex-mode context-mode html-mode typst-mode
-                  asciidoc-mode norg-mode quarto-mode)
-  "List of major modes for which the lsp-ltex-plus client can be activated."
-  :type '(repeat symbol)
+  '((markdown-mode   . "markdown")
+    (gfm-mode        . "markdown")
+    (LaTeX-mode      . "latex")
+    (latex-mode      . "latex")
+    (tex-mode        . "latex")
+    (plain-tex-mode  . "latex")
+    (text-mode       . "plaintext")
+    (org-mode        . "org")
+    (rst-mode        . "restructuredtext")
+    (git-commit-mode . "plaintext")
+    (bibtex-mode     . "bibtex")
+    (context-mode    . "context")
+    (html-mode       . "html")
+    (typst-mode      . "typst")
+    (asciidoc-mode   . "asciidoc")
+    (norg-mode       . "neorg")
+    (quarto-mode     . "quarto"))
+  "Alist of (major-mode . language-id) pairs for lsp-ltex-plus activation.
+Each entry enables the mode and registers its language identifier with
+lsp-mode via `lsp-language-id-configuration'."
+  :type '(alist :key-type symbol :value-type string)
   :group 'lsp-ltex-plus)
 
 (defcustom lsp-ltex-plus-language "en-US"
@@ -554,7 +569,7 @@ to client requests when IDs collide."
                                          (shell-quote-argument lsp-ltex-plus-ls-plus-executable)
                                          (shell-quote-argument lsp-ltex-plus-server-output-log)))
                          (list lsp-ltex-plus-ls-plus-executable))))
-    :major-modes lsp-ltex-plus-major-modes
+    :major-modes (mapcar #'car lsp-ltex-plus-major-modes)
     :server-id 'ltex-ls-plus
     :priority -1
     :add-on? t
@@ -631,15 +646,13 @@ calls `lsp-deferred` to start the server.  It uses
 (defun lsp-ltex-plus-setup-hooks ()
   "Set up activation hooks for all modes in `lsp-ltex-plus-major-modes'."
   (interactive)
-  (dolist (mode lsp-ltex-plus-major-modes)
-    (let ((hook (intern (concat (symbol-name mode) "-hook"))))
+  (dolist (pair lsp-ltex-plus-major-modes)
+    (let ((hook (intern (concat (symbol-name (car pair)) "-hook"))))
       (add-hook hook #'lsp-ltex-plus-mode))))
 
 ;; Initialize on lsp-mode load.
 (with-eval-after-load 'lsp-mode
-  (dolist (pair '((tex-mode        . "latex")
-                  (plain-tex-mode  . "latex")
-                  (git-commit-mode . "plaintext")))
+  (dolist (pair lsp-ltex-plus-major-modes)
     (add-to-list 'lsp-language-id-configuration pair))
   (lsp-ltex-plus--setup))
 
