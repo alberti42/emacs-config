@@ -47,6 +47,12 @@
   ;; `~/.config/emacs/.lsp-session-v1' at all. The session file becomes
   ;; irrelevant and stops growing.
   (setq lsp-guess-root-without-session t)
+  ;; ElDoc: show LSP hover info in the echo area (signature only).
+  ;; lsp-eldoc-render-all nil keeps it to one line; full docs are available
+  ;; on demand via lsp-ui-doc-glance (C-c l h g).
+  (setq lsp-eldoc-enable-hover t)
+  ;; If this is set to nil, eldoc will show only the symbol information.
+  (setq lsp-eldoc-render-all nil)
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 
@@ -151,9 +157,17 @@ KEY is the JSON object key as a string, e.g. method or id."
 
   ;; Use child-frames where available (GUI).
   (setq lsp-ui-doc-use-childframe t)
-  ;; Automatically show doc when cursor is over a symbol.
+  ;; Hover docs are handled by ElDoc (echo area); use glance (C-c l h g) for
+  ;; the full child-frame popup on demand.
   (setq lsp-ui-doc-show-with-cursor nil)
   (setq lsp-ui-doc-show-with-mouse nil)
+
+  ;; Sideline: show diagnostics and code-action hints inline, but not hover —
+  ;; that would duplicate what ElDoc already shows in the echo area.
+  (setq lsp-ui-sideline-enable t)
+  (setq lsp-ui-sideline-show-hover t)
+  (setq lsp-ui-sideline-show-diagnostics t)
+  (setq lsp-ui-sideline-show-code-actions t)
   :bind (:map lsp-ui-mode-map
               ("C-c l h g" . lsp-ui-doc-glance)))
 
