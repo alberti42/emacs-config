@@ -36,14 +36,15 @@ Scans the first 10 lines of the buffer, case-insensitively.
               (when engine
                 (setq-local TeX-engine engine))))))))
 
+  
   ;; Use LuaLaTeX. LuaLaTeX only produces PDF, so no DVI viewer is ever needed.
-  (setq-default TeX-engine 'luatex)
-
+  (setq-default TeX-engine 'default)
+  
   ;; Put all auxiliary and output files (including the PDF) in ._aux/ next to
   ;; the master file. AUCTeX's built-in commands include %(output-dir) in their
   ;; templates, so this works without additional glue. The directory is created
   ;; on first compile.
-  (setq TeX-output-dir "._aux")
+  (setq-default TeX-output-dir "._aux")
 
   ;; Register the magic-comment hook before AUCTeX loads so it fires on the
   ;; very first .tex buffer. Inside :config it would be too late — AUCTeX loads
@@ -51,6 +52,9 @@ Scans the first 10 lines of the buffer, case-insensitively.
   ;; by the time :config executes.
   (add-hook 'LaTeX-mode-hook #'latex-config--apply-tex-magic-comments)
   (add-hook 'TeX-mode-hook   #'latex-config--apply-tex-magic-comments)
+  :custom
+  ;; Prevent super/subscripts from being raised/lowered
+  (font-latex-fontify-script nil)
   :config
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
