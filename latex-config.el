@@ -81,11 +81,19 @@ Scans the first 10 lines of the buffer, case-insensitively.
     (when entry (setf (nth 3 entry) nil)))
 
   ;; Automatically open the viewer after successful compilation.
-  ;; TeX-after-compilation-finished-functions passes the output file as an
-  ;; argument; TeX-view takes none, so a wrapper is needed.
+  ;; On macOS, explicitly revert the PDF in Skim before the SyncTeX
+  ;; forward-search jump so that the refreshed document is shown even
+  ;; when Skim's "Watch for file changes" is disabled.  The revert is
+  ;; a no-op if the document is not yet open (first compilation).
   (add-hook 'TeX-after-compilation-finished-functions
-            (lambda (_output-file)
+            (lambda (output-file)
               (with-current-buffer TeX-command-buffer
+                (when (and (eq system-type 'darwin) (stringp output-file))
+                  (call-process "osascript" nil 0 nil
+                                "-e"
+                                (format "tell application \"Skim\" \
+to revert (documents whose path is \"%s\")"
+                                        (expand-file-name output-file))))
                 (TeX-view))))
 
   ;; Enable SyncTeX so forward search (C-c C-v) embeds position information.
