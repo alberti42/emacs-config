@@ -30,7 +30,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
                                  ((string= name "luatex")   'luatex)
                                  ((string= name "xelatex")  'xetex)
                                  ((string= name "xetex")    'xetex)
-                                 ((string= name "pdflatex") 'pdflatex)
+                                 ((string= name "pdflatex") 'default)
                                  ((string= name "latex")    'default)
                                  (t nil))))
               (when engine
@@ -39,6 +39,9 @@ Scans the first 10 lines of the buffer, case-insensitively.
   
   ;; Use LuaLaTeX. LuaLaTeX only produces PDF, so no DVI viewer is ever needed.
   (setq-default TeX-engine 'default)
+
+  ;; Force PDF output (pdflatex) instead of DVI (latex)
+  (setq-default TeX-PDF-mode t)
   
   ;; Put all auxiliary and output files (including the PDF) in ._aux/ next to
   ;; the master file. AUCTeX's built-in commands include %(output-dir) in their
