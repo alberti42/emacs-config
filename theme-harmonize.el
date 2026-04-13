@@ -41,6 +41,14 @@ Add face propagation here as new packages need harmonizing."
     (when (facep 'fringe)
       (set-face-background 'fringe bg)))
 
+  ;; lsp-mode headerline breadcrumb: the bar background comes from the
+  ;; `header-line' face — the individual breadcrumb text faces inherit
+  ;; foreground from font-lock faces and carry no background of their own.
+  ;; Setting `header-line' background is the only way to color the whole bar.
+  (let ((bg (face-background 'line-number nil t)))
+    (when bg
+      (set-face-background 'header-line bg)))
+
   ;; flycheck fringe indicators: set background to match the line-number face so
   ;; the indicator bitmaps blend with the left fringe/margin column background.
   ;; The three faces cover error, warning, and info severity levels.
