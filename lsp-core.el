@@ -57,8 +57,9 @@ KEY is the JSON object key as a string, e.g. method or id."
 
   (defun lsp--parser-on-message (json-data workspace)
     "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
-This prevents server-initiated requests from being misrouted as responses
-to client requests when IDs collide."
+
+  This prevents server-initiated requests from being misrouted as responses
+  to client requests when IDs collide."
     ;; Silently catch and log any errors during message processing. This prevents
     ;; a single malformed message from crashing the entire LSP client.
     (with-demoted-errors "Error processing message %S."

@@ -19,7 +19,7 @@
   ;; (setq lsp-pyright-diagnostic-severity-overrides
   ;;       '(("reportOptionalSubscript" . "error")))
 
-  ;; Performance and stability settings
+  ;; Settings can affect performance and stability
   (setq lsp-pyright-use-library-code-for-types nil)
   (setq lsp-pyright-diagnostic-mode "openFilesOnly")
   (setq lsp-pyright-auto-import-completions nil)
