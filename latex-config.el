@@ -154,5 +154,10 @@ to revert (documents whose path is \"%s\")"
           '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -b %n %o %b")))
     (setq TeX-view-program-selection '((output-pdf "Skim")))))
 
+(use-package preview
+  :straight nil
+  :after tex
+  :config)
+
 (provide 'latex-config)
 ;;; latex-config.el ends here
