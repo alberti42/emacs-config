@@ -193,6 +193,20 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;; 2. You select one that is a snippet (marked with a [S] icon).
 ;; 3. lsp-mode passes the snippet string to yasnippet for expansion.
 ;; 4. yasnippet handles the interactive tab-stops and placeholders.
+;;
+;; --- Directory Structure & Control Files -------------------------------------
+;; To ensure snippets are correctly discovered, avoid placing any yasnippet
+;; control files (e.g., .yas-parents, .yas-make-groups, .yas-metadata) directly
+;; in the root of the "yasnippets" directory.
+;;
+;; If such a file exists in the root, yasnippet will treat that folder as a
+;; single mode-specific directory (for a mode named "yasnippets") and will
+;; NOT scan its subdirectories (like LaTeX-mode/ or markdown-mode/).
+;;
+;; Folder names within "yasnippets" must match the Emacs major-mode symbol
+;; exactly and are CASE-SENSITIVE (e.g., "LaTeX-mode" for AUCTeX vs.
+;; "latex-mode" for the built-in mode). Use `yas-activate-extra-mode` as seen
+;; below to bridge naming gaps between different packages.
 (use-package yasnippet
   :init
   (setq yas-snippet-dirs
