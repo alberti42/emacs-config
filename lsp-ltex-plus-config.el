@@ -13,13 +13,14 @@
   :straight (lsp-ltex-plus
              :type git
              :host github
-             :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/emacs-ltex-plus"
+             ;; :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/emacs-ltex-plus"
              :repo "alberti42/emacs-ltex-plus")
 
 
   :custom
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   (lsp-ltex-plus-debug nil)
+  (lsp-ltex-plus-apply-kind-first-patch t)
 
   :init
   ;; Activate the global mode so it automatically hooks into all supported major modes.
