@@ -194,7 +194,21 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;; 3. lsp-mode passes the snippet string to yasnippet for expansion.
 ;; 4. yasnippet handles the interactive tab-stops and placeholders.
 (use-package yasnippet
-  :hook (lsp-mode . yas-minor-mode))
+  :init
+  (setq yas-snippet-dirs
+        (list (expand-file-name "yasnippets" emacs-config-dir)))
+  :config
+  (yas-global-mode 1)
+  (yas-reload-all)
+  ;; AUCTeX's LaTeX-mode does not derive from latex-mode; ensure it picks up
+  ;; the snippets from yasnippets/latex-mode/
+  (with-eval-after-load 'tex
+    (add-hook 'LaTeX-mode-hook
+              (lambda () (yas-activate-extra-mode 'latex-mode))))
+  ;; Ensure gfm-mode picks up markdown-mode snippets.
+  (with-eval-after-load 'markdown-mode
+    (add-hook 'gfm-mode-hook
+              (lambda () (yas-activate-extra-mode 'markdown-mode)))))
 
 (provide 'lsp-core)
 
