@@ -16,17 +16,35 @@
     '((t :foreground "cyan"))
     "Face used for numbers in LaTeX buffers (Cyan for verification).")
 
+  ;; (defun latex-config--match-math-number (limit)
+  ;;   "Search for a number only when inside a LaTeX math environment."
+  ;;   (let (found)
+  ;;     (while (and (not found)
+  ;;                 (re-search-forward "\\([0-9]+\\(?:\\.[0-9]*\\)?\\|\\.[0-9]+\\)" limit t))
+  ;;       (save-match-data
+  ;;         (save-excursion
+  ;;           (goto-char (match-beginning 0))
+  ;;           (when (and (fboundp 'texmathp)
+  ;;                      (texmathp))
+  ;;             (setq found t)))))
+  ;;     found))
+  
   (defun latex-config--match-math-number (limit)
-    "Search for a number only when inside a LaTeX math environment."
+    "Search for a number only when inside a LaTeX math environment.
+Uses a fast path by checking for `font-latex-math-face' before
+falling back to the more expensive `texmathp' check."
     (let (found)
       (while (and (not found)
                   (re-search-forward "\\([0-9]+\\(?:\\.[0-9]*\\)?\\|\\.[0-9]+\\)" limit t))
-        (save-match-data
-          (save-excursion
-            (goto-char (match-beginning 0))
-            (when (and (fboundp 'texmathp)
-                       (texmathp))
-              (setq found t)))))
+        (let ((beg (match-beginning 0)))
+          (save-match-data
+            (save-excursion
+              (goto-char beg)
+              (let ((face (get-text-property (point) 'face)))
+                (if (or (eq face 'font-latex-math-face)
+                        (and (listp face) (memq 'font-latex-math-face face))
+                        (texmathp))
+                    (setq found t)))))))
       found))
 
   (defun latex-config--setup-font-lock ()
