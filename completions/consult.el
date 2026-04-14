@@ -21,6 +21,9 @@
          ("C-c s m" . consult-mark)
          ("C-c s M" . consult-global-mark)
          ("C-c s k" . consult-keep-lines)
+         ("C-c s y" . consult-yank-pop)
+         ("C-c s c" . consult-flycheck)
+         ("C-c s e" . consult-compile-error)
          ;; Replace project-find-file with fd-backed consult-fd.
          ("C-c s f" . consult-fd)
          ("C-c s F" . consult-fd-here))
