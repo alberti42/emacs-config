@@ -19,6 +19,7 @@
 
   :custom
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
+  (lsp-ltex-plus-debug nil)
 
   :init
   ;; Activate the global mode so it automatically hooks into all supported major modes.
