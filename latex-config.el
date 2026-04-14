@@ -1,38 +1,5 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
-;; --- Enhanced syntax highlighting (Sublime Text-style) ---
-
-(defface latex-config-brace-face
-  '((t :inherit font-lock-keyword-face))
-  "Face for curly braces { } in LaTeX buffers.")
-
-(defface latex-config-bracket-face
-  '((t :inherit font-lock-type-face))
-  "Face for square brackets [ ] in LaTeX buffers.")
-
-;; `font-lock-number-face' was introduced in Emacs 29.1; fall back to
-;; `font-lock-constant-face' on older builds.
-(defvar latex-config--number-face
-  (if (facep 'font-lock-number-face)
-      'font-lock-number-face
-    'font-lock-constant-face)
-  "Face used for numbers in LaTeX buffers.")
-
-(defun latex-config--setup-font-lock ()
-  "Add Sublime Text-style syntax highlighting to LaTeX buffers.
-Highlights numbers, curly braces, and square brackets with distinct
-faces without disturbing comments or existing markup."
-  (font-lock-add-keywords
-   nil
-   '(;; Integers and decimals: 12pt, 3.14, .5
-     ("\\b\\([0-9]+\\(?:\\.[0-9]*\\)?\\|\\.[0-9]+\\)"
-      1 latex-config--number-face keep)
-     ;; Curly braces used for grouping / arguments
-     ("[{}]" 0 'latex-config-brace-face t)
-     ;; Square brackets used for optional arguments
-     ("[][]" 0 'latex-config-bracket-face t))
-   'append))
-
 (use-package tex
   :straight auctex
   :defer t
@@ -88,7 +55,6 @@ Scans the first 10 lines of the buffer, case-insensitively.
   ;; by the time :config executes.
   (add-hook 'LaTeX-mode-hook #'latex-config--apply-tex-magic-comments)
   (add-hook 'TeX-mode-hook   #'latex-config--apply-tex-magic-comments)
-  (add-hook 'LaTeX-mode-hook #'latex-config--setup-font-lock)
   :custom
   ;; Prevent super/subscripts from being raised/lowered
   (font-latex-fontify-script nil)
