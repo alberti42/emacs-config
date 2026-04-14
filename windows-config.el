@@ -104,7 +104,7 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
 
 
 ;; Window resizing: grow the current window in the given direction.
-;; Uses repeat-mode: after the initial C-c C-<arrow>, keep pressing C-<arrow>
+;; Uses repeat-mode: after the initial C-b C-<arrow>, keep pressing C-<arrow>
 ;; to continue resizing (timeout controlled by `repeat-exit-timeout').
 ;; Horizontal: arrow direction = which way the shared border moves (tmux convention).
 ;; When a window exists to the right, the right border is moved:

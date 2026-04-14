@@ -3,7 +3,7 @@
 #
 # Usage: ev [-nw] [file]
 #   ev file       open file in Emacs — non-blocking
-#   ev -nw file   open file and block until C-c C-c — suitable as $EDITOR
+#   ev -nw file   open file and block until C-c C-q — suitable as $EDITOR
 #
 # Blocking mode requires ev-open-file registered in vterm-eval-cmds;
 # see terminal-config.el in the parent directory.
