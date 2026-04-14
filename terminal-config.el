@@ -11,7 +11,7 @@
 ;; Close the window (and kill the buffer) when the terminal process exits
 (with-eval-after-load 'term
   (advice-add 'term-handle-exit :after
-    (lambda (&rest _) (quit-window t))))
+              (lambda (&rest _) (quit-window t))))
 
 ;; vterm: fast, accurate terminal emulator backed by libvterm.
 ;; To open a new session use C-u M-x vterm (or C-u M-x vterm-other-window).
@@ -28,24 +28,24 @@
   ;; customize-set-variable (not setq) is needed to trigger vterm's :set handler
   ;; which rebuilds the keymap.
   (customize-set-variable 'vterm-keymap-exceptions
-    (cons "C-b" vterm-keymap-exceptions))
+                          (cons "C-b" vterm-keymap-exceptions))
   :bind (:map vterm-mode-map
-         ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
-         ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
-         ;; Emacs resolves it to set-mark-command from global-map before reaching it.
-         ;; Also, vterm-send-key must be avoided: it goes through vterm--update in the
-         ;; C module which re-encodes using the active escape mode, producing CSI-u
-         ;; sequences (^[[64;5u).
-         ("C-@"        . (lambda () (interactive) (vterm-send-string "\C-@")))
-         ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r),
-         ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
-         ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
-         ;; entirely and sends raw bytes, so we send the escape sequence directly.
-         ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))
-         ;; Forward C-g as BEL (\C-g = ASCII 7) so terminal apps (e.g. Claude
-         ;; Code) receive it.  In vterm-mode keyboard-quit has nothing to quit,
-         ;; so yielding this binding is safe.
-         ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g")))))
+              ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
+              ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
+              ;; Emacs resolves it to set-mark-command from global-map before reaching it.
+              ;; Also, vterm-send-key must be avoided: it goes through vterm--update in the
+              ;; C module which re-encodes using the active escape mode, producing CSI-u
+              ;; sequences (^[[64;5u).
+              ("C-@"        . (lambda () (interactive) (vterm-send-string "\C-@")))
+              ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r),
+              ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
+              ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
+              ;; entirely and sends raw bytes, so we send the escape sequence directly.
+              ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))
+              ;; Forward C-g as BEL (\C-g = ASCII 7) so terminal apps (e.g. Claude
+              ;; Code) receive it.  In vterm-mode keyboard-quit has nothing to quit,
+              ;; so yielding this binding is safe.
+              ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g")))))
 
 ;; ev: blocking "open in Emacs" for use as $EDITOR from vterm.
 ;;
@@ -94,15 +94,15 @@
   (add-to-list 'ghostel-keymap-exceptions "C-b")  ; effective for future reloads
   (define-key ghostel-mode-map (kbd "C-b") nil)
   :bind (:map ghostel-mode-map
-         ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
-         ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the
-         ;; mode map is consulted, so we bind C-@ instead.
-         ("C-@"   . (lambda () (interactive) (ghostel-send-string "\C-@")))
-         ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r).
-         ("C-M-m" . (lambda () (interactive) (ghostel-send-string "\e\r")))
-         ;; C-g passes through to Emacs by default in ghostel; rebind to send BEL
-         ;; (\C-g = ASCII 7) so terminal apps (e.g. Claude Code) receive it.
-         ("C-g"   . (lambda () (interactive) (ghostel-send-string "\C-g")))))
+              ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
+              ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the
+              ;; mode map is consulted, so we bind C-@ instead.
+              ("C-@"   . (lambda () (interactive) (ghostel-send-string "\C-@")))
+              ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r).
+              ("C-M-m" . (lambda () (interactive) (ghostel-send-string "\e\r")))
+              ;; C-g passes through to Emacs by default in ghostel; rebind to send BEL
+              ;; (\C-g = ASCII 7) so terminal apps (e.g. Claude Code) receive it.
+              ("C-g"   . (lambda () (interactive) (ghostel-send-string "\C-g")))))
 
 (with-eval-after-load 'ghostel
   (add-to-list 'ghostel-eval-cmds '("ev-open-file" ev-open-file)))
