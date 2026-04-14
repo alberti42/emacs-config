@@ -56,80 +56,82 @@
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 
-  (defun lsp-core--json-get (obj key)
-    "Return value for KEY in OBJ (hash-table or plist).
+  (when nil
+
+    (defun lsp-core--json-get (obj key)
+      "Return value for KEY in OBJ (hash-table or plist).
 
 KEY is the JSON object key as a string, e.g. method or id."
-    (cond
-     ((hash-table-p obj)
-      (gethash key obj))
-     ((listp obj)
-      (or (plist-get obj (intern (concat ":" key)))
-          (plist-get obj (intern key))))
-     (t nil)))
+      (cond
+       ((hash-table-p obj)
+        (gethash key obj))
+       ((listp obj)
+        (or (plist-get obj (intern (concat ":" key)))
+            (plist-get obj (intern key))))
+       (t nil)))
 
-  (defun lsp--parser-on-message (json-data workspace)
-    "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
+    (defun lsp--parser-on-message (json-data workspace)
+      "Patched lsp--parser-on-message to prioritize 'method' (Kind-First routing).
 
   This prevents server-initiated requests from being misrouted as responses
   to client requests when IDs collide."
-    ;; Silently catch and log any errors during message processing. This prevents
-    ;; a single malformed message from crashing the entire LSP client.
-    (with-demoted-errors "Error processing message %S."
-      (with-lsp-workspace workspace
-        (let* ((client (lsp--workspace-client workspace))
-               (method (lsp-core--json-get json-data "method"))
-               (raw-id (lsp-core--json-get json-data "id"))
-               (has-method (not (null method)))
-               (has-id (not (null raw-id)))
-               (has-error (not (null (lsp-core--json-get json-data "error"))))
-               ;; Kind-First routing: if a method exists, it's a server-initiated
-               ;; message (request/notification) regardless of ID collisions.
-               (message-type (cond
-                              (has-method (if has-id 'request 'notification))
-                              (has-id (if has-error 'response-error 'response))
-                              (t 'notification)))
-               ;; Normalize response IDs only (client-generated ids are numeric).
-               (id (and (memq message-type '(response response-error))
-                        raw-id
-                        (if (stringp raw-id) (string-to-number raw-id) raw-id))))
-          (pcase message-type
-            ('response
-             (when id
-               (let ((handler (gethash id (lsp--client-response-handlers client))))
-                 (when handler
-                   (let ((callback (nth 0 handler))
-                         (cb-method (nth 2 handler))
-                         (before-send (nth 4 handler))
-                         (result (lsp-core--json-get json-data "result")))
-                     (when (lsp--log-io-p cb-method)
-                       (lsp--log-entry-new
-                        (lsp--make-log-entry cb-method id result 'incoming-resp
-                                             (lsp--ms-since before-send))
-                        workspace))
-                     (when callback
-                       (remhash id (lsp--client-response-handlers client))
-                       (funcall callback result)))))))
-            ('response-error
-             (when id
-               (let ((handler (gethash id (lsp--client-response-handlers client))))
-                 (when handler
-                   (let ((err-callback (nth 1 handler))
-                         (cb-method (nth 2 handler))
-                         (before-send (nth 4 handler))
-                         (err (lsp-core--json-get json-data "error")))
-                     (when (lsp--log-io-p cb-method)
-                       (lsp--log-entry-new
-                        (lsp--make-log-entry cb-method id err 'incoming-resp
-                                             (lsp--ms-since before-send))
-                        workspace))
-                     (when err-callback
-                       (remhash id (lsp--client-response-handlers client))
-                       (funcall err-callback err)))))))
-            ('notification
-             (lsp--on-notification workspace json-data))
-            ('request
-             (lsp--on-request workspace json-data))))))))
+      ;; Silently catch and log any errors during message processing. This prevents
+      ;; a single malformed message from crashing the entire LSP client.
+      (with-demoted-errors "Error processing message %S."
+        (with-lsp-workspace workspace
+          (let* ((client (lsp--workspace-client workspace))
+                 (method (lsp-core--json-get json-data "method"))
+                 (raw-id (lsp-core--json-get json-data "id"))
+                 (has-method (not (null method)))
+                 (has-id (not (null raw-id)))
+                 (has-error (not (null (lsp-core--json-get json-data "error"))))
+                 ;; Kind-First routing: if a method exists, it's a server-initiated
+                 ;; message (request/notification) regardless of ID collisions.
+                 (message-type (cond
+                                (has-method (if has-id 'request 'notification))
+                                (has-id (if has-error 'response-error 'response))
+                                (t 'notification)))
+                 ;; Normalize response IDs only (client-generated ids are numeric).
+                 (id (and (memq message-type '(response response-error))
+                          raw-id
+                          (if (stringp raw-id) (string-to-number raw-id) raw-id))))
+            (pcase message-type
+              ('response
+               (when id
+                 (let ((handler (gethash id (lsp--client-response-handlers client))))
+                   (when handler
+                     (let ((callback (nth 0 handler))
+                           (cb-method (nth 2 handler))
+                           (before-send (nth 4 handler))
+                           (result (lsp-core--json-get json-data "result")))
+                       (when (lsp--log-io-p cb-method)
+                         (lsp--log-entry-new
+                          (lsp--make-log-entry cb-method id result 'incoming-resp
+                                               (lsp--ms-since before-send))
+                          workspace))
+                       (when callback
+                         (remhash id (lsp--client-response-handlers client))
+                         (funcall callback result)))))))
+              ('response-error
+               (when id
+                 (let ((handler (gethash id (lsp--client-response-handlers client))))
+                   (when handler
+                     (let ((err-callback (nth 1 handler))
+                           (cb-method (nth 2 handler))
+                           (before-send (nth 4 handler))
+                           (err (lsp-core--json-get json-data "error")))
+                       (when (lsp--log-io-p cb-method)
+                         (lsp--log-entry-new
+                          (lsp--make-log-entry cb-method id err 'incoming-resp
+                                               (lsp--ms-since before-send))
+                          workspace))
+                       (when err-callback
+                         (remhash id (lsp--client-response-handlers client))
+                         (funcall err-callback err)))))))
+              ('notification
+               (lsp--on-notification workspace json-data))
+              ('request
+               (lsp--on-request workspace json-data)))))))))
 
 ;; flycheck: lsp-mode's flycheck integration already passes :id code? to
 ;; flycheck-error-new (see lsp-diagnostics--flycheck-start), so diagnostic
