@@ -8,15 +8,17 @@
 ;;; Code:
 
 (use-package lsp-ltex-plus
-  :straight nil
-  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
-  :custom
-  (lsp-ltex-plus-debug nil)
-  (lsp-ltex-plus-completion-enabled nil)
-  (lsp-ltex-plus-lt-server-uri "")
-  :config
+  ;; 1. Use the package name 'lsp-ltex-plus' for the recipe.
+  ;; 2. Point to the 'emacs-ltex-plus' repository on GitHub.
+  :straight (lsp-ltex-plus
+             :type git
+             :host github
+             :repo "alberti42/emacs-ltex-plus")
 
-;;;; -- Credentials ------------------------------------------------------------
+  ;; For local development, this points Emacs to the local repo checkout.
+  :load-path "~/Documents/Programming/Emacs/emacs-ltex-plus"
+
+  :config
 
   ;; Use credentials from the environment if they are not already set.
   (let ((user (getenv "LANGUAGETOOL_USERNAME"))
@@ -25,8 +27,6 @@
       (setq lsp-ltex-plus-lt-username user))
     (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
       (setq lsp-ltex-plus-lt-api-key key)))
-
-;;;; -- Setup ------------------------------------------------------------------
 
   ;; Activate LTEX+ for the configured major modes.
   (lsp-ltex-plus-setup-hooks))
