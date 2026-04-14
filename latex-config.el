@@ -151,7 +151,7 @@ to revert (documents whose path is \"%s\")"
   (when (eq system-type 'darwin)
     (setq TeX-source-correlate-start-server t) ; always start server for inverse search
     (setq TeX-view-program-list
-          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline -b %n %o %b")))
+          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %n %o %b")))
     (setq TeX-view-program-selection '((output-pdf "Skim")))))
 
 (use-package preview
