@@ -125,6 +125,7 @@ Current syntax modules:
 
 - `syntaxes/js.el`: JS/TS indentation settings.
 - `syntaxes/json.el`: JSON indentation (supports `js-json-mode`, `json-mode`, `json-ts-mode`).
+- `syntaxes/latex.el`: LaTeX syntax enhancements. Defines custom faces for braces (`{ }`) and brackets (`[ ]`), and implements high-speed, context-aware number highlighting that only activates within AUCTeX math environments (detected via text properties). Sets `fill-column` to 100.
 - `syntaxes/markdown.el`: Overrides `fill-column` to 100 for Markdown buffers. `soft-wrap-mode` is inherited from `text-mode-hook` (via `syntaxes/text.el`). Package-level configuration (markup hiding, wiki links, obsidian, grip-mode) lives in `markdown-config.el`.
 - `syntaxes/python.el`: Python indentation settings.
 - `syntaxes/sh.el`: Shell script indentation (`sh-basic-offset 2`).
@@ -132,6 +133,8 @@ Current syntax modules:
 - `syntaxes/yaml.el`: YAML indentation settings.
 - `syntaxes/swift.el`: Swift indentation (`swift-mode:basic-offset 4`).
 - `syntaxes/dired.el`: disables line numbers in Dired mode.
+- `syntaxes/elisp.el`: Elisp settings, sets `fill-column` to 80.
+- `syntaxes/magit.el`: Magit display settings, enables `visual-line-mode` and disables line numbers in Magit buffers.
 - `syntaxes/agent-shell.el`: disables line numbers in `agent-shell-mode`.
 
 Wrapping:
