@@ -8,28 +8,30 @@
 ;;; Code:
 
 (use-package lsp-ltex-plus
-  ;; 1. Use the package name 'lsp-ltex-plus' for the recipe.
-  ;; 2. Point to the 'emacs-ltex-plus' repository on GitHub.
+  ;; Tell straight to use your local folder instead of downloading from GitHub.
+  ;; This is the "canonical" way to do local development with straight.
   :straight (lsp-ltex-plus
              :type git
              :host github
+             :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/emacs-ltex-plus"
              :repo "alberti42/emacs-ltex-plus")
 
-  ;; For local development, this points Emacs to the local repo checkout.
-  :load-path "~/Documents/Programming/Emacs/emacs-ltex-plus"
+
+  :custom
+  (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
+
+  :init
+  ;; Activate the global mode so it automatically hooks into all supported major modes.
+  (global-lsp-ltex-plus-mode 1)
 
   :config
-
   ;; Use credentials from the environment if they are not already set.
   (let ((user (getenv "LANGUAGETOOL_USERNAME"))
         (key  (getenv "LANGUAGETOOL_API_KEY")))
-    (when (and user (string-empty-p lsp-ltex-plus-lt-username))
+    (when (and user (or (null lsp-ltex-plus-lt-username) (string-empty-p lsp-ltex-plus-lt-username)))
       (setq lsp-ltex-plus-lt-username user))
-    (when (and key (string-empty-p lsp-ltex-plus-lt-api-key))
-      (setq lsp-ltex-plus-lt-api-key key)))
-
-  ;; Activate LTEX+ for the configured major modes.
-  (lsp-ltex-plus-setup-hooks))
+    (when (and key (or (null lsp-ltex-plus-lt-api-key) (string-empty-p lsp-ltex-plus-lt-api-key)))
+      (setq lsp-ltex-plus-lt-api-key key))))
 
 (provide 'lsp-ltex-plus-config)
 ;;; lsp-ltex-plus-config.el ends here
