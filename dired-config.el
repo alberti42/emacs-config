@@ -19,7 +19,7 @@
 (use-package dired-narrow
   :after dired
   :bind (:map dired-mode-map
-         ("/" . dired-narrow)))
+              ("/" . dired-narrow)))
 
 (defun dired-open-with ()
   "Open or reveal the file at point using OS-level commands.
@@ -38,8 +38,31 @@ or reveal in the system file manager."
       (reveal-file file)))
     (message "Applied '%s' to %s" selected (file-name-nondirectory file))))
 
+(defun dired-sort-by-name ()            (interactive) (dired-sort-other "-l"))
+(defun dired-sort-by-name-r ()          (interactive) (dired-sort-other "-lr"))
+(defun dired-sort-by-mtime ()           (interactive) (dired-sort-other "-lt"))
+(defun dired-sort-by-mtime-r ()         (interactive) (dired-sort-other "-ltr"))
+(defun dired-sort-by-btime ()
+  "Sort by birth (creation) time, newest first.  Requires GNU ls >= 8.25."
+  (interactive) (dired-sort-other "-l --sort=time --time=birth"))
+(defun dired-sort-by-btime-r ()
+  "Sort by birth (creation) time, oldest first.  Requires GNU ls >= 8.25."
+  (interactive) (dired-sort-other "-lr --sort=time --time=birth"))
+(defun dired-sort-by-ext ()             (interactive) (dired-sort-other "-lX"))
+(defun dired-sort-by-ext-r ()           (interactive) (dired-sort-other "-lXr"))
+
 (with-eval-after-load 'dired
-  (define-key dired-mode-map (kbd "O") #'dired-open-with))
+  (define-key dired-mode-map (kbd "O") #'dired-open-with)
+  (define-key dired-mode-map (kbd "s") nil)
+  ;; Sorting commands mirroring keybindings from Yazi
+  (define-key dired-mode-map (kbd ", a") #'dired-sort-by-name)
+  (define-key dired-mode-map (kbd ", A") #'dired-sort-by-name-r)
+  (define-key dired-mode-map (kbd ", m") #'dired-sort-by-mtime)
+  (define-key dired-mode-map (kbd ", M") #'dired-sort-by-mtime-r)
+  (define-key dired-mode-map (kbd ", b") #'dired-sort-by-btime)
+  (define-key dired-mode-map (kbd ", B") #'dired-sort-by-btime-r)
+  (define-key dired-mode-map (kbd ", e") #'dired-sort-by-ext)
+  (define-key dired-mode-map (kbd ", E") #'dired-sort-by-ext-r))
 
 (provide 'dired-config)
 ;;; dired-config.el ends here
