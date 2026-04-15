@@ -8,6 +8,33 @@
 
 ;;; Code:
 
+;;; -- Debug logger ------------------------------------------------------------
+
+(defvar consult-bm--debug nil
+  "When non-nil, log calls to `consult--buffer-mode-collection'.")
+
+(defun consult-bm--log (&rest args)
+  "Append a formatted log line to *consult-bm-debug* buffer."
+  (when consult-bm--debug
+    (let ((buf (get-buffer-create "*consult-bm-debug*")))
+      (with-current-buffer buf
+        (goto-char (point-max))
+        (insert (apply #'format args) "\n")))))
+
+(defun consult-bm-debug-toggle ()
+  "Toggle debug logging for `consult-buffer-by-mode' and show the log buffer."
+  (interactive)
+  (setq consult-bm--debug (not consult-bm--debug))
+  (if consult-bm--debug
+      (progn
+        (with-current-buffer (get-buffer-create "*consult-bm-debug*")
+          (erase-buffer)
+          (insert (format "=== consult-buffer-by-mode debug started %s ===\n"
+                          (format-time-string "%H:%M:%S"))))
+        (display-buffer "*consult-bm-debug*")
+        (message "consult-bm debug ON"))
+    (message "consult-bm debug OFF")))
+
 ;;; -- Buffer-with-mode-filter collection --------------------------------------
 
 (defun consult--buffer-mode-collection (string pred action)
@@ -17,13 +44,17 @@ When STRING begins with /MODE/, candidates are restricted to buffers whose
 `major-mode' name contains MODE (case-insensitive substring).  QUERY — the
 text after the second slash — is matched by the active completion styles
 \(typically orderless).  Without the prefix all live buffers are offered."
+  (consult-bm--log "CALL  action=%S  string=%S  pred=%S" action string pred)
   (if (eq action 'metadata)
-      '(metadata (category . buffer))
+      (progn
+        (consult-bm--log "  => metadata")
+        '(metadata (category . buffer)))
     (let* ((mode-filter nil)
            (query string))
       (when (string-match "\\`/\\([^/]*\\)/\\(.*\\)\\'" string)
         (setq mode-filter (downcase (match-string 1 string))
               query       (match-string 2 string)))
+      (consult-bm--log "  mode-filter=%S  query=%S" mode-filter query)
       (let* ((buffers (if mode-filter
                           (seq-filter
                            (lambda (buf)
@@ -34,20 +65,28 @@ text after the second slash — is matched by the active completion styles
                            (buffer-list))
                         (buffer-list)))
              (names (mapcar #'buffer-name buffers)))
-        (pcase action
-          ('t                           ; all-completions
-           (if (string-empty-p query)
-               (if pred (seq-filter pred names) names)
-             (all-completions query names pred)))
-          ('nil                         ; try-completion
-           (let ((result (try-completion query names pred)))
-             (cond
-              ((null result) nil)
-              ((eq result t) t)
-              (mode-filter (concat "/" (match-string 1 string) "/" result))
-              (t result))))
-          (_                            ; test-completion
-           (test-completion query names pred)))))))
+        (consult-bm--log "  candidate-count=%d  names=%S"
+                         (length names) (seq-take names 5))
+        (let ((result
+               (pcase action
+                 ('t                           ; all-completions
+                  (if (string-empty-p query)
+                      (if pred (seq-filter pred names) names)
+                    (all-completions query names pred)))
+                 ('nil                         ; try-completion
+                  (let ((r (try-completion query names pred)))
+                    (cond
+                     ((null r) nil)
+                     ((eq r t) t)
+                     (mode-filter (concat "/" (match-string 1 string) "/" r))
+                     (t r))))
+                 (_                            ; test-completion
+                  (test-completion query names pred)))))
+          (consult-bm--log "  => result=%S"
+                           (if (listp result)
+                               (format "(list of %d)" (length result))
+                             result))
+          result)))))
 
 (defun consult-buffer-by-mode ()
   "Switch to a buffer, with optional major-mode pre-filtering.
