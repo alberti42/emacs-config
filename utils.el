@@ -53,13 +53,16 @@ Does nothing if the buffer does not visit a file."
     (message "Buffer has no file name")))
 
 ;; Copy the current buffer's file path to the kill ring.
-(defun copy-buffer-file-name ()
-  "Copy the absolute path of the current buffer's file to the kill ring.
-When called from the minibuffer, resolves the buffer that was active
-before entering it.  Does nothing if the buffer does not visit a file."
-  (interactive)
-  (if-let* ((name (buffer-file-name (window-buffer (minibuffer-selected-window)))))
-      (progn (kill-new name) (message "%s" name))
+(defun copy-buffer-file-name (&optional name-only)
+  "Copy the current buffer's file path to the kill ring.
+With a prefix argument (\\[universal-argument]), copy only the file name
+without the directory.  When called from the minibuffer, resolves the
+buffer that was active before entering it.  Does nothing if the buffer
+does not visit a file."
+  (interactive "P")
+  (if-let* ((path (buffer-file-name (window-buffer (minibuffer-selected-window)))))
+      (let ((name (if name-only (file-name-nondirectory path) path)))
+        (kill-new name) (message "%s" name))
     (message "Buffer has no file name")))
 
 ;;; -- Set of opinionated utilities --------------------------------------------
