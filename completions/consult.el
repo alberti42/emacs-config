@@ -120,9 +120,9 @@ switcher.  For multi-source search (recent files, bookmarks) use
 (use-package consult
   :bind (
          ;; Mode-filtered buffer switcher (supports /mode/query syntax).
-         ("C-x b" . consult-buffer-by-mode)
+         ("C-x B" . consult-buffer-by-mode)
          ;; Full multi-source switcher (buffers + recent files + bookmarks).
-         ("C-x B" . consult-buffer)
+         ("C-x b" . consult-buffer)
          ;; A small, mnemonic prefix for search/navigation.
          ("C-c s b" . consult-buffer-by-mode)
          ("C-c s l" . consult-line)
