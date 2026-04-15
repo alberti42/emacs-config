@@ -53,7 +53,6 @@ or reveal in the system file manager."
 
 (with-eval-after-load 'dired
   (define-key dired-mode-map (kbd "O") #'dired-open-with)
-  (define-key dired-mode-map (kbd "s") nil)
   ;; Sorting commands mirroring keybindings from Yazi
   (define-key dired-mode-map (kbd ", a") #'dired-sort-by-name)
   (define-key dired-mode-map (kbd ", A") #'dired-sort-by-name-r)
