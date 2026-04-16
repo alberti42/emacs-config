@@ -19,6 +19,7 @@
 
   :custom
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
+  (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-apply-kind-first-patch t)
   (lsp-ltex-plus-check-programming-languages t)

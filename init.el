@@ -3,6 +3,7 @@
 ;; Disable bidirectional text reordering for better performance.
 (setq-default bidi-display-reordering 'left-to-right
               bidi-paragraph-direction 'left-to-right)
+;; Inhibit the Bidirectional Parentheses Algorithm.
 (setq bidi-inhibit-bpa t)
 
 ;; Defer fontification while typing; highlighting catches up on idle.
