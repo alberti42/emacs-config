@@ -291,6 +291,10 @@
  'lsp-ltex-plus-config
  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
+;; (emacs-config-load-module
+;;  'lsp-ltex-plus-config-old
+;;  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
+
 (emacs-config-load-module
  'lsp-swift-config
  "Could not load lsp-swift-config.el; Swift LSP is disabled.")
