@@ -21,7 +21,7 @@
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
-  (lsp-ltex-plus-debug t)
+  (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-trace-server "message")
   
   (lsp-ltex-plus-apply-kind-first-patch t)
