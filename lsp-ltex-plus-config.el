@@ -23,8 +23,9 @@
   (lsp-ltex-plus-apply-kind-first-patch t)
 
   :init
-  ;; Activate the global mode so it automatically hooks into all supported major modes.
-  (global-lsp-ltex-plus-mode 1)
+  ;; Install hooks for all supported major modes. The full package load
+  ;; lazily — only when a relevant mode is first enabled
+  (lsp-ltex-plus-install-hooks)
 
   :config
   ;; Use credentials from the environment if they are not already set.
