@@ -21,6 +21,7 @@
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-apply-kind-first-patch t)
+  (lsp-ltex-plus-check-programming-languages t)
 
   :init
   ;; Install hooks for all supported major modes. The full package load
