@@ -30,7 +30,7 @@
   :init
   ;; Install hooks for all supported major modes. The full package load
   ;; lazily — only when a relevant mode is first enabled
-  (lsp-ltex-plus-install-hooks)
+  ;; (lsp-ltex-plus-install-hooks :extend-to '((emacs-lisp-mode     "lisp"             t)))
 
   :config
   ;; Use credentials from the environment if they are not already set.
