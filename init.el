@@ -229,7 +229,8 @@
  'windows-config
  "Could not load windows-config.el; windmove and window resizing are disabled.")
 
-;; Development
+;;;; -- Development tools ------------------------------------------------------
+
 ;; multiple-cursors: Sublime Text-style multiple cursors.
 (use-package multiple-cursors
   :bind (("C->" . mc/mark-next-like-this)
@@ -256,6 +257,14 @@
 (emacs-config-load-module
  'apheleia-config
  "Could not load apheleia-config.el; formatters are disabled.")
+
+;;; VCS gutter
+
+(emacs-config-load-module
+ 'git-gutter-config
+ "Could not load git-gutter-tty.el; VCS gutter is disabled.")
+
+;;;; -- LSP clients ------------------------------------------------------------
 
 ;; LSP modules
 (emacs-config-load-module
@@ -294,24 +303,9 @@
  'lsp-c-config
  "Could not load lsp-c-config.el; C/C++ LSP is disabled.")
 
-;;; VCS gutter
+;;;; -------------------------------------------------------------------------
 
-(emacs-config-load-module
- 'git-gutter-config
- "Could not load git-gutter-tty.el; VCS gutter is disabled.")
-
-;; tmux open-file bridge: open files in Emacs from tmux via IPC.
-;; Requires Emacs 29+ for server-after-make-frame-hook.
-(use-package tmux-tandem
-  :if (>= emacs-major-version 29)
-  :straight (tmux-tandem
-             :type git
-             :host github
-             :repo "alberti42/emacs-tmux-tandem")
-  :config
-  (tmux-tandem-enable))
-
-;; Languages
+;; Editing
 (emacs-config-load-module
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
@@ -374,3 +368,14 @@
 (emacs-config-load-module
  'scroll-config
  "Could not load scroll-config.el; scrolling settings are disabled.")
+
+;; tmux open-file bridge: open files in Emacs from tmux via IPC.
+;; Requires Emacs 29+ for server-after-make-frame-hook.
+(use-package tmux-tandem
+  :if (>= emacs-major-version 29)
+  :straight (tmux-tandem
+             :type git
+             :host github
+             :repo "alberti42/emacs-tmux-tandem")
+  :config
+  (tmux-tandem-enable))
