@@ -27,15 +27,15 @@
     (setq source-directory src)))
 
 ;; Emacs supports per-file settings embedded directly in source files,
-;; either as a first-line header (e.g. -*- coding: utf-8-unix -*-) or
+;; either as a first-line header (e.g., -*- coding: utf-8-unix -*-) or
 ;; a footer block:
 ;;
 ;;   Local Variables:
 ;;   buffer-file-coding-system: utf-8-unix
 ;;   End:
-;;
+;;g
 ;; Emacs applies such settings silently if the variable declares
-;; itself safe via a safe-local-variable property (e.g. a predicate
+;; itself safe via a safe-local-variable property (e.g., a predicate
 ;; like #'stringp). Since buffer-file-coding-system lacks that
 ;; property, Emacs prompts for confirmation instead. This entry is a
 ;; workaround: it pre-approves this specific pair so Emacs skips the
@@ -70,8 +70,8 @@
  'auto-revert-config
  "Could not load auto-revert-config.el; smart auto-revert is disabled.")
 
-;; Suppress kill prompt when the buffer content matches the file on disk
-;; (i.e. edits were made and then fully undone).
+;; Suppress the kill prompt when the buffer content matches the file on disk
+;; (i.e., edits were made and then fully undone).
 (emacs-config-load-module
  'buffer-kill-config
  "Could not load buffer-kill-config.el; kill-buffer prompt suppression is disabled.")
@@ -91,12 +91,12 @@
 
 ;; macOS pseudo-daemon
 ;; Keep Dock icon + menu functional after closing the last GUI frame when using
-;; emacs in server/daemon style workflows.
+;; Emacs in server/daemon-style workflows.
 ;; (emacs-config-load-module
 ;;   'mac-pseudo-daemon-config
 ;;   "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
-;; electric-pair-mode: auto-close brackets, parens, quotes.
+;; electric-pair-mode: auto-close brackets, parens, and quotes.
 (electric-pair-mode 1)
 
 ;; Accept y/n instead of typing yes/no in full.
