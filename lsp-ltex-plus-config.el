@@ -13,7 +13,7 @@
   :straight (lsp-ltex-plus
              :type git
              :host github
-             ;; :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/emacs-ltex-plus"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
              :repo "alberti42/emacs-ltex-plus")
 
 
