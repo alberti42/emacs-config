@@ -29,7 +29,13 @@
   ;; Whether to hide the cursor while scrolling and restore it afterwards (default: t).
   (setq ultra-scroll-hide-cursor t)
   (setq ultra-scroll-preserve-column nil)
-  (ultra-scroll-mode 1))
+  (ultra-scroll-mode 1)
+
+  ;; `pixel-scroll-precision-mode' (activated by ultra-scroll) binds
+  ;; <next>/<prior> in its minor-mode map to pixel-scroll-interpolate-*,
+  ;; shadowing the global bindings set below.  Unbind there so the globals win.
+  (define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
+  (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
 
 ;; Scroll by 5 lines (current and other window).
 (let ((num-lines 5))
