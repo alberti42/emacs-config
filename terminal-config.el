@@ -23,13 +23,15 @@
   ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
   (vterm-shell shell-file-name)
   :config
-  ;; C-b is our tmux-map prefix (windows-config.el).  Adding it here prevents
-  ;; vterm from swallowing the key before Emacs sees it as a prefix, so
-  ;; C-b <arrow> and other C-b * bindings work inside a vterm buffer.
-  ;; customize-set-variable (not setq) is needed to trigger vterm's :set handler
-  ;; which rebuilds the keymap.
-  (customize-set-variable 'vterm-keymap-exceptions
-                          (cons "C-b" vterm-keymap-exceptions))
+  ;; Make C-b a prefix in vterm buffers so it falls through to the global
+  ;; tmux-map (windows-config.el).  Cannot use customize-set-variable: its :set
+  ;; handler calls `vterm--exclude-keys`, which unbinds C-c in vterm-mode-map
+  ;; and wipes the C-c X bindings (C-c C-t, C-c C-l, ...) that the defvar added
+  ;; after the exclude pass.  setq avoids the :set handler; we unbind C-b in the
+  ;; map ourselves.
+  (setq vterm-keymap-exceptions (cons "C-b" vterm-keymap-exceptions))
+  (define-key vterm-mode-map (kbd "C-b") nil)
+  
   :bind (:map vterm-mode-map
               ;; Map C-c C-c to send a literal C-c (SIGINT) to the terminal.
               ("C-c C-c"    . vterm-send-C-c)
