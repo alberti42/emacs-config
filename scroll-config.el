@@ -74,10 +74,20 @@
 ;; set by the display engine whenever it renders a truncation glyph, but that
 ;; is not worth the complexity here.
 
+(defvar-local scroll-config-suppress-hscroll nil
+  "When non-nil in the current buffer, suppress horizontal wheel scroll.
+Set by terminal/shell mode hooks where content is already re-wrapped to
+the window width by the underlying program, so hscroll has nothing to
+reveal.  Decoupled from `truncate-lines' because terminal emulators
+need the full window width reported to the child process; flipping
+`truncate-lines' to nil would cost a column to the continuation glyph.")
+
 (defun scroll-config--hscroll-applicable-p ()
   "Return non-nil when the selected window truncates long lines.
 Mirrors the logic in xdisp.c init_iterator."
-  (or
+  (and
+   (not scroll-config-suppress-hscroll)
+   (or
    ;; Explicit per-buffer truncation: the buffer asked for truncation
    ;; regardless of window geometry.
    truncate-lines
@@ -98,7 +108,7 @@ Mirrors the logic in xdisp.c init_iterator."
     ;;    integer, a wide-enough split is still allowed to wrap.
     (if (integerp truncate-partial-width-windows)
         (< (window-total-width) truncate-partial-width-windows)
-      t))))
+      t)))))
 
 (defun scroll-config-horizontal (event &optional _arg)
   "Horizontal scroll EVENT with pixel-proportional column steps."
