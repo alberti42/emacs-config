@@ -358,6 +358,11 @@
  'markdown-config
  "Could not load markdown-config.el; Markdown enhancements are disabled.")
 
+;; Org mode (LaTeX preview, Python babel, literate notebooks)
+(emacs-config-load-module
+ 'org-config
+ "Could not load org-config.el; Org mode enhancements are disabled.")
+
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
 
