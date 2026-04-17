@@ -33,10 +33,11 @@
   :defer t
   :hook
   (org-mode . org-latex-preview-mode)
+  :custom
+  ;; Render all cached LaTeX previews when opening a file.  Cache hits load
+  ;; instantly from `org-persist'; misses (new or edited fragments) compile.
+  (org-startup-with-latex-preview t)
   :config
-  ;; Live preview: re-render fragments as you type.
-  (setq org-latex-preview-live t)
-
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
 
