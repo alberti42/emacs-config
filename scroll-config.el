@@ -38,7 +38,7 @@
   (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
 
 ;; Scroll by 5 lines (current and other window).
-(let ((num-lines 5))
+(let ((num-lines 10))
   (pcase-dolist (`(,key . ,fn)
                  '(("C-v" . scroll-up)      ("<next>"  . scroll-up)
                    ("M-v" . scroll-down)    ("<prior>" . scroll-down)
