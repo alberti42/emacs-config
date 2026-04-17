@@ -38,11 +38,26 @@ version) on a per-project basis.  Becomes buffer-local when applied.")
 This matches the list that `pyenv activate <TAB>' offers."
   (process-lines "pyenv" "virtualenvs" "--bare"))
 
+(defun pyenv--prefix (version)
+  "Return the filesystem prefix of pyenv VERSION (install or virtualenv root)."
+  (car (process-lines "pyenv" "prefix" version)))
+
 (defun pyenv--set (version)
-  "Activate pyenv VERSION buffer-locally via PYENV_VERSION."
-  (make-local-variable 'process-environment)
-  (setenv "PYENV_VERSION" version)
-  (setq pyenv-active-version version))
+  "Activate pyenv VERSION buffer-locally.
+Mirrors `pyenv activate' in a shell: sets PYENV_VERSION and VIRTUAL_ENV,
+and prepends the environment's bin/ to both PATH (in a buffer-local
+`process-environment') and `exec-path'.  Subprocesses spawned from the
+buffer -- including long-running ones like coding agents -- inherit the
+full activated environment."
+  (let* ((prefix (pyenv--prefix version))
+         (bin (expand-file-name "bin" prefix)))
+    (make-local-variable 'process-environment)
+    (make-local-variable 'exec-path)
+    (setenv "PYENV_VERSION" version)
+    (setenv "VIRTUAL_ENV" prefix)
+    (setenv "PATH" (concat bin path-separator (getenv "PATH")))
+    (setq exec-path (cons bin exec-path))
+    (setq pyenv-active-version version)))
 
 ;;;###autoload
 (defun pyenv-activate-buffer (version)
@@ -56,11 +71,14 @@ buffer-local `process-environment'."
 
 ;;;###autoload
 (defun pyenv-deactivate-buffer ()
-  "Deactivate the buffer-local pyenv version."
+  "Deactivate the buffer-local pyenv environment.
+Reverts PYENV_VERSION, VIRTUAL_ENV, PATH, and `exec-path' in one go by
+dropping the buffer-local copies set up by `pyenv--set'."
   (interactive)
   (when (local-variable-p 'process-environment)
-    (setenv "PYENV_VERSION" nil)
     (kill-local-variable 'process-environment))
+  (when (local-variable-p 'exec-path)
+    (kill-local-variable 'exec-path))
   (setq pyenv-active-version nil)
   (message "Pyenv deactivated in %s" (buffer-name)))
 
