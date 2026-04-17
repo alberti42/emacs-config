@@ -259,6 +259,11 @@
  'apheleia-config
  "Could not load apheleia-config.el; formatters are disabled.")
 
+;; Buffer-local pyenv activation (PYENV_VERSION per buffer).
+(emacs-config-load-module
+ 'pyenv-config
+ "Could not load pyenv-config.el; per-buffer pyenv activation is disabled.")
+
 ;;; VCS gutter
 
 (emacs-config-load-module
