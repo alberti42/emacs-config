@@ -1,9 +1,10 @@
 ;;; org-config.el --- Org mode with LaTeX preview and Python babel -*- lexical-binding: t; -*-
 
 ;; Install Org from tecosaur's fork to get karthink's org-latex-preview
-;; (auto-preview, live updates, dvisvgm SVG rendering).  The feature has not
-;; yet been merged into mainline Org.  This recipe must appear before any
-;; package that depends on Org.
+;; (auto-preview, live updates, dvisvgm SVG rendering).  We follow the
+;; instructiosn from: https://abode.karthinks.com/org-latex-preview/. The
+;; feature has not yet been merged into mainline Org.  This recipe must appear
+;; before any package that depends on Org.
 (use-package org
   :straight `(org
               :fork (:host nil
