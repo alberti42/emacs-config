@@ -149,14 +149,15 @@
 (setq-default left-margin-width 1)
 ;; display-line-numbers mode is enabled in all buffers where
 (global-display-line-numbers-mode 1)
-;; Disable line numbers in terminal/shell buffers, and turn off line
-;; truncation so horizontal wheel scroll is suppressed (see
-;; scroll-config--hscroll-applicable-p) — terminal emulators re-wrap
-;; content to the window width, so hscroll has nothing to reveal.
+;; Disable line numbers and suppress horizontal wheel scroll in terminal/shell
+;; buffers.  Hscroll is suppressed via a buffer-local flag rather than by
+;; setting `truncate-lines' to nil: the latter would cause Emacs to reserve the
+;; last column for the continuation glyph, making vterm's prompt overflow by one
+;; character because it reports the full window width to the child process.
 (dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook ghostel-mode-hook))
   (add-hook hook (lambda ()
                    (display-line-numbers-mode -1)
-                   (setq-local truncate-lines nil))))
+                   (setq-local scroll-config-suppress-hscroll t))))
 
 ;; Terminal emulators (term, eshell, vterm)
 (emacs-config-load-module
