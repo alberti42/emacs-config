@@ -253,19 +253,19 @@
 ;; `inheritenv-add-advice' wraps a command so that, at spawn time, it copies
 ;; the caller buffer's env into the target buffer.
 ;;
-;; Commentary: It provides `inheritenv-add-advice' which wraps a command so
-;; that, at spawn time, it copies the caller buffer's process-environment and
-;; exec-path into the target buffer.
-;;
 ;; agent-shell does NOT need this: it calls `hack-dir-local-variables-non-
 ;; file-buffer' on its own buffer right after creation, which triggers our
 ;; pyenv-config dir-local hook and activates the env buffer-locally before
-;; ACP spawns the agent process.  The list below covers plain project.el
-;; spawners and generic shell/compile commands, which do not.
+;; ACP spawns the agent process.  The list below covers generic shell /
+;; compile commands, project.el spawners, and terminal emulators, which do
+;; not re-apply dir-locals to their target buffer.
 (use-package inheritenv
   :config
   (dolist (cmd '(shell
                  eshell
+                 term
+                 vterm
+                 ghostel
                  async-shell-command
                  compile
                  project-shell
