@@ -34,9 +34,17 @@
   :hook
   (org-mode . org-latex-preview-mode)
   :custom
-  ;; Render all cached LaTeX previews when opening a file.  Cache hits load
-  ;; instantly from `org-persist'; misses (new or edited fragments) compile.
+  ;; Render all LaTeX previews when opening a file.  Fragments whose hash
+  ;; matches a `org-persist' entry load instantly; new or edited fragments
+  ;; (cache misses) are sent to LaTeX + dvisvgm for fresh rendering.
   (org-startup-with-latex-preview t)
+  ;; Display inline images (e.g. babel plot output) when opening a file.
+  ;; `org-startup-with-inline-images' is now a defvaralias for
+  ;; `org-startup-with-link-previews' in the new Org; set the canonical name.
+  (org-startup-with-link-previews t)
+  ;; Cap inline image display width at 600px, preserving aspect ratio.
+  ;; The underlying file is untouched; this only affects on-screen size.
+  (org-image-actual-width '(600))
   :config
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
