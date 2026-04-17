@@ -21,6 +21,11 @@
   :bind (:map dired-mode-map
               ("/" . dired-narrow)))
 
+(defun dired-reveal-file (file)
+  "Open Dired on FILE's directory with point on FILE."
+  (interactive "fReveal file: ")
+  (dired-jump nil (expand-file-name file)))
+
 (defun dired-open-with ()
   "Open or reveal the file at point using OS-level commands.
 Prompts for an action: open with the system default application,
