@@ -247,13 +247,16 @@
  'treemacs-config
  "Could not load treemacs-config.el; Treemacs is disabled.")
 
-(when nil  
-  ;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
-  ;; exec-path.  Needed by any package that spawns processes in temp buffers
-  ;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
-  (use-package inheritenv
-    :init    
-    ))
+;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
+;; exec-path.  Needed by any package that spawns processes in temp buffers
+;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
+;;
+;; Commentary: It provides `inheritenv-add-advice' which wraps a command so
+;; that, at spawn time, it copies the caller buffer's process-environment and
+;; exec-path into the target buffer.
+(use-package inheritenv
+  :init    
+  )
 
 (emacs-config-load-module
  'apheleia-config
