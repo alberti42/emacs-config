@@ -253,12 +253,16 @@
 ;; `inheritenv-add-advice' wraps a command so that, at spawn time, it copies
 ;; the caller buffer's env into the target buffer.
 ;;
-;; agent-shell does NOT need this: it calls `hack-dir-local-variables-non-
-;; file-buffer' on its own buffer right after creation, which triggers our
-;; pyenv-config dir-local hook and activates the env buffer-locally before
-;; ACP spawns the agent process.  The list below covers generic shell /
-;; compile commands, project.el spawners, and terminal emulators, which do
-;; not re-apply dir-locals to their target buffer.
+;; Precedence note.  Some target buffers (notably agent-shell, which calls
+;; `hack-dir-local-variables-non-file-buffer' on its own buffer right after
+;; creation) re-apply dir-locals AFTER inheritenv has already snapshotted
+;; the caller env.  Because the dir-local hook (`pyenv--apply-dir-local')
+;; sets buffer-local `process-environment'/`exec-path' explicitly, its
+;; values OVERRIDE whatever was inherited.  Net result: if the project has
+;; a `.dir-locals.el' with `pyenv-version', it wins over an interactive
+;; `pyenv-activate-buffer' done in the caller buffer.  Everything else on
+;; this list (shells, terminals, generic project.el spawners) does NOT
+;; re-apply dir-locals, so the inherited env is what spawns see.
 (use-package inheritenv
   :config
   (dolist (cmd '(shell
@@ -271,7 +275,11 @@
                  project-shell
                  project-eshell
                  project-async-shell-command
-                 project-compile))
+                 project-compile
+                 agent-shell
+                 agent-shell-google-start-gemini
+                 agent-shell-anthropic-start-claude-code
+                 agent-shell-opencode-start-agent))
     (inheritenv-add-advice cmd)))
 
 (emacs-config-load-module
