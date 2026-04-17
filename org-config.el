@@ -7,9 +7,9 @@
 (use-package org
   :straight `(org
               :fork (:host nil
-                     :repo "https://git.tecosaur.net/tec/org-mode.git"
-                     :branch "dev"
-                     :remote "tecosaur")
+                           :repo "https://git.tecosaur.net/tec/org-mode.git"
+                           :branch "dev"
+                           :remote "tecosaur")
               :files (:defaults "etc")
               :build t
               :pre-build
@@ -45,6 +45,10 @@
   ;; Cap inline image display width at 600px, preserving aspect ratio.
   ;; The underlying file is untouched; this only affects on-screen size.
   (org-image-actual-width '(600))
+  ;; Live-render LaTeX fragments as you type.  Default `(block edit-special)'
+  ;; excludes inline `$...$' fragments; `t' covers inline, blocks, and the
+  ;; `org-edit-special' buffer.
+  (org-latex-preview-mode-display-live t)
   :config
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
