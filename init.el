@@ -247,16 +247,32 @@
  'treemacs-config
  "Could not load treemacs-config.el; Treemacs is disabled.")
 
-;; inheritenv: allow temp buffers to inherit buffer-local process-environment and
-;; exec-path.  Needed by any package that spawns processes in temp buffers
-;; (LSP servers, compilation, shell commands, direnv/envrc, etc.).
+;; inheritenv: propagate buffer-local `process-environment' and `exec-path'
+;; from the caller buffer into commands that internally pop to a fresh
+;; buffer (and therefore lose the caller's buffer-locals) before spawning.
+;; `inheritenv-add-advice' wraps a command so that, at spawn time, it copies
+;; the caller buffer's env into the target buffer.
 ;;
 ;; Commentary: It provides `inheritenv-add-advice' which wraps a command so
 ;; that, at spawn time, it copies the caller buffer's process-environment and
 ;; exec-path into the target buffer.
+;;
+;; agent-shell does NOT need this: it calls `hack-dir-local-variables-non-
+;; file-buffer' on its own buffer right after creation, which triggers our
+;; pyenv-config dir-local hook and activates the env buffer-locally before
+;; ACP spawns the agent process.  The list below covers plain project.el
+;; spawners and generic shell/compile commands, which do not.
 (use-package inheritenv
-  :init    
-  )
+  :config
+  (dolist (cmd '(shell
+                 eshell
+                 async-shell-command
+                 compile
+                 project-shell
+                 project-eshell
+                 project-async-shell-command
+                 project-compile))
+    (inheritenv-add-advice cmd)))
 
 (emacs-config-load-module
  'apheleia-config
