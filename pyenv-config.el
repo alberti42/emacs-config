@@ -9,11 +9,11 @@
 ;;
 ;; This module adds two override paths on top of that default:
 ;;
-;; * The dir-local variable `pyenv-config-version', picked up when local
+;; * The dir-local variable `pyenv-version', picked up when local
 ;;   variables are applied -- useful for project-level overrides you do not
 ;;   want to commit as a `.python-version' file.
 ;;
-;; * `pyenv-config-activate-buffer' for interactive, ad-hoc selection.
+;; * `pyenv-activate-buffer' for interactive, ad-hoc selection.
 ;;
 ;; Both paths make `process-environment' buffer-local and set PYENV_VERSION
 ;; inside that local copy, so subprocesses spawned from the buffer see the
