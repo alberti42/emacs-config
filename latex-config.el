@@ -125,5 +125,13 @@ to revert (documents whose path is \"%s\")"
   :after tex
   :config)
 
+(use-package reftex
+  :straight nil
+  :hook
+  (LaTeX-mode . reftex-mode)
+  (latex-mode . reftex-mode)
+  :custom
+  (reftex-plug-into-AUCTeX t))
+
 (provide 'latex-config)
 ;;; latex-config.el ends here
