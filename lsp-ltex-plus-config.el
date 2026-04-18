@@ -31,6 +31,7 @@
   ;; Install hooks for all supported major modes. The full package load
   ;; lazily — only when a relevant mode is first enabled
   (lsp-ltex-plus-install-hooks
+   ;; :exclude '(org-mode)
    ;; :extend-to '((emacs-lisp-mode     "lisp"             t))
    )
 
