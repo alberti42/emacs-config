@@ -25,7 +25,6 @@
         recentf-auto-cleanup 'mode
         recentf-show-messages nil) ; requires Emacs 31+
   :bind
-  ("C-c r" . recentf-open)
   ("C-x C-r" . recentf-open)
   :config
   (recentf-mode 1)
