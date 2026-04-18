@@ -95,9 +95,18 @@
   ;; General-purpose Python defaults.  Matplotlib-specific setup (Agg backend,
   ;; SVG savefig format, imports, rcParams) lives in per-file setup blocks or
   ;; yasnippets, not here.
+  ;;
+  ;; `:session PLACEHOLDER' gives every Python block a session by default
+  ;; (rather than spawning a fresh interpreter per block), but the name is an
+  ;; intentional placeholder — every file should override it with
+  ;;   #+PROPERTY: header-args:python+ :session <name>
+  ;; at the top.  Because block-level headers outrank `#+PROPERTY:' lines,
+  ;; the session must *not* appear literally in yasnippet-inserted blocks;
+  ;; keeping it here as a default means `#+PROPERTY:' can still override it.
   (setq org-babel-default-header-args:python
         '((:results . "output")
-          (:exports . "both"))))
+          (:exports . "both")
+          (:session . "PLACEHOLDER"))))
 
 (provide 'org-config)
 ;;; org-config.el ends here
