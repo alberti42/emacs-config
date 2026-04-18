@@ -63,6 +63,41 @@ On success, return non-nil."
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+;; Pin these GNU ELPA "core" packages to Emacs's built-in copies.
+;;
+;; `project', `flymake', `xref', `jsonrpc', and `eldoc' are unusual: they
+;; ship BOTH in the Emacs tree AND on GNU ELPA as standalone packages.
+;; The ELPA release exists so users on older Emacs can pick up newer
+;; features without upgrading Emacs itself.  Many third-party packages
+;; declare a minimum version in their `Package-Requires' header (e.g.
+;; `(project "0.10.0")'); straight honours that by fetching the ELPA
+;; copy and adding it to `load-path' alongside the built-in.  Two copies
+;; of the same feature name then coexist.
+;;
+;; Up to Emacs 29 this was silently tolerated — Emacs loaded whichever
+;; copy came first.  Emacs 30+ added the stricter `require-with-check'
+;; loader, which errors out when a feature was first `provide'd from one
+;; path and is later requested from a different one, e.g.:
+;;
+;;   Feature `project' loaded from /.../emacs-31/.../project.elc is now
+;;   provided by ~/.config/emacs/straight/build/project/project.elc
+;;
+;; Eglot (built-in since Emacs 29) calls `require-with-check' at load
+;; time on `(project flymake xref jsonrpc external-completion)', so it
+;; is usually the first consumer to surface the mismatch.  lsp-mode,
+;; consult, magit, etc. all use plain `require' and silently pick
+;; whichever copy comes first — which is why this config "always worked"
+;; until Eglot was added.
+;;
+;; Adding these names to `straight-built-in-pseudo-packages' tells
+;; straight to treat them as already-installed and never build a
+;; shadowing copy, regardless of what a transitive dep requests.  On
+;; Emacs 30+ the in-tree versions are already at or ahead of ELPA, so
+;; pinning costs nothing.  If this config is ever run on an older Emacs
+;; where an ELPA core package is genuinely newer, revisit this list.
+(dolist (pkg '(project flymake xref jsonrpc eldoc))
+  (add-to-list 'straight-built-in-pseudo-packages pkg))
+
 ;; Install and configure use-package via straight.
 ;;
 ;; straight.el is our package manager: it can install packages from ELPA/MELPA
