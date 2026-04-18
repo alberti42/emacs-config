@@ -71,6 +71,18 @@
   ;;                  display-buffer-alist))))
   ;;     (funcall oldfun exit-code stderr)))
 
+  ;; Increase preview width
+  (plist-put org-latex-preview-appearance-options
+             :page-width 0.8)
+
+  ;; More immediate live-previews -- the default delay is 1 second
+  (setq org-latex-preview-mode-update-delay 0.25)
+
+  ;; ;; Block C-n, C-p etc from opening up previews when using `org-latex-preview-mode'
+  (setq org-latex-preview-mode-ignored-commands
+        '(next-line previous-line mwheel-scroll
+                    scroll-up-command scroll-down-command))
+
   ;; Python babel support.
   (org-babel-do-load-languages
    'org-babel-load-languages
