@@ -350,6 +350,10 @@
  'lsp-c-config
  "Could not load lsp-c-config.el; C/C++ LSP is disabled.")
 
+(emacs-config-load-module
+ 'lsp-tex-config
+ "Could not load lsp-tex-config.el; TeX/LaTeX LSP is disabled.")
+
 ;;;; -------------------------------------------------------------------------
 
 ;; Editing
