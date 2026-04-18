@@ -5,7 +5,7 @@
 (defun windows-config--in-tmux-p ()
   "Return non-nil if the current frame is running inside a tmux session.
 In daemon mode, uses the frame's `environment' parameter which reflects the
-connecting client's environment. Falls back to `getenv' for non-daemon Emacs."
+connecting client's environment.  Falls back to `getenv' for non-daemon Emacs."
   (let ((env (frame-parameter nil 'environment)))
     (if env
         (cl-some (lambda (s) (string-prefix-p "TMUX=" s)) env)
@@ -232,6 +232,15 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
     (delete-other-windows)))
 
 (global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
+
+(defun windows-config-switch-to-minibuffer ()
+  "Jump to the active minibuffer, if any."
+  (interactive)
+  (if-let* ((win (active-minibuffer-window)))
+      (select-window win)
+    (user-error "No active minibuffer")))
+
+(global-set-key (kbd "C-x m") #'windows-config-switch-to-minibuffer)
 
 (provide 'windows-config)
 ;;; windows-config.el ends here
