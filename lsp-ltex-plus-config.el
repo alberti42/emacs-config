@@ -18,6 +18,7 @@
 
 
   :custom
+  (lsp-ltex-plus-language "en-US")
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
