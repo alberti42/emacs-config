@@ -60,16 +60,16 @@
   ;; that print benign warnings to stderr.  The buffer is still written to,
   ;; so real errors (non-zero exit) still pop and past stderr remains
   ;; inspectable via `M-x switch-to-buffer'.
-  (define-advice org-babel-eval-error-notify
-      (:around (oldfun exit-code stderr) suppress-on-success)
-    (let ((display-buffer-alist
-           (if (and exit-code (not (zerop exit-code)))
-               display-buffer-alist
-             (cons (cons (regexp-quote org-babel-error-buffer-name)
-                         '(display-buffer-no-window
-                           (allow-no-window . t)))
-                   display-buffer-alist))))
-      (funcall oldfun exit-code stderr)))
+  ;; (define-advice org-babel-eval-error-notify
+  ;;     (:around (oldfun exit-code stderr) suppress-on-success)
+  ;;   (let ((display-buffer-alist
+  ;;          (if (and exit-code (not (zerop exit-code)))
+  ;;              display-buffer-alist
+  ;;            (cons (cons (regexp-quote org-babel-error-buffer-name)
+  ;;                        '(display-buffer-no-window
+  ;;                          (allow-no-window . t)))
+  ;;                  display-buffer-alist))))
+  ;;     (funcall oldfun exit-code stderr)))
 
   ;; Python babel support.
   (org-babel-do-load-languages
