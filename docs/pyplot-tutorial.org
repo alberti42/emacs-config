@@ -1,0 +1,112 @@
+#+TITLE: Python + matplotlib workflow in org-babel
+#+PROPERTY: header-args:python :session pyplot-tutorial :results output :exports both
+#+STARTUP: inlineimages
+
+The =#+PROPERTY= line above fully specifies the Python defaults for this
+file (no =+=, so it replaces any user-global defaults): a dedicated session
+named =pyplot-tutorial=, stdout-style results, and both code and output in
+exports.  The file is therefore self-contained and runs the same way on
+any machine regardless of the recipient's Emacs config.
+
+Run the setup block once (=C-c C-c=) before any plot block. =C-c C-v C-i=
+shows the merged header args for the block at point.
+
+* Setup                                                            :noexport:
+=MPLBACKEND=Agg= must be set *before* matplotlib is imported — it prevents
+macOS from loading AppKit (which writes =ApplePersistence=NO= to stderr and
+pops =*org-babel error output*=).
+
+#+NAME: setup
+#+BEGIN_SRC python :results silent
+import os
+os.environ.setdefault("MPLBACKEND", "Agg")
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({
+    "figure.figsize": (6, 4),
+    "axes.grid": True,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "savefig.format": "svg",
+})
+#+END_SRC
+
+* Data exploration
+** Pretty-printed value
+=:results value pp= returns the last expression, pretty-printed.
+
+#+BEGIN_SRC python :results value pp
+x = np.linspace(0, 1, 5)
+{"x": x.tolist(), "mean": float(x.mean()), "std": float(x.std())}
+#+END_SRC
+
+** Stdout
+Default here is =output=, so =print= goes straight to =#+RESULTS:=.
+
+#+BEGIN_SRC python
+for i in range(4):
+    print(f"row {i}: square={i**2}, cube={i**3}")
+#+END_SRC
+
+** Table
+=:results value table= renders a 2D list as an org table.
+
+#+BEGIN_SRC python :results value table
+[["x", "x^2", "x^3"]] + [[i, i**2, i**3] for i in range(5)]
+#+END_SRC
+
+* Plots
+Plot blocks override =:results= to =file graphics= so org inserts the saved
+figure as an inline image.  =rcParams["savefig.format"] = "svg"= from setup
+means =plt.savefig("name")= without extension writes SVG, but =:file= here
+must still include the extension so org inserts the correct link.
+
+** Basic line plot
+#+BEGIN_SRC python :file sine.svg :results file graphics
+fig, ax = plt.subplots()
+x = np.linspace(0, 2*np.pi, 200)
+ax.plot(x, np.sin(x), label="sin")
+ax.plot(x, np.cos(x), label="cos")
+ax.legend()
+ax.set(xlabel="x", ylabel="y", title="Trigonometric")
+fig.savefig("sine.svg")
+#+END_SRC
+
+** Reusing session state
+=np= and =plt= are still bound from setup; =rcParams= still apply.
+
+#+BEGIN_SRC python :file hist.svg :results file graphics
+rng = np.random.default_rng(42)
+data = rng.normal(size=1000)
+
+fig, ax = plt.subplots()
+ax.hist(data, bins=30, edgecolor="white")
+ax.set(xlabel="value", ylabel="count", title="Normal samples")
+fig.savefig("hist.svg")
+#+END_SRC
+
+** Multiple subplots
+#+BEGIN_SRC python :file subplots.svg :results file graphics
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+x = np.linspace(-3, 3, 200)
+
+axes[0].plot(x, np.tanh(x))
+axes[0].set_title("tanh")
+
+axes[1].plot(x, 1 / (1 + np.exp(-x)))
+axes[1].set_title("sigmoid")
+
+fig.tight_layout()
+fig.savefig("subplots.svg")
+#+END_SRC
+
+* Notes
+- =C-c C-c= executes the block at point.
+- =C-c C-v C-b= executes all blocks in the buffer, top to bottom.
+- =C-c C-x C-v= toggles inline image display.
+- Kill the session with =M-x kill-buffer RET *Python[pyplot-tutorial]* RET=
+  when you want a clean slate.
+- Each plot block creates its own =fig, ax= — otherwise =plt= would keep
+  drawing on the previous figure since the session persists.
