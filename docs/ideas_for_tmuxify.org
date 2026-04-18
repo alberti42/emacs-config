@@ -1,0 +1,29 @@
+#+TITLE: Ideas for tmuxify.el
+#+STARTUP: showall
+
+* Motivation
+
+Port the tmux pane-management vocabulary to Emacs as a configurable package.
+Emacs users typically settle for =C-x o= and =C-x {}=; tmux users rarely
+discover how flexible Emacs's window tree is. The tmux prefix model
+(leader + mnemonic) is more discoverable than Emacs's sprawling =C-x= space.
+
+Reference implementation lives in [[file:../windows-config.el][windows-config.el]].
+
+* Design notes
+
+- *Prefix as a =defcustom=* with a setter that rebuilds the keymap, so users
+  can switch from =C-b= to anything without restarting.
+- *Separate the layers*: focus / split / join / reflow / swap / resize / delete
+  as independent feature groups users can enable individually.
+- *Optional tmux pass-through*: the edge-fallthrough to tmux (see
+  =windmove-*-or-tmux=) is the killer feature — make it opt-in and gracefully
+  no-op outside tmux.
+- *=repeat-mode= maps per group*, so repeated chords continue without the
+  prefix (join / reflow / swap / resize).
+- *which-key descriptions* so the prefix self-documents.
+
+* Possible names
+
+- =tmuxify.el=
+- =tmux-panes.el=
