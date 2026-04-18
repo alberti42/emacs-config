@@ -22,6 +22,7 @@
   (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-debug nil)
+  (lsp-ltex-plus-show-latency nil)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
   (lsp-ltex-plus-apply-kind-first-patch t)
