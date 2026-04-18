@@ -98,7 +98,7 @@
 ;;   "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
 ;; electric-pair-mode: auto-close brackets, parens, and quotes.
-(electric-pair-mode 1)
+(electric-pair-mode 0)
 
 ;; Accept y/n instead of typing yes/no in full.
 (setq use-short-answers t)
