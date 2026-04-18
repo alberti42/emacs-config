@@ -15,6 +15,15 @@
   (dired-use-ls-dired t)
   (delete-by-moving-to-trash t))
 
+;; various extra for dired-mode; especially for hiding files
+(use-package dired-x
+  :straight nil
+  :after dired
+  :custom
+  (dired-omit-files (rx bos "." (not (any "."))))
+  (dired-omit-verbose nil)
+  :hook (dired-mode . dired-omit-mode))
+
 ;; dired-narrow: live-filter the dired listing as you type.
 (use-package dired-narrow
   :after dired
@@ -58,6 +67,7 @@ or reveal in the system file manager."
 
 (with-eval-after-load 'dired
   (define-key dired-mode-map (kbd "O") #'dired-open-with)
+  (define-key dired-mode-map (kbd ".") #'dired-omit-mode)
   ;; Sorting commands mirroring keybindings from Yazi
   (define-key dired-mode-map (kbd ", a") #'dired-sort-by-name)
   (define-key dired-mode-map (kbd ", A") #'dired-sort-by-name-r)
