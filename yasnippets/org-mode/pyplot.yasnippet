@@ -1,0 +1,14 @@
+# -*- mode: snippet -*-
+# key : pyplot
+# name : Python matplotlib plot block
+# --
+#+BEGIN_SRC python :file ${1:plot.svg} :session ${2:math} :async
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots()
+$0
+ax.set_xlabel("${3:x}")
+ax.set_ylabel("${4:y}")
+ax.set_title("${5:Title}")
+fig.savefig("$1")
+#+END_SRC
