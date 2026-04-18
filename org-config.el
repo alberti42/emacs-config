@@ -45,7 +45,7 @@
   (org-startup-with-link-previews t)
   ;; Cap inline image display width at 600px, preserving aspect ratio.
   ;; The underlying file is untouched; this only affects on-screen size.
-  (org-image-actual-width '(600))
+  ;; (org-image-actual-width '(800))
   ;; Live-render LaTeX fragments as you type.  Default `(block edit-special)'
   ;; excludes inline `$...$' fragments; `t' covers inline, blocks, and the
   ;; `org-edit-special' buffer.
