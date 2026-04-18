@@ -58,6 +58,10 @@ Scans the first 10 lines of the buffer, case-insensitively.
   :custom
   ;; Prevent super/subscripts from being raised/lowered
   (font-latex-fontify-script nil)
+  ;; Keep `\item' flush with the environment body and don't add an extra
+  ;; indent to lines following `\item'.  Default -2 outdents `\item' and
+  ;; indents continuation lines by +2 relative to it.
+  (LaTeX-item-indent 0)
   :config
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
