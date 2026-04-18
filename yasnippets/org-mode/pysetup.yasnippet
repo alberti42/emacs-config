@@ -2,8 +2,8 @@
 # name: python setup block (imports + rcParams)
 # key: pysetup
 # --
-#+NAME: setup
-#+BEGIN_SRC python :results silent
+#+name: setup
+#+begin_src python :results silent
 import os
 os.environ.setdefault("MPLBACKEND", "Agg")
 
@@ -16,4 +16,4 @@ plt.rcParams.update({
     "savefig.format": "svg",
 })
 $0
-#+END_SRC
+#+end_src
