@@ -78,6 +78,10 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
 (global-set-key (kbd "C-b <up>")    'windmove-up-or-tmux)
 (global-set-key (kbd "C-b <down>")  'windmove-down-or-tmux)
 
+(global-set-key (kbd "C-b x") #'delete-window)
+(global-set-key (kbd "C-b %") #'windows-config-split-right)
+(global-set-key (kbd "C-b \"") #'windows-config-split-below)
+
 ;; Look-up table between bindings and tmux commands
 ;; that directly supported in Emacs
 (defconst windows-config-tmux-key-commands
@@ -85,9 +89,7 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
     (?n  "next-window")
     (?p  "previous-window")
     (?d  "detach-client")
-    (?b  "switch-client" "-T" "prefix")
-    (?%  "split-window" "-h" "-c" "#{pane_current_path}")
-    (?\" "split-window" "-v" "-c" "#{pane_current_path}"))
+    (?b  "switch-client" "-T" "prefix"))
   "Mapping from C-b key character to tmux command arguments.")
 
 (defun windows-config-tmux-forward-key ()
@@ -213,12 +215,79 @@ In `dired-mode', preserves default behavior (mirroring current buffer)."
 (global-set-key (kbd "C-b S-<up>")    #'windows-config-join-up)
 (global-set-key (kbd "C-b S-<down>")  #'windows-config-join-down)
 
+;; "Always move" window reflow: like the S-arrow joins above, but when the
+;; current window is already at the frame edge in that direction, it moves the
+;; window to the far side as a full-edge split, so reshaping never gets stuck.
+(defun windows-config--reflow-to-edge (side)
+  "Move the current window to SIDE of the frame as a full-edge split.
+SIDE is one of `left', `right', `above', `below'."
+  (unless (one-window-p)
+    (let ((buf (current-buffer)))
+      (delete-window)
+      (let ((new (split-window (frame-root-window) nil side)))
+        (set-window-buffer new buf)
+        (select-window new)))))
+
+(defun windows-config-reflow-left ()
+  "Reflow current window leftward; wrap to full-height far-left column at edge."
+  (interactive)
+  (if (window-in-direction 'left)
+      (windows-config-join-left)
+    (windows-config--reflow-to-edge 'left)))
+
+(defun windows-config-reflow-right ()
+  "Reflow current window rightward; wrap to full-height far-right column at edge."
+  (interactive)
+  (if (window-in-direction 'right)
+      (windows-config-join-right)
+    (windows-config--reflow-to-edge 'right)))
+
+(defun windows-config-reflow-up ()
+  "Reflow current window upward; wrap to full-width top row at edge."
+  (interactive)
+  (if (window-in-direction 'above)
+      (windows-config-join-up)
+    (windows-config--reflow-to-edge 'above)))
+
+(defun windows-config-reflow-down ()
+  "Reflow current window downward; wrap to full-width bottom row at edge."
+  (interactive)
+  (if (window-in-direction 'below)
+      (windows-config-join-down)
+    (windows-config--reflow-to-edge 'below)))
+
+(global-set-key (kbd "C-b S-M-<left>")  #'windows-config-reflow-left)
+(global-set-key (kbd "C-b S-M-<right>") #'windows-config-reflow-right)
+(global-set-key (kbd "C-b S-M-<up>")    #'windows-config-reflow-up)
+(global-set-key (kbd "C-b S-M-<down>")  #'windows-config-reflow-down)
+
+(defvar-keymap window-join-repeat-map
+  :repeat t
+  "S-<left>"  #'windows-config-join-left
+  "S-<right>" #'windows-config-join-right
+  "S-<up>"    #'windows-config-join-up
+  "S-<down>"  #'windows-config-join-down)
+
+(defvar-keymap window-reflow-repeat-map
+  :repeat t
+  "M-S-<left>"  #'windows-config-reflow-left
+  "M-S-<right>" #'windows-config-reflow-right
+  "M-S-<up>"    #'windows-config-reflow-up
+  "M-S-<down>"  #'windows-config-reflow-down)
+
 ;; Window swapping: swap the current window's buffer with an adjacent window,
 ;; equivalent to tmux swap-pane.  Uses windmove-swap-states-* (Emacs 28+).
 (global-set-key (kbd "C-b M-<left>")  #'windmove-swap-states-left)
 (global-set-key (kbd "C-b M-<right>") #'windmove-swap-states-right)
 (global-set-key (kbd "C-b M-<up>")    #'windmove-swap-states-up)
 (global-set-key (kbd "C-b M-<down>")  #'windmove-swap-states-down)
+
+(defvar-keymap window-swap-repeat-map
+  :repeat t
+  "M-<left>"  #'windmove-swap-states-left
+  "M-<right>" #'windmove-swap-states-right
+  "M-<up>"    #'windmove-swap-states-up
+  "M-<down>"  #'windmove-swap-states-down)
 
 ;; Reversible C-x 1: press once to go single-window, again to restore.
 (winner-mode +1)
