@@ -23,7 +23,7 @@
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-trace-server "message")
-  
+  (lsp-ltex-plus-multi-root t)
   (lsp-ltex-plus-apply-kind-first-patch t)
   (lsp-ltex-plus-check-programming-languages t)
 
