@@ -83,6 +83,10 @@
         '(next-line previous-line mwheel-scroll
                     scroll-up-command scroll-down-command))
 
+  ;; Structure-template expansion: `<s TAB' → #+BEGIN_SRC … #+END_SRC, `<q',
+  ;; `<e', etc.  Not auto-loaded since Org 9.2.
+  (require 'org-tempo)
+
   ;; Python babel support.
   (org-babel-do-load-languages
    'org-babel-load-languages
