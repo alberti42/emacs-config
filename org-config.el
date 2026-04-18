@@ -92,21 +92,12 @@
   ;; Set to a function if you want selective confirmation.
   (setq org-confirm-babel-evaluate nil)
 
-  ;; Default header args for Python: produce graphics files for matplotlib.
-  ;; The prologue:
-  ;;   - Forces the non-interactive `Agg` backend so plotting does not load
-  ;;     AppKit on macOS (which prints `ApplePersistence=NO` to stderr and
-  ;;     causes babel to pop `*org-babel error output*`).  `setdefault' lets
-  ;;     individual blocks override via `os.environ'.
-  ;;   - Sets `savefig.format' to SVG so `plt.savefig("name")' (no extension)
-  ;;     writes vector SVG — crisper than PNG and scales cleanly in org
-  ;;     inline images.  Matplotlib dispatches to its SVG writer by format,
-  ;;     independent of the `Agg' interactive backend.
+  ;; General-purpose Python defaults.  Matplotlib-specific setup (Agg backend,
+  ;; SVG savefig format, imports, rcParams) lives in per-file setup blocks or
+  ;; yasnippets, not here.
   (setq org-babel-default-header-args:python
-        '((:results . "output file graphics")
-          (:exports . "both")
-          (:prologue . "import os; os.environ.setdefault('MPLBACKEND', 'Agg')
-import matplotlib; matplotlib.rcParams['savefig.format'] = 'svg'"))))
+        '((:results . "output")
+          (:exports . "both"))))
 
 (provide 'org-config)
 ;;; org-config.el ends here
