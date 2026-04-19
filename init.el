@@ -64,6 +64,11 @@
  'ui-config
  "Could not load ui-config.el; UI settings are disabled.")
 
+;; Centered startup splash buffer (GUI only, no file args).
+(emacs-config-load-module
+ 'welcome-config
+ "Could not load welcome-config.el; startup splash is disabled.")
+
 ;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
 (use-package cl-lib
