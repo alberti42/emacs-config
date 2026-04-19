@@ -1,10 +1,10 @@
 ;;; welcome-config.el --- Centered startup splash buffer -*- lexical-binding: t; -*-
 
-(defconst welcome-config-image-width 400
+(defconst welcome-config-image-width 200
   "Displayed width in pixels of the welcome logo.")
 
 (defconst welcome-config-image-file
-  (expand-file-name "goodies/Emacs-logo-orig.svg" emacs-config-dir)
+  (expand-file-name "goodies/Emacs-logo-alt.svg" emacs-config-dir)
   "Path to the welcome logo image.")
 
 (defun show-welcome-buffer ()
