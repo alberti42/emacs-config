@@ -33,6 +33,13 @@
 ;; standalone call site.  Thanks to `lexical-binding: t' the same closure
 ;; object is passed to both `add-hook' calls, so the hook stores one
 ;; shared reference.
+;;
+;; Caveat on re-evaluation: each time this form is re-loaded (e.g.
+;; `eval-buffer' or `load-file'), a NEW closure object is created and `add-hook'
+;; dedupes by object identity, so the new closure is appended alongside the old
+;; one — the hook accumulates duplicate entries until Emacs is restarted.  We
+;; need to reload this file often, we need to switch to a top-level `defun', and
+;; pay the price of polluting the function namespace.
 (let ((basedpyright-enable
        (lambda ()
          (require 'lsp-pyright)
