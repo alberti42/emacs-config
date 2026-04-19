@@ -25,7 +25,13 @@
   :config
   (setq modus-themes-italic-constructs t
         modus-themes-bold-constructs t
-        modus-themes-mixed-fonts t)
+        ;; `mixed-fonts' makes code/table faces inherit from `fixed-pitch'
+        ;; instead of `default'.  That is useful only when `default' is a
+        ;; proportional font (prose-writing setup); ours is already monospace,
+        ;; so enabling it routes org tables and code blocks through whatever
+        ;; `fixed-pitch' resolves to and they could misalign.  Keep off unless
+        ;; `default' ever becomes proportional.
+        modus-themes-mixed-fonts nil)
   (setq modus-operandi-palette-overrides
         '((fg-heading-1 "#2e6b6a")))
   (setq modus-vivendi-tinted-palette-overrides
@@ -49,7 +55,7 @@
               :dark "#303446"))   ; Catppuccin Frappe
   (setq theme-harmonize-git-gutter-colors
         '(:light (:added "#01e002" :modified "#ffb500" :deleted "#cf222e")
-          :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149"))))
+                 :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149"))))
 
 ;; Theme auto-detection via zac-theme-autodetection provided by
 ;; zsh-appearance-control plugin.  Reads the OS appearance state file

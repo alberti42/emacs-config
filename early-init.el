@@ -37,4 +37,15 @@
 ;; causes horizontal truncation of icons in dired and elsewhere.
 (set-face-attribute 'default nil :family "JetBrainsMonoNL Nerd Font Mono" :height 180 :weight 'light)
 
+;; Make `fixed-pitch' follow the `default' face so packages that distinguish
+;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
+;; mu4e body, `mixed-pitch-mode') render in the same font as the rest of the
+;; editor.  Safe today because `default' above is already monospace.
+;;
+;; IF `default' IS EVER SWITCHED TO A PROPORTIONAL FONT: replace this
+;; `:inherit default' with an explicit `:family' / `:height' / `:weight'
+;; pointing at a monospace font — otherwise org tables, src blocks, and
+;; anything else relying on `fixed-pitch' will lose fixed-width rendering.
+(set-face-attribute 'fixed-pitch nil :inherit 'default)
+
 ;;; early-init.el ends here
