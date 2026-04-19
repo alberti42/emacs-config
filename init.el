@@ -22,6 +22,10 @@
 (setq create-lockfiles nil)       ; stop lock files (.#filename)
 (setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
+;; Unbind C-x C-c (save-buffers-kill-terminal): too easy to hit by accident.
+;; Use M-x save-buffers-kill-terminal (or M-x kill-emacs) as an alternative
+(global-unset-key (kbd "C-x C-c"))
+
 ;; Add reference to Emacs C source files
 (let ((src "~/Documents/Programming/Others/fork-emacs"))
   (when (file-directory-p src)
