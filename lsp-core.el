@@ -133,6 +133,21 @@ KEY is the JSON object key as a string, e.g. method or id."
               ('request
                (lsp--on-request workspace json-data)))))))))
 
+;; lsp-diagnostics: NOT a standalone package — this is the `lsp-diagnostics.el'
+;; file that ships inside the `lsp-mode' package.  We use `use-package' purely
+;; for its declarative loading semantics (`:after lsp-mode' defers `require'
+;; until lsp-mode is loaded).
+;;
+;; Force-requiring this module ensures its faces (e.g.
+;; `lsp-flycheck-info-unnecessary' for "unused" diagnostics) are defined
+;; before any server sends a diagnostic that references them — otherwise
+;; early diagnostics trigger "Invalid face reference" warnings.
+(use-package lsp-diagnostics
+  ;; No package fetch — file ships inside lsp-mode; disable straight's
+  ;; default auto-install behaviour for this block.
+  :straight nil
+  :after lsp-mode)
+
 ;; flycheck: lsp-mode's flycheck integration already passes :id code? to
 ;; flycheck-error-new (see lsp-diagnostics--flycheck-start), so diagnostic
 ;; codes (e.g. "reportPossiblyUnbound") are natively available in flycheck
