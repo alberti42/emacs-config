@@ -351,6 +351,10 @@
  "Could not load lsp-rust-config.el; Rust LSP is disabled.")
 
 (emacs-config-load-module
+ 'lsp-kotlin-config
+ "Could not load lsp-kotlin-config.el; Kotlin LSP is disabled.")
+
+(emacs-config-load-module
  'lsp-c-config
  "Could not load lsp-c-config.el; C/C++ LSP is disabled.")
 

@@ -29,6 +29,7 @@
           (bash "https://github.com/tree-sitter/tree-sitter-bash")
           (zsh "https://github.com/tree-sitter-grammars/tree-sitter-zsh")
           (python "https://github.com/tree-sitter/tree-sitter-python")
+          (kotlin "https://github.com/fwcd/tree-sitter-kotlin")
           (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
           (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
 
