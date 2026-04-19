@@ -60,14 +60,6 @@
 ;; the source org buffer).
 (defvar org-src--beg-marker)
 
-;; Monotonic counter for phantom .py filenames.  Each `C-c '' increments
-;; it, so each edit session gets a distinct URI (e.g. `org-src-foo-1.py',
-;; `org-src-foo-2.py').  Without this, reusing the same path could trigger
-;; basedpyright's "Received redundant open text document command" warning
-;; on reopen.  Resets at Emacs restart; `my/unique-file-path' handles
-;; leftover files from a crashed session.
-(defvar my/org-src-lsp-counter 0)
-
 (defun my/org-src-python-lsp-enable ()
   (when (derived-mode-p 'python-mode 'python-ts-mode)
     (let* (;; Find the ORIGINAL org buffer the edit buffer was spawned
@@ -102,18 +94,16 @@
            ;; Derive the phantom name from the org file's basename, which
            ;; is guaranteed filesystem-safe (it already exists on disk),
            ;; so we skip character sanitisation and get a readable path
-           ;; in the breadcrumb: `org-src-<orgbase>-<N>.py'.  The counter
-           ;; keeps successive `C-c '' on the same block from landing on
-           ;; the same path.  `my/unique-file-path' guards against
-           ;; leftover files from a crashed prior session.
+           ;; in the breadcrumb: `org-src-<orgbase>.py'.  `my/unique-file-path'
+           ;; appends `_1', `_2', ... when needed — covers simultaneous
+           ;; edits of multiple blocks from the same org file and leftover
+           ;; files from a crashed prior session.
            (org-name (or (and (buffer-file-name org-buf)
                               (file-name-base (buffer-file-name org-buf)))
                          "scratch"))
-           (counter  (setq my/org-src-lsp-counter
-                           (1+ my/org-src-lsp-counter)))
            (tmp-path (my/unique-file-path
                       (expand-file-name
-                       (format "org-src-%s-%d.py" org-name counter)
+                       (format "org-src-%s.py" org-name)
                        aux-dir))))
       ;; Associate the edit buffer with the phantom path.  lsp-mode
       ;; checks `buffer-file-name' when deciding whether to start.
