@@ -30,13 +30,76 @@
 (let ((basedpyright-enable (lambda () (require 'lsp-pyright) (lsp-deferred))))
   (add-hook 'python-mode-hook basedpyright-enable)
   (add-hook 'python-ts-mode-hook basedpyright-enable)
+
   ;; Also enable LSP when editing a Python org-babel src block via `C-c ''.
   ;; `org-src-mode-hook' fires inside the edit-special buffer after its major
   ;; mode (python-mode / python-ts-mode) is set.
-  (add-hook 'org-src-mode-hook
-            (lambda ()
-              (when (derived-mode-p 'python-mode 'python-ts-mode)
-                (funcall basedpyright-enable)))))
+  ;;
+  ;; The edit buffer is not file-backed by default, and lsp-mode silently
+  ;; refuses to start without a `buffer-file-name'.  We associate the buffer
+  ;; with a stable temp path derived from the source org buffer's name, so
+  ;; basedpyright sees a real .py file.  The file is never actually written;
+  ;; lsp-mode relies on the in-memory document sync protocol.  On `C-c '' exit,
+  ;; the edit buffer is killed and the stale association disappears.
+
+  ;; Forward declaration: silences the byte-compiler warning when org-src
+  ;; hasn't been loaded yet at byte-compile time.  The real value is set by
+  ;; org-src.el inside the edit buffer (buffer-local marker pointing into
+  ;; the source org buffer).
+  (defvar org-src--beg-marker)
+
+  (defun my/org-src-python-lsp-enable ()
+    (when (derived-mode-p 'python-mode 'python-ts-mode)
+      (let* (;; Find the ORIGINAL org buffer the edit buffer was spawned
+             ;; from.  Three fallbacks, most-reliable first:
+             ;;   1. `org-src--beg-marker' — buffer-local marker set by
+             ;;      org-src.el; its `marker-buffer' is the org buffer.
+             ;;      This is the authoritative link in modern Org, which
+             ;;      uses plain (not indirect) edit buffers.
+             ;;   2. `(buffer-base-buffer)' — covers the case where Org
+             ;;      ever uses indirect buffers again, or where the user
+             ;;      opened the edit buffer via `clone-indirect-buffer'.
+             ;;   3. `(current-buffer)' — final fallback; will yield no
+             ;;      useful filename, but keeps us from crashing.
+             (org-buf (or (and (markerp org-src--beg-marker)
+                               (marker-buffer org-src--beg-marker))
+                          (buffer-base-buffer)
+                          (current-buffer)))
+             ;; Directory where we'll place the phantom .py file.  Prefer
+             ;; the org file's directory so basedpyright can walk up and
+             ;; discover `pyproject.toml' / `pyrightconfig.json' in the
+             ;; project root.  Fall back to `temporary-file-directory' if
+             ;; the org buffer isn't file-backed (scratch / capture).
+             (org-dir (or (and (buffer-file-name org-buf)
+                               (file-name-directory (buffer-file-name org-buf)))
+                          temporary-file-directory))
+             ;; Build a stable, filesystem-safe path for the phantom file.
+             ;; The edit buffer's name includes characters illegal in some
+             ;; filesystems (spaces, brackets, asterisks like
+             ;; `*Org Src foo.org[ python ]*'), so squash everything
+             ;; non-alphanumeric to `_'.  The leading dot hides the file
+             ;; from `ls'.  Using the buffer name keeps concurrent edits
+             ;; of different blocks from colliding on the same path.
+             (tmp-path (expand-file-name
+                        (format ".org-src-lsp-%s.py"
+                                (replace-regexp-in-string
+                                 "[^a-zA-Z0-9\-]" "_" (buffer-name)))
+                        org-dir)))
+        ;; Associate the edit buffer with the phantom path.  lsp-mode
+        ;; checks `buffer-file-name' when deciding whether to start; it
+        ;; will happily operate on an "unsaved" buffer as long as the
+        ;; variable is set.  `buffer-file-truename' must be kept in sync,
+        ;; since lsp-mode uses the truename for workspace bookkeeping.
+        ;; The file is NEVER written — LSP relies on the in-memory
+        ;; textDocument/didChange sync, so basedpyright sees our edits
+        ;; without any disk round-trip.
+        (setq-local buffer-file-name tmp-path)
+        (setq-local buffer-file-truename (file-truename tmp-path)))
+      ;; Start basedpyright.  `lsp-deferred' attaches once the buffer is
+      ;; first displayed, which at this point has already happened.
+      (funcall basedpyright-enable)))
+
+  (add-hook 'org-src-mode-hook #'my/org-src-python-lsp-enable))
 
 (provide 'lsp-python-config)
 ;;; lsp-python-config.el ends here
