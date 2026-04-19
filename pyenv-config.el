@@ -9,9 +9,9 @@
 ;;
 ;; This module adds two override paths on top of that default:
 ;;
-;; * The dir-local variable `pyenv-version', picked up when local
-;;   variables are applied -- useful for project-level overrides you do not
-;;   want to commit as a `.python-version' file.
+;; * The dir-local variable `pyenv-version', picked up when local variables are
+;;   applied -- useful for project-level overrides you do not want to commit as
+;;   a `.python-version' file.
 ;;
 ;; * `pyenv-activate-buffer' for interactive, ad-hoc selection.
 ;;
