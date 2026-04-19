@@ -39,17 +39,21 @@
     (read-only-mode 1)
     (switch-to-buffer (current-buffer))
     (local-set-key (kbd "q") #'bury-buffer)
-    ;; Swallow wheel events so the splash stays put.  Covers GUI wheel
-    ;; (vertical + horizontal, with double/triple accelerated variants) and
-    ;; TTY mouse-4..7.  Local bindings override `ultra-scroll' /
-    ;; `pixel-scroll-precision-mode' globals.
-    (dolist (ev '([wheel-up] [wheel-down] [wheel-left] [wheel-right]
-                  [double-wheel-up] [double-wheel-down]
-                  [double-wheel-left] [double-wheel-right]
-                  [triple-wheel-up] [triple-wheel-down]
-                  [triple-wheel-left] [triple-wheel-right]
-                  [mouse-4] [mouse-5] [mouse-6] [mouse-7]))
-      (local-set-key ev #'ignore))))
+    ;; Swallow wheel events so the splash stays put.  `local-set-key' is not
+    ;; sufficient for <wheel-up>/<wheel-down>: `pixel-scroll-precision-mode-map'
+    ;; (which carries `ultra-scroll') is a minor-mode map, and those win over
+    ;; the buffer-local map.  Install via `minor-mode-overriding-map-alist',
+    ;; which is consulted before `minor-mode-map-alist' and shadows per-buffer.
+    (let ((override (make-sparse-keymap)))
+      (dolist (ev '([wheel-up] [wheel-down] [wheel-left] [wheel-right]
+                    [double-wheel-up] [double-wheel-down]
+                    [double-wheel-left] [double-wheel-right]
+                    [triple-wheel-up] [triple-wheel-down]
+                    [triple-wheel-left] [triple-wheel-right]
+                    [mouse-4] [mouse-5] [mouse-6] [mouse-7]))
+        (define-key override ev #'ignore))
+      (setq-local minor-mode-overriding-map-alist
+                  (list (cons 'pixel-scroll-precision-mode override))))))
 
 (setq initial-scratch-message nil)
 (setq inhibit-startup-screen t)
