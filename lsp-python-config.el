@@ -86,15 +86,32 @@
                                  "[^a-zA-Z0-9\-]" "_" (buffer-name)))
                         org-dir)))
         ;; Associate the edit buffer with the phantom path.  lsp-mode
-        ;; checks `buffer-file-name' when deciding whether to start; it
-        ;; will happily operate on an "unsaved" buffer as long as the
-        ;; variable is set.  `buffer-file-truename' must be kept in sync,
-        ;; since lsp-mode uses the truename for workspace bookkeeping.
-        ;; The file is NEVER written — LSP relies on the in-memory
-        ;; textDocument/didChange sync, so basedpyright sees our edits
-        ;; without any disk round-trip.
+        ;; checks `buffer-file-name' when deciding whether to start.
+        ;; `buffer-file-truename' must be kept in sync, since lsp-mode
+        ;; uses the truename for workspace bookkeeping.
         (setq-local buffer-file-name tmp-path)
-        (setq-local buffer-file-truename (file-truename tmp-path)))
+        (setq-local buffer-file-truename (file-truename tmp-path))
+        ;; Pre-write the buffer to disk, silently.  Without this, lsp-mode
+        ;; logs "Saving file ... because it is not present on the disk"
+        ;; and apheleia's diff-based formatter fails (nothing to diff
+        ;; against).  `write-region' with a nil MSG arg of
+        ;; `no-message' suppresses the "Wrote ..." echo-area noise.
+        (write-region (point-min) (point-max) tmp-path nil 'no-message)
+        (set-buffer-modified-p nil)
+        ;; Delete the phantom file when the edit buffer is killed
+        ;; (usually on `C-c '' exit), so these temp files do not
+        ;; accumulate next to the org file.  The hook is buffer-local.
+        (add-hook 'kill-buffer-hook
+                  (lambda ()
+                    (when (and buffer-file-name
+                               (file-exists-p buffer-file-name))
+                      (delete-file buffer-file-name)))
+                  nil t)
+        ;; Skip file watchers for this transient buffer.  Without this,
+        ;; lsp-mode would try to watch every directory under
+        ;; `temporary-file-directory' (or the project root) and ask for
+        ;; permission above `lsp-file-watch-threshold'.
+        (setq-local lsp-enable-file-watchers nil))
       ;; Start basedpyright.  `lsp-deferred' attaches once the buffer is
       ;; first displayed, which at this point has already happened.
       (funcall basedpyright-enable)))
