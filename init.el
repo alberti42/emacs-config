@@ -38,7 +38,7 @@
 ;;   Local Variables:
 ;;   buffer-file-coding-system: utf-8-unix
 ;;   End:
-;;g
+;;
 ;; Emacs applies such settings silently if the variable declares
 ;; itself safe via a safe-local-variable property (e.g., a predicate
 ;; like #'stringp). Since buffer-file-coding-system lacks that
