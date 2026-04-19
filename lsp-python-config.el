@@ -28,36 +28,31 @@
   (setq lsp-pyright-multi-root nil))
 
 (defun my/basedpyright-enable ()
-  "Activate basedpyright in the current buffer via `lsp-deferred'.
-Low-level helper; no skip logic — the caller is responsible for not
-calling this in situations where LSP shouldn't start."
+  "Activate basedpyright in the current buffer via `lsp-deferred'."
   (require 'lsp-pyright)
   (lsp-deferred))
 
-(defun my/basedpyright-enable-skip-org-src ()
-  "`python-mode-hook'-safe wrapper around `my/basedpyright-enable'.
-Skips org-src edit buffers because `org-src-mode-hook' (installed below)
-is their authoritative activation path; otherwise both hooks would fire
-`lsp-deferred' in the same buffer and cause two `didOpen' events for the
-same URI, which pyright logs as \"Received redundant open text document
-command\".  The buffer name for an edit-special buffer always starts
-with `*Org Src '."
-  (unless (string-prefix-p "*Org Src " (buffer-name))
-    (my/basedpyright-enable)))
-
-(add-hook 'python-mode-hook    #'my/basedpyright-enable-skip-org-src)
-(add-hook 'python-ts-mode-hook #'my/basedpyright-enable-skip-org-src)
+(add-hook 'python-mode-hook    #'my/basedpyright-enable)
+(add-hook 'python-ts-mode-hook #'my/basedpyright-enable)
 
 ;; Also enable LSP when editing a Python org-babel src block via `C-c ''.
-;; `org-src-mode-hook' fires inside the edit-special buffer after its major
-;; mode (python-mode / python-ts-mode) is set.
-;;
 ;; The edit buffer is not file-backed by default, and lsp-mode silently
 ;; refuses to start without a `buffer-file-name'.  We associate the buffer
 ;; with a stable temp path derived from the source org buffer's name, so
-;; basedpyright sees a real .py file.  The file is never actually written;
-;; lsp-mode relies on the in-memory document sync protocol.  On `C-c '' exit,
-;; the edit buffer is killed and the stale association disappears.
+;; basedpyright sees a real .py file.
+;;
+;; Activation relies on hook ordering, not an explicit LSP call here:
+;;
+;;   1. `python-mode-hook' fires first → `my/basedpyright-enable' runs
+;;      → `lsp-deferred' schedules LSP on `window-configuration-change-hook'.
+;;   2. `org-src-mode-hook' fires next → `my/org-src-python-lsp-enable'
+;;      sets `buffer-file-name' to the phantom path and writes it to disk.
+;;   3. Buffer becomes visible → the scheduled `lsp' runs, reads
+;;      `buffer-file-name' (already set by step 2), sends ONE `didOpen'.
+;;
+;; If this function itself called `lsp-deferred', step 1's pending callback
+;; would fire alongside ours — basedpyright would see two `didOpen' events
+;; for the same URI and log "Received redundant open text document command".
 
 ;; Forward declaration: silences the byte-compiler warning when org-src
 ;; hasn't been loaded yet at byte-compile time.  The real value is set by
@@ -148,11 +143,7 @@ with `*Org Src '."
       ;; lsp-mode would try to watch every directory under
       ;; `temporary-file-directory' (or the project root) and ask for
       ;; permission above `lsp-file-watch-threshold'.
-      (setq-local lsp-enable-file-watchers nil))
-    ;; Start basedpyright.  Use the low-level helper directly, not the
-    ;; `-skip-org-src' wrapper — we ARE the authoritative path for
-    ;; org-src edit buffers.
-    (my/basedpyright-enable)))
+      (setq-local lsp-enable-file-watchers nil))))
 
 (add-hook 'org-src-mode-hook #'my/org-src-python-lsp-enable)
 
