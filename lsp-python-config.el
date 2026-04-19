@@ -79,13 +79,20 @@
              ;; idempotent and creates missing parents.
              (aux-dir (expand-file-name "._aux" org-dir))
              (_mkdir  (make-directory aux-dir t))
-             ;; `make-temp-name' returns a random path without creating the
-             ;; file; our `write-region' below will actually create it.
-             ;; Concurrent edits of different src blocks get distinct
-             ;; paths automatically.
-             (tmp-path (concat (make-temp-name
-                                (expand-file-name "org-src-" aux-dir))
-                               ".py")))
+             ;; Derive the phantom name from the org file's basename, which
+             ;; is guaranteed filesystem-safe (it already exists on disk),
+             ;; so we skip character sanitisation and get a readable path
+             ;; in the breadcrumb: `org-src-<orgbase>.py'.  Concurrent edits
+             ;; of multiple blocks from the same org file would collide on
+             ;; this path, so `my/unique-file-path' appends `_1', `_2', ...
+             ;; as needed to pick the first free slot.
+             (org-name (or (and (buffer-file-name org-buf)
+                                (file-name-base (buffer-file-name org-buf)))
+                           "scratch"))
+             (tmp-path (my/unique-file-path
+                        (expand-file-name
+                         (concat "org-src-" org-name ".py")
+                         aux-dir))))
         ;; Associate the edit buffer with the phantom path.  lsp-mode
         ;; checks `buffer-file-name' when deciding whether to start.
         ;; `buffer-file-truename' must be kept in sync, since lsp-mode
