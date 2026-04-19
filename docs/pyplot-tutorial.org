@@ -99,7 +99,7 @@ for i in range(4):
 becomes =[[file:._aux/plot.svg]]=.
 
 ** Basic line plot
-#+begin_src python :file sine.svg :results file graphics
+#+begin_src python :file sine.svg :results file graphics :dir ._aux
 fig, ax = plt.subplots()
 x = np.linspace(0, 2*np.pi, 200)
 ax.plot(x, np.sin(x), label="sin")
@@ -126,25 +126,25 @@ fig.savefig("hist.svg")
 #+end_src
 
 #+RESULTS:
-[[file:hist.svg]]
+[[file:._aux/hist.svg]]
 
 ** Multiple subplots
 #+begin_src python :file subplots.svg :results file graphics
-fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-x = np.linspace(-3, 3, 200)
+  fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+  x = np.linspace(-3, 3, 200)
 
-axes[0].plot(x, np.tanh(x))
-axes[0].set_title("tanh")
+  axes[0].plot(x, np.tanh(x))
+  axes[0].set_title("tanh")
 
-axes[1].plot(x, 1 / (1 + np.exp(-x)))
-axes[1].set_title("sigmoid")
+  axes[1].plot(x, 1 / (1 + np.exp(-x)))
+  axes[1].set_title("sigmoid")
 
-fig.tight_layout()
-fig.savefig("subplots.svg")
+  fig.tight_layout()
+  fig.savefig("subplots.svg")
 #+end_src
 
 #+RESULTS:
-[[file:subplots.svg]]
+[[file:._aux/subplots.svg]]
 
 * Notes
 - =C-c C-c= executes the block at point.
