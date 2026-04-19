@@ -50,6 +50,8 @@
   ;; The default process to convert LaTeX fragments to image files (default:
   ;; dvisvgm)
   (org-latex-preview-process-default 'dvisvgm)
+  ;; Cap the maximum size of images
+  (org-image-actual-width '(800))
   :config
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)

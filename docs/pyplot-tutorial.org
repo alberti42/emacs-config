@@ -101,6 +101,7 @@ ax.set(xlabel="x", ylabel="y", title="Plot title")
 fig.savefig("._aux/example.svg")
 #+end_src
 
+#+ATTR_HTML: :width 600px
 #+RESULTS:
 [[file:._aux/example.svg]]
 
@@ -117,6 +118,7 @@ ax.set(xlabel="value", ylabel="count", title="Normal samples")
 fig.savefig("._aux/hist.svg")
 #+end_src
 
+#+ATTR_HTML: :width 600px
 #+RESULTS:
 [[file:._aux/hist.svg]]
 
