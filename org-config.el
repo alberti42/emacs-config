@@ -112,8 +112,9 @@
   ;; SVG savefig format, imports, rcParams) lives in per-file setup blocks or
   ;; yasnippets, not here.
   (setq org-babel-default-header-args:python
-        '((:results . "output")
-          (:exports . "both"))))
+        '((:results . "output") ; captures the entire stdout as produced by a Python REPL
+          (:exports . "both")   ; includes both the code block and the results in the exported file
+          )))
 
 ;; Enables automatic visibility toggling of various Org elements depending on
 ;; cursor position.  It supports automatic toggling of emphasis markers, links,
