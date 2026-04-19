@@ -301,6 +301,7 @@ SIDE is one of `left', `right', `above', `below'."
     (delete-other-windows)))
 
 (global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
+(global-set-key (kbd "C-b z") #'windows-config-toggle-delete-other-windows)
 
 (defun windows-config-switch-to-minibuffer ()
   "Jump to the active minibuffer, if any."
