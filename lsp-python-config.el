@@ -27,13 +27,18 @@
   ;; Disable multi-root if it's causing project detection issues
   (setq lsp-pyright-multi-root nil))
 
-(defun my/basedpyright-enable ()
-  "Activate basedpyright in the current buffer via `lsp-deferred'."
-  (require 'lsp-pyright)
-  (lsp-deferred))
-
-(add-hook 'python-mode-hook    #'my/basedpyright-enable)
-(add-hook 'python-ts-mode-hook #'my/basedpyright-enable)
+;; Activate basedpyright on every Python buffer.  The lambda is held in a
+;; local `let' binding rather than a global `defun' to keep it out of the
+;; `M-x' namespace — the function is a private hook handler with no
+;; standalone call site.  Thanks to `lexical-binding: t' the same closure
+;; object is passed to both `add-hook' calls, so the hook stores one
+;; shared reference.
+(let ((basedpyright-enable
+       (lambda ()
+         (require 'lsp-pyright)
+         (lsp-deferred))))
+  (add-hook 'python-mode-hook    basedpyright-enable)
+  (add-hook 'python-ts-mode-hook basedpyright-enable))
 
 ;; Also enable LSP when editing a Python org-babel src block via `C-c ''.
 ;; The edit buffer is not file-backed by default, and lsp-mode silently
@@ -43,7 +48,7 @@
 ;;
 ;; Activation relies on hook ordering, not an explicit LSP call here:
 ;;
-;;   1. `python-mode-hook' fires first → `my/basedpyright-enable' runs
+;;   1. `python-mode-hook' fires first → the lambda above runs
 ;;      → `lsp-deferred' schedules LSP on `window-configuration-change-hook'.
 ;;   2. `org-src-mode-hook' fires next → `my/org-src-python-lsp-enable'
 ;;      sets `buffer-file-name' to the phantom path and writes it to disk.
