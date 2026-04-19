@@ -65,6 +65,29 @@ does not visit a file."
         (kill-new name) (message "%s" name))
     (message "Buffer has no file name")))
 
+;;; -- Filesystem utilities ----------------------------------------------------
+
+;;;###autoload
+(defun my/unique-file-path (candidate)
+  "Return CANDIDATE if no file exists at that path, else append `_N'
+before the extension (N = 1, 2, 3, ...) until a free slot is found.
+Example: `foo.py' -> `foo_1.py' -> `foo_2.py' -> ...
+The directory part of CANDIDATE is preserved; only the filename is
+incremented."
+  (if (not (file-exists-p candidate))
+      candidate
+    (let* ((dir  (file-name-directory candidate))
+           (base (file-name-base candidate))
+           (ext  (file-name-extension candidate t)) ; includes leading dot
+           (n    1)
+           next)
+      (while (file-exists-p
+              (setq next (expand-file-name
+                          (format "%s_%d%s" base n ext)
+                          dir)))
+        (setq n (1+ n)))
+      next)))
+
 ;;; -- Set of opinionated utilities --------------------------------------------
 ;;
 ;; This package was not tested yet, therefore it is commented out for now.
