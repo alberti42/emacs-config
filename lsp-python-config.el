@@ -73,18 +73,19 @@
              (org-dir (or (and (buffer-file-name org-buf)
                                (file-name-directory (buffer-file-name org-buf)))
                           temporary-file-directory))
-             ;; Build a stable, filesystem-safe path for the phantom file.
-             ;; The edit buffer's name includes characters illegal in some
-             ;; filesystems (spaces, brackets, asterisks like
-             ;; `*Org Src foo.org[ python ]*'), so squash everything
-             ;; non-alphanumeric to `_'.  The leading dot hides the file
-             ;; from `ls'.  Using the buffer name keeps concurrent edits
-             ;; of different blocks from colliding on the same path.
-             (tmp-path (expand-file-name
-                        (format ".org-src-lsp-%s.py"
-                                (replace-regexp-in-string
-                                 "[^a-zA-Z0-9\-]" "_" (buffer-name)))
-                        org-dir)))
+             ;; Keep phantom .py files out of the top-level directory by
+             ;; tucking them under `._aux/'.  The leading dot hides the
+             ;; directory from `ls'; `make-directory' with RECURSIVE=t is
+             ;; idempotent and creates missing parents.
+             (aux-dir (expand-file-name "._aux" org-dir))
+             (_mkdir  (make-directory aux-dir t))
+             ;; `make-temp-name' returns a random path without creating the
+             ;; file; our `write-region' below will actually create it.
+             ;; Concurrent edits of different src blocks get distinct
+             ;; paths automatically.
+             (tmp-path (concat (make-temp-name
+                                (expand-file-name "org-src-" aux-dir))
+                               ".py")))
         ;; Associate the edit buffer with the phantom path.  lsp-mode
         ;; checks `buffer-file-name' when deciding whether to start.
         ;; `buffer-file-truename' must be kept in sync, since lsp-mode
