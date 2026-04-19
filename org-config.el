@@ -87,6 +87,18 @@
   ;; `<e', etc.  Not auto-loaded since Org 9.2.
   (require 'org-tempo)
 
+  ;; `C-c '' (org-edit-special) opens the src block in a dedicated language
+  ;; buffer — this is where LSP (basedpyright, etc.) actually runs for
+  ;; python blocks.  Tuning the edit experience:
+  ;;   - Reuse the current window instead of rearranging the frame.
+  ;;   - Let the language's own TAB (indent) behavior apply inside the edit
+  ;;     buffer, so Python indentation works naturally.
+  ;;   - Preserve the source block's leading whitespace on round-trip so
+  ;;     exiting `C-c '' does not reflow indentation.
+  (setq org-src-window-setup 'current-window
+        org-src-tab-acts-natively t
+        org-src-preserve-indentation t)
+
   ;; Python babel support.
   (org-babel-do-load-languages
    'org-babel-load-languages
