@@ -29,7 +29,14 @@
 
 (let ((basedpyright-enable (lambda () (require 'lsp-pyright) (lsp-deferred))))
   (add-hook 'python-mode-hook basedpyright-enable)
-  (add-hook 'python-ts-mode-hook basedpyright-enable))
+  (add-hook 'python-ts-mode-hook basedpyright-enable)
+  ;; Also enable LSP when editing a Python org-babel src block via `C-c ''.
+  ;; `org-src-mode-hook' fires inside the edit-special buffer after its major
+  ;; mode (python-mode / python-ts-mode) is set.
+  (add-hook 'org-src-mode-hook
+            (lambda ()
+              (when (derived-mode-p 'python-mode 'python-ts-mode)
+                (funcall basedpyright-enable)))))
 
 (provide 'lsp-python-config)
 ;;; lsp-python-config.el ends here
