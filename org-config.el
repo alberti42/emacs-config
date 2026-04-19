@@ -40,16 +40,16 @@
   ;; (cache misses) are sent to LaTeX + dvisvgm for fresh rendering.
   (org-startup-with-latex-preview t)
   ;; Display inline images (e.g. babel plot output) when opening a file.
-  ;; `org-startup-with-inline-images' is now a defvaralias for
-  ;; `org-startup-with-link-previews' in the new Org; set the canonical name.
   (org-startup-with-link-previews t)
-  ;; Cap inline image display width at 600px, preserving aspect ratio.
-  ;; The underlying file is untouched; this only affects on-screen size.
-  ;; (org-image-actual-width '(800))
-  ;; Live-render LaTeX fragments as you type.  Default `(block edit-special)'
-  ;; excludes inline `$...$' fragments; `t' covers inline, blocks, and the
-  ;; `org-edit-special' buffer.
+  ;; Enable consistent equation numbering
+  (org-latex-preview-numbered t)
+  ;; Turn on live previews: This shows you a live preview of a LaTeX fragment
+  ;; and updates the preview in real-time as you edit it.  To preview only
+  ;; environments, set it to '(block edit-special) instead
   (org-latex-preview-mode-display-live t)
+  ;; The default process to convert LaTeX fragments to image files (default:
+  ;; dvisvgm)
+  (org-latex-preview-process-default 'dvisvgm)
   :config
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
@@ -71,7 +71,7 @@
   ;;                  display-buffer-alist))))
   ;;     (funcall oldfun exit-code stderr)))
 
-  ;; Increase preview width
+  ;; Set preview width to be sufficiently large to avoice chopped formulas
   (plist-put org-latex-preview-appearance-options
              :page-width 0.8)
 
@@ -99,7 +99,7 @@
         org-src-tab-acts-natively t
         org-src-preserve-indentation t)
 
-  ;; Python babel support.
+  ;; Load org-babel languages (eg., Python)
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((python . t)))
@@ -111,18 +111,9 @@
   ;; General-purpose Python defaults.  Matplotlib-specific setup (Agg backend,
   ;; SVG savefig format, imports, rcParams) lives in per-file setup blocks or
   ;; yasnippets, not here.
-  ;;
-  ;; `:session PLACEHOLDER' gives every Python block a session by default
-  ;; (rather than spawning a fresh interpreter per block), but the name is an
-  ;; intentional placeholder — every file should override it with
-  ;;   #+PROPERTY: header-args:python+ :session <name>
-  ;; at the top.  Because block-level headers outrank `#+PROPERTY:' lines,
-  ;; the session must *not* appear literally in yasnippet-inserted blocks;
-  ;; keeping it here as a default means `#+PROPERTY:' can still override it.
   (setq org-babel-default-header-args:python
         '((:results . "output")
-          (:exports . "both")
-          (:session . "PLACEHOLDER"))))
+          (:exports . "both"))))
 
 (provide 'org-config)
 ;;; org-config.el ends here
