@@ -29,7 +29,11 @@
           (bash "https://github.com/tree-sitter/tree-sitter-bash")
           (zsh "https://github.com/tree-sitter-grammars/tree-sitter-zsh")
           (python "https://github.com/tree-sitter/tree-sitter-python")
-          (kotlin "https://github.com/fwcd/tree-sitter-kotlin")
+          ;; Pinned: commits on/after 55622a4 (2026-04-11, "Multi-dollar string
+          ;; interpolation" #260) replaced the literal `"$"` / `"${"` tokens in
+          ;; the `_interpolation` rule with external-scanner rules, which
+          ;; breaks kotlin-ts-mode's `string' font-lock feature.
+          (kotlin "https://github.com/fwcd/tree-sitter-kotlin" "57170e50")
           (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
           (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
 
