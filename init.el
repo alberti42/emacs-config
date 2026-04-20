@@ -175,7 +175,7 @@
 ;; setting `truncate-lines' to nil: the latter would cause Emacs to reserve the
 ;; last column for the continuation glyph, making vterm's prompt overflow by one
 ;; character because it reports the full window width to the child process.
-(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook ghostel-mode-hook))
+(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook ghostel-mode-hook treemacs-mode-hook))
   (add-hook hook (lambda ()
                    (display-line-numbers-mode -1)
                    (setq-local scroll-config-suppress-hscroll t))))
