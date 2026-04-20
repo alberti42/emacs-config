@@ -277,6 +277,16 @@ It provides specialized formatting for:
 ;; standard "You can customize this variable" line.
 (add-hook 'help-fns-describe-variable-functions #'my/help-fns-describe-custom-type t)
 
+;;; -- Paragraph utilities -----------------------------------------------------
+
+(defun my/fill-or-unfill (&optional arg)
+  "Fill paragraph; with prefix ARG, unfill onto a single line."
+  (interactive "P")
+  (let ((fill-column (if arg most-positive-fixnum fill-column)))
+    (fill-paragraph nil t)))
+
+(global-set-key (kbd "M-q") #'my/fill-or-unfill)
+
 ;;; -- Smarter dwim comment ----------------------------------------------------
 
 (defun my/comment-dwim-section-header (orig-fun &rest args)
