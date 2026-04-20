@@ -55,7 +55,6 @@
       (setq-local minor-mode-overriding-map-alist
                   (list (cons 'pixel-scroll-precision-mode override))))))
 
-(setq initial-scratch-message nil)
 (setq inhibit-startup-screen t)
 
 (when (and (< (length command-line-args) 2)
