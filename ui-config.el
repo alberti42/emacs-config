@@ -118,10 +118,13 @@
                (mw (nth 2 wa))
                (mh (nth 3 wa))
                (fw (frame-outer-width frame))
-               (fh (frame-outer-height frame)))
+               (fh (frame-outer-height frame))
+               (y (if (eq (frame-parameter frame 'fullscreen) 'fullheight)
+                      my
+                    (+ my (/ (- mh fh) 2)))))
           (set-frame-position frame
                               (+ mx (/ (- mw fw) 2))
-                              (+ my (/ (- mh fh) 2))))))))
+                              y))))))
 
 (defun emacs-config-setup-frame (&optional frame)
   "Apply per-frame settings to FRAME.
