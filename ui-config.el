@@ -75,6 +75,14 @@
   (add-to-list 'default-frame-alist '(undecorated . t))
   (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
+;; macOS: free the right Option for system character composition
+;; (e.g. ⌥u u → ü, ⌥s → ß). Left Option stays as Meta for Emacs.
+;; Only affects the Nextstep GUI build; TTY composition is handled
+;; by the terminal emulator.
+(when (eq system-type 'darwin)
+  (setq ns-alternate-modifier 'meta
+        ns-right-alternate-modifier 'none))
+
 ;; Default frame size; TTY frames ignore these.
 (add-to-list 'default-frame-alist '(width . 200))
 (add-to-list 'default-frame-alist '(fullscreen . fullheight))
