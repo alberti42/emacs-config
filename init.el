@@ -22,9 +22,21 @@
 (setq create-lockfiles nil)       ; stop lock files (.#filename)
 (setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
-;; Unbind C-x C-c (save-buffers-kill-terminal): too easy to hit by accident.
-;; Use M-x save-buffers-kill-terminal (or M-x kill-emacs) as an alternative
-(global-unset-key (kbd "C-x C-c"))
+;; Confirm before C-x C-c: too easy to hit by accident.  `confirm-kill-emacs'
+;; only fires when Emacs actually exits; in emacsclient frames C-x C-c closes
+;; the frame without killing the daemon, so wrap the command directly and mirror
+;; the dispatch in `save-buffers-kill-terminal' to pick the right prompt.
+(setq confirm-kill-emacs #'y-or-n-p)
+(defun my/confirm-save-buffers-kill-terminal (&optional arg)
+  "Confirm before running `save-buffers-kill-terminal'."
+  (interactive "P")
+  (let ((prompt (if (frame-parameter nil 'client)
+                    "Really close this frame? "
+                  "Really exit Emacs? ")))
+    (when (y-or-n-p prompt)
+      (let ((confirm-kill-emacs nil))
+        (save-buffers-kill-terminal arg)))))
+(global-set-key (kbd "C-x C-c") #'my/confirm-save-buffers-kill-terminal)
 
 ;; Add reference to Emacs C source files
 (let ((src "~/Documents/Programming/Others/fork-emacs"))
