@@ -33,10 +33,19 @@
                           `(space :align-to (- center ,(/ (string-width title) 2)))))
       (insert title))))
 
+(defvar welcome-config--last-frame-size nil
+  "Last frame pixel size for which the welcome buffer was rendered.
+Cached to skip internal window reflows (e.g. minibuffer growth) that
+leave the frame itself unchanged.")
+
 (defun welcome-config--on-size-change (frame)
-  "Re-center the welcome buffer when FRAME's size changes."
+  "Re-center the welcome buffer when FRAME's outer size changes."
   (when (get-buffer-window "*Welcome*" frame)
-    (welcome-config--render)))
+    (let ((size (cons (frame-pixel-width frame)
+                      (frame-pixel-height frame))))
+      (unless (equal size welcome-config--last-frame-size)
+        (setq welcome-config--last-frame-size size)
+        (welcome-config--render)))))
 
 (defun show-welcome-buffer ()
   "Show the *Welcome* buffer with a centered logo and title."
