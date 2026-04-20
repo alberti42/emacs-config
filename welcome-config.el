@@ -7,12 +7,10 @@
   (expand-file-name "goodies/Emacs-logo-alt.svg" emacs-config-dir)
   "Path to the welcome logo image.")
 
-(defun show-welcome-buffer ()
-  "Show the *Welcome* buffer with a centered logo and title."
-  (interactive)
+(defun welcome-config--render ()
+  "(Re)draw the *Welcome* buffer contents for the current window size."
   (with-current-buffer (get-buffer-create "*Welcome*")
-    (setq truncate-lines t)
-    (let* ((buffer-read-only nil)
+    (let* ((inhibit-read-only t)
            (image (create-image welcome-config-image-file
                                 nil nil
                                 :width welcome-config-image-width))
@@ -25,7 +23,6 @@
            (top-margin (max 0 (floor (/ (- (window-text-height) img-lines) 2))))
            (title "Welcome to Emacs!"))
       (erase-buffer)
-      (setq mode-line-format nil)
       (goto-char (point-min))
       (insert-char ?\n top-margin)
       (insert (propertize " " 'display
@@ -34,11 +31,26 @@
       (insert "\n\n\n")
       (insert (propertize " " 'display
                           `(space :align-to (- center ,(/ (string-width title) 2)))))
-      (insert title))
+      (insert title))))
+
+(defun welcome-config--on-size-change (frame)
+  "Re-center the welcome buffer when FRAME's size changes."
+  (when (get-buffer-window "*Welcome*" frame)
+    (welcome-config--render)))
+
+(defun show-welcome-buffer ()
+  "Show the *Welcome* buffer with a centered logo and title."
+  (interactive)
+  (with-current-buffer (get-buffer-create "*Welcome*")
+    (setq truncate-lines t)
+    (setq mode-line-format nil)
     (setq cursor-type nil)
+    (welcome-config--render)
     (read-only-mode 1)
     (switch-to-buffer (current-buffer))
     (local-set-key (kbd "q") #'bury-buffer)
+    (add-hook 'window-size-change-functions
+              #'welcome-config--on-size-change)
     ;; Swallow wheel events so the splash stays put.  `local-set-key' is not
     ;; sufficient for <wheel-up>/<wheel-down>: `pixel-scroll-precision-mode-map'
     ;; (which carries `ultra-scroll') is a minor-mode map, and those win over
@@ -57,13 +69,22 @@
 
 (setq inhibit-startup-screen t)
 
-(when (and (< (length command-line-args) 2)
-           (file-readable-p welcome-config-image-file)
-           (image-type-available-p 'svg))
-  (add-hook 'emacs-startup-hook
-            (lambda ()
-              (when (display-graphic-p)
-                (show-welcome-buffer)))))
+(defun welcome-config--maybe-show ()
+  "Show the welcome buffer for a fresh GUI session.
+Runs for both direct launches (`emacs-startup-hook') and emacsclient
+frames against a running daemon (`server-after-make-frame-hook').
+Skips when a file was opened, detected by the selected window landing
+on anything other than *scratch* / *Welcome*."
+  (when (and (display-graphic-p)
+             (file-readable-p welcome-config-image-file)
+             (image-type-available-p 'svg)
+             (memq (current-buffer)
+                   (list (get-buffer "*scratch*")
+                         (get-buffer "*Welcome*"))))
+    (show-welcome-buffer)))
+
+(add-hook 'emacs-startup-hook #'welcome-config--maybe-show)
+(add-hook 'server-after-make-frame-hook #'welcome-config--maybe-show)
 
 (provide 'welcome-config)
 ;;; welcome-config.el ends here
