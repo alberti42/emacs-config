@@ -33,7 +33,7 @@
 ;; `project-remember-project' (or `C-x p p' once) if you want it to stick.
 (defun project-config-try-dir-locals (dir)
   "Return a transient project rooted at the nearest `.dir-locals.el' above DIR."
-  (when-let ((root (locate-dominating-file dir ".dir-locals.el")))
+  (when-let* ((root (locate-dominating-file dir ".dir-locals.el")))
     (cons 'transient (expand-file-name root))))
 
 (add-hook 'project-find-functions #'project-config-try-dir-locals 90)
