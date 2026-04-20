@@ -88,6 +88,56 @@ incremented."
         (setq n (1+ n)))
       next)))
 
+;;; -- Mode-specific scratch buffers -------------------------------------------
+
+(defvar my/scratch-mode-alist
+  '((sql-interactive-mode     . sql-mode)
+    (shell-mode               . sh-mode)
+    (eshell-mode              . sh-mode)
+    (inferior-python-mode     . python-mode)
+    (inferior-emacs-lisp-mode . emacs-lisp-mode))
+  "Alist mapping interactive major modes to their source-mode counterparts.
+Consulted when `C-u \\[scratch-buffer]' derives the mode of a new scratch.")
+
+(defun my/scratch-buffer-advice (orig-fun &rest args)
+  "Route prefix-arg invocations of `scratch-buffer' to mode-specific scratches.
+No prefix: original behaviour (pop to the shared `*scratch*' buffer).
+`C-u': new scratch buffer whose major mode matches the current buffer.
+`C-u C-u': new scratch buffer, prompting for the major mode.
+With an active region, its contents seed a newly-created scratch."
+  (pcase current-prefix-arg
+    ('nil (apply orig-fun args))
+    (arg
+     (let* ((prompt (not (equal arg '(4))))
+            (mode (cond
+                   (prompt
+                    (let (modes)
+                      (mapatoms
+                       (lambda (sym)
+                         (let ((name (symbol-name sym)))
+                           (when (and (commandp sym)
+                                      (string-suffix-p "-mode" name)
+                                      (not (string-match-p "--" name)))
+                             (push name modes)))))
+                      (intern (completing-read "Major mode: " modes nil t))))
+                   ((cdr (assq major-mode my/scratch-mode-alist)))
+                   (t major-mode)))
+            (name (format "*%s-scratch*"
+                          (replace-regexp-in-string
+                           "-mode\\'" "" (symbol-name mode))))
+            (existing (get-buffer name))
+            (region (and (use-region-p)
+                         (buffer-substring-no-properties
+                          (region-beginning) (region-end)))))
+       (pop-to-buffer
+        (or existing
+            (with-current-buffer (get-buffer-create name)
+              (funcall mode)
+              (when region (insert region))
+              (current-buffer))))))))
+
+(advice-add 'scratch-buffer :around #'my/scratch-buffer-advice)
+
 ;;; -- Set of opinionated utilities --------------------------------------------
 ;;
 ;; This package was not tested yet, therefore it is commented out for now.
