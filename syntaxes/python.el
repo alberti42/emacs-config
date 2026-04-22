@@ -4,7 +4,8 @@
   "Whether to enable Python settings from syntaxes/python.el.")
 
 (when emacs-config-syntaxes-enable-python
-  ;; Use simple prompt to prevent fancy IPython prompt in comint
+  ;; Use `--simple-prompt' to prevent the fancy IPython prompt from choking the
+  ;; command interpreter `comint'
   (setq python-shell-interpreter "ipython"
         python-shell-interpreter-args "-i --simple-prompt")
   (dolist (hook '(python-mode-hook python-ts-mode-hook))
