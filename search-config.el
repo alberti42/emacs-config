@@ -14,25 +14,6 @@
 (defvar search-recenter-context-lines 10
   "Number of lines to expose beyond the isearch match after scrolling.")
 
-(defun search--recenter-if-near-edge ()
-  "Scroll minimally to keep the current search match in context.
-  When the match is within `search-recenter-edge-threshold' lines of the window
-  edge, scroll just enough to show `search-recenter-context-lines' lines beyond
-  it — checking the bottom edge for forward search (C-s), top for reverse (C-r)."
-  (while-no-input
-    (redisplay)
-    (let ((check-bottom (if isearch-wrapped (not isearch-forward) isearch-forward)))
-      (if check-bottom
-          (let ((lines-to-end (count-lines (point) (window-end nil))))
-            (when (< lines-to-end search-recenter-edge-threshold)
-              (scroll-up (- search-recenter-context-lines lines-to-end))))
-        (let ((lines-to-top (count-lines (window-start) (point))))
-          (when (< lines-to-top search-recenter-edge-threshold)
-            (scroll-down (- search-recenter-context-lines lines-to-top))))))))
-
-;; (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
-;; (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
-
 ;; DEL deletes one character from the search string instead of undoing the
 ;; last input action (which would remove an entire yank in one keystroke).
 (define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
