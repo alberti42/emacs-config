@@ -289,6 +289,55 @@ SIDE is one of `left', `right', `above', `below'."
   "M-<up>"    #'windmove-swap-states-up
   "M-<down>"  #'windmove-swap-states-down)
 
+;; Send buffer: lift the current window's buffer and display it in an
+;; adjacent window, leaving the layout untouched.  The source window
+;; switches to its previous buffer (window-local, no global buffer-list
+;; side effects); focus follows the buffer into the destination window so
+;; repeated chords carry the same buffer across a chain of windows.  No
+;; tmux equivalent.
+(defun windows-config--send-buffer-to (direction)
+  "Display current buffer in the window in DIRECTION; rotate source window.
+Focus follows the buffer into the destination window.
+DIRECTION is one of `left', `right', `above', `below'."
+  (if-let* ((target (window-in-direction direction)))
+      (let ((buf (current-buffer)))
+        (switch-to-prev-buffer)
+        (set-window-buffer target buf)
+        (select-window target))
+    (user-error "No window %s" direction)))
+
+(defun windows-config-send-buffer-left ()
+  "Send current buffer to the window on the left."
+  (interactive)
+  (windows-config--send-buffer-to 'left))
+
+(defun windows-config-send-buffer-right ()
+  "Send current buffer to the window on the right."
+  (interactive)
+  (windows-config--send-buffer-to 'right))
+
+(defun windows-config-send-buffer-up ()
+  "Send current buffer to the window above."
+  (interactive)
+  (windows-config--send-buffer-to 'above))
+
+(defun windows-config-send-buffer-down ()
+  "Send current buffer to the window below."
+  (interactive)
+  (windows-config--send-buffer-to 'below))
+
+(global-set-key (kbd "C-b C-M-<left>")  #'windows-config-send-buffer-left)
+(global-set-key (kbd "C-b C-M-<right>") #'windows-config-send-buffer-right)
+(global-set-key (kbd "C-b C-M-<up>")    #'windows-config-send-buffer-up)
+(global-set-key (kbd "C-b C-M-<down>")  #'windows-config-send-buffer-down)
+
+(defvar-keymap window-send-buffer-repeat-map
+  :repeat t
+  "C-M-<left>"  #'windows-config-send-buffer-left
+  "C-M-<right>" #'windows-config-send-buffer-right
+  "C-M-<up>"    #'windows-config-send-buffer-up
+  "C-M-<down>"  #'windows-config-send-buffer-down)
+
 ;; Reversible C-x 1: press once to go single-window, again to restore.
 (winner-mode +1)
 
