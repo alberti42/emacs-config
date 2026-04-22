@@ -30,8 +30,8 @@
           (when (< lines-to-top search-recenter-edge-threshold)
             (scroll-down (- search-recenter-context-lines lines-to-top))))))))
 
-(add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
-(add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
+;; (add-hook 'isearch-mode-end-hook #'search--recenter-if-near-edge)
+;; (add-hook 'isearch-update-post-hook #'search--recenter-if-near-edge)
 
 ;; DEL deletes one character from the search string instead of undoing the
 ;; last input action (which would remove an entire yank in one keystroke).
