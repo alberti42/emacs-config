@@ -20,13 +20,19 @@
 
 ;;; Code:
 
-;; (use-package lsp-ellsp
-;;   :straight (lsp-ellsp :type git :host github :repo "elisp-lsp/lsp-ellsp")
-;;   :init
-;;   (add-hook 'emacs-lisp-mode-hook
-;;             (lambda ()
-;;               (require 'lsp-ellsp)
-;;               (lsp-deferred))))
+;; Ellsp is the only real option out there and it's alpha-stage — mostly
+;; completions and docstring hover, and it largely duplicates what Emacs already
+;; gives us natively (eldoc, completion-at-point, xref). We keep this package
+;; disabled for now; we can always reassess it in the future.
+
+(when nil
+  (use-package lsp-ellsp
+    :straight (lsp-ellsp :type git :host github :repo "elisp-lsp/lsp-ellsp")
+    :init
+    (add-hook 'emacs-lisp-mode-hook
+              (lambda ()
+                (require 'lsp-ellsp)
+                (lsp-deferred)))))
 
 (provide 'lsp-elisp-config)
 
