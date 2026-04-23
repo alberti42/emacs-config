@@ -84,8 +84,9 @@
         ns-right-alternate-modifier 'none))
 
 ;; Default frame size; TTY frames ignore these.
-(add-to-list 'default-frame-alist '(width . 200))
-(add-to-list 'default-frame-alist '(fullscreen . fullheight))
+;; (add-to-list 'default-frame-alist '(width . 200))
+;; (add-to-list 'default-frame-alist '(fullscreen . fullheight))
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 ;; Ensure GUI Emacs creates/raises a frame.
 ;; - Some macOS setups can start Emacs without presenting a visible window.
