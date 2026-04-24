@@ -6,8 +6,11 @@
 
 (use-package agent-shell
   :straight t
+  :custom
+  (agent-shell-show-context-usage-indicator 'detailed)
   :bind (:map agent-shell-mode-map
-         ("M-RET" . newline)))
+              ("M-RET" . newline)
+              ("C-c a" . agent-shell-prompt-compose)))
 
 (provide 'agent-shell-config)
 ;;; agent-shell-config.el ends here
