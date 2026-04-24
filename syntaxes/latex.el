@@ -5,7 +5,7 @@
 
 (when emacs-config-syntaxes-enable-latex
 
-  ;; --- Faces ---
+;;; -- Faces -------------------------------------------------------------------
 
   (defface latex-config-brace-face
     '((t :inherit font-lock-keyword-face))
@@ -18,10 +18,10 @@
   (defface latex-config-number-face
     '((t :inherit font-lock-number-face))
     "Face used for numbers in LaTeX buffers.
-To verify math-aware highlighting, you can temporarily set this to
-a bright color like :foreground \"cyan\".")
+To verify math-aware highlighting, you can temporarily set this to a
+bright color like :foreground \"cyan\".")
 
-  ;; --- Context-Aware Matcher ---
+;;; -- Context-Aware Matcher ---------------------------------------------------
 
   (defun latex-config--match-math-number (limit)
     "Search for a number only when inside a LaTeX math environment.
@@ -43,7 +43,7 @@ fallback would be the correct fix."
             (setq found t))))
       found))
 
-  ;; --- Setup Function ---
+;;; -- Setup Function ----------------------------------------------------------
 
   (defun latex-config--setup-font-lock ()
     "Add Sublime Text-style syntax highlighting to LaTeX buffers.
@@ -61,7 +61,7 @@ faces without disturbing comments or existing markup."
     (setq-local fill-column 100)
     (latex-config--setup-font-lock))
 
-  ;; --- Hooks ---
+;;; -- Hooks -------------------------------------------------------------------
 
   (add-hook 'LaTeX-mode-hook #'latex-config--setup-latex-buffer)
   (add-hook 'latex-mode-hook #'latex-config--setup-latex-buffer))
