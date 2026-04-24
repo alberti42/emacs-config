@@ -140,8 +140,10 @@ Not intended for direct use — `soft-wrap-mode' activates this automatically."
   :group 'soft-wrap
   (if soft-wrap--hooks-mode
       (progn
-        (add-hook 'window-state-change-functions #'soft-wrap--window-state-change))
-    (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)))
+        (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
+        (advice-add 'split-window :around #'soft-wrap--around-split-window))
+    (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)
+    (advice-remove 'split-window #'soft-wrap--around-split-window)))
 
 ;;; Width calculation ---------------------------------------------------------
 
@@ -313,6 +315,26 @@ Called by `soft-wrap-mode' when toggled off."
     (soft-wrap--restore-window-right-margin w))
 
   (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode))
+
+;;; Split-window compatibility -------------------------------------------------
+
+(defun soft-wrap--around-split-window (orig-fn &optional window size side pixelwise)
+  "Temporarily clear the soft-wrap right margin so `split-window' succeeds.
+Without this, the large right margin makes Emacs think the window is too
+narrow to split.  After the split, the window-state-change hook recalculates
+margins for both resulting windows."
+  (let* ((win (or window (selected-window)))
+         (buf (window-buffer win))
+         (active (and (buffer-live-p buf)
+                      (buffer-local-value 'soft-wrap-mode buf)))
+         (margins (when active (window-margins win)))
+         (old-right (when active (or (cdr margins) 0))))
+    (when (and active (> old-right 0))
+      (set-window-margins win (or (car margins) 0) 0))
+    (unwind-protect
+        (funcall orig-fn window size side pixelwise)
+      (when (and active (> old-right 0) (window-live-p win))
+        (soft-wrap--adjust-window-margins win)))))
 
 ;;; Optional diagnostics -------------------------------------------------------
 
