@@ -11,33 +11,34 @@
 
 ;;; Code:
 
-(defun emacs-config--smart-beginning-of-line ()
+(defun my/smart-beginning-of-line ()
   "Move point to `beginning-of-line'.
 If repeated, cycle to `back-to-indentation' instead."
   (interactive "^")
-  (if (and (eq last-command 'emacs-config--smart-beginning-of-line)
+  (if (and (eq last-command 'my/smart-beginning-of-line)
            (= (line-beginning-position) (point)))
       (back-to-indentation)
     (beginning-of-line)))
 
-(defun emacs-config--smart-end-of-line ()
+(defun my/smart-end-of-line ()
   "Move point to `end-of-line'.
 If repeated, cycle to the last non-whitespace character instead."
   (interactive "^")
-  (if (and (eq last-command 'emacs-config--smart-end-of-line)
+  (if (and (eq last-command 'my/smart-end-of-line)
            (= (line-end-position) (point)))
       (skip-syntax-backward " " (line-beginning-position))
     (end-of-line)))
 
-(global-set-key [home] #'emacs-config--smart-beginning-of-line)
-(global-set-key [end]  #'emacs-config--smart-end-of-line)
+(global-set-key [home] #'my/smart-beginning-of-line)
+(global-set-key [end]  #'my/smart-end-of-line)
 
 ;; `visual-line-mode' remaps C-a/C-e to visual-line boundaries, which are
 ;; determined by screen width rather than buffer content.  Clear the remaps
 ;; so logical-line movement remains in effect regardless of wrap mode.
-(define-key visual-line-mode-map [remap move-beginning-of-line] nil)
-(define-key visual-line-mode-map [remap move-end-of-line] nil)
-(define-key visual-line-mode-map [remap kill-line] nil)
+
+;; (define-key visual-line-mode-map [remap move-beginning-of-line] nil)
+;; (define-key visual-line-mode-map [remap move-end-of-line] nil)
+;; (define-key visual-line-mode-map [remap kill-line] nil)
 
 (provide 'navigation-config)
 
