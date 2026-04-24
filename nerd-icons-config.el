@@ -2,11 +2,6 @@
 
 ;; Library
 (use-package nerd-icons
-  :straight (nerd-icons
-             :type git
-             :host github
-             :repo "rainstormstudio/nerd-icons.el"
-             :files (:defaults "data"))
   :custom
   ;; "Symbols Nerd Font Mono" is a standalone icon-only font recommended by
   ;; the nerd-icons author.  It contains only Nerd Font glyphs (no text), so
