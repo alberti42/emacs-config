@@ -134,6 +134,11 @@
  'recentf-config
  "Could not load recentf-config.el; recent files list is disabled.")
 
+;; Buffer list (ibuffer) with project grouping and nerd-icons.
+(emacs-config-load-module
+ 'buffers-config
+ "Could not load buffers-config.el; ibuffer customizations are disabled.")
+
 ;; Project management (submodule-aware root detection)
 (emacs-config-load-module
  'project-config
