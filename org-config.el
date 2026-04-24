@@ -53,6 +53,32 @@
   ;; Cap the maximum size of images
   (org-image-actual-width '(800))
   :config
+  ;; Pre-emptive stale-.fmt purge.  After a TeX Live upgrade, pdfTeX refuses the
+  ;; precompiled preamble `.fmt' files cached under
+  ;; `$XDG_CACHE_HOME/org-persist/' because their binary fingerprint no longer
+  ;; matches.  Org's cache key is the preamble hash, not the engine, so the
+  ;; cache looks valid and the first preview fails with exit 252 ("format file
+  ;; ... made by different executable version").  Cheap mtime check: if `pdftex'
+  ;; is newer than a `.fmt', it was built against an older engine — delete it so
+  ;; the next preview rebuilds via `pdftex -ini'.  Runs once, inside `:config',
+  ;; which is before the `org-mode' body's startup-preview call.
+  (when-let* ((pdftex (executable-find "pdftex"))
+              (cache (expand-file-name
+                      "org-persist/"
+                      (or (getenv "XDG_CACHE_HOME") "~/.cache")))
+              ((file-directory-p cache)))
+    (dolist (fmt (directory-files-recursively cache "\\.fmt\\'"))
+      (when (file-newer-than-file-p pdftex fmt)
+        (message "org-latex-preview: purging stale %s"
+                 (file-name-nondirectory fmt))
+        (delete-file fmt)
+        ;; Sibling metadata file: same stem minus the `-<preamble-hash>.fmt'
+        ;; suffix.  Example:
+        ;;   <dir>/ROOT-HASH-PREAMBLE.fmt  →  <dir>/ROOT-HASH
+        (let ((meta (replace-regexp-in-string "-[^-/]+\\.fmt\\'" "" fmt)))
+          (when (and (not (equal meta fmt)) (file-exists-p meta))
+            (delete-file meta))))))
+
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
 
