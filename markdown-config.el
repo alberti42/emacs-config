@@ -2,7 +2,7 @@
 
 ;;; Code:
 
-;; markdown-mode ---------------------------------------------------------------
+;;; -- Setup and fixes for markdown-mode ---------------------------------------
 
 (defun markdown-config--follow-local-link (url)
   "Handle local file links symmetrically with `markdown-config--follow-wiki-link'.
@@ -92,14 +92,14 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
   ;; invisibility-spec and calls markdown-reload-extensions.
   (markdown-toggle-markup-hiding 1))
 
-;; grip-mode: live GitHub Markdown preview in browser --------------------------
+;;; -- grip-mode: live GitHub Markdown preview in browser ----------------------
 
 (use-package grip-mode
   :straight t
   :bind (:map markdown-mode-command-map
               ("g" . grip-mode)))
 
-;; obsidian ---------------------------------------------------------------
+;;; -- Support for Obsidian vault ----------------------------------------------
 
 ;; Currently disabled because buggy and malfunctioning
 (when nil
