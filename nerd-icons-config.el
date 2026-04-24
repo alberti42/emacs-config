@@ -20,24 +20,5 @@
   (when (display-graphic-p)
     (set-fontset-font t '(#xe000 . #xffff) "Symbols Nerd Font Mono")))
 
-;; Dired
-;; (use-package nerd-icons-dired
-;;   :after nerd-icons
-;;   :hook (dired-mode . nerd-icons-dired-mode)
-;;   :config
-;;   ;; Upstream wraps each icon in (propertize s 'display s) to fix a visual
-;;   ;; artifact when hl-line-mode is active: without it, the icon overlay retains
-;;   ;; the default frame background rather than inheriting the hl-line highlight
-;;   ;; color.  The wrapper causes a side-effect: Emacs defers face evaluation on
-;;   ;; first display, so icons appear colorless until a redisplay is triggered
-;;   ;; (e.g. highlight or g).  We don't use hl-line-mode, so the workaround is
-;;   ;; unnecessary and we drop it here.
-;;   (defun nerd-icons-dired--add-overlay (pos string)
-;;     "Add overlay to display STRING at POS."
-;;     (let ((ov (make-overlay (1- pos) pos)))
-;;       (overlay-put ov 'nerd-icons-dired-overlay t)
-;;       (overlay-put ov 'evaporate t)
-;;       (overlay-put ov 'after-string string))))
-
 (provide 'nerd-icons-config)
 ;;; nerd-icons-config.el ends here
