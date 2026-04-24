@@ -397,6 +397,14 @@
  'org-config
  "Could not load org-config.el; Org mode enhancements are disabled.")
 
+
+;; Spyder-style `# %%' code cells in plain .py/.jl/.R files; cell-aware
+;; navigation and eval.  Language-agnostic; integrates with emacs-jupyter
+;; when present (cell eval dispatches to the bound kernel).
+(emacs-config-load-module
+ 'code-cells-config
+ "Could not load code-cells-config.el; cell-aware navigation is disabled.")
+
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
 
