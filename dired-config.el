@@ -78,6 +78,14 @@ or reveal in the system file manager."
   (define-key dired-mode-map (kbd ", e") #'dired-sort-by-ext)
   (define-key dired-mode-map (kbd ", E") #'dired-sort-by-ext-r))
 
+;;; -- Font-locking -----------------------------------------------------------
+
+;; diredfl: richer font-locking with distinct faces for size, date, permission
+;; bits, directories, symlinks, executables, compressed files, etc.  Works in
+;; both GUI and TTY.
+(use-package diredfl
+  :hook (dired-mode . diredfl-mode))
+
 ;;; -- Nerd icons --------------------------------------------------------------
 
 (use-package nerd-icons-dired
