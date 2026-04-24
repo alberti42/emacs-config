@@ -13,6 +13,7 @@
 ;; marking, filtering (`/'), sorting (`s'), and grouping.  Buffers are grouped
 ;; by `project.el' root via `ibuffer-project', and decorated with nerd-icons.
 
+
 (use-package ibuffer
   :straight nil
   :bind ([remap list-buffers] . ibuffer)
@@ -47,7 +48,7 @@
 ;; only happens when the buffer is already flagged as modified, so the cost is
 ;; paid only in the rare case where it actually matters.
 
-(defun emacs-config--maybe-unmark-modified ()
+(defun my/maybe-unmark-modified ()
   "Clear the modified flag if buffer content matches the saved file.
 Runs in `kill-buffer-query-functions' before the kill prompt fires."
   (when (and buffer-file-name
@@ -62,7 +63,7 @@ Runs in `kill-buffer-query-functions' before the kill prompt fires."
         (set-buffer-modified-p nil))))
   t)
 
-(add-hook 'kill-buffer-query-functions #'emacs-config--maybe-unmark-modified)
+(add-hook 'kill-buffer-query-functions #'my/maybe-unmark-modified)
 
 (provide 'buffers-config)
 ;;; buffers-config.el ends here
