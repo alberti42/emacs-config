@@ -83,6 +83,8 @@ returns immediately when the module is already in place."
 ;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
+  :straight (jupyter :host github :repo "alberti42/fork-emacs-jupyter"
+                     :branch "fix-monads-macro-ordering")
   :config
   (setq jupyter-eval-use-overlays t))
 
@@ -112,19 +114,19 @@ returns immediately when the module is already in place."
 ;; `jupyter-repl-associate-buffer' starts the kernel but never connects to it.
 ;; Swallow the error until a fix lands upstream.
 
-(define-advice jupyter-repl-sync-execution-state
-    (:around (orig) jupyter-config/suppress-startup-error)
-  (condition-case err (funcall orig)
-    (error (message "[jupyter-config] sync-execution-state suppressed: %s" err))))
+;; (define-advice jupyter-repl-sync-execution-state
+;;     (:around (orig) jupyter-config/suppress-startup-error)
+;;   (condition-case err (funcall orig)
+;;     (error (message "[jupyter-config] sync-execution-state suppressed: %s" err))))
 
-;; When `jupyter-repl-associate-buffer' starts a fresh REPL via the no-client
-;; branch, it calls `jupyter-run-repl' interactively, which passes `display=t'
-;; and pops the new REPL into a window.  Keep the REPL buried.
-(define-advice jupyter-repl-associate-buffer
-    (:around (orig client) jupyter-config/bury-new-repl)
-  (if client
-      (funcall orig client)
-    (save-window-excursion (funcall orig nil))))
+;; ;; When `jupyter-repl-associate-buffer' starts a fresh REPL via the no-client
+;; ;; branch, it calls `jupyter-run-repl' interactively, which passes `display=t'
+;; ;; and pops the new REPL into a window.  Keep the REPL buried.
+;; (define-advice jupyter-repl-associate-buffer
+;;     (:around (orig client) jupyter-config/bury-new-repl)
+;;   (if client
+;;       (funcall orig client)
+;;     (save-window-excursion (funcall orig nil))))
 
 ;;; -- emacs-zmq dylib install hook --------------------------------------------
 
