@@ -6,10 +6,9 @@
 (when emacs-config-syntaxes-enable-yaml
   (use-package yaml-mode
     :mode ("\\.ya?ml\\'" . yaml-mode)
-    :hook (yaml-mode . (lambda ()
-                         (setq-local indent-tabs-mode nil)
-                         (setq-local yaml-indent-offset 2)
-                         (soft-wrap-mode -1)))))
+    :hook ((yaml-mode yaml-ts-mode) . (lambda ()
+                                        (setq-local indent-tabs-mode nil)
+                                        (setq-local yaml-indent-offset 2)))))
 
 (provide 'syntaxes-yaml)
 

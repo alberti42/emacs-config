@@ -6,14 +6,15 @@
 (when emacs-config-syntaxes-enable-text
   (add-hook 'text-mode-hook
             (lambda ()
-              ;; Skip soft-wrap for Git commit buffers. These use auto-fill-mode
-              ;; for hard-wrapping at 72 columns and visual soft-wrap would
-              ;; interfere with the intended commit message structure.
-              (unless (or (and (boundp 'git-commit-mode) git-commit-mode)
-                          (and (buffer-file-name)
-                               (string-match-p "\\(COMMIT_EDITMSG\\|MERGE_MSG\\)$"
-                                               (buffer-file-name))))
-                ;; Visual soft wrap at 72 columns.
+              ;; Only act on plain `text-mode' — derived modes (markdown-ts-mode,
+              ;; yaml-ts-mode, org-mode, ...) opt in from their own syntax files.
+              ;; Skip Git commit buffers, which use auto-fill at 72 columns and
+              ;; would conflict with visual soft-wrap.
+              (when (and (eq major-mode 'text-mode)
+                         (not (and (boundp 'git-commit-mode) git-commit-mode))
+                         (not (and (buffer-file-name)
+                                   (string-match-p "\\(COMMIT_EDITMSG\\|MERGE_MSG\\)$"
+                                                   (buffer-file-name)))))
                 (setq-local fill-column 72)
                 (soft-wrap-mode 1)))))
 

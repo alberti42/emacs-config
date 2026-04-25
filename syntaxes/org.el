@@ -4,11 +4,10 @@
   "Whether to enable org-mode settings from syntaxes/org.el.")
 
 (when emacs-config-syntaxes-enable-org
-  (dolist (hook '(org-mode-hook))
-    (add-hook hook
-              (lambda ()
-                ;; Visual soft wrap at 100 columns.
-                (setq-local fill-column 100)))))
+  (add-hook 'org-mode-hook
+            (lambda ()
+              (setq-local fill-column 100)
+              (soft-wrap-mode 1))))
 
 (provide 'syntaxes-org)
 ;;; syntaxes/org.el ends here

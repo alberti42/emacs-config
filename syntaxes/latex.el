@@ -59,6 +59,7 @@ faces without disturbing comments or existing markup."
   (defun latex-config--setup-latex-buffer ()
     "Initialize LaTeX-specific buffer settings and font-lock rules."
     (setq-local fill-column 100)
+    (soft-wrap-mode 1)
     (latex-config--setup-font-lock))
 
 ;;; -- Hooks -------------------------------------------------------------------

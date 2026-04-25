@@ -6,8 +6,8 @@
 (when emacs-config-syntaxes-enable-markdown
   (add-hook 'markdown-ts-mode-hook
             (lambda ()
-              ;; Visual soft wrap at 100 columns.
-              (setq-local fill-column 100))))
+              (setq-local fill-column 100)
+              (soft-wrap-mode 1))))
 
 (provide 'syntaxes-markdown)
 ;;; syntaxes/markdown.el ends here
