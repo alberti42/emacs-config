@@ -86,7 +86,43 @@ returns immediately when the module is already in place."
   :straight (jupyter :host github :repo "alberti42/fork-emacs-jupyter"
                      :branch "fix-monads-macro-ordering")
   :config
-  (setq jupyter-eval-use-overlays t))
+  (setq jupyter-eval-use-overlays t)
+
+  ;; Customize face of input prompt inheriting from success
+  (set-face-attribute 'jupyter-repl-input-prompt nil
+                      :foreground 'unspecified
+                      :inherit 'success)
+  
+  ;; When `jupyter-repl-associate-buffer' starts a fresh REPL via the no-client
+  ;; branch, it calls `jupyter-run-repl' interactively, which passes `display=t'
+  ;; and pops the new REPL into a window.  Keep the REPL buried.
+  (define-advice jupyter-repl-associate-buffer
+      (:around (orig client) jupyter-config/bury-new-repl)
+    (if client
+        (funcall orig client)
+      (save-window-excursion (funcall orig nil))))
+
+  ;; Pin `*jupyter-output*' / `*jupyter-error*' to a few-line window at the bottom
+  ;; instead of `display-buffer's default split-in-half behavior.
+  (add-to-list 'display-buffer-alist
+               '("\\*jupyter-\\(output\\|error\\)\\*"
+                 (display-buffer-reuse-window
+                  display-buffer-below-selected)
+                 (window-height . 10)
+                 (dedicated . t)))
+
+  ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
+  ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
+  ;; (the dynamic module) is the right join point: zmq.el's body finishes
+  ;; with `(provide 'zmq)' and the autoloads for zmq-core have only just
+  ;; been registered — the dylib hasn't been touched yet.  Our callback
+  ;; runs synchronously inside `provide', so the dylib is in place by the
+  ;; time the first zmq function call triggers `zmq-load'.  This also moves
+  ;; any network/disk work out of Emacs startup and into first-jupyter-use.
+  (with-eval-after-load 'zmq
+    (jupyter-config-ensure-zmq-dylib)))
+
+;;; -- jupyter integration with org-babel --------------------------------------
 
 ;; Org-babel `jupyter-LANG' integration.  Decoupled from the `use-package'
 ;; form so jupyter remains autoload-driven (no spurious `:after org'
@@ -103,37 +139,6 @@ returns immediately when the module is already in place."
             (:kernel . "python3")
             (:exports . "both")
             (:results . "output")))))
-
-;; When `jupyter-repl-associate-buffer' starts a fresh REPL via the no-client
-;; branch, it calls `jupyter-run-repl' interactively, which passes `display=t'
-;; and pops the new REPL into a window.  Keep the REPL buried.
-(define-advice jupyter-repl-associate-buffer
-    (:around (orig client) jupyter-config/bury-new-repl)
-  (if client
-      (funcall orig client)
-    (save-window-excursion (funcall orig nil))))
-
-;; Pin `*jupyter-output*' / `*jupyter-error*' to a 5-line window at the bottom
-;; instead of `display-buffer's default split-in-half behavior.
-(add-to-list 'display-buffer-alist
-             '("\\*jupyter-\\(output\\|error\\)\\*"
-               (display-buffer-reuse-window
-                display-buffer-below-selected)
-               (window-height . 10)
-               (dedicated . t)))
-
-;;; -- emacs-zmq dylib install hook --------------------------------------------
-
-;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
-;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
-;; (the dynamic module) is the right join point: zmq.el's body finishes
-;; with `(provide 'zmq)' and the autoloads for zmq-core have only just
-;; been registered — the dylib hasn't been touched yet.  Our callback
-;; runs synchronously inside `provide', so the dylib is in place by the
-;; time the first zmq function call triggers `zmq-load'.  This also moves
-;; any network/disk work out of Emacs startup and into first-jupyter-use.
-(with-eval-after-load 'zmq
-  (jupyter-config-ensure-zmq-dylib))
 
 (provide 'jupyter-config)
 ;;; jupyter-config.el ends here
