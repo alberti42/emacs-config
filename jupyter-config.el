@@ -5,8 +5,7 @@
 ;; on-disk format stays plain `.org' — no `.ipynb' involved; this is purely
 ;; the kernel-attach mechanism.
 
-;; ---------------------------------------------------------------------------
-;; Prebuilt emacs-zmq workaround
+;;; -- Prebuilt emacs-zmq workaround -------------------------------------------
 ;;
 ;; The `zmq' Emacs C dynamic module is required by emacs-jupyter even for
 ;; server-mode (HTTP/WebSocket) workflows, where ZMQ itself isn't on the
@@ -81,24 +80,30 @@ returns immediately when the module is already in place."
           (when (file-exists-p tarball) (delete-file tarball))
           (when (file-directory-p extract) (delete-directory extract t)))))))
 
-;; ---------------------------------------------------------------------------
+;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
   :straight t
   :after org
-  :init
-  ;; Run before `(require 'jupyter)' (and therefore before zmq's loader has
-  ;; a chance to call `make') so the dylib is in place when zmq-core is
-  ;; first looked up.
-  (jupyter-config-ensure-zmq-dylib)
   :config
-  ;; Register the jupyter babel backend so `#+begin_src jupyter-python'
-  ;; (and any other `jupyter-LANG') is recognized.  org-babel-load-languages
-  ;; needs the explicit `org-babel-do-load-languages' call to take effect.
+  ;; Register the jupyter babel backend so `#+begin_src jupyter-python' (and any
+  ;; other `jupyter-LANG') is recognized.  org-babel-load-languages needs the
+  ;; explicit `org-babel-do-load-languages' call to take effect.
   (add-to-list 'org-babel-load-languages '(jupyter . t))
   (org-babel-do-load-languages
    'org-babel-load-languages
    org-babel-load-languages))
+
+;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
+;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
+;; (the dynamic module) is the right join point: zmq.el's body finishes
+;; with `(provide 'zmq)' and the autoloads for zmq-core have only just
+;; been registered — the dylib hasn't been touched yet.  Our callback
+;; runs synchronously inside `provide', so the dylib is in place by the
+;; time the first zmq function call triggers `zmq-load'.  This also moves
+;; any network/disk work out of Emacs startup and into first-jupyter-use.
+(with-eval-after-load 'zmq
+  (jupyter-config-ensure-zmq-dylib))
 
 (provide 'jupyter-config)
 ;;; jupyter-config.el ends here
