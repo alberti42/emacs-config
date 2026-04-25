@@ -6,6 +6,7 @@
 (when emacs-config-syntaxes-enable-jupyter-repl
   (add-hook 'jupyter-repl-mode-hook
             (lambda ()
+              (setq truncate-lines nil)
               (display-line-numbers-mode -1))))
 
 (provide 'syntaxes-jupyter-repl)

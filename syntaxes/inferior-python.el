@@ -6,6 +6,7 @@
 (when emacs-config-syntaxes-enable-inferior-python
   (add-hook 'inferior-python-mode-hook
             (lambda ()
+              (setq truncate-lines nil)
               (display-line-numbers-mode -1))))
 
 (provide 'syntaxes-inferior-python)
