@@ -1,14 +1,31 @@
 ;;; markdown-config.el --- Markdown reading and authoring -*- lexical-binding: t; -*-
 
+;;; Commentary:
+;;
+;; Two modes are configured side by side:
+;;
+;; - `markdown-ts-mode' (primary, daily): tree-sitter backed, fast on large
+;;   files.  Lacks wiki-link parsing, link-following, and markup-hiding
+;;   plumbing out of the box; we add them here.
+;;
+;; - `markdown-mode' (escape hatch via `M-x markdown-mode'): kept until
+;;   `markdown-ts-mode' reaches feature parity for our workflow.  All the
+;;   historical fixes (wiki-link follower override, link-functions hook,
+;;   markup hiding) stay active so the escape hatch behaves correctly.
+;;
+;; The two modes share the same link-resolution helpers below.
+
 ;;; Code:
 
-;;; -- markdown-mode setup -----------------------------------------------------
+;;; -- Shared link helpers ----------------------------------------------------
 
 (defun markdown-config--follow-local-link (url)
-  "Handle local file links symmetrically with `markdown-config--follow-wiki-link'.
-Added to `markdown-follow-link-functions'.  Full URLs (with a scheme
-such as http://) are returned nil so the default browser handler runs.
-Local paths follow the same rules as wiki links:
+  "Resolve URL as a local path symmetrically with wiki-link following.
+Used as a member of `markdown-follow-link-functions' (markdown-mode)
+and called directly by `markdown-config-follow-link-at-point'
+(markdown-ts-mode).  Returns non-nil when handled.  Full URLs (with a
+scheme such as http://) return nil so the caller can fall back to
+`browse-url'.  Local paths follow the same rules as wiki links:
 - Markdown files (.md, .markdown): open with `find-file'.
 - Other files: open `dired' with the target highlighted.
 - Non-existent files: signal an error with the resolved path."
@@ -61,10 +78,62 @@ If NAME has no file extension, \".md\" is appended.  Then:
               (dired dir))
             (dired-goto-file full-path)))))))
 
-(defun my/markdown-mode-setup ()
-  "Enable markup hiding for a clean reading experience.
-`markdown-hide-markup' is a superset of `markdown-hide-urls', so
-enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
+(defconst markdown-config--wiki-link-regexp
+  "\\[\\[\\([^]|\n]+?\\)\\(?:|[^]\n]*?\\)?\\]\\]"
+  "Match `[[name]]' or `[[name|label]]'; group 1 is the resolvable name.
+The tree-sitter-markdown grammar does not expose wiki links as a node
+type, so detection is text-level even under `markdown-ts-mode'.")
+
+(defun markdown-config--inline-link-destination-at-point ()
+  "Return the URL of the `inline_link' tree-sitter node at point, or nil."
+  (when-let* ((node (treesit-parent-until
+                     (treesit-node-at (point))
+                     (lambda (n)
+                       (string= (treesit-node-type n) "inline_link"))
+                     t))
+              (dest (car (treesit-filter-child
+                          node
+                          (lambda (c)
+                            (string= (treesit-node-type c)
+                                     "link_destination"))))))
+    (treesit-node-text dest t)))
+
+(defun markdown-config-follow-link-at-point ()
+  "Follow the wiki link, inline link, or URL at point.
+Bound on `markdown-ts-mode-map'.  `markdown-mode' has its own native
+handler patched via advice; do not bind this command there."
+  (interactive)
+  (cond
+   ((thing-at-point-looking-at markdown-config--wiki-link-regexp)
+    (markdown-config--follow-wiki-link (match-string-no-properties 1)))
+   ((when-let* ((dest (markdown-config--inline-link-destination-at-point)))
+      (or (markdown-config--follow-local-link dest)
+          (browse-url dest))))
+   ((when-let* ((url (thing-at-point 'url)))
+      (browse-url url)))
+   (t (user-error "No link at point"))))
+
+;;; -- markdown-ts-mode (primary) ---------------------------------------------
+
+(use-package markdown-ts-mode
+  :straight nil  ; bundled with Emacs 31
+  :custom
+  (markdown-ts-hide-markup t)
+  :bind (:map markdown-ts-mode-map
+              ("C-c C-o"   . markdown-config-follow-link-at-point)
+              ("C-c C-c g" . grip-mode)))
+
+;;; -- markdown-mode (escape hatch — fixes preserved) -------------------------
+;;
+;; Daily routing goes to `markdown-ts-mode' via `major-mode-remap-alist' in
+;; `treesitter-config.el'.  This block keeps `markdown-mode' fully usable via
+;; `M-x markdown-mode' so the historical fixes remain available until the
+;; tree-sitter flow reaches feature parity for note-taking workflows.
+
+(defun markdown-config--markdown-mode-setup ()
+  "Enable markup hiding in `markdown-mode'.
+`markdown-hide-markup' is a superset of `markdown-hide-urls', so enabling
+it alone is sufficient to hide URLs, brackets, asterisks, etc."
   ;; markdown-toggle-markup-hiding does more than setq: it updates
   ;; invisibility-spec and calls markdown-reload-extensions.
   (markdown-toggle-markup-hiding 1))
@@ -75,13 +144,12 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
          ("\\.markdown\\'" . markdown-mode)
          ("README\\.md\\'" . gfm-mode))
   :custom
-  ;; Fontify fenced code blocks using their language's major mode.
   (markdown-fontify-code-blocks-natively t)
-  ;; Support wiki links
   (markdown-enable-wiki-links t)
-  ;; Parse wiki links with the correct structure [[link|label]]
   (markdown-wiki-link-alias-first nil)
-  :hook ((markdown-mode gfm-mode) . my/markdown-mode-setup)
+  :hook ((markdown-mode gfm-mode) . markdown-config--markdown-mode-setup)
+  :bind (:map markdown-mode-command-map
+              ("g" . grip-mode))
   :config
   ;; Replace the default follower, which appends the current buffer's
   ;; extension to the link name (turning "foo.pdf" into "foo.pdf.md")
@@ -92,28 +160,11 @@ enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
   (add-hook 'markdown-follow-link-functions
             #'markdown-config--follow-local-link))
 
-;;; -- grip-mode: live GitHub Markdown preview in browser ----------------------
+;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 
 (use-package grip-mode
   :straight t
-  :bind (:map markdown-mode-command-map
-              ("g" . grip-mode)))
-
-;;; -- Support for Obsidian vault ----------------------------------------------
-
-;; Currently disabled because buggy and malfunctioning
-(when nil
-  (use-package obsidian
-    :straight (obsidian :type git
-                        :local-repo "/Users/andrea/google-drive/dotfiles/.config/emacs/local"
-                        :files ("obsidian.el"))
-    :hook ((markdown-mode gfm-mode) . obsidian-mode)
-    :config
-    :bind (:map obsidian-mode-map
-                ("C-c o f" . obsidian-follow-link-at-point)
-                ("C-c o b" . obsidian-backlinks)
-                ("C-c o F" . obsidian-find-file)
-                ("C-c o i" . obsidian-insert-wikilink))))
+  :defer t)
 
 (provide 'markdown-config)
 ;;; markdown-config.el ends here

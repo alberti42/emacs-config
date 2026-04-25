@@ -19,9 +19,12 @@ External packages: none — built entirely on the bundled `treesit`.
 
 - **`lsp-kotlin-config.el`** depends on the Kotlin grammar **pin** here.
   See the invariants section below.
-- **`markdown-config.el`** is currently in a transitional state with
-  respect to the `markdown-mode → markdown-ts-mode` remap. See
-  `docs/markdown-ts-mode-findings.md` for the open issues.
+- **`markdown-config.el`** configures both `markdown-mode` and
+  `markdown-ts-mode` side by side. The remap entries below route daily
+  traffic to the tree-sitter mode; `markdown-mode` is kept reachable via
+  `M-x markdown-mode` as an escape hatch with custom wiki-link and
+  link-following fixes still active. See
+  `docs/modules/markdown-config.md`.
 
 ## Grammars installed
 
@@ -53,7 +56,7 @@ External packages: none — built entirely on the bundled `treesit`.
 | `sh-mode`          | `bash-ts-mode`       |                                                                   |
 | `zsh-mode`         | `bash-ts-mode`       | no `zsh-ts-mode`; bash mode handles it                            |
 | `python-mode`      | `python-ts-mode`     |                                                                   |
-| `markdown-mode`    | `markdown-ts-mode`   | **recent switch**; see `docs/markdown-ts-mode-findings.md`        |
+| `markdown-mode`    | `markdown-ts-mode`   | escape hatch reachable via `M-x markdown-mode`; see `markdown-config.md` |
 | `gfm-mode`         | `markdown-ts-mode`   | same                                                              |
 
 ## Public API
@@ -125,13 +128,14 @@ for editing purposes (font-lock, indentation). The dedicated `zsh`
 grammar is installed because some other tooling may consume it directly,
 but the mode mapping itself goes to bash.
 
-### `markdown-mode → markdown-ts-mode` is in transition
+### `markdown-mode → markdown-ts-mode` is a dual-mode setup
 
-The recent commit `2fd4d30 Switched to markdown-ts-mode` added this
-remap. `markdown-config.el` was written for `markdown-mode` and most
-of it is now dead code (hooks don't fire, advice doesn't apply, custom
-keymaps don't exist).
+The remap routes daily traffic to `markdown-ts-mode`. `markdown-mode`
+stays installed and fully configured — reachable via `M-x markdown-mode`
+— so its richer feature set (wiki-link follower, markup hiding,
+command-map bindings) remains available until the tree-sitter mode
+reaches parity for note-taking workflows.
 
-**Status**: open. Cleanup deferred. See
-`docs/markdown-ts-mode-findings.md` for the full breakdown of what's
-broken and the three options for cleanup.
+The two configurations live in the same file (`markdown-config.el`)
+and share link-resolution helpers. Do not unify or drop `markdown-mode`
+without explicit user agreement. See `markdown-config.md`.
