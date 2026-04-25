@@ -56,8 +56,57 @@ Both modes call into the same helpers, kept at the top of the file:
 | ------------------ | ----------- | ---------------------------------------- |
 | `markdown-ts-mode` | `C-c C-o`   | `markdown-config-follow-link-at-point`   |
 | `markdown-ts-mode` | `C-c C-c g` | `grip-mode`                              |
+| `markdown-ts-mode` | `mouse-1` / `mouse-2` on a wiki link | `markdown-config-follow-link-at-point` |
 | `markdown-mode`    | `C-c C-o`   | (native, calls patched wiki/link logic)  |
 | `markdown-mode`    | `C-c C-c g` | `grip-mode` (via `markdown-mode-command-map`) |
+
+## Wiki-link fontification (markdown-ts-mode only)
+
+The grammar gap means `[[name]]` / `[[name|alias]]` would otherwise
+appear as plain text. We add visual recognition with a **single
+font-lock keyword** layered on top of the tree-sitter rules. No grammar
+fork, no syntax-propertize pass.
+
+What the matcher does for each match:
+
+1. Splits the inner content on `|` to identify the visible label
+   (alias when present, name otherwise).
+2. Restricts match data to the label range so the
+   `markdown-config-wiki-link-face` applies to it only — face inherits
+   from the built-in `link` face.
+3. Adds `mouse-face`, `keymap`, and `help-echo` text properties so
+   `mouse-1` / `mouse-2` follow the link via the existing dispatcher
+   (the keymap binds `[follow-link]` to `mouse-face` so
+   `mouse-1-click-follows-link` activates).
+4. Marks the surrounding markup (`[[name|` prefix and `]]` suffix)
+   `invisible` with the symbol `markdown-ts-hide`.
+
+The `markdown-ts-hide` symbol is `markdown-ts-mode`'s own invisibility
+spec; toggling `M-x markdown-ts-toggle-hide-markup` adds/removes that
+symbol from `buffer-invisibility-spec`, which automatically shows or
+hides our markup ranges. We therefore set the `invisible` property
+unconditionally — visibility is controlled by the spec, not by the
+property's presence.
+
+### Performance
+
+Cost is **one bounded single-line regex** (`\[\[[^]\n]+\]\]`) per
+visible window via `jit-lock`. Not measurable. The reasons
+`markdown-mode` is slow on large files do not apply here:
+
+- No `markdown-fontify-code-blocks-natively` (a whole secondary major
+  mode booted per fenced block).
+- No `markdown-syntax-propertize` pass.
+- No multiline regex keywords scanning the buffer.
+
+### Why not extend the tree-sitter grammar instead?
+
+Considered and rejected. Forking `tree-sitter-markdown` to add a
+`wiki_link` node would mean owning merge conflicts forever, building
+the parser `.so` on every machine, and isolating us from the rest of
+the tree-sitter ecosystem (Helix, nvim-treesitter, GitHub) which
+wouldn't see our node. The regex cost is invisible; the grammar cost
+is structural and ongoing.
 
 ## Invariants — do not change without reading
 

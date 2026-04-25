@@ -113,12 +113,79 @@ handler patched via advice; do not bind this command there."
       (browse-url url)))
    (t (user-error "No link at point"))))
 
+;;; -- markdown-ts-mode wiki-link fontification ------------------------------
+;;
+;; tree-sitter-markdown does not expose `[[wiki]]' as a node type, so we add
+;; visual recognition with a single font-lock keyword layered on top of the
+;; treesit-driven rules.  Cost is one bounded single-line regex per visible
+;; window — negligible, unlike `markdown-mode' which pays for native
+;; code-block fontification, syntax-propertize, and dozens of multiline
+;; keywords.
+;;
+;; Markup hiding piggybacks on `markdown-ts-mode's' own `markdown-ts-hide'
+;; invisibility spec, so `M-x markdown-ts-toggle-hide-markup' shows/hides
+;; the brackets and alias prefix together with the rest of the markup.
+
+(defface markdown-config-wiki-link-face
+  '((t :inherit link))
+  "Face for Obsidian-style wiki links in `markdown-ts-mode'."
+  :group 'markdown-ts)
+
+(defvar markdown-config-wiki-link-keymap
+  (let ((map (make-sparse-keymap)))
+    ;; mouse-2 follows; mouse-1 also follows because `[follow-link]' is
+    ;; bound to `mouse-face' (the standard Emacs convention activated by
+    ;; `mouse-1-click-follows-link').
+    (define-key map [mouse-2]     #'markdown-config-follow-link-at-point)
+    (define-key map [follow-link] 'mouse-face)
+    map)
+  "Keymap installed via `keymap' text property on the visible label.")
+
+(defun markdown-config--wiki-link-fontify (limit)
+  "Font-lock MATCHER for `[[name]]' and `[[name|alias]]'.
+Restricts match data to the visible label so the keyword's face applies
+to that region only.  Adds clickability (`keymap', `mouse-face',
+`help-echo') to the label and `invisible' (with the `markdown-ts-hide'
+spec) to the surrounding markup so toggle-hide-markup works."
+  (when (re-search-forward "\\[\\[\\([^]\n]+\\)\\]\\]" limit t)
+    (let* ((beg       (match-beginning 0))
+           (end       (match-end 0))
+           (inner-beg (match-beginning 1))
+           (inner-end (match-end 1))
+           (inner     (match-string-no-properties 1))
+           (pipe      (string-match-p "|" inner))
+           (label-beg (if pipe (+ inner-beg pipe 1) inner-beg))
+           (label-end inner-end)
+           (target    (if pipe (substring inner 0 pipe) inner)))
+      (add-text-properties label-beg label-end
+                           (list 'mouse-face 'highlight
+                                 'keymap markdown-config-wiki-link-keymap
+                                 'help-echo (concat "Wiki link → " target)))
+      (put-text-property beg label-beg 'invisible 'markdown-ts-hide)
+      (put-text-property label-end end  'invisible 'markdown-ts-hide)
+      (set-match-data (list label-beg label-end))
+      t)))
+
+(defun markdown-config--markdown-ts-mode-setup ()
+  "Register the wiki-link font-lock keyword in the current buffer.
+`font-lock-extra-managed-props' is extended so font-lock cleans up the
+extra text properties on refontification."
+  (setq-local font-lock-extra-managed-props
+              (append font-lock-extra-managed-props
+                      '(invisible mouse-face keymap help-echo)))
+  (font-lock-add-keywords
+   nil
+   '((markdown-config--wiki-link-fontify
+      (0 'markdown-config-wiki-link-face prepend)))
+   'append))
+
 ;;; -- markdown-ts-mode (primary) ---------------------------------------------
 
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
   :custom
   (markdown-ts-hide-markup t)
+  :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
   :bind (:map markdown-ts-mode-map
               ("C-c C-o"   . markdown-config-follow-link-at-point)
               ("C-c C-c g" . grip-mode)))
