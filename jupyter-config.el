@@ -83,25 +83,24 @@ returns immediately when the module is already in place."
 ;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
-  :straight t
-  :after org
-  :custom
-  (jupyter-eval-use-overlays t)
   :config
-  ;; Register the jupyter babel backend so `#+begin_src jupyter-python' (and any
-  ;; other `jupyter-LANG') is recognized.  org-babel-load-languages needs the
-  ;; explicit `org-babel-do-load-languages' call to take effect.
-  (add-to-list 'org-babel-load-languages '(jupyter . t))
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   org-babel-load-languages)
+  (setq jupyter-eval-use-overlays t))
 
-  ;; Match the `python' babel default — capture stdout, export both.
-  (setq org-babel-default-header-args:jupyter-python
-        '((:async . "yes")
-          (:kernel . "python3")
-          (:exports . "both")
-          (:results . "output"))))
+;; Org-babel `jupyter-LANG' integration.  Decoupled from the `use-package'
+;; form so jupyter remains autoload-driven (no spurious `:after org'
+;; deferral).  Runs only when both org and jupyter happen to be loaded.
+(with-eval-after-load 'org
+  (with-eval-after-load 'jupyter
+    (add-to-list 'org-babel-load-languages '(jupyter . t))
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     org-babel-load-languages)
+    ;; Match the `python' babel default — capture stdout, export both.
+    (setq org-babel-default-header-args:jupyter-python
+          '((:async . "yes")
+            (:kernel . "python3")
+            (:exports . "both")
+            (:results . "output")))))
 
 ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
 ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
