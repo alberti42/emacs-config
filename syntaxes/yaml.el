@@ -8,7 +8,8 @@
     :mode ("\\.ya?ml\\'" . yaml-mode)
     :hook (yaml-mode . (lambda ()
                          (setq-local indent-tabs-mode nil)
-                         (setq-local yaml-indent-offset 2)))))
+                         (setq-local yaml-indent-offset 2)
+                         (soft-wrap-mode -1)))))
 
 (provide 'syntaxes-yaml)
 
