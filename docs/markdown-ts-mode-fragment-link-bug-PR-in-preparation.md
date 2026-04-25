@@ -139,6 +139,43 @@ Both versions produce identical fragmentation behavior. Pinning the
 grammar does **not** fix the bug. This is a `markdown-ts-mode` issue,
 not a grammar regression.
 
+## Attribution and timeline (from `git blame` / `git log`)
+
+Worth including in the report so the maintainer can locate the
+relevant work fast and assess fix scope:
+
+- The buggy line was added by **Yuan Fu** in commit
+  `6f1e317764dab918d40b08d2e8e9166d42ae6c8d` on 2025-03-11
+  (*"Expand markdown-ts-mode and add code block support for
+  javascript"*). The commit message specifically lists
+  *"Correctly setup markdown_inline with range settings"* as one of
+  the goals — so this was a deliberate range-setup change, not
+  drive-by editing.
+- The helper `treesit-range-fn-exclude-children` was introduced by
+  the **same author** two weeks earlier, in commit
+  `8a3e19f4b39` on 2025-02-27 (*"Support alternative range function
+  for tree-sitter range settings"*). So the API and its first
+  consumer were authored by the same person, in the same workstream.
+- **`markdown-ts-mode.el` is the only call site of the helper in
+  the entire Emacs source tree** (`git grep -l
+  treesit-range-fn-exclude-children -- '*.el'` returns only
+  `lisp/textmodes/markdown-ts-mode.el` and `lisp/treesit.el`
+  itself).
+
+Implications:
+
+- Whatever the right resolution is — drop the line, or replace the
+  helper with one that filters `NAMED`-only children — there are no
+  other call sites to coordinate with. The fix is contained.
+- No automated test in `test/lisp/textmodes/` asserts that
+  `[label](url)` ends up with the `link` face, which is plausibly
+  why the bug shipped despite review by an experienced contributor:
+  the change set looked correct in isolation, and a visual smoke
+  test of a markdown buffer can easily miss "no link face" — the
+  default `link` face is just an underline + slightly different
+  color in many themes, and an unfontified link still renders as
+  legible default text.
+
 ## Proposed patch
 
 ```diff
@@ -206,6 +243,16 @@ Subject suggestion:
 
 > `markdown-ts-mode: inline links not fontified — treesit-range-fn-exclude-children fragments markdown-inline ranges`
 
+Suggested opening line (puts attribution and scope up front so the
+maintainer can triage in one sentence):
+
+> Bundled `markdown-ts-mode`'s only call site for
+> `treesit-range-fn-exclude-children`, authored by the helper's
+> author (Yuan Fu, commits `6f1e317764d` and `8a3e19f4b39`,
+> March 2025), has silently broken inline-link fontification since
+> then. No other Emacs Lisp file uses the helper, so the fix is
+> contained.
+
 Body should include:
 
 1. The reproduction recipe (above) — keeps it actionable.
@@ -213,12 +260,18 @@ Body should include:
    range-setup bug.
 3. The note that v0.4.1 and v0.5.x both reproduce — rules out grammar
    regression.
-4. The patch — small enough to qualify as a casual-contributor change
+4. The attribution / timeline / single-call-site facts — frames the
+   fix as contained.
+5. The patch — small enough to qualify as a casual-contributor change
    (under the ~15-line FSF threshold; no copyright assignment
    required).
-5. The open question about `exclude-children` semantics — lets the
-   maintainer decide whether to introduce a new helper or just drop
-   the line.
+6. The open question about `exclude-children` semantics — lets the
+   maintainer decide whether to introduce a new helper
+   (`treesit-range-fn-exclude-named-children`) or just drop the line.
+   Worth suggesting: a regression test in
+   `test/lisp/textmodes/markdown-ts-mode-tests.el` asserting that
+   `(get-text-property POS 'face)` on `[label]` includes `'link`,
+   so this can't silently regress again.
 
 Once filed, link the debbugs URL here and update the **Status** line
 at the top.
