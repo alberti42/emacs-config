@@ -2,7 +2,7 @@
 
 ;;; Code:
 
-;;; -- Setup and fixes for markdown-mode ---------------------------------------
+;;; -- markdown-mode setup -----------------------------------------------------
 
 (defun markdown-config--follow-local-link (url)
   "Handle local file links symmetrically with `markdown-config--follow-wiki-link'.
@@ -61,6 +61,14 @@ If NAME has no file extension, \".md\" is appended.  Then:
               (dired dir))
             (dired-goto-file full-path)))))))
 
+(defun my/markdown-mode-setup ()
+  "Enable markup hiding for a clean reading experience.
+`markdown-hide-markup' is a superset of `markdown-hide-urls', so
+enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
+  ;; markdown-toggle-markup-hiding does more than setq: it updates
+  ;; invisibility-spec and calls markdown-reload-extensions.
+  (markdown-toggle-markup-hiding 1))
+
 (use-package markdown-mode
   :straight t
   :mode (("\\.md\\'"       . markdown-mode)
@@ -73,7 +81,7 @@ If NAME has no file extension, \".md\" is appended.  Then:
   (markdown-enable-wiki-links t)
   ;; Parse wiki links with the correct structure [[link|label]]
   (markdown-wiki-link-alias-first nil)
-  :hook ((markdown-mode gfm-mode) . markdown-config--markup-setup)
+  :hook ((markdown-mode gfm-mode) . my/markdown-mode-setup)
   :config
   ;; Replace the default follower, which appends the current buffer's
   ;; extension to the link name (turning "foo.pdf" into "foo.pdf.md")
@@ -83,14 +91,6 @@ If NAME has no file extension, \".md\" is appended.  Then:
   ;; Apply the same logic to standard [label](path) links.
   (add-hook 'markdown-follow-link-functions
             #'markdown-config--follow-local-link))
-
-(defun markdown-config--markup-setup ()
-  "Enable markup hiding for a clean reading experience.
-`markdown-hide-markup' is a superset of `markdown-hide-urls', so
-enabling it alone is sufficient to hide URLs, brackets, asterisks, etc."
-  ;; markdown-toggle-markup-hiding does more than setq: it updates
-  ;; invisibility-spec and calls markdown-reload-extensions.
-  (markdown-toggle-markup-hiding 1))
 
 ;;; -- grip-mode: live GitHub Markdown preview in browser ----------------------
 

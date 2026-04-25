@@ -4,7 +4,7 @@
   "Whether to enable Markdown settings from syntaxes/markdown.el.")
 
 (when emacs-config-syntaxes-enable-markdown
-  (dolist (hook '(markdown-mode-hook gfm-mode-hook))
+  (dolist (hook '(markdown-mode-hook gfm-mode-hook markdown-ts-mode-hook))
     (add-hook hook
               (lambda ()
                 ;; Visual soft wrap at 100 columns.
