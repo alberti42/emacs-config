@@ -102,6 +102,32 @@ returns immediately when the module is already in place."
             (:exports . "both")
             (:results . "output")))))
 
+;;; -- Upstream startup-error workaround --------------------------------------
+;;
+;; `jupyter-repl-sync-execution-state' (called from `jupyter-repl-mode' at REPL
+;; creation) signals `(void-variable state)' from the monadic plumbing on
+;; emacs-jupyter commit d3f6bc8 (2025-12-15 refactor).  The error escapes
+;; `jupyter-repl-mode', aborts `jupyter-bootstrap-repl' before its `:after'
+;; method runs, and leaves the source buffer unassociated — so a fresh
+;; `jupyter-repl-associate-buffer' starts the kernel but never connects to it.
+;; Swallow the error until a fix lands upstream.
+
+(define-advice jupyter-repl-sync-execution-state
+    (:around (orig) jupyter-config/suppress-startup-error)
+  (condition-case err (funcall orig)
+    (error (message "[jupyter-config] sync-execution-state suppressed: %s" err))))
+
+;; When `jupyter-repl-associate-buffer' starts a fresh REPL via the no-client
+;; branch, it calls `jupyter-run-repl' interactively, which passes `display=t'
+;; and pops the new REPL into a window.  Keep the REPL buried.
+(define-advice jupyter-repl-associate-buffer
+    (:around (orig client) jupyter-config/bury-new-repl)
+  (if client
+      (funcall orig client)
+    (save-window-excursion (funcall orig nil))))
+
+;;; -- emacs-zmq dylib install hook --------------------------------------------
+
 ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
 ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
 ;; (the dynamic module) is the right join point: zmq.el's body finishes
