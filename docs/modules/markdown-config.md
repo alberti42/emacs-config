@@ -67,8 +67,43 @@ Both modes call into the same helpers, kept at the top of the file:
 ## Link rendering (markdown-ts-mode only)
 
 `markdown-ts-mode-hook` runs
-`markdown-config--markdown-ts-mode-setup`, which closes two gaps in
+`markdown-config--markdown-ts-mode-setup`, which closes three gaps in
 the bundled mode.
+
+### Range fix (prerequisite for everything else)
+
+The bundled mode embeds `markdown-inline` inside the `markdown` host
+grammar's `(inline)` nodes via:
+
+```elisp
+:embed 'markdown-inline
+:host  'markdown
+:range-fn #'treesit-range-fn-exclude-children
+'((inline) @markdown-inline)
+```
+
+`treesit-range-fn-exclude-children` excludes **all** children of the
+host node — and the `markdown` grammar emits `[`, `]`, `(`, `)`, `<`,
+`>` (and `.`, `/`, etc.) as anonymous children directly inside
+`(inline)`. As a result, `markdown-inline` receives **disjoint
+fragments** of the inline content. It can never reassemble those into
+an `inline_link` construct, so the bundled
+`(inline_link (link_text) @link)` font-lock rule never matches —
+inline links get no face, no markup hiding, no nothing.
+
+Reproduced under both `tree-sitter-markdown` v0.4.1 (the version Emacs
+31's bundled mode targets) and v0.5.x. This is a
+`markdown-ts-mode` bug, not a grammar version issue — pinning does not
+help.
+
+We replace the **first entry** of `treesit-range-settings` (the inline
+embedding) with one that has no `:range-fn`, so the parser sees the
+full host range. The remaining entries (code-block, HTML, YAML, TOML
+when those grammars are available) are preserved by `(cdr
+treesit-range-settings)`. `treesit-update-ranges` is called once to
+re-run range computation. Order assumption: the inline embedding is
+the first range setting installed by `markdown-ts-setup` — true today
+in Emacs 31.0.50.
 
 ### Wiki links — font-lock keyword
 
@@ -176,6 +211,23 @@ to the rest of the mode. If a future Emacs version renames that
 function, our rule has to follow. The risk is low (the symbol has
 been stable since Emacs 30.x); the alternative would be to inline a
 copy of the function, which then drifts from upstream.
+
+### The markdown-inline range fix is load-bearing
+
+If the `treesit-range-settings` override is removed,
+`markdown-inline` reverts to receiving fragmented ranges and **none**
+of the inline-link work matters: the bundled `link` face stops
+applying to `[label]`, our `markdown-config-inline-link-hiding`
+rule stops matching, and `markdown-config--inline-link-destination-at-point`
+returns nil (so `C-c C-o` says "no link at point"). Wiki links keep
+working because they're regex-only — they don't depend on the
+markdown-inline parser.
+
+The expected first entry of `treesit-range-settings` is the inline
+embedding installed by `markdown-ts-setup`. If a future Emacs version
+reorders or restructures those entries, our `(cons … (cdr …))`
+replacement needs to be updated to find the inline rule by `:embed`
+key rather than position.
 
 ### `markdown-mode` is preserved on purpose
 
