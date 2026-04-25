@@ -24,12 +24,6 @@
                     (member (car (split-string e "=")) '("EDITOR" "GIT_EDITOR" "VISUAL")))
                   process-environment))
 
-;; Prepend local/ to load-path so patched Emacs built-ins shadow the originals.
-;; Note: this does NOT shadow straight-managed packages. For those, use
-;; :straight nil + :load-path explicitly.
-(let ((dir (file-name-directory (file-truename (or load-file-name buffer-file-name)))))
-  (add-to-list 'load-path (expand-file-name "local" dir)))
-
 ;; Default font for GUI frames (TTY frames ignore font face attributes).  Note:
 ;; in `nerd-icons-config.el', we call 'set-fontset-font' for Emacs GUI to map
 ;; the Private Use Area (#xe000–#xffff) to 'Symbols Nerd Font Mono', preventing
