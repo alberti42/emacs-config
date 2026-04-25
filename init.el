@@ -186,16 +186,6 @@
  'terminal-config
  "Could not load terminal-config.el; terminal settings are disabled.")
 
-;; Local copy of bundled `visual-wrap' with a fix for `min-width'
-;; reserving column space for invisible prefix characters (e.g. hidden
-;; markdown heading markers).  Loaded eagerly so `soft-wrap' picks up
-;; the patched copy when it later enables `visual-wrap-prefix-mode'.
-;; TODO: drop once the upstream PR lands in Emacs.
-(use-package visual-wrap
-  :straight nil
-  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
-  :demand t)
-
 ;; Wrapping helpers (soft wrap, visual only)
 (use-package soft-wrap
   :straight nil

@@ -283,7 +283,6 @@ is needed."
 
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
-  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :mode (("\\.md\\'"       . markdown-ts-mode)
          ("\\.markdown\\'" . markdown-ts-mode))
   :custom
