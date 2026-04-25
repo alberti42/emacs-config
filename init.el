@@ -353,10 +353,6 @@
  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
 
 ;; (emacs-config-load-module
-;;  'lsp-ltex-plus-config-old
-;;  "Could not load lsp-ltex-plus-config.el; LTEX+ is disabled.")
-
-;; (emacs-config-load-module
 ;;  'harper-config
 ;;  "Could not load harper-config.el; Harper is disabled.")
 
