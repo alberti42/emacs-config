@@ -113,6 +113,15 @@ returns immediately when the module is already in place."
       (funcall orig client)
     (save-window-excursion (funcall orig nil))))
 
+;; Pin `*jupyter-output*' / `*jupyter-error*' to a 5-line window at the bottom
+;; instead of `display-buffer's default split-in-half behavior.
+(add-to-list 'display-buffer-alist
+             '("\\*jupyter-\\(output\\|error\\)\\*"
+               (display-buffer-reuse-window
+                display-buffer-below-selected)
+               (window-height . 10)
+               (dedicated . t)))
+
 ;;; -- emacs-zmq dylib install hook --------------------------------------------
 
 ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
