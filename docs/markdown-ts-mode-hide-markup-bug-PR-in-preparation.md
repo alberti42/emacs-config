@@ -77,6 +77,63 @@ delimiters, …), where there is *no* trailing whitespace to worry
 about. Modifying it in place would incorrectly affect those
 constructs. The right fix is a heading-specific variant.
 
+## Why this is a bug, not intentional behavior
+
+Pre-empting the reasonable maintainer reflex of *"the trailing space
+is a syntactic separator, leaving it visible is intentional — and the
+level-correlated indentation looks like a feature anyway."*
+
+**The user contract for `markdown-ts-hide-markup`.** When a user
+turns the option on, they are asking for a rendered-view
+approximation of the document. WYSIWYG markdown renderers (Typora,
+Obsidian preview, VS Code preview, GitHub) place all heading levels
+flush at column 0; size and weight vary by level, indentation does
+not. That is the canonical "rendered look" the toggle is named after.
+
+**Precedent in `org-mode`.** Org's analogous facilities are explicit,
+named, and orthogonal:
+
+- `org-hide-leading-stars` hides leading stars but keeps the last
+  star + space visible — a deliberate structural cue. The visible
+  remainder is documented as a feature.
+- `org-indent-mode` is a *separate* minor mode with its own name that
+  hides stars *and* indents the title by level — a tree-outline look,
+  switched on by users who want it.
+
+Both are designed, named, opt-in choices. Neither is a side-effect
+of "hide markup" that users have to reverse-engineer. By comparison,
+`markdown-ts-mode` has a single `markdown-ts-hide-markup` toggle and
+no `markdown-ts-indent-mode` equivalent. If a tree-outline rendering
+were ever wanted, it would be a separately-named feature, not the
+default behavior of the markup-hiding toggle.
+
+**The current behavior is not a designed feature.** Without
+`visual-wrap-prefix-mode` active, the offset is a constant **+1
+column at every heading level**:
+
+| Heading | Expected (WYSIWYG) | Actual without `visual-wrap` | Actual with `visual-wrap` |
+| --- | --- | --- | --- |
+| `### A`   | `A` | ` A` (1 col)  | `    A` (4 cols)  |
+| `##### A` | `A` | ` A` (1 col)  | `      A` (6 cols) |
+
+The level-correlated indent that *might* look intentional only
+appears when `visual-wrap-prefix-mode` is active, because that mode
+reserves `min-width` proportional to the prefix's character count
+(`(string-width prefix)`, which doesn't consult
+`buffer-invisibility-spec`). That is itself a bug in `visual-wrap.el`
+— filed separately.
+
+**A designed feature does not depend on bugs in unrelated subsystems
+to manifest.** If level-based indentation under
+`markdown-ts-hide-markup` were intentional, it would live in
+`markdown-ts-mode.el` as an explicit `display` / `line-prefix` /
+`put-text-property` decision, with a defcustom and a commit message
+that says so. It would not require `visual-wrap-prefix-mode`'s
+`min-width` accounting to be active to appear, and it would not
+collapse to a constant +1 the moment that mode is turned off. A
+"feature" that only works as a side-effect of an orthogonal
+subsystem's measurement bug is not a feature.
+
 ## Reproduction recipe
 
 ```
@@ -223,12 +280,19 @@ Body should include:
 2. The `get-text-property` evidence on the post-marker space —
    pinpoints the gap as "the marker node range stops at the last `#`,
    and no fontifier covers the trailing whitespace".
-3. The note that all *other* delimiter constructs are intentionally
+3. The "why this is a bug, not intentional behavior" framing
+   (above) — pre-empts the *"trailing space is a syntactic
+   separator, the indent is a feature"* deflection.  The closer:
+   *a designed feature does not depend on bugs in unrelated subsystems
+   to manifest*.  Without `visual-wrap-prefix-mode`, the offset
+   collapses to a constant +1 at every level — clearly not a
+   level-aware indentation feature.
+4. The note that all *other* delimiter constructs are intentionally
    untouched — answers the maintainer's first instinct ("why a new
    function instead of modifying `markdown-ts--fontify-delimiter`?").
-4. The patch — under the ~15-line FSF threshold; no copyright
+5. The patch — under the ~15-line FSF threshold; no copyright
    assignment required.
-5. A pointer to the closely-related visual-wrap PR (file the two
+6. A pointer to the closely-related visual-wrap PR (file the two
    together if both are filed in the same window — they compose:
    without the visual-wrap fix, this fix alone still leaves headings
    indented by `(length marker) + 1` columns when
