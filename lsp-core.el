@@ -24,7 +24,7 @@
   ;; All servers are managed externally (zinit/system); never prompt to
   ;; download or auto-install them via lsp-mode.  This also prevents lsp-mode
   ;; from creating empty store directories that confuse server-present? checks.
-  (setq lsp-enable-suggest-server-download t)
+  (setq lsp-enable-suggest-server-download nil)
   ;; Whether to use file watchers
   (setq lsp-enable-file-watchers t)
   ;; Completion is handled by corfu+cape, not company-mode.
