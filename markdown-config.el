@@ -85,7 +85,9 @@ The tree-sitter-markdown grammar does not expose wiki links as a node
 type, so detection is text-level even under `markdown-ts-mode'.")
 
 (defun markdown-config--inline-link-destination-at-point ()
-  "Return the URL of the `inline_link' tree-sitter node at point, or nil."
+  "Return the URL of the `inline_link' tree-sitter node at point, or nil.
+Strips a leading `<' and trailing `>' from CommonMark's pointy-bracket
+form (`[label](<url with spaces>)') so the destination is a plain path."
   (when-let* ((node (treesit-parent-until
                      (treesit-node-at (point))
                      (lambda (n)
@@ -95,8 +97,12 @@ type, so detection is text-level even under `markdown-ts-mode'.")
                           node
                           (lambda (c)
                             (string= (treesit-node-type c)
-                                     "link_destination"))))))
-    (treesit-node-text dest t)))
+                                     "link_destination")))))
+              (text (treesit-node-text dest t)))
+    (if (and (string-prefix-p "<" text)
+             (string-suffix-p ">" text))
+        (substring text 1 -1)
+      text)))
 
 (defun markdown-config-follow-link-at-point ()
   "Follow the wiki link, inline link, or URL at point.
@@ -113,18 +119,25 @@ handler patched via advice; do not bind this command there."
       (browse-url url)))
    (t (user-error "No link at point"))))
 
-;;; -- markdown-ts-mode wiki-link fontification ------------------------------
+;;; -- markdown-ts-mode link rendering ---------------------------------------
 ;;
-;; tree-sitter-markdown does not expose `[[wiki]]' as a node type, so we add
-;; visual recognition with a single font-lock keyword layered on top of the
-;; treesit-driven rules.  Cost is one bounded single-line regex per visible
-;; window — negligible, unlike `markdown-mode' which pays for native
-;; code-block fontification, syntax-propertize, and dozens of multiline
-;; keywords.
+;; Two gaps in the bundled `markdown-ts-mode' to close:
 ;;
-;; Markup hiding piggybacks on `markdown-ts-mode's' own `markdown-ts-hide'
-;; invisibility spec, so `M-x markdown-ts-toggle-hide-markup' shows/hides
-;; the brackets and alias prefix together with the rest of the markup.
+;;   1. Wiki links `[[name]]' / `[[name|alias]]' aren't a grammar node type,
+;;      so neither face nor markup hiding nor click-to-follow apply.  We add
+;;      all three with a single font-lock keyword layered on top of the
+;;      treesit-driven rules (one bounded single-line regex per window —
+;;      negligible).
+;;
+;;   2. Inline links `[label](url)' ARE in the grammar (face is applied),
+;;      but the bundled mode does not hide their brackets/parens/URL when
+;;      `markdown-ts-hide-markup' is on — only headings, code spans, and
+;;      a few other constructs are hidden.  We extend `treesit-font-lock-
+;;      settings' with a tiny rule that runs the bundled
+;;      `markdown-ts--fontify-delimiter' over the link's `[' `]' `(' `)'
+;;      and `link_destination' / `link_title'.  That function applies face
+;;      AND invisibility against the `markdown-ts--markup' spec, so toggle
+;;      and refontification stay coherent with the rest of the mode.
 
 (defface markdown-config-wiki-link-face
   '((t :inherit link))
@@ -145,8 +158,10 @@ handler patched via advice; do not bind this command there."
   "Font-lock MATCHER for `[[name]]' and `[[name|alias]]'.
 Restricts match data to the visible label so the keyword's face applies
 to that region only.  Adds clickability (`keymap', `mouse-face',
-`help-echo') to the label and `invisible' (with the `markdown-ts-hide'
-spec) to the surrounding markup so toggle-hide-markup works."
+`help-echo') to the label and, when `markdown-ts-hide-markup' is on,
+sets `invisible' on the surrounding markup using the bundled
+`markdown-ts--markup' spec — `markdown-ts-toggle-hide-markup' calls
+`font-lock-flush' which re-runs this matcher with the new value."
   (when (re-search-forward "\\[\\[\\([^]\n]+\\)\\]\\]" limit t)
     (let* ((beg       (match-beginning 0))
            (end       (match-end 0))
@@ -161,15 +176,15 @@ spec) to the surrounding markup so toggle-hide-markup works."
                            (list 'mouse-face 'highlight
                                  'keymap markdown-config-wiki-link-keymap
                                  'help-echo (concat "Wiki link → " target)))
-      (put-text-property beg label-beg 'invisible 'markdown-ts-hide)
-      (put-text-property label-end end  'invisible 'markdown-ts-hide)
+      (when markdown-ts-hide-markup
+        (put-text-property beg label-beg 'invisible 'markdown-ts--markup)
+        (put-text-property label-end end  'invisible 'markdown-ts--markup))
       (set-match-data (list label-beg label-end))
       t)))
 
 (defun markdown-config--markdown-ts-mode-setup ()
-  "Register the wiki-link font-lock keyword in the current buffer.
-`font-lock-extra-managed-props' is extended so font-lock cleans up the
-extra text properties on refontification."
+  "Wire wiki-link fontification and inline-link markup hiding."
+  ;; --- Wiki-link font-lock keyword (regex-based) ---------------------------
   (setq-local font-lock-extra-managed-props
               (append font-lock-extra-managed-props
                       '(invisible mouse-face keymap help-echo)))
@@ -177,7 +192,29 @@ extra text properties on refontification."
    nil
    '((markdown-config--wiki-link-fontify
       (0 'markdown-config-wiki-link-face prepend)))
-   'append))
+   'append)
+  ;; --- Inline-link markup hiding (treesit-based) ---------------------------
+  ;; Reuse the bundled `markdown-ts--fontify-delimiter' so face + invisibility
+  ;; behave exactly like the rest of the mode's hidden markup.  The new
+  ;; feature symbol is registered in level 3 so it activates at the default
+  ;; `treesit-font-lock-level' of 3.
+  (setq-local treesit-font-lock-settings
+              (append treesit-font-lock-settings
+                      (treesit-font-lock-rules
+                       :language 'markdown-inline
+                       :feature 'markdown-config-inline-link-hiding
+                       :override 'append
+                       '((inline_link [ "[" "]" "(" ")" ]
+                          @markdown-ts--fontify-delimiter)
+                         (inline_link (link_destination)
+                          @markdown-ts--fontify-delimiter)
+                         (inline_link (link_title)
+                          @markdown-ts--fontify-delimiter)))))
+  (setq-local treesit-font-lock-feature-list
+              (treesit-merge-font-lock-feature-list
+               treesit-font-lock-feature-list
+               '(() () (markdown-config-inline-link-hiding))))
+  (treesit-font-lock-recompute-features))
 
 ;;; -- markdown-ts-mode (primary) ---------------------------------------------
 

@@ -40,13 +40,17 @@ Both modes call into the same helpers, kept at the top of the file:
   so callers can fall back to `browse-url`. Used both as a member of
   `markdown-follow-link-functions` and as a direct call from the
   ts-mode dispatcher.
+- `markdown-config--inline-link-destination-at-point` — ts-mode helper.
+  Walks up to the `inline_link` ancestor of the node at point, reads the
+  `link_destination` child's text, and **strips a leading `<` and
+  trailing `>`** from CommonMark's pointy-bracket form
+  (`[label](<url with spaces>)`). Returns nil when not on a link.
 - `markdown-config-follow-link-at-point` — ts-mode-only dispatcher.
   Cond order:
   1. `[[wiki]]` / `[[wiki|label]]` via `thing-at-point-looking-at` and
      `markdown-config--wiki-link-regexp` (the grammar does **not**
      expose wiki links — see invariant below).
-  2. `[label](path)` via treesit, walking up to the `inline_link`
-     ancestor and reading the `link_destination` child.
+  2. `[label](path)` via the treesit helper above.
   3. Bare URL at point via `thing-at-point 'url`.
   4. Otherwise `user-error "No link at point"`.
 
@@ -60,39 +64,64 @@ Both modes call into the same helpers, kept at the top of the file:
 | `markdown-mode`    | `C-c C-o`   | (native, calls patched wiki/link logic)  |
 | `markdown-mode`    | `C-c C-c g` | `grip-mode` (via `markdown-mode-command-map`) |
 
-## Wiki-link fontification (markdown-ts-mode only)
+## Link rendering (markdown-ts-mode only)
 
-The grammar gap means `[[name]]` / `[[name|alias]]` would otherwise
-appear as plain text. We add visual recognition with a **single
-font-lock keyword** layered on top of the tree-sitter rules. No grammar
-fork, no syntax-propertize pass.
+`markdown-ts-mode-hook` runs
+`markdown-config--markdown-ts-mode-setup`, which closes two gaps in
+the bundled mode.
 
-What the matcher does for each match:
+### Wiki links — font-lock keyword
+
+The grammar does not expose `[[name]]` / `[[name|alias]]`, so neither
+face nor markup hiding nor click apply out of the box. A **single
+font-lock keyword** layered on top of the tree-sitter rules handles
+all three:
 
 1. Splits the inner content on `|` to identify the visible label
    (alias when present, name otherwise).
-2. Restricts match data to the label range so the
-   `markdown-config-wiki-link-face` applies to it only — face inherits
-   from the built-in `link` face.
+2. Restricts match data to the label range so
+   `markdown-config-wiki-link-face` (inherits from the built-in
+   `link` face) applies to that range only.
 3. Adds `mouse-face`, `keymap`, and `help-echo` text properties so
    `mouse-1` / `mouse-2` follow the link via the existing dispatcher
    (the keymap binds `[follow-link]` to `mouse-face` so
    `mouse-1-click-follows-link` activates).
-4. Marks the surrounding markup (`[[name|` prefix and `]]` suffix)
-   `invisible` with the symbol `markdown-ts-hide`.
+4. When `markdown-ts-hide-markup` is non-nil, marks the surrounding
+   markup (`[[name|` prefix and `]]` suffix) `invisible` against the
+   `markdown-ts--markup` invisibility spec — the same spec used by
+   the bundled mode's other hidden markup.
+   `markdown-ts-toggle-hide-markup` calls `font-lock-flush`, which
+   re-runs the matcher with the new value of `markdown-ts-hide-markup`.
 
-The `markdown-ts-hide` symbol is `markdown-ts-mode`'s own invisibility
-spec; toggling `M-x markdown-ts-toggle-hide-markup` adds/removes that
-symbol from `buffer-invisibility-spec`, which automatically shows or
-hides our markup ranges. We therefore set the `invisible` property
-unconditionally — visibility is controlled by the spec, not by the
-property's presence.
+### Inline links — treesit rule extension
+
+`[label](url)` IS a grammar node. The bundled mode applies `link` face
+to the text and `font-lock-string-face` to the URL, but does **not**
+hide the brackets, parens, URL, or title when markup is hidden — only
+headings, code spans, emphasis, and a few other constructs are.
+
+We close that gap by appending one tree-sitter font-lock rule that
+runs the bundled `markdown-ts--fontify-delimiter` over the
+`inline_link` brackets/parens, `link_destination`, and `link_title`
+nodes. That function applies face AND invisibility against
+`markdown-ts--markup`, so toggle and refontification behave exactly
+like the rest of the mode's hidden markup. Net result with hide-markup
+on: `[label](url)` collapses to just `label`.
+
+The new feature symbol (`markdown-config-inline-link-hiding`) is
+merged into `treesit-font-lock-feature-list` at level 3 so it
+activates at the default `treesit-font-lock-level`.
+`treesit-font-lock-recompute-features` is called once after both
+extensions land in the buffer-local settings.
 
 ### Performance
 
-Cost is **one bounded single-line regex** (`\[\[[^]\n]+\]\]`) per
-visible window via `jit-lock`. Not measurable. The reasons
-`markdown-mode` is slow on large files do not apply here:
+- Wiki links: one bounded single-line regex (`\[\[[^]\n]+\]\]`) per
+  visible window via `jit-lock`. Not measurable.
+- Inline links: a tree-sitter query reusing nodes the parser already
+  built. No extra parse, no buffer scan.
+
+The reasons `markdown-mode` is slow on large files do not apply here:
 
 - No `markdown-fontify-code-blocks-natively` (a whole secondary major
   mode booted per fenced block).
@@ -101,7 +130,7 @@ visible window via `jit-lock`. Not measurable. The reasons
 
 ### Why not extend the tree-sitter grammar instead?
 
-Considered and rejected. Forking `tree-sitter-markdown` to add a
+For wiki links specifically: forking `tree-sitter-markdown` to add a
 `wiki_link` node would mean owning merge conflicts forever, building
 the parser `.so` on every machine, and isolating us from the rest of
 the tree-sitter ecosystem (Helix, nvim-treesitter, GitHub) which
@@ -113,9 +142,19 @@ is structural and ongoing.
 ### Wiki links are detected by regex, not tree-sitter
 
 `tree-sitter-markdown` (both the upstream master and our `split_parser`
-branch) does **not** expose `[[name]]` as a node type. The dispatcher
-matches them with `markdown-config--wiki-link-regexp`. Don't rewrite
-this branch as a treesit query — it will silently return nil.
+branch) does **not** expose `[[name]]` as a node type. Two places
+match wiki links by regex:
+
+1. The dispatcher (`markdown-config-follow-link-at-point`) uses
+   `markdown-config--wiki-link-regexp` to pick the link out of the
+   text around point.
+2. The font-lock matcher (`markdown-config--wiki-link-fontify`) uses
+   the equivalent regex inside `re-search-forward` to fontify and add
+   click behavior.
+
+Don't rewrite either branch as a treesit query — the grammar will
+silently return no nodes. See "Why not extend the tree-sitter grammar
+instead?" above.
 
 ### Inline links are detected via treesit, not regex
 
@@ -123,6 +162,20 @@ For `[label](path)` we walk up to the `inline_link` ancestor and read
 the `link_destination` child. This handles nested brackets and
 escaped parens correctly; a regex-based detector would mis-match.
 The grammar node names are stable — don't paraphrase them.
+
+The pointy-bracket form `[label](<url with spaces>)` returns
+`<url with spaces>` from `treesit-node-text` — angle brackets included.
+`markdown-config--inline-link-destination-at-point` strips one matched
+`<…>` pair before returning, so the follower sees a plain path.
+
+### Inline-link hiding reuses `markdown-ts--fontify-delimiter`
+
+The treesit rule we append uses the bundled (internal,
+double-underscore) function so face + invisibility behave identically
+to the rest of the mode. If a future Emacs version renames that
+function, our rule has to follow. The risk is low (the symbol has
+been stable since Emacs 30.x); the alternative would be to inline a
+copy of the function, which then drifts from upstream.
 
 ### `markdown-mode` is preserved on purpose
 
