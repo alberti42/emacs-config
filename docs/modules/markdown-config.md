@@ -60,7 +60,7 @@ Both modes call into the same helpers, kept at the top of the file:
 | ------------------ | ----------- | ---------------------------------------- |
 | `markdown-ts-mode` | `C-c C-o`   | `markdown-config-follow-link-at-point`   |
 | `markdown-ts-mode` | `C-c C-c g` | `grip-mode`                              |
-| `markdown-ts-mode` | `mouse-1` / `mouse-2` on a wiki link | `markdown-config-follow-link-at-point` |
+| `markdown-ts-mode` | `mouse-1` / `mouse-2` on a wiki link or inline link | `markdown-config-follow-link-at-point` |
 | `markdown-mode`    | `C-c C-o`   | (native, calls patched wiki/link logic)  |
 | `markdown-mode`    | `C-c C-c g` | `grip-mode` (via `markdown-mode-command-map`) |
 
@@ -112,24 +112,45 @@ all three:
 
 ### Inline links — treesit rule extension
 
-`[label](url)` IS a grammar node. The bundled mode applies `link` face
-to the text and `font-lock-string-face` to the URL, but does **not**
-hide the brackets, parens, URL, or title when markup is hidden — only
-headings, code spans, emphasis, and a few other constructs are.
+`[label](url)` IS a grammar node. The bundled mode applies `link`
+face to the label and `font-lock-string-face` to the URL, but two
+things are missing:
 
-We close that gap by appending one tree-sitter font-lock rule that
-runs the bundled `markdown-ts--fontify-delimiter` over the
-`inline_link` brackets/parens, `link_destination`, and `link_title`
-nodes. That function applies face AND invisibility against
-`markdown-ts--markup`, so toggle and refontification behave exactly
-like the rest of the mode's hidden markup. Net result with hide-markup
-on: `[label](url)` collapses to just `label`.
+1. The brackets, parens, URL, and optional title aren't hidden when
+   `markdown-ts-hide-markup` is on — only headings, code spans,
+   emphasis, and a few other constructs are.
+2. The label has no clickability — no `mouse-face`, no `keymap`,
+   no `help-echo`. `mouse-1` / `mouse-2` do nothing useful.
 
-The new feature symbol (`markdown-config-inline-link-hiding`) is
-merged into `treesit-font-lock-feature-list` at level 3 so it
-activates at the default `treesit-font-lock-level`.
-`treesit-font-lock-recompute-features` is called once after both
-extensions land in the buffer-local settings.
+We close both gaps by appending **one** tree-sitter font-lock rule
+that runs four queries against the `markdown-inline` parser:
+
+- `(inline_link [ "[" "]" "(" ")" ] @markdown-ts--fontify-delimiter)`
+- `(inline_link (link_destination)  @markdown-ts--fontify-delimiter)`
+- `(inline_link (link_title)        @markdown-ts--fontify-delimiter)`
+- `(inline_link (link_text)         @markdown-config--inline-link-text-fontify)`
+
+The first three reuse the bundled `markdown-ts--fontify-delimiter`,
+which applies face AND invisibility against `markdown-ts--markup`
+— so toggle and refontification behave exactly like the rest of
+the mode's hidden markup. With hide-markup on, the brackets, parens,
+URL, and title disappear; the label remains.
+
+The fourth runs `markdown-config--inline-link-text-fontify` over
+the label. That fontifier doesn't apply a face (the bundled rule
+already gives the label `link` face); it only attaches text
+properties: `mouse-face 'highlight`, `keymap
+markdown-config--link-keymap`, and a `help-echo` of the form
+`"Link → <destination>"` with angle brackets stripped.
+`markdown-config--link-keymap` is the **same** keymap used for
+wiki-link labels, so all link clicks across the buffer route
+through the same `markdown-config-follow-link-at-point` dispatcher.
+
+The feature symbol (`markdown-config-inline-link-extras`) is merged
+into `treesit-font-lock-feature-list` at level 3 so it activates at
+the default `treesit-font-lock-level`.
+`treesit-font-lock-recompute-features` is called once after the
+buffer-local settings are extended.
 
 ### Performance
 
@@ -197,9 +218,9 @@ copy of the function, which then drifts from upstream.
 ### `local/markdown-ts-mode.el` is load-bearing for inline links
 
 Inline-link work in this module — bundled `link` face on `[label]`,
-our `markdown-config-inline-link-hiding` rule, and the dispatcher's
-treesit branch — all depend on `markdown-inline` seeing complete
-`inline_link` constructs. The bundled Emacs 31 file does not allow
+our `markdown-config-inline-link-extras` rule (hiding **and**
+click-to-follow), and the dispatcher's treesit branch — all depend
+on `markdown-inline` seeing complete `inline_link` constructs. The bundled Emacs 31 file does not allow
 this (see "Link rendering" prerequisite above). The local copy in
 `local/markdown-ts-mode.el` carries a one-line patch (drop
 `:range-fn #'treesit-range-fn-exclude-children` from the
