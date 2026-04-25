@@ -1,8 +1,13 @@
 # markdown-ts-mode inline-link fontification bug — PR in preparation
 
-**Status (2026-04-25)**: bug confirmed locally; workaround live in
-`markdown-config.el` (`markdown-config--markdown-ts-mode-setup`
-overrides `treesit-range-settings`). Upstream report not yet filed.
+**Status (2026-04-25)**: bug confirmed locally; one-line fix verified
+on a patched copy of `markdown-ts-mode.el` (live in
+`local/markdown-ts-mode.el`, loaded ahead of the bundled file via
+`:load-path` in the `markdown-ts-mode` `use-package` block). The
+runtime workaround that previously sat in
+`markdown-config--markdown-ts-mode-setup` (overriding
+`treesit-range-settings`) has been removed — the patched local copy
+fixes the issue at source. Upstream report not yet filed.
 
 ## TL;DR
 
@@ -171,30 +176,22 @@ for `markdown-ts-mode` as shipped today, since `(inline)` has no
 named children — only anonymous tokens — but the choice matters for
 intent and for future grammar evolution.
 
-## Local workaround (already live in this repo)
+## Local fix in this repo
 
-`markdown-config.el`, in `markdown-config--markdown-ts-mode-setup`:
+We carry a patched copy of `markdown-ts-mode.el` at
+`local/markdown-ts-mode.el`, identical to the upstream Emacs 31
+file with the single `:range-fn` line removed. The
+`markdown-ts-mode` `use-package` block in `markdown-config.el`
+prepends `<emacs-config-dir>/local/` to `load-path` via
+`:load-path`, so the patched copy is loaded ahead of the bundled
+file. No runtime workaround remains in
+`markdown-config--markdown-ts-mode-setup`.
 
-```elisp
-(setq-local treesit-range-settings
-            (cons (car (treesit-range-rules
-                        :embed 'markdown-inline
-                        :host 'markdown
-                        '((inline) @markdown-inline)))
-                  (cdr treesit-range-settings)))
-(treesit-update-ranges (point-min) (point-max))
-```
-
-Replaces the first entry of `treesit-range-settings` (the inline
-embedding) with a copy that has no `:range-fn`. The remaining
-entries (code-block, HTML, YAML, TOML) are preserved by `(cdr …)`.
-Order assumption: the inline embedding is the first range setting
-installed by `markdown-ts-setup` — true today in Emacs 31.0.50.
-
-The workaround stays in place until an upstream fix lands in a
-stable Emacs release. See also
-`docs/modules/markdown-config.md` and the project memory
-`project_markdown_ts_inline_range_fix.md`.
+When the upstream fix lands in a stable Emacs release: delete
+`local/markdown-ts-mode.el`, remove `:load-path` from the
+`use-package` block, update this note's status line, and remove
+the corresponding invariant in `docs/modules/markdown-config.md`
+(`### local/markdown-ts-mode.el is load-bearing for inline links`).
 
 ## How to file the report
 

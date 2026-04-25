@@ -189,28 +189,7 @@ sets `invisible' on the surrounding markup using the bundled
       t)))
 
 (defun markdown-config--markdown-ts-mode-setup ()
-  "Wire wiki-link fontification, inline-link markup hiding, and the
-markdown-inline range fix."
-  ;; --- Range fix: give `markdown-inline' the full `(inline)' range ---------
-  ;; The bundled mode embeds `markdown-inline' inside `markdown's `(inline)'
-  ;; nodes via `:range-fn #'treesit-range-fn-exclude-children'.  That helper
-  ;; excludes ALL children of the host node — including anonymous tokens like
-  ;; `[' `]' `(' `)' `<' `>' that the `markdown' grammar emits as direct
-  ;; children of `(inline)'.  As a result, `markdown-inline' receives disjoint
-  ;; fragments and never reassembles them into `inline_link' nodes — so the
-  ;; bundled `(inline_link (link_text) @link)' rule never matches.  We replace
-  ;; the first entry of `treesit-range-settings' (the inline embedding) with one
-  ;; that has no `:range-fn', preserving the rest of the bundled rules
-  ;; (code-block, HTML, YAML, TOML).  Reproduced under both v0.4.1 and v0.5.x of
-  ;; `tree-sitter-markdown' — this is a `markdown-ts-mode' issue, not a grammar
-  ;; version issue.
-  (setq-local treesit-range-settings
-              (cons (car (treesit-range-rules
-                          :embed 'markdown-inline
-                          :host 'markdown
-                          '((inline) @markdown-inline)))
-                    (cdr treesit-range-settings)))
-  (treesit-update-ranges (point-min) (point-max))
+  "Wire wiki-link fontification and inline-link markup hiding."
   ;; --- Wiki-link font-lock keyword (regex-based) ---------------------------
   (setq-local font-lock-extra-managed-props
               (append font-lock-extra-managed-props
@@ -248,6 +227,7 @@ markdown-inline range fix."
 
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :custom
   (markdown-ts-hide-markup t)
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
