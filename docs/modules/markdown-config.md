@@ -1,35 +1,34 @@
 # markdown-config.el
 
-Markdown reading and authoring. Configures both `markdown-ts-mode`
-(primary, daily) and `markdown-mode` (escape hatch) in a single file.
+Markdown reading and authoring. Configures `markdown-ts-mode`
+(tree-sitter backed, bundled with Emacs 31) and adds wiki-link
+support, link-following, and markup hiding for inline links on top
+of the bundled rules.
 
-External packages: `markdown-mode` (MELPA), `grip-mode` (MELPA).
-`markdown-ts-mode` is built into Emacs 31.
+External packages: `grip-mode` (MELPA). `markdown-ts-mode` is
+built-in; we carry a patched copy at `local/markdown-ts-mode.el`
+loaded ahead of the bundled file via `:load-path` (see
+"Link rendering" prerequisite below). No `markdown-mode`
+configuration block exists in this file.
 
-## Dual-mode design
+> **`markdown-mode` is still installed**, but only as a transitive
+> dependency of `lsp-mode` (`lsp-mode.el` does
+> `(require 'markdown-mode)` at the top because it renders LSP hover
+> popups via markdown-mode). It is not configured here, no hooks fire,
+> none of its custom variables are tuned, and `M-x markdown-mode` is
+> not advertised as a workflow. If you want it as a real escape hatch,
+> consult git history for the previous configuration block.
 
-`markdown-ts-mode` is the daily driver, routed via the
-`major-mode-remap-alist` entry `(markdown-mode . markdown-ts-mode)` in
-`treesitter-config.el`. It is fast on large files where `markdown-mode`
-stalls Emacs.
+## File routing
 
-`markdown-mode` is intentionally **kept installed and fully configured**.
-Reach it via `M-x markdown-mode`. It retains:
+`.md` and `.markdown` are routed directly to `markdown-ts-mode` via
+`:mode` in this file's `use-package` block. There is no
+`markdown-mode → markdown-ts-mode` entry in
+`major-mode-remap-alist` (since `markdown-mode` is not installed),
+and no `gfm-mode` mapping (README.md is handled the same as any
+other `.md`).
 
-- A patched wiki-link follower (fixes upstream's extension-doubling and
-  space→dash mangling).
-- A custom local-link follower wired through
-  `markdown-follow-link-functions`.
-- Markup hiding on entry.
-- `grip-mode` on `markdown-mode-command-map` (`C-c C-c g`).
-
-The `markdown-mode` block exists because `markdown-ts-mode` does not yet
-cover note-taking workflows (notably wiki-link follow at point). When
-parity is reached, the block can be dropped — but **not unilaterally**.
-
-## Shared link helpers
-
-Both modes call into the same helpers, kept at the top of the file:
+## Link helpers
 
 - `markdown-config--follow-wiki-link` — resolves an Obsidian-style name
   relative to the current buffer; `.md`/`.markdown` open via
@@ -37,15 +36,15 @@ Both modes call into the same helpers, kept at the top of the file:
   missing paths signal `user-error`. **Never creates empty files.**
 - `markdown-config--follow-local-link` — same rules for `[label](path)`
   destinations. Returns `t` when handled (local) and `nil` for full URLs
-  so callers can fall back to `browse-url`. Used both as a member of
-  `markdown-follow-link-functions` and as a direct call from the
-  ts-mode dispatcher.
-- `markdown-config--inline-link-destination-at-point` — ts-mode helper.
-  Walks up to the `inline_link` ancestor of the node at point, reads the
+  so the caller can fall back to `browse-url`.
+- `markdown-config--inline-link-destination-at-point` — walks up to
+  the `inline_link` ancestor of the node at point, reads the
   `link_destination` child's text, and **strips a leading `<` and
   trailing `>`** from CommonMark's pointy-bracket form
   (`[label](<url with spaces>)`). Returns nil when not on a link.
-- `markdown-config-follow-link-at-point` — ts-mode-only dispatcher.
+- `markdown-config-follow-link-at-point` — dispatcher bound on
+  `markdown-ts-mode-map` and on `markdown-config--link-keymap`
+  (used by both wiki-link and inline-link mouse text properties).
   Cond order:
   1. `[[wiki]]` / `[[wiki|label]]` via `thing-at-point-looking-at` and
      `markdown-config--wiki-link-regexp` (the grammar does **not**
@@ -56,13 +55,11 @@ Both modes call into the same helpers, kept at the top of the file:
 
 ## Keybindings
 
-| Mode               | Key         | Command                                  |
-| ------------------ | ----------- | ---------------------------------------- |
-| `markdown-ts-mode` | `C-c C-o`   | `markdown-config-follow-link-at-point`   |
-| `markdown-ts-mode` | `C-c C-c g` | `grip-mode`                              |
-| `markdown-ts-mode` | `mouse-1` / `mouse-2` on a wiki link or inline link | `markdown-config-follow-link-at-point` |
-| `markdown-mode`    | `C-c C-o`   | (native, calls patched wiki/link logic)  |
-| `markdown-mode`    | `C-c C-c g` | `grip-mode` (via `markdown-mode-command-map`) |
+| Key         | Command                                  |
+| ----------- | ---------------------------------------- |
+| `C-c C-o`   | `markdown-config-follow-link-at-point`   |
+| `C-c C-c g` | `grip-mode`                              |
+| `mouse-1` / `mouse-2` on a wiki link or inline link | `markdown-config-follow-link-at-point` |
 
 ## Link rendering (markdown-ts-mode only)
 
@@ -238,22 +235,6 @@ When the upstream fix lands in a stable Emacs release: delete
 `use-package` block, and update
 `docs/markdown-ts-mode-fragment-link-bug-PR-in-preparation.md`.
 
-### `markdown-mode` is preserved on purpose
-
-The `use-package markdown-mode` block, the `:override` advice, and the
-`markdown-follow-link-functions` hook all **stay**. Daily traffic goes
-to `markdown-ts-mode` via the `major-mode-remap-alist` entry, but the
-escape hatch must keep its fixes active. Do not consolidate to a single
-mode without explicit user agreement.
-
-### `grip-mode` is bound twice on purpose
-
-`markdown-mode` puts it on `markdown-mode-command-map`'s `g` (the
-package-native command-prefix convention; resulting chord is
-`C-c C-c g`). `markdown-ts-mode` has no command map, so the chord is
-defined directly on `markdown-ts-mode-map`. Both reach the same key
-sequence; the bindings are **not** redundant.
-
 ### `:bind` and `:load-path` in the `markdown-ts-mode` block
 
 `markdown-ts-mode` is built-in (`:straight nil`). use-package's
@@ -271,11 +252,12 @@ present in the running Emacs.
 
 ## Cross-module touchpoints
 
-- `treesitter-config.el` provides the `markdown-mode → markdown-ts-mode`
-  remap and the `split_parser` grammar pair. Removing either breaks
-  this module.
-- `syntaxes/markdown.el` sets `fill-column 100` for both modes;
+- `treesitter-config.el` provides the `split_parser` grammar pair
+  (`markdown` + `markdown-inline`). Removing either entry breaks this
+  module. There is no `markdown-mode → markdown-ts-mode` remap — file
+  routing is via `:mode` in this file.
+- `syntaxes/markdown.el` sets `fill-column 100` for `markdown-ts-mode`;
   `text-mode-hook` triggers `soft-wrap-mode` (because
   `markdown-ts-mode` derives from `text-mode`).
-- `lsp-ltex-plus-config.el` may attach to either mode for grammar
-  checking — orthogonal to this module.
+- `lsp-ltex-plus-config.el` may attach to `markdown-ts-mode` for
+  grammar checking — orthogonal to this module.

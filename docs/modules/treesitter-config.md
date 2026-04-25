@@ -19,11 +19,9 @@ External packages: none — built entirely on the bundled `treesit`.
 
 - **`lsp-kotlin-config.el`** depends on the Kotlin grammar **pin** here.
   See the invariants section below.
-- **`markdown-config.el`** configures both `markdown-mode` and
-  `markdown-ts-mode` side by side. The remap entries below route daily
-  traffic to the tree-sitter mode; `markdown-mode` is kept reachable via
-  `M-x markdown-mode` as an escape hatch with custom wiki-link and
-  link-following fixes still active. See
+- **`markdown-config.el`** configures `markdown-ts-mode` directly via
+  `:mode` on `\\.md\\'` and `\\.markdown\\'`. There is no longer a
+  `markdown-mode` block, and no remap entries are needed for it. See
   `docs/modules/markdown-config.md`.
 
 ## Grammars installed
@@ -56,8 +54,7 @@ External packages: none — built entirely on the bundled `treesit`.
 | `sh-mode`          | `bash-ts-mode`       |                                                                   |
 | `zsh-mode`         | `bash-ts-mode`       | no `zsh-ts-mode`; bash mode handles it                            |
 | `python-mode`      | `python-ts-mode`     |                                                                   |
-| `markdown-mode`    | `markdown-ts-mode`   | escape hatch reachable via `M-x markdown-mode`; see `markdown-config.md` |
-| `gfm-mode`         | `markdown-ts-mode`   | same                                                              |
+| (markdown)         | `markdown-ts-mode`   | routed via `:mode` in `markdown-config.el`, not via remap-alist   |
 
 ## Public API
 
@@ -128,14 +125,12 @@ for editing purposes (font-lock, indentation). The dedicated `zsh`
 grammar is installed because some other tooling may consume it directly,
 but the mode mapping itself goes to bash.
 
-### `markdown-mode → markdown-ts-mode` is a dual-mode setup
+### Markdown is `markdown-ts-mode`-only
 
-The remap routes daily traffic to `markdown-ts-mode`. `markdown-mode`
-stays installed and fully configured — reachable via `M-x markdown-mode`
-— so its richer feature set (wiki-link follower, markup hiding,
-command-map bindings) remains available until the tree-sitter mode
-reaches parity for note-taking workflows.
-
-The two configurations live in the same file (`markdown-config.el`)
-and share link-resolution helpers. Do not unify or drop `markdown-mode`
-without explicit user agreement. See `markdown-config.md`.
+There is no `markdown-mode` block in this config and no
+`(markdown-mode . markdown-ts-mode)` entry in `major-mode-remap-alist`.
+`.md` and `.markdown` are routed straight to `markdown-ts-mode` via
+`:mode` in `markdown-config.el`. The previous dual-mode setup (with
+`markdown-mode` as an escape hatch) was removed once `markdown-ts-mode`
+reached feature parity for note-taking workflows. See
+`markdown-config.md`.

@@ -218,7 +218,7 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;;
 ;; If such a file exists in the root, yasnippet will treat that folder as a
 ;; single mode-specific directory (for a mode named "yasnippets") and will
-;; NOT scan its subdirectories (like LaTeX-mode/ or markdown-mode/).
+;; NOT scan its subdirectories (like LaTeX-mode/ or markdown-ts-mode/).
 ;;
 ;; Folder names within "yasnippets" must match the Emacs major-mode symbol
 ;; exactly and are CASE-SENSITIVE (e.g., "LaTeX-mode" for AUCTeX vs.
@@ -235,11 +235,7 @@ KEY is the JSON object key as a string, e.g. method or id."
   ;; the snippets from yasnippets/latex-mode/
   (with-eval-after-load 'tex
     (add-hook 'LaTeX-mode-hook
-              (lambda () (yas-activate-extra-mode 'latex-mode))))
-  ;; Ensure gfm-mode picks up markdown-mode snippets.
-  (with-eval-after-load 'markdown-mode
-    (add-hook 'gfm-mode-hook
-              (lambda () (yas-activate-extra-mode 'markdown-mode)))))
+              (lambda () (yas-activate-extra-mode 'latex-mode)))))
 
 (provide 'lsp-core)
 

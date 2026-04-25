@@ -2,30 +2,29 @@
 
 ;;; Commentary:
 ;;
-;; Two modes are configured side by side:
+;; `markdown-ts-mode' (tree-sitter backed, bundled with Emacs 31) is the
+;; only Markdown major mode configured here.  Out of the box it lacks
+;; wiki-link parsing, link-following, and full markup-hiding plumbing for
+;; standard inline links; this file adds all of that.  See
+;; `docs/modules/markdown-config.md' for the design and invariants.
 ;;
-;; - `markdown-ts-mode' (primary, daily): tree-sitter backed, fast on large
-;;   files.  Lacks wiki-link parsing, link-following, and markup-hiding
-;;   plumbing out of the box; we add them here.
-;;
-;; - `markdown-mode' (escape hatch via `M-x markdown-mode'): kept until
-;;   `markdown-ts-mode' reaches feature parity for our workflow.  All the
-;;   historical fixes (wiki-link follower override, link-functions hook,
-;;   markup hiding) stay active so the escape hatch behaves correctly.
-;;
-;; The two modes share the same link-resolution helpers below.
+;; Note: `markdown-mode' the package remains installed as a transitive
+;; dependency of `lsp-mode' (lsp-mode requires it for hover popup
+;; rendering), but it is not configured here — no `:mode' entry, no
+;; hooks, no custom variables.  Our `:mode' below routes `.md' /
+;; `.markdown' directly to `markdown-ts-mode'.
 
 ;;; Code:
 
-;;; -- Shared link helpers ----------------------------------------------------
+;;; -- Link helpers -----------------------------------------------------------
 
 (defun markdown-config--follow-local-link (url)
   "Resolve URL as a local path symmetrically with wiki-link following.
-Used as a member of `markdown-follow-link-functions' (markdown-mode)
-and called directly by `markdown-config-follow-link-at-point'
-(markdown-ts-mode).  Returns non-nil when handled.  Full URLs (with a
-scheme such as http://) return nil so the caller can fall back to
-`browse-url'.  Local paths follow the same rules as wiki links:
+Called by `markdown-config-follow-link-at-point' for `[label](path)'
+inline-link destinations.  Returns non-nil when handled.  Full URLs
+(with a scheme such as http://) return nil so the caller can fall
+back to `browse-url'.  Local paths follow the same rules as wiki
+links:
 - Markdown files (.md, .markdown): open with `find-file'.
 - Other files: open `dired' with the target highlighted.
 - Non-existent files: signal an error with the resolved path."
@@ -123,8 +122,8 @@ hint, `treesit-node-at' returns a node from the host tree where
 
 (defun markdown-config-follow-link-at-point ()
   "Follow the wiki link, inline link, or URL at point.
-Bound on `markdown-ts-mode-map'.  `markdown-mode' has its own native
-handler patched via advice; do not bind this command there."
+Bound on `markdown-ts-mode-map' and on `markdown-config--link-keymap'
+(used by both wiki-link and inline-link mouse text properties)."
   (interactive)
   (cond
    ((thing-at-point-looking-at markdown-config--wiki-link-regexp)
@@ -280,54 +279,19 @@ is needed."
   (treesit-font-lock-recompute-features)
   (font-lock-flush))
 
-;;; -- markdown-ts-mode (primary) ---------------------------------------------
+;;; -- markdown-ts-mode -------------------------------------------------------
 
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
+  :mode (("\\.md\\'"       . markdown-ts-mode)
+         ("\\.markdown\\'" . markdown-ts-mode))
   :custom
   (markdown-ts-hide-markup t)
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
   :bind (:map markdown-ts-mode-map
               ("C-c C-o"   . markdown-config-follow-link-at-point)
               ("C-c C-c g" . grip-mode)))
-
-;;; -- markdown-mode (escape hatch — fixes preserved) -------------------------
-;;
-;; Daily routing goes to `markdown-ts-mode' via `major-mode-remap-alist' in
-;; `treesitter-config.el'.  This block keeps `markdown-mode' fully usable via
-;; `M-x markdown-mode' so the historical fixes remain available until the
-;; tree-sitter flow reaches feature parity for note-taking workflows.
-
-(defun markdown-config--markdown-mode-setup ()
-  "Enable markup hiding in `markdown-mode'.
-`markdown-hide-markup' is a superset of `markdown-hide-urls', so enabling
-it alone is sufficient to hide URLs, brackets, asterisks, etc."
-  ;; markdown-toggle-markup-hiding does more than setq: it updates
-  ;; invisibility-spec and calls markdown-reload-extensions.
-  (markdown-toggle-markup-hiding 1))
-
-(use-package markdown-mode
-  :straight t
-  :mode (("\\.md\\'"       . markdown-mode)
-         ("\\.markdown\\'" . markdown-mode)
-         ("README\\.md\\'" . gfm-mode))
-  :custom
-  (markdown-fontify-code-blocks-natively t)
-  (markdown-enable-wiki-links t)
-  (markdown-wiki-link-alias-first nil)
-  :hook ((markdown-mode gfm-mode) . markdown-config--markdown-mode-setup)
-  :bind (:map markdown-mode-command-map
-              ("g" . grip-mode))
-  :config
-  ;; Replace the default follower, which appends the current buffer's
-  ;; extension to the link name (turning "foo.pdf" into "foo.pdf.md")
-  ;; and replaces spaces with dashes, breaking Obsidian-style paths.
-  (advice-add 'markdown-follow-wiki-link :override
-              #'markdown-config--follow-wiki-link)
-  ;; Apply the same logic to standard [label](path) links.
-  (add-hook 'markdown-follow-link-functions
-            #'markdown-config--follow-local-link))
 
 ;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 

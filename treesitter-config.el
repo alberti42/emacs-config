@@ -47,9 +47,7 @@
           (tsx-mode . tsx-ts-mode)
           (sh-mode . bash-ts-mode)
           (zsh-mode . bash-ts-mode)
-          (python-mode . python-ts-mode)
-          (markdown-mode . markdown-ts-mode)
-          (gfm-mode . markdown-ts-mode)))
+          (python-mode . python-ts-mode)))
 
   (defun treesitter-config-reinstall-grammars ()
     "Force reinstallation of all grammars in `treesit-language-source-alist'.

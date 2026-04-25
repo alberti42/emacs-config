@@ -137,12 +137,10 @@ break snippet discovery if violated:
 2. **Folder names must exactly match the major-mode symbol; case
    matters**. AUCTeX uses `LaTeX-mode` (capital L, capital T), the
    built-in mode is `latex-mode`. They are different directories.
-   Use `yas-activate-extra-mode` to bridge naming gaps; the file already
-   does this for two cases:
+   Use `yas-activate-extra-mode` to bridge naming gaps; the file
+   does this for AUCTeX:
    - `LaTeX-mode-hook` activates `latex-mode` snippets.
-   - `gfm-mode-hook` activates `markdown-mode` snippets.
 
-The `gfm-mode` bridge may interact with the pending markdown-ts-mode
-work (`docs/markdown-ts-mode-findings.md`) — if `gfm-mode` is no longer
-the active mode for `README.md`, that bridge becomes dead code and
-should be re-targeted to `markdown-ts-mode`.
+   For Markdown the snippet directory is named `markdown-ts-mode/`
+   (matching the only Markdown major mode this config installs); no
+   bridge is needed.
