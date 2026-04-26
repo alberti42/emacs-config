@@ -847,11 +847,15 @@ background (white), creating a visual break in the gutter.
 
 ;;; Test 010 — Variable-pitch font interactions; full explanation in the test buffer.
 ;;
-;; Three command-line entry points are provided, one per scenario:
+;; Four command-line entry points are provided, one per scenario:
 ;;
 ;;   (face-margin-test-010a)  -- `margin' inherits from `variable-pitch'
 ;;   (face-margin-test-010b)  -- `margin' uses :height 2.0
 ;;   (face-margin-test-010c)  -- `default' uses a variable-pitch font
+;;   (face-margin-test-010d)  -- combined stress: `default' variable-pitch
+;;                               AND `margin' :height 2.0 (sanity check that
+;;                               the bug surfaced by 010c is not from the
+;;                               margin stretch math)
 ;;
 ;; Each delegates to `face-margin-test--010', which is the shared worker.
 
@@ -861,9 +865,9 @@ background (white), creating a visual break in the gutter.
 scenario 3 has mutated it.")
 
 (defun face-margin-test--010 (mode scenario suffix)
-  "Worker for `face-margin-test-010a/b/c'.
-MODE is `themed' or `standard'.  SCENARIO is 1, 2, or 3.  SUFFIX
-is appended to the buffer name (e.g. \"a\", \"b\", \"c\")."
+  "Worker for `face-margin-test-010a/b/c/d'.
+MODE is `themed' or `standard'.  SCENARIO is 1, 2, 3, or 4.  SUFFIX
+is appended to the buffer name (e.g. \"a\", \"b\", \"c\", \"d\")."
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'themed))
          (ln-bg (face-background 'line-number nil t))
@@ -893,7 +897,11 @@ is appended to the buffer name (e.g. \"a\", \"b\", \"c\")."
         (2 (when (facep 'margin)
              (set-face-attribute 'margin nil :height 2.0)))
         (3 (when (stringp vp-family)
-             (set-face-attribute 'default nil :family vp-family)))))
+             (set-face-attribute 'default nil :family vp-family)))
+        (4 (when (stringp vp-family)
+             (set-face-attribute 'default nil :family vp-family))
+           (when (facep 'margin)
+             (set-face-attribute 'margin nil :height 2.0)))))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
@@ -920,6 +928,19 @@ stretch glyph must fill columns 2-4 with the larger-height face.
          (3 "\
 Scenario 3: the frame `default' face uses a variable-pitch font.
 `margin' inherits from `default' and is therefore variable-pitch too.
+")
+         (4 "\
+Scenario 4 (combined stress): the frame `default' face uses a
+variable-pitch font AND the `margin' face uses :height 2.0.
+
+This test exists as a sanity check on top of 010c.  In 010c we
+observed an inconsistency in the line-number rendering (see the
+`PREEXISTING INDEPENDENT BUG 6' note below); 010d amplifies the
+margin's contribution by making margin glyphs 2x taller.  If the
+line-number gap were caused by the margin stretch-glyph arithmetic,
+this combined stress would amplify it.  If instead the gap looks
+identical in shape and size to 010c, that confirms the gap is
+unrelated to the margin code path.
 ")))
       (insert "\
 
@@ -946,22 +967,31 @@ test 003, which tests the same layout with the default font.
 
 Lines below:
 ")
-      (when (= scenario 3)
+      (when (memq scenario '(3 4))
         (insert "\
 --- Preexisting independent bugs surfaced by this test ---
 
-PREEXISTING INDEPENDENT BUG 6 (surfaced by 010c): when the frame
-`default' face uses a variable-pitch font, the `line-number' face
-background does not tile uniformly across all rows.  Gaps appear
-where line-heights vary (e.g., on rows above the first numbered
-line and on the cursor row onward), exposing the white frame
-default through what should be a continuous gray column.
+PREEXISTING INDEPENDENT BUG 6 (surfaced by 010c, cross-checked by
+010d): when the frame `default' face uses a variable-pitch font,
+the `line-number' face background does not tile uniformly across
+all rows.  Gaps appear where line-heights vary (e.g., on rows above
+the first numbered line and on the cursor row onward), exposing
+the white frame default through what should be a continuous gray
+column.
 
 This bug is in the `line-number' rendering path (text area, not
 margin) and is independent of the `margin' face patch.  In this
 buffer, the 4-column margin to the LEFT of the line-number column
 remains uniformly colored on every row, confirming that the margin
 fill is doing its job.
+
+"))
+      (when (= scenario 4)
+        (insert "\
+010d-specific note: comparing this buffer to 010c, the line-number
+gap should look the same in shape and size despite margin glyphs
+being 2x taller here.  That equivalence is the evidence ruling out
+the margin stretch-glyph arithmetic as the cause.
 
 "))
       (dotimes (i 8)
@@ -1009,6 +1039,16 @@ Optional MODE is `themed' (default) or `standard'.
 Interactively, Emacs prompts to choose between themed and standard."
   (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--010 (or mode 'themed) 3 "c"))
+
+(defun face-margin-test-010d (&optional mode)
+  "Variable-pitch test, scenario 4: combined stress.
+`default' uses a variable-pitch font AND `margin' uses :height 2.0.
+Sanity check that the line-number gap surfaced by 010c is not from
+the margin stretch-glyph arithmetic.
+Optional MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--010 (or mode 'themed) 4 "d"))
 
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
