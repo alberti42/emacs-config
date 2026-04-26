@@ -846,38 +846,29 @@ background (white), creating a visual break in the gutter.
     (switch-to-buffer buf)))
 
 ;;; Test 010 — Variable-pitch font interactions; full explanation in the test buffer.
+;;
+;; Three command-line entry points are provided, one per scenario:
+;;
+;;   (face-margin-test-010a)  -- `margin' inherits from `variable-pitch'
+;;   (face-margin-test-010b)  -- `margin' uses :height 1.5
+;;   (face-margin-test-010c)  -- `default' uses a variable-pitch font
+;;
+;; Each delegates to `face-margin-test--010', which is the shared worker.
 
 (defvar face-margin-test--saved-default-family nil
   "Original :family of the `default' face, captured on first run of
-`face-margin-test-010'.  Used to restore the frame default after
+`face-margin-test--010'.  Used to restore the frame default after
 scenario 3 has mutated it.")
 
-(defun face-margin-test-010 (&optional mode scenario)
-  "Variable-pitch font interactions with the `margin' face.
-
-Verifies that the stretch glyph padding the margin to its full pixel
-width is computed correctly when faces use fonts other than the frame
-default.
-
-SCENARIO is one of:
-  1 — `margin' inherits from `variable-pitch'.
-  2 — `margin' uses :height 1.5 (1.5x the default font height).
-  3 — `default' uses a variable-pitch font (margin inherits from it).
-
-Optional argument MODE is `themed' (default) or `standard'.
-Interactively, Emacs prompts to choose mode and scenario."
-  (interactive
-   (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)
-         (- (read-char-choice
-             "Scenario — [1] margin variable-pitch / [2] margin larger / [3] default variable-pitch? "
-             '(?1 ?2 ?3))
-            ?0)))
+(defun face-margin-test--010 (mode scenario suffix)
+  "Worker for `face-margin-test-010a/b/c'.
+MODE is `themed' or `standard'.  SCENARIO is 1, 2, or 3.  SUFFIX
+is appended to the buffer name (e.g. \"a\", \"b\", \"c\")."
   (face-margin-test--load-theme)
   (let* ((mode (or mode 'themed))
-         (scenario (or scenario 1))
          (ln-bg (face-background 'line-number nil t))
          (vp-family (face-attribute 'variable-pitch :family nil 'default))
-         (buf (get-buffer-create (format "*face-margin-test-010-s%d*" scenario))))
+         (buf (get-buffer-create (format "*face-margin-test-010%s*" suffix))))
     ;; Capture the pristine default :family on first invocation so we can
     ;; revert scenario 3 on subsequent runs.
     (unless face-margin-test--saved-default-family
@@ -908,7 +899,8 @@ Interactively, Emacs prompts to choose mode and scenario."
       (erase-buffer)
       (insert (face-margin-test--mode-header mode))
       (insert (face-margin-test--title
-               (format "face-margin-test-010: variable-pitch interactions (scenario %d)" scenario)
+               (format "face-margin-test-010%s: variable-pitch interactions (scenario %d)"
+                       suffix scenario)
                mode))
       (insert
        (pcase scenario
@@ -973,6 +965,27 @@ Lines below:
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))
+
+(defun face-margin-test-010a (&optional mode)
+  "Variable-pitch test, scenario 1: `margin' inherits from `variable-pitch'.
+Optional MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--010 (or mode 'themed) 1 "a"))
+
+(defun face-margin-test-010b (&optional mode)
+  "Variable-pitch test, scenario 2: `margin' uses :height 1.5.
+Optional MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--010 (or mode 'themed) 2 "b"))
+
+(defun face-margin-test-010c (&optional mode)
+  "Variable-pitch test, scenario 3: `default' uses a variable-pitch font.
+Optional MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--010 (or mode 'themed) 3 "c"))
 
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
