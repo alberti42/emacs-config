@@ -88,27 +88,27 @@ Mirrors the logic in xdisp.c init_iterator."
   (and
    (not scroll-config-suppress-hscroll)
    (or
-   ;; Explicit per-buffer truncation: the buffer asked for truncation
-   ;; regardless of window geometry.
-   truncate-lines
+    ;; Explicit per-buffer truncation: the buffer asked for truncation
+    ;; regardless of window geometry.
+    truncate-lines
 
-   ;; Implicit truncation via `truncate-partial-width-windows': Emacs
-   ;; automatically truncates lines in windows that do not occupy the full
-   ;; frame width (i.e. side-by-side splits), to avoid confusing wrapped text.
-   ;; Three sub-conditions must all hold:
-   (and
-    ;; 1. The window is narrower than the frame.  Full-width windows are
-    ;;    exempt: `truncate-partial-width-windows' only applies to splits.
-    (not (window-full-width-p))
-    ;; 2. The feature is enabled at all (nil disables it entirely).
-    truncate-partial-width-windows
-    ;; 3. Width threshold check.  The variable can be t (truncate all
-    ;;    partial-width windows unconditionally) or an integer N (truncate
-    ;;    only when the window is narrower than N columns).  When it is an
-    ;;    integer, a wide-enough split is still allowed to wrap.
-    (if (integerp truncate-partial-width-windows)
-        (< (window-total-width) truncate-partial-width-windows)
-      t)))))
+    ;; Implicit truncation via `truncate-partial-width-windows': Emacs
+    ;; automatically truncates lines in windows that do not occupy the full
+    ;; frame width (i.e. side-by-side splits), to avoid confusing wrapped text.
+    ;; Three sub-conditions must all hold:
+    (and
+     ;; 1. The window is narrower than the frame.  Full-width windows are
+     ;;    exempt: `truncate-partial-width-windows' only applies to splits.
+     (not (window-full-width-p))
+     ;; 2. The feature is enabled at all (nil disables it entirely).
+     truncate-partial-width-windows
+     ;; 3. Width threshold check.  The variable can be t (truncate all
+     ;;    partial-width windows unconditionally) or an integer N (truncate
+     ;;    only when the window is narrower than N columns).  When it is an
+     ;;    integer, a wide-enough split is still allowed to wrap.
+     (if (integerp truncate-partial-width-windows)
+         (< (window-total-width) truncate-partial-width-windows)
+       t)))))
 
 (defun scroll-config-horizontal (event &optional _arg)
   "Horizontal scroll EVENT with pixel-proportional column steps."
