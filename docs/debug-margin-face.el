@@ -467,7 +467,7 @@ with robust filling loops in both GUI and TTY branches.
                          `((margin right-margin)
                            ,(propertize (format "Line %d" (1+ i))
                                         'face `(:foreground ,fg
-                                                :background ,bg))))))
+                                                            :background ,bg))))))
           (forward-line 1)))
       (display-line-numbers-mode 1)
       (read-only-mode 1)
@@ -850,7 +850,7 @@ background (white), creating a visual break in the gutter.
 ;; Three command-line entry points are provided, one per scenario:
 ;;
 ;;   (face-margin-test-010a)  -- `margin' inherits from `variable-pitch'
-;;   (face-margin-test-010b)  -- `margin' uses :height 1.5
+;;   (face-margin-test-010b)  -- `margin' uses :height 2.0
 ;;   (face-margin-test-010c)  -- `default' uses a variable-pitch font
 ;;
 ;; Each delegates to `face-margin-test--010', which is the shared worker.
@@ -891,7 +891,7 @@ is appended to the buffer name (e.g. \"a\", \"b\", \"c\")."
              (set-face-attribute 'margin nil
                                  :inherit '(variable-pitch default))))
         (2 (when (facep 'margin)
-             (set-face-attribute 'margin nil :height 1.5)))
+             (set-face-attribute 'margin nil :height 2.0)))
         (3 (when (stringp vp-family)
              (set-face-attribute 'default nil :family vp-family)))))
     (with-current-buffer buf
@@ -909,8 +909,13 @@ Scenario 1: the `margin' face inherits from `variable-pitch'.  The
 frame `default' face is unchanged.
 ")
          (2 "\
-Scenario 2: the `margin' face uses :height 1.5.  The frame `default'
+Scenario 2: the `margin' face uses :height 2.0.  The frame `default'
 face is unchanged.
+
+This widens what test 005 already covered: 005 sets :height 2.0 on
+a 1-column margin, where exactly one glyph fits and the stretch path
+is not really tested.  Here the margin is 4 columns wide, so the
+stretch glyph must fill columns 2-4 with the larger-height face.
 ")
          (3 "\
 Scenario 3: the frame `default' face uses a variable-pitch font.
@@ -937,7 +942,7 @@ What to look for:
 
 The point of this test is to verify that the stretch math is
 independent of the `margin' face's font metrics.  Compare against
-test 003, which exercises the same layout with the default font.
+test 003, which tests the same layout with the default font.
 
 Lines below:
 ")
@@ -974,7 +979,7 @@ Interactively, Emacs prompts to choose between themed and standard."
   (face-margin-test--010 (or mode 'themed) 1 "a"))
 
 (defun face-margin-test-010b (&optional mode)
-  "Variable-pitch test, scenario 2: `margin' uses :height 1.5.
+  "Variable-pitch test, scenario 2: `margin' uses :height 2.0.
 Optional MODE is `themed' (default) or `standard'.
 Interactively, Emacs prompts to choose between themed and standard."
   (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
