@@ -1050,5 +1050,81 @@ Interactively, Emacs prompts to choose between themed and standard."
   (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--010 (or mode 'themed) 4 "d"))
 
+;;; Test 011 — Margin face not applied on truncated rows; known limitation.
+
+(defun face-margin-test-011 (&optional mode)
+  "Margin face is not applied on truncated rows.
+
+Documents a known limitation of the bug#80693 patch: when
+`truncate-lines' is non-nil and a buffer line is too long to fit
+in the text area, the row's left and right margin areas revert to
+the frame default background instead of inheriting the `margin'
+face background.
+
+Optional MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-011*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               "face-margin-test-011: margin face not applied on truncated rows"
+               mode))
+      (insert "\
+This test documents a known limitation of the bug#80693 patch.
+
+When `truncate-lines' is non-nil and a buffer line is too long to
+fit in the text area, the row's left and right margin areas revert
+to the frame default background, instead of inheriting the `margin'
+face background.  A truncation indicator appears at the right edge
+on those rows.
+
+Setup: 4-column left margin, 4-column right margin, truncate-lines
+enabled.  The buffer below alternates short lines (which do not
+truncate) with long lines of repeated `L' characters (which do).
+
+Expected (patched, themed mode): both 4-column margins are
+uniformly gray on EVERY row, including the truncated ones.
+
+Observed (patched, themed mode): short rows have gray margins
+(correct).  Truncated rows have white margins (bug): on truncated
+rows, the row-extension code path that fills the margin areas is
+skipped because the row is considered fully consumed by the text
+plus truncation indicator.
+
+--- Scope note ---
+
+This limitation is acknowledged but not fixed by the bug#80693
+patch and is left as a follow-up.  The visible effect only impacts
+users who customize the `margin' face to a non-default background;
+users who keep the default `margin' face never see it because the
+frame default and the inherited `margin' background are the same.
+
+Lines below:
+")
+      (insert "Short line A\n")
+      (insert "Short line B\n")
+      (insert (make-string 200 ?L) "\n")
+      (insert "Short line C\n")
+      (insert (make-string 200 ?L) "\n")
+      (insert "Short line D\n")
+      (insert (make-string 200 ?L) "\n")
+      (insert "Short line E\n")
+      (setq-local left-margin-width 4)
+      (setq-local right-margin-width 4)
+      (setq-local truncate-lines t))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 4 4)
+    (with-current-buffer buf
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
