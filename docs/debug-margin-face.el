@@ -946,6 +946,24 @@ test 003, which tests the same layout with the default font.
 
 Lines below:
 ")
+      (when (= scenario 3)
+        (insert "\
+--- Preexisting independent bugs surfaced by this test ---
+
+PREEXISTING INDEPENDENT BUG 6 (surfaced by 010c): when the frame
+`default' face uses a variable-pitch font, the `line-number' face
+background does not tile uniformly across all rows.  Gaps appear
+where line-heights vary (e.g., on rows above the first numbered
+line and on the cursor row onward), exposing the white frame
+default through what should be a continuous gray column.
+
+This bug is in the `line-number' rendering path (text area, not
+margin) and is independent of the `margin' face patch.  In this
+buffer, the 4-column margin to the LEFT of the line-number column
+remains uniformly colored on every row, confirming that the margin
+fill is doing its job.
+
+"))
       (dotimes (i 8)
         (insert (format "Line %d\n" (1+ i))))
       (setq-local left-margin-width 4))
