@@ -845,5 +845,134 @@ background (white), creating a visual break in the gutter.
       (goto-char (point-min)))
     (switch-to-buffer buf)))
 
+;;; Test 010 — Variable-pitch font interactions; full explanation in the test buffer.
+
+(defvar face-margin-test--saved-default-family nil
+  "Original :family of the `default' face, captured on first run of
+`face-margin-test-010'.  Used to restore the frame default after
+scenario 3 has mutated it.")
+
+(defun face-margin-test-010 (&optional mode scenario)
+  "Variable-pitch font interactions with the `margin' face.
+
+Verifies that the stretch glyph padding the margin to its full pixel
+width is computed correctly when faces use fonts other than the frame
+default.
+
+SCENARIO is one of:
+  1 — `margin' inherits from `variable-pitch'.
+  2 — `margin' uses :height 1.5 (1.5x the default font height).
+  3 — `default' uses a variable-pitch font (margin inherits from it).
+
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose mode and scenario."
+  (interactive
+   (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)
+         (- (read-char-choice
+             "Scenario — [1] margin variable-pitch / [2] margin larger / [3] default variable-pitch? "
+             '(?1 ?2 ?3))
+            ?0)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (scenario (or scenario 1))
+         (ln-bg (face-background 'line-number nil t))
+         (vp-family (face-attribute 'variable-pitch :family nil 'default))
+         (buf (get-buffer-create (format "*face-margin-test-010-s%d*" scenario))))
+    ;; Capture the pristine default :family on first invocation so we can
+    ;; revert scenario 3 on subsequent runs.
+    (unless face-margin-test--saved-default-family
+      (setq face-margin-test--saved-default-family
+            (face-attribute 'default :family)))
+    (face-margin-test--apply-mode mode ln-bg)
+    ;; Reset attributes from prior runs so each invocation starts clean.
+    (when (facep 'margin)
+      (set-face-attribute 'margin nil
+                          :family 'unspecified
+                          :height 'unspecified
+                          :inherit 'default))
+    (when (stringp face-margin-test--saved-default-family)
+      (set-face-attribute 'default nil
+                          :family face-margin-test--saved-default-family))
+    ;; Apply the chosen scenario in `themed' mode only.
+    (when (eq mode 'themed)
+      (pcase scenario
+        (1 (when (facep 'margin)
+             (set-face-attribute 'margin nil
+                                 :inherit '(variable-pitch default))))
+        (2 (when (facep 'margin)
+             (set-face-attribute 'margin nil :height 1.5)))
+        (3 (when (stringp vp-family)
+             (set-face-attribute 'default nil :family vp-family)))))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               (format "face-margin-test-010: variable-pitch interactions (scenario %d)" scenario)
+               mode))
+      (insert
+       (pcase scenario
+         (1 "\
+Scenario 1: the `margin' face inherits from `variable-pitch'.  The
+frame `default' face is unchanged.
+")
+         (2 "\
+Scenario 2: the `margin' face uses :height 1.5.  The frame `default'
+face is unchanged.
+")
+         (3 "\
+Scenario 3: the frame `default' face uses a variable-pitch font.
+`margin' inherits from `default' and is therefore variable-pitch too.
+")))
+      (insert "\
+
+The left margin is 4 columns wide.  Odd lines carry a single `!'
+annotation in column 1 (foreground only).  Columns 2-4 are empty and
+must be filled by the stretch glyph.  Even lines carry no glyph at
+all — the full 4-column area relies on the stretch alone.
+
+What to look for:
+
+- The 4-column margin area is uniformly colored across its full width
+  on every row (including `!' rows, empty rows, and the area below
+  EOB).
+
+- No fragment of the line-number column or frame-default background
+  appears inside the margin (no \"gap\" from a too-narrow stretch).
+
+- The `margin' background does not overflow into the line-number
+  column (no \"overflow\" from a too-wide stretch).
+
+The point of this test is to verify that the stretch math is
+independent of the `margin' face's font metrics.  Compare against
+test 003, which exercises the same layout with the default font.
+
+Lines below:
+")
+      (dotimes (i 8)
+        (insert (format "Line %d\n" (1+ i))))
+      (setq-local left-margin-width 4))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 4 0)
+    (with-current-buffer buf
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "Lines below:\n")
+        (let ((line 1))
+          (while (and (not (eobp)) (<= line 8))
+            (when (= (% line 2) 1)
+              (let ((ov (make-overlay (point) (1+ (point)))))
+                (overlay-put
+                 ov 'before-string
+                 (propertize " " 'display
+                             `((margin left-margin)
+                               ,(propertize "!"
+                                            'face '(:foreground "red")))))))
+            (setq line (1+ line))
+            (forward-line 1))))
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
