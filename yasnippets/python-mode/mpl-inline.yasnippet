@@ -1,0 +1,17 @@
+# -*- mode: snippet -*-
+# contributor : Andrea Alberti <a.alberti82@gmail.com>
+# key : mpl-inline
+# group: matplotlib
+# name : MPL magic for inline graphics
+# --
+inline_rc = {
+    'figure.figsize': (8, 5),
+    'figure.dpi': 120,
+    'lines.antialiased': True,
+    'patch.antialiased': True,
+    'text.antialiased': True,
+}
+%matplotlib inline
+%config InlineBackend.figure_format = '${1:svg}'
+%config InlineBackend.rc = inline_rc
+$0
