@@ -18,6 +18,9 @@
 
   ;; Open the status buffer in a dedicated full-frame window.
   (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+
+  ;; Take snapshot of layout and restore it on exit
+  (setq magit-bury-buffer-function #'magit-restore-window-configuration)
   
   ;; Nerd icons for file entries (native support since magit 223461b).
   (when (fboundp 'magit-format-file-nerd-icons)
