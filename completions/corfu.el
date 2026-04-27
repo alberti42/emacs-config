@@ -21,8 +21,8 @@
 (use-package corfu
   :init
   (setq corfu-auto t
-        corfu-auto-delay 0.1
-        corfu-auto-prefix 2
+        corfu-auto-delay 0.0
+        corfu-auto-prefix 1
         corfu-cycle t                    ;; Enable cycling for `corfu-next/previous'
         corfu-preselect 'prompt          ;; Always preselect the prompt
         corfu-quit-no-match 'separator)  ;; Never quit, even if there is no match
