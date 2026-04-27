@@ -111,6 +111,24 @@ returns immediately when the module is already in place."
                  (window-height . 10)
                  (dedicated . t)))
 
+  (defun my/clear-jupyter-traceback (&rest _)
+    "Wipe the jupyter traceback buffer before re-evaluating a cell."
+    (when-let ((buf (get-buffer "*jupyter-traceback*")))
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (erase-buffer)))))
+  (advice-add 'jupyter-eval-string :before #'my/clear-jupyter-traceback)
+
+  (defun my/bury-empty-jupyter-traceback (&rest _)
+    "Bury the Jupyter traceback buffer when empty.
+Used to ensure that the window auto-closes after a successful re-run
+instead of showing a blank pane."
+    (when-let* ((buf (get-buffer "*jupyter-traceback*"))
+                (win (get-buffer-window buf)))
+      (when (with-current-buffer buf (zerop (buffer-size)))
+        (delete-window win))))
+  (advice-add 'jupyter-eval-string :after #'my/bury-empty-jupyter-traceback)
+
   ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
   ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
   ;; (the dynamic module) is the right join point: zmq.el's body finishes
