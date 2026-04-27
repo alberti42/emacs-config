@@ -1,0 +1,27 @@
+# -*- mode: snippet -*
+# contributor : Andrea Alberti <a.alberti82@gmail.com>
+# name: MPL setup
+# key: mpl-setup
+# group: matplotlib
+# --
+
+inline_rc = {
+    "figure.figsize": (8, 5),
+    "figure.dpi": 120,
+    "lines.antialiased": True,
+    "patch.antialiased": True,
+    "text.antialiased": True,
+}
+
+import matplotlib as mpl
+from IPython.core.getipython import get_ipython
+from matplotlib_inline.backend_inline import set_matplotlib_formats
+
+ipy = get_ipython()
+if ipy is not None:
+    ipy.run_line_magic("matplotlib", "inline")
+
+from typing import Any, cast
+
+mpl.rcParams.update(cast(Any, inline_rc))
+set_matplotlib_formats("svg")

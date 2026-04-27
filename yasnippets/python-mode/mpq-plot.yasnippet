@@ -1,9 +1,9 @@
-# -*- mode: snippet -*-
-# name: python pyplot block
-# key: pyplot
-# group: python
+# -*- mode: snippet -*
+# contributor : Andrea Alberti <a.alberti82@gmail.com>
+# name: MPL pyplot block
+# key: mpl-plot
+# group: matplotlib
 # --
-#+begin_src python :session ${1:py} :file ._aux/${2:plot}.svg :results file graphics
 fig, ax = plt.subplots()
 x = np.linspace(0, 2*np.pi, 100)
 ax.plot(x, np.sin(x), label="sin")
@@ -11,5 +11,4 @@ ax.plot(x, np.cos(x), label="cos")
 ax.legend()
 ax.set(xlabel="x", ylabel="y", title="Plot title")
 fig.savefig("._aux/$2.svg")
-#+end_src
 $0
