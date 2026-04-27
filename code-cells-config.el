@@ -10,6 +10,7 @@
   :straight t
   :hook ((python-mode python-ts-mode) . code-cells-mode-maybe)
   :config
+  ;; A set of shorter keybindings recommended by the package author
   (let ((map code-cells-mode-map))
     (keymap-set map "M-p" 'code-cells-backward-cell)
     (keymap-set map "M-n" 'code-cells-forward-cell)
