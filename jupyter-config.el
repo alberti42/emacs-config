@@ -122,6 +122,19 @@ returns immediately when the module is already in place."
   ;; Unbind S-RET to prevent conflict with code-cells binding
   (define-key jupyter-eval-overlay-keymap (kbd "S-<return>") nil)
 
+  ;; `jupyter-command' visits a `make-temp-file "jupyter"' stderr file with
+  ;; `find-file-noselect' on every `jupyter ...' shell call, which fires
+  ;; `find-file-hook' and pollutes recentf before the temp file is deleted.
+  ;; Exclude those bare jupyter* temp files.
+  (with-eval-after-load 'recentf
+    (add-to-list 'recentf-exclude
+                 (lambda (file)
+                   (string-match-p
+                    (concat "\\`"
+                            (regexp-quote (expand-file-name temporary-file-directory))
+                            "jupyter[^/]*\\'")
+                    (expand-file-name file)))))
+
   ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
   ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
   ;; (the dynamic module) is the right join point: zmq.el's body finishes
