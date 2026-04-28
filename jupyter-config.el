@@ -119,6 +119,9 @@ returns immediately when the module is already in place."
           (erase-buffer)))))
   (advice-add 'jupyter-eval-string :before #'my/clear-jupyter-traceback)
 
+  ;; Unbind S-RET to prevent conflict with code-cells binding
+  (define-key jupyter-eval-overlay-keymap (kbd "S-<return>") nil)
+
   ;; Install the prebuilt emacs-zmq dylib just before zmq-core is first
   ;; looked up.  Hooking on `zmq' (the elisp wrapper) rather than `zmq-core'
   ;; (the dynamic module) is the right join point: zmq.el's body finishes
