@@ -27,11 +27,15 @@
   (setq lsp-enable-suggest-server-download nil)
   ;; Whether to use file watchers
   (setq lsp-enable-file-watchers t)
-  ;; Completion is handled by corfu+cape, not company-mode.
-  ;; The command below prevents lsp-mode from trying to configure
-  ;; company-mode for completion. Without it, lsp-mode assumes
-  ;; company-mode is the completion frontend and tries to set it up
-  ;; automatically — printing a warning when it's not found.  
+  ;; Enable lsp integration with completion-at-point 
+  (setq lsp-completion-enable t)
+  ;; Completion is handled by corfu+cape, not company-mode.  The command below
+  ;; prevents lsp-mode from trying to configure company-mode for
+  ;; completion. Without it, lsp-mode assumes company-mode is the completion
+  ;; frontend and tries to set it up automatically — printing a warning when
+  ;; it's not found.  The naming is misleading: it doesn't disable LSP
+  ;; completion (CAPF is registered before this cond), it disables lsp-mode's
+  ;; company auto-setup.
   (setq lsp-completion-provider :none)
   ;; Performance: increase the amount of data Emacs reads from subprocesses.
   ;; This helps with LSP servers that send larger JSON payloads.
