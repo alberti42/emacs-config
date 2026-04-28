@@ -13,7 +13,7 @@
   :straight (lsp-ltex-plus
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             ;; :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
              :repo "alberti42/emacs-ltex-plus")
 
 
@@ -26,6 +26,7 @@
   (lsp-ltex-plus-show-latency nil)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
+  (lsp-ltex-plus-completion-enabled t)  
   (lsp-ltex-plus-apply-kind-first-patch nil)
   (lsp-ltex-plus-check-programming-languages t)
   (lsp-ltex-plus-show-progress nil)

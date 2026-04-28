@@ -27,7 +27,7 @@
   (setq lsp-enable-suggest-server-download nil)
   ;; Whether to use file watchers
   (setq lsp-enable-file-watchers t)
-  ;; Enable lsp integration with completion-at-point 
+  ;; Enable lsp integration with completion-at-point
   (setq lsp-completion-enable t)
   ;; Completion is handled by corfu+cape, not company-mode.  The command below
   ;; prevents lsp-mode from trying to configure company-mode for
