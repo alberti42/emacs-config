@@ -35,7 +35,6 @@ Scans the first 10 lines of the buffer, case-insensitively.
                                  (t nil))))
               (when engine
                 (setq-local TeX-engine engine))))))))
-
   
   ;; Use LuaLaTeX. LuaLaTeX only produces PDF, so no DVI viewer is ever needed.
   (setq-default TeX-engine 'default)
@@ -62,7 +61,11 @@ Scans the first 10 lines of the buffer, case-insensitively.
   ;; indent to lines following `\item'.  Default -2 outdents `\item' and
   ;; indents continuation lines by +2 relative to it.
   (LaTeX-item-indent 0)
+
   :config
+  ;; Ensure `completion-at-point' is available in LaTeX-mode
+  (define-key TeX-mode-map (kbd "M-TAB") nil t)
+  (define-key TeX-mode-map (kbd "C-c TAB") #'TeX-complete-symbol)
 
   ;; Prompt for the master file when no magic comment or Local Variables are present.
   (setq-default TeX-master t)
