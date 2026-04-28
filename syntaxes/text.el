@@ -15,6 +15,12 @@
                          (not (and (buffer-file-name)
                                    (string-match-p "\\(COMMIT_EDITMSG\\|MERGE_MSG\\)$"
                                                    (buffer-file-name)))))
+
+                ;; English-word completion in prose buffers only. cape-dict loads a flat
+                ;; word file once into memory, so matching stays in-process (no aspell
+                ;; subprocess per keystroke).
+                (add-hook 'completion-at-point-functions #'cape-dict nil t)
+
                 (setq-local fill-column 72)
                 (soft-wrap-mode 1)))))
 

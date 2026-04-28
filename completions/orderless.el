@@ -13,7 +13,8 @@
   (setq completion-styles '(orderless basic))
   (setq completion-category-defaults nil)
   (setq completion-category-overrides
-        '((file (styles basic partial-completion)))))
+        '((file (styles basic partial-completion))
+          (cape-dict (styles basic)))))
 
 (provide 'completions-orderless)
 ;;; orderless.el ends here
