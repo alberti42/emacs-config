@@ -70,7 +70,13 @@ faces without disturbing comments or existing markup."
 ;;; -- Hooks -------------------------------------------------------------------
 
   (add-hook 'LaTeX-mode-hook #'latex-config--setup-latex-buffer)
-  (add-hook 'latex-mode-hook #'latex-config--setup-latex-buffer))
+  (add-hook 'latex-mode-hook #'latex-config--setup-latex-buffer)
+
+  ;; Remove cape-tex in LaTeX documents
+  (add-hook 'tex-mode-hook
+            (lambda ()
+              (setq-local completion-at-point-functions
+                          (remove #'cape-tex completion-at-point-functions)))))
 
 (provide 'syntaxes-latex)
 
