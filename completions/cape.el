@@ -11,28 +11,28 @@
   :init
   ;; Keep these as fallbacks by appending them.
   (add-to-list 'completion-at-point-functions #'cape-file t)
-  ;; cape-tex completes \\-prefixed commands to their Unicode equivalents.
-  ;; Enabled globally, but removed in tex-mode where \\commands must stay as-is.
+
+  ;; cape-tex completes \-prefixed commands to their Unicode equivalents;
+  ;; enabled globally, but removed in tex-mode where \commands must stay as-is.
   (add-to-list 'completion-at-point-functions #'cape-tex t)
-  (add-hook 'tex-mode-hook
-            (lambda ()
-              (setq-local completion-at-point-functions
-                          (remove #'cape-tex completion-at-point-functions))))
+
+  ;; cape-dabbrev completes word from current buffers
   (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
 
   :config
   ;; lsp-completion-at-point is exclusive by default: when it returns a
   ;; non-nil result Emacs stops trying further CAPFs, so cape-file never
-  ;; runs for file paths (e.g. ~/Documents/). Wrapping it with :exclusive
-  ;; no lets Emacs fall through to cape-file when LSP has no candidates.
-  (defun my/cape-lsp-nonexclusive-setup ()
-    (setq-local completion-at-point-functions
-                (mapcar (lambda (f)
-                          (if (eq f 'lsp-completion-at-point)
-                              (cape-capf-properties f :exclusive 'no)
-                            f))
-                        completion-at-point-functions)))
-  (add-hook 'lsp-completion-mode-hook #'my/cape-lsp-nonexclusive-setup))
+  ;; runs for file paths (e.g. ~/Documents/). Inject :exclusive 'no into
+  ;; its return value so Emacs falls through to subsequent CAPFs when LSP
+  ;; has no candidates.
+  (with-eval-after-load 'lsp-completion
+    (define-advice lsp-completion-at-point
+        (:filter-return (result) cape-nonexclusive)
+      (if (consp result)
+          (let ((head (seq-take result 3))
+                (props (nthcdr 3 result)))
+            (append head (plist-put (copy-sequence props) :exclusive 'no)))
+        result))))
 
 (provide 'completions-cape)
 ;;; cape.el ends here
