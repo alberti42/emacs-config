@@ -57,6 +57,10 @@
   (setq lsp-eldoc-enable-hover t)
   ;; If this is set to nil, eldoc will show only the symbol information.
   (setq lsp-eldoc-render-all nil)
+  ;; Prevent using cached values
+  (setq lsp-completion-no-cache t)
+  ;; Do not use last server result when interrupted by keyboard
+  (setq lsp-completion-use-last-result nil)
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 

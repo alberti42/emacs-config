@@ -25,7 +25,16 @@
         corfu-auto-prefix 1
         corfu-cycle t                    ;; Enable cycling for `corfu-next/previous'
         corfu-preselect 'prompt          ;; Always preselect the prompt
-        corfu-quit-no-match 'separator)  ;; Never quit, even if there is no match
+
+        ;; ;; Keep popup alive after pressing space separator and treat input as
+        ;; ;; multi-token (orderless-style); disabled because it interferes
+        ;; ;; with lsp-mode completion        
+        ;; corfu-quit-no-match 'separator
+
+        ;; End the completion session at word boundaries
+        corfu-quit-at-boundary t
+        ;; End the completion session when nothing matches
+        corfu-quit-no-match t)
   :config
   (global-corfu-mode 1)
   (corfu-popupinfo-mode 1))
