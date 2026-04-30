@@ -32,7 +32,13 @@
           (let ((head (seq-take result 3))
                 (props (nthcdr 3 result)))
             (append head (plist-put (copy-sequence props) :exclusive 'no)))
-        result))))
+        result)))
+
+  ;; Defines an alias to set up cape-dict triggered by 3-character prefix
+  (defalias 'cape-dict-3 (cape-capf-prefix-length #'cape-dict 3)
+    "cape-dict that only fires after 3 typed characters.")
+
+  )
 
 (provide 'completions-cape)
 ;;; cape.el ends here

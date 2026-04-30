@@ -19,7 +19,7 @@
                 ;; English-word completion in prose buffers only. cape-dict loads a flat
                 ;; word file once into memory, so matching stays in-process (no aspell
                 ;; subprocess per keystroke).
-                (add-hook 'completion-at-point-functions #'cape-dict nil t)
+                (add-hook 'completion-at-point-functions #'cape-dict-3 nil t)
 
                 (setq-local fill-column 72)
                 (soft-wrap-mode 1)))))
