@@ -21,7 +21,7 @@
 (use-package corfu
   :init
   (setq corfu-auto t
-        corfu-auto-delay 0.0
+        corfu-auto-delay 0.01
         corfu-auto-prefix 1
         corfu-cycle t                    ;; Enable cycling for `corfu-next/previous'
         corfu-preselect 'prompt          ;; Always preselect the prompt
