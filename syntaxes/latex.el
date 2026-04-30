@@ -62,10 +62,10 @@ faces without disturbing comments or existing markup."
     (soft-wrap-mode 1)
     (latex-config--setup-font-lock)
 
-    ;; ;; English-word completion in prose buffers only. cape-dict loads a flat
-    ;; ;; word file once into memory, so matching stays in-process (no aspell
-    ;; ;; subprocess per keystroke).
-    ;; (add-hook 'completion-at-point-functions #'cape-dict nil t)
+    ;; English-word completion in prose buffers only. cape-dict loads a flat
+    ;; word file once into memory, so matching stays in-process (no aspell
+    ;; subprocess per keystroke).
+    (add-hook 'completion-at-point-functions #'cape-dict nil t)
 
     ;; Remove cape-tex in LaTeX docume
     (setq-local completion-at-point-functions
@@ -74,8 +74,8 @@ faces without disturbing comments or existing markup."
 ;;; -- Hooks -------------------------------------------------------------------
 
   (add-hook 'LaTeX-mode-hook #'latex-config--setup-latex-buffer)
-  (add-hook 'latex-mode-hook #'latex-config--setup-latex-buffer)
+  (add-hook 'latex-mode-hook #'latex-config--setup-latex-buffer))
 
-  (provide 'syntaxes-latex)
+(provide 'syntaxes-latex)
 
 ;;; syntaxes/latex.el ends here

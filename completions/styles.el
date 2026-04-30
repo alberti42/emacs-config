@@ -8,15 +8,11 @@
 
 ;;; Code:
 
-(use-package emacs
-  :straight nil
-  :init
-  ;; Baseline styles; Orderless (if loaded) will override `completion-styles`.
-  (setq completion-styles '(basic partial-completion))
-  ;; Keep file completion path-friendly.
-  (setq completion-category-defaults nil)
-  (setq completion-category-overrides
-        '((file (styles basic partial-completion)))))
+;; Baseline styles; Orderless (if loaded) will override `completion-styles'.
+(setq completion-styles '(basic partial-completion)
+      completion-category-defaults nil
+      completion-category-overrides
+      '((file (styles basic partial-completion))))
 
 (provide 'completions-styles)
 ;;; styles.el ends here

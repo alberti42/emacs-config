@@ -9,12 +9,18 @@
 ;;; Code:
 
 (use-package orderless
-  :init
-  (setq completion-styles '(orderless basic))
-  (setq completion-category-defaults nil)
-  (setq completion-category-overrides
-        '((file (styles basic partial-completion))
-          (cape-dict (styles basic)))))
+  :custom
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides
+   '((file (styles basic partial-completion)) ; forcing cape-dict to basic
+                                        ; (orderless on large dictionary
+                                        ; CAPFs would rank oddly and can
+                                        ; be slow)
+     (cape-dict (styles basic))         ; forcing cape-dict to basic (orderless
+                                        ; on large dictionary CAPFs ranks oddly
+                                        ; and can be slow)
+     )))
 
 (provide 'completions-orderless)
 ;;; orderless.el ends here
