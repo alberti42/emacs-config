@@ -39,14 +39,6 @@
   (global-corfu-mode 1)
   (corfu-popupinfo-mode 1))
 
-;; TTY support for Corfu.
-(use-package corfu-terminal
-  :if (and (not window-system)
-           (< emacs-major-version 31))
-  :after corfu
-  :config
-  (corfu-terminal-mode 1))
-
 ;; Completion kind icons (TTY-safe with Nerd Fonts glyphs).
 (use-package kind-icon
   :after (corfu nerd-icons)
