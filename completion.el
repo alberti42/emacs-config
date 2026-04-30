@@ -27,11 +27,9 @@
 ;; hides internal/transient commands from packages like Corfu, which are not
 ;; meant to be called directly.
 ;;
-;; If you ever miss a command in `M-x', this is the knob to revisit.
-(use-package emacs
-  :straight nil
-  :init
-  (setq read-extended-command-predicate #'command-completion-default-include-p))
+;; If a command is found to be missing in `M-x', this setting should be
+;; revisited.
+(setq read-extended-command-predicate #'command-completion-default-include-p)
 
 ;; Styles / matching
 (emacs-config-load-module
@@ -43,12 +41,9 @@
  "Could not load completions/orderless.el; Orderless is disabled.")
 
 ;; Minibuffer UI: prefer Vertico, fall back to Icomplete/Fido.
-(unless (emacs-config-load-module
-         "completions/minibuffer-vertico"
-         "Could not load completions/minibuffer-vertico.el; Vertico is disabled.")
-  (emacs-config-load-module
-   "completions/minibuffer-icomplete"
-   "Could not load completions/minibuffer-icomplete.el; minibuffer completion UI is degraded."))
+(emacs-config-load-module
+ "completions/minibuffer-vertico"
+ "Could not load completions/minibuffer-vertico.el; Vertico is disabled.")
 
 ;; In-buffer completion
 (emacs-config-load-module
