@@ -113,7 +113,7 @@ returns immediately when the module is already in place."
 
   (defun my/clear-jupyter-traceback (&rest _)
     "Wipe the jupyter traceback buffer before re-evaluating a cell."
-    (when-let ((buf (get-buffer "*jupyter-traceback*")))
+    (when-let* ((buf (get-buffer "*jupyter-traceback*")))
       (with-current-buffer buf
         (let ((inhibit-read-only t))
           (erase-buffer)))))
