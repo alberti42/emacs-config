@@ -14,6 +14,7 @@
              :type git
              :host github
              :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             ;; :branch "min-prefix-length"
              :repo "alberti42/emacs-ltex-plus")
 
 
@@ -22,7 +23,7 @@
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   ;; (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
-  (lsp-ltex-plus-debug nil)
+  (lsp-ltex-plus-debug t)
   (lsp-ltex-plus-show-latency t)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
