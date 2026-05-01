@@ -36,27 +36,25 @@
  "completions/styles"
  "Could not load completions/styles.el; using default completion styles.")
 
-(when nil
-	(emacs-config-load-module
-		"completions/orderless"
-		"Could not load completions/orderless.el; Orderless is disabled.")
-	)
 
-  ;; Minibuffer UI: prefer Vertico, fall back to Icomplete/Fido.
-  (emacs-config-load-module
-  	"completions/minibuffer-vertico"
-  	"Could not load completions/minibuffer-vertico.el; Vertico is disabled.")
+(emacs-config-load-module
+ "completions/orderless"
+ "Could not load completions/orderless.el; Orderless is disabled.")
 
-  ;; In-buffer completion
-  (emacs-config-load-module
-  	"completions/corfu"
-  	"Could not load completions/corfu.el; Corfu is disabled.")
 
-  (when nil
-  	(emacs-config-load-module
-  		"completions/cape"
-  		"Could not load completions/cape.el; Cape is disabled.")
-  	)
+;; Minibuffer UI: prefer Vertico, fall back to Icomplete/Fido.
+(emacs-config-load-module
+ "completions/minibuffer-vertico"
+ "Could not load completions/minibuffer-vertico.el; Vertico is disabled.")
+
+;; In-buffer completion
+(emacs-config-load-module
+ "completions/corfu"
+ "Could not load completions/corfu.el; Corfu is disabled.")
+
+(emacs-config-load-module
+ "completions/cape"
+ "Could not load completions/cape.el; Cape is disabled.")
 
 ;; Optional: minibuffer annotations and high-level commands.
 (when emacs-config-completions-enable-marginalia
