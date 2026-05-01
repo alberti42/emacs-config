@@ -23,7 +23,11 @@
   (setq recentf-max-saved-items 200
         recentf-max-menu-items 50
         recentf-auto-cleanup 'mode
-        recentf-show-messages nil) ; requires Emacs 31+
+        recentf-show-messages nil ; requires Emacs 31+
+        recentf-exclude
+        (list (concat "\\`" (regexp-quote (file-truename temporary-file-directory)))
+              "\\`/tmp/"
+              "\\`/private/var/folders/"))
   :bind
   ("C-x C-r" . recentf-open)
   :config
