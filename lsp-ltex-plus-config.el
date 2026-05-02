@@ -14,6 +14,7 @@
              :type git
              :host github
              :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             :branch "test"
              ;; :branch "min-prefix-length"
              :repo "alberti42/emacs-ltex-plus")
 
@@ -23,11 +24,11 @@
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   ;; (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
-  (lsp-ltex-plus-debug t)
+  (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-show-latency t)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
-  (lsp-ltex-plus-completion-enabled nil)
+  (lsp-ltex-plus-completion-enabled t)
   (lsp-ltex-plus-apply-kind-first-patch t)
   (lsp-ltex-plus-check-programming-languages t)
   (lsp-ltex-plus-show-progress nil)
@@ -48,7 +49,14 @@
     (when (and user (or (null lsp-ltex-plus-lt-username) (string-empty-p lsp-ltex-plus-lt-username)))
       (setq lsp-ltex-plus-lt-username user))
     (when (and key (or (null lsp-ltex-plus-lt-api-key) (string-empty-p lsp-ltex-plus-lt-api-key)))
-      (setq lsp-ltex-plus-lt-api-key key))))
+      (setq lsp-ltex-plus-lt-api-key key)))
+
+  (defun lsp-ltex-plus-config--apply-buffer-defaults ()
+    "Apply ltex-ls-plus buffer-local settings via the mode hook."
+    (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled))
+
+  (add-hook 'lsp-ltex-plus-mode-hook #'lsp-ltex-plus-config--apply-buffer-defaults)
+  )
 
 (provide 'lsp-ltex-plus-config)
 ;;; lsp-ltex-plus-config.el ends here
