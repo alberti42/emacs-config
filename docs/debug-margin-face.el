@@ -1050,16 +1050,16 @@ Interactively, Emacs prompts to choose between themed and standard."
   (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
   (face-margin-test--010 (or mode 'themed) 4 "d"))
 
-;;; Test 011 — Margin face not applied on truncated rows; known limitation.
+;;; Test 011 — Margin face on truncated rows; fix demo.
 
 (defun face-margin-test-011 (&optional mode)
-  "Margin face is not applied on truncated rows.
+  "Margin face on truncated rows.
 
-Documents a known limitation of the bug#80693 patch: when
+Demonstrates the fix for the margin-fill on truncated rows.  When
 `truncate-lines' is non-nil and a buffer line is too long to fit
-in the text area, the row's left and right margin areas revert to
-the frame default background instead of inheriting the `margin'
-face background.
+in the text area, the row's left and right margin areas now
+inherit the `margin' face background.  Before the fix, they
+reverted to the frame default background.
 
 Optional MODE is `themed' (default) or `standard'.
 Interactively, Emacs prompts to choose between themed and standard."
@@ -1077,13 +1077,12 @@ Interactively, Emacs prompts to choose between themed and standard."
                "face-margin-test-011: margin face not applied on truncated rows"
                mode))
       (insert "\
-This test documents a known limitation of the bug#80693 patch.
+This test demonstrates the fix for margin-fill on truncated rows.
 
 When `truncate-lines' is non-nil and a buffer line is too long to
-fit in the text area, the row's left and right margin areas revert
-to the frame default background, instead of inheriting the `margin'
-face background.  A truncation indicator appears at the right edge
-on those rows.
+fit in the text area, the row's left and right margin areas now
+inherit the `margin' face background, just like non-truncated rows.
+A truncation indicator appears at the right edge on those rows.
 
 Setup: 4-column left margin, 4-column right margin, truncate-lines
 enabled.  The buffer below alternates short lines (which do not
@@ -1092,19 +1091,16 @@ truncate) with long lines of repeated `L' characters (which do).
 Expected (patched, themed mode): both 4-column margins are
 uniformly gray on EVERY row, including the truncated ones.
 
-Observed (patched, themed mode): short rows have gray margins
-(correct).  Truncated rows have white margins (bug): on truncated
-rows, the row-extension code path that fills the margin areas is
-skipped because the row is considered fully consumed by the text
-plus truncation indicator.
-
---- Scope note ---
-
-This limitation is acknowledged but not fixed by the bug#80693
-patch and is left as a follow-up.  The visible effect only impacts
-users who customize the `margin' face to a non-default background;
-users who keep the default `margin' face never see it because the
-frame default and the inherited `margin' background are the same.
+Expected (unpatched, themed mode): short rows have gray margins;
+truncated rows have white margins.  Before the fix, the row-extension
+code path that fills the margin areas was only invoked from inside
+the TTY/no-fringe arm of the truncation handling in `display_line';
+on GUI frames with a non-zero fringe, that arm was bypassed.  The
+fix lifts the margin-fill out of that arm and places it after the
+if/else-if chain, so it runs uniformly for all three truncation
+paths (TTY truncation glyph, GUI newline-overflow-into-fringe, and
+GUI regular truncation where the indicator is drawn as a fringe
+bitmap).
 
 Lines below:
 ")
