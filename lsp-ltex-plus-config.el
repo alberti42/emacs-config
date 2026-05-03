@@ -31,7 +31,7 @@
   (lsp-ltex-plus-check-programming-languages t)
   (lsp-ltex-plus-show-progress nil)
   ;; (lsp-ltex-plus-ltex-ls-log-level "fine")
-  (lsp-ltex-plus-completion-min-prefix-length 3)
+  ;; (lsp-ltex-plus-completion-min-prefix-length 3)
 
   :init
   ;; Install hooks for all supported major modes. The full package load
