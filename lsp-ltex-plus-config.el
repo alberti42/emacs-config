@@ -13,8 +13,8 @@
   :straight (lsp-ltex-plus
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
-             :branch "main"
+             ;; :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             ;; :branch "main"
              :repo "alberti42/emacs-ltex-plus")
 
   :custom
