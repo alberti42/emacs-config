@@ -8,12 +8,12 @@
 ;;; Code:
 
 (use-package lsp-mode
-  ;; :straight (lsp-mode
-  ;;            :type git
-  ;;            :host github
-  ;;            :branch "show-diagnostic-codes"
-  ;;            :repo "alberti42/fork-lsp-mode"
-  ;;            )
+  :straight (lsp-mode
+             :type git
+             :host github
+             :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
+             :branch "fix/empty-completion-list"
+             :repo "alberti42/fork-lsp-mode")
   :commands (lsp lsp-deferred)
   :init
   (setq lsp-keymap-prefix "C-c l")
