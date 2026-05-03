@@ -14,6 +14,7 @@
              :type git
              :host github
              :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             :branch "main"
              :repo "alberti42/emacs-ltex-plus")
 
   :custom
@@ -29,6 +30,7 @@
   (lsp-ltex-plus-apply-kind-first-patch t)
   (lsp-ltex-plus-check-programming-languages t)
   (lsp-ltex-plus-show-progress nil)
+  ;; (lsp-ltex-plus-ltex-ls-log-level "fine")
   (lsp-ltex-plus-completion-min-prefix-length 3)
 
   :init
@@ -53,7 +55,7 @@
     "Apply ltex-ls-plus buffer-local settings via the mode hook."
     ;;(setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
 
-    (setq-local corfu-auto t)
+    ;; (setq-local corfu-auto t)
     ;; (setq-local lsp-completion-enable t)
     ;; (setq-local lsp-ltex-plus-completion-enabled nil)
     )
