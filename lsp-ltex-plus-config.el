@@ -22,10 +22,10 @@
   ;; (lsp-ltex-plus-lt-server-uri nil)
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-debug nil)
-  (lsp-ltex-plus-show-latency t)
+  (lsp-ltex-plus-show-latency nil)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
-  (lsp-ltex-plus-completion-enabled t)
+  (lsp-ltex-plus-completion-enabled nil)
   (lsp-ltex-plus-apply-kind-first-patch t)
   (lsp-ltex-plus-check-programming-languages t)
   (lsp-ltex-plus-show-progress nil)
@@ -51,7 +51,12 @@
 
   (defun lsp-ltex-plus-config--apply-buffer-defaults ()
     "Apply ltex-ls-plus buffer-local settings via the mode hook."
-    (setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled))
+    ;;(setq-local lsp-completion-enable lsp-ltex-plus-completion-enabled)
+
+    (setq-local corfu-auto t)
+    ;; (setq-local lsp-completion-enable t)
+    ;; (setq-local lsp-ltex-plus-completion-enabled nil)
+    )
 
   (add-hook 'lsp-ltex-plus-mode-hook #'lsp-ltex-plus-config--apply-buffer-defaults))
 
