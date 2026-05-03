@@ -28,7 +28,7 @@
   (lsp-ltex-plus-multi-root t)
   (lsp-ltex-plus-completion-enabled nil)
   (lsp-ltex-plus-apply-kind-first-patch t)
-  (lsp-ltex-plus-check-programming-languages t)
+  (lsp-ltex-plus-check-programming-languages nil)
   (lsp-ltex-plus-show-progress nil)
   ;; (lsp-ltex-plus-ltex-ls-log-level "fine")
   ;; (lsp-ltex-plus-completion-min-prefix-length 3)
