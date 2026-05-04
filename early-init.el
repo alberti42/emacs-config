@@ -9,6 +9,13 @@
 ;; copies of the same package.  That leads to confusing warnings/bugs.
 (setq package-enable-at-startup nil)
 
+;; Tell lsp-mode to use plists instead of hash-tables for JSON deserialization.
+;; Must be set before lsp-mode is byte-compiled or loaded; the flag is read at
+;; compile time.  Pair with `(setq lsp-use-plists t)' in `lsp-core.el'.  This
+;; setting is reported to improve performance:
+;; https://emacs-lsp.github.io/lsp-mode/page/performance/
+(setenv "LSP_USE_PLISTS" "true")
+
 ;; Import shell environment before straight.el and package lookups run, so PATH
 ;; is correct from the very start.  Uses file-truename trick to work through the
 ;; ~/.config/emacs symlink.

@@ -16,6 +16,10 @@
   ;;            :repo "alberti42/fork-lsp-mode")
   :commands (lsp lsp-deferred)
   :init
+  ;; Use plists for JSON (faster + lower GC pressure than hash-tables).
+  ;; Requires `LSP_USE_PLISTS=true' in the environment at byte-compile time (set
+  ;; in `early-init.el').  It is reported to improve the performance.
+  (setq lsp-use-plists t)
   (setq lsp-keymap-prefix "C-c l")
   ;; Use flycheck for diagnostics (richer display, fringe stays fixed — no jitter).
   (setq lsp-diagnostics-provider :flycheck)
