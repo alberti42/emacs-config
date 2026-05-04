@@ -95,23 +95,61 @@ display, not in anything diredfl or nerd-icons-dired do.
 
 ## Fix (in `dired-config.el`)
 
-Force a full re-fontification at the end of `dired-after-readin-hook`,
-after `nerd-icons-dired--refresh` has placed its overlays:
+Refontify the **visible region** after readin, deferred via a 0-second
+idle timer so the paint happens once the buffer is actually on-screen:
 
 ```elisp
 (defun dired-config--fontify-after-readin ()
-  "Eagerly refontify the dired buffer after readin completes."
-  (font-lock-flush)
-  (font-lock-ensure))
+  "Eagerly refontify the visible region after `dired-readin' completes.
+Schedules a 0-second idle timer so the paint runs after the buffer
+becomes a window's buffer; the hook itself fires too early to know which
+window will display the buffer."
+  (let ((buf (current-buffer)))
+    (run-with-idle-timer
+     0 nil
+     (lambda ()
+       (when (buffer-live-p buf)
+         (when-let ((win (get-buffer-window buf t)))
+           (with-current-buffer buf
+             (let ((start (window-start win))
+                   (end   (window-end win t)))
+               (font-lock-flush start end)
+               (font-lock-ensure start end)))))))))
 
 (add-hook 'dired-after-readin-hook #'dired-config--fontify-after-readin 90)
 ```
 
-Depth `90` puts this after `nerd-icons-dired--refresh` (added at default
-depth 0), so overlays are in place first and font-lock runs over a fully
-prepared buffer. `font-lock-flush` invalidates fontification across the
-buffer; `font-lock-ensure` paints synchronously instead of waiting for
-redisplay.
+Why the idle timer? `dired-after-readin-hook` runs while the buffer is
+still being constructed and is **not yet displayed in any window**, so
+`get-buffer-window` legitimately returns nil and we have no visible
+region to paint. Calling `font-lock-ensure` over the whole buffer at
+this point works but stalls on huge directories (`/nix/store`, etc.).
+The 0-second idle timer fires the next time Emacs goes idle — which is
+right after the initial redisplay shows the buffer — at which point the
+window is real and `window-start`/`window-end` are real.
+
+Depth `90` on the hook puts this after `nerd-icons-dired--refresh`
+(added at default depth 0), so the overlay column is in place before
+fontification.
+
+Off-screen lines remain lazy and jit-lock fills them in on scroll, so
+opening enormous directories still doesn't stall.
+
+### Alternatives considered
+
+- **Whole-buffer `font-lock-ensure`** — simplest, painted everything in
+  one pass, but synchronously fontifies off-screen lines too. Fine on
+  typical home-directory listings, painful on `dired /nix/store`-class
+  buffers.
+- **Visible-region ensure inside the hook itself** — the obvious "paint
+  what we can see" approach, but `get-buffer-window` returns nil at hook
+  time because the buffer isn't displayed yet. Falls back to the bug.
+- **`window-buffer-change-functions`** — fires when a window changes
+  buffer, which catches first display. Works but also fires on every
+  later buffer switch, requiring a dired-mode guard and extra book­keeping.
+
+The idle-timer version is the smallest fix that combines "visible only"
+with "the buffer is actually on-screen by the time we paint".
 
 ## Diagnostic snippets
 

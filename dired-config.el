@@ -106,13 +106,33 @@ or reveal in the system file manager."
       (overlay-put ov 'evaporate t)
       (overlay-put ov 'after-string string))))
 
-;; Eager refontification: jit-lock alone leaves diredfl's anchored matchers
-;; (which depend on the `dired-filename' property) painting only around point.
-;; Depth 90 runs after `nerd-icons-dired--refresh'.
+;;; -- Eager visible-region refontification ------------------------------------
+
+;;  `dired-after-readin-hook' runs while the buffer is being constructed and is
+;; not yet displayed in any window, so we cannot paint the visible portion
+;; synchronously here.  Defer to a 0-second idle timer: Emacs goes idle right
+;; after the initial redisplay shows the buffer, at which point
+;; `get-buffer-window' returns the window and `window-start' / `window-end' are
+;; real.  We paint only the visible region; off-screen lines remain lazy and
+;; jit-lock fills them in on scroll, so opening enormous directories still
+;; doesn't stall.  Hook depth 90 runs after `nerd-icons-dired--refresh' (added
+;; at depth 0) so its overlays are in place before fontification.
 (defun dired-config--fontify-after-readin ()
-  "Eagerly refontify the dired buffer after readin completes."
-  (font-lock-flush)
-  (font-lock-ensure))
+  "Eagerly refontify the visible region after `dired-readin' completes.
+Schedules a 0-second idle timer so the paint runs after the buffer
+becomes a window's buffer; the hook itself fires too early to know which
+window will display the buffer."
+  (let ((buf (current-buffer)))
+    (run-with-idle-timer
+     0 nil
+     (lambda ()
+       (when (buffer-live-p buf)
+         (when-let* ((win (get-buffer-window buf t)))
+           (with-current-buffer buf
+             (let ((start (window-start win))
+                   (end   (window-end win t)))
+               (font-lock-flush start end)
+               (font-lock-ensure start end)))))))))
 
 (add-hook 'dired-after-readin-hook #'dired-config--fontify-after-readin 90)
 
