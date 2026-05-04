@@ -14,5 +14,18 @@
       completion-category-overrides
       '((file (styles basic partial-completion))))
 
+;; Make `completion-category-overrides' actually override.
+;;
+;; `completion--styles' (minibuffer.el) appends the global `completion-styles'
+;; after the override styles, so e.g. `(file (styles basic partial-completion))'
+;; effectively becomes `(basic partial-completion orderless)' — orderless still
+;; runs as a fallback. That's surprising; an explicit per-category override
+;; should mean "use these styles only".
+(define-advice completion--styles
+    (:around (orig metadata) override-replaces)
+  (let* ((cat (completion-metadata-get metadata 'category))
+         (over (completion-category-get cat 'styles)))
+    (if over (cdr over) (funcall orig metadata))))
+
 (provide 'completions-styles)
 ;;; styles.el ends here
