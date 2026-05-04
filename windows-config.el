@@ -346,7 +346,9 @@ DIRECTION is one of `left', `right', `above', `below'."
   (interactive)
   (if (and winner-mode
            (equal (selected-window) (next-window)))
+      ;; if the window fills the entire frame, then undo
       (winner-undo)
+    ;; otherwise delete all other windows
     (delete-other-windows)))
 
 (global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
