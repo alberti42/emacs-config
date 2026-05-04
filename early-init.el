@@ -9,6 +9,13 @@
 ;; copies of the same package.  That leads to confusing warnings/bugs.
 (setq package-enable-at-startup nil)
 
+;; LSP servers (and other subprocess-heavy code) generate a lot of garbage from
+;; client/server JSON traffic.  The default 800KB threshold causes frequent GC
+;; pauses; 100MB is the lsp-mode docs' recommendation and matches what
+;; Doom/Spacemacs/Prelude ship.
+;; https://emacs-lsp.github.io/lsp-mode/page/performance/
+(setq gc-cons-threshold (* 100 1024 1024))
+
 ;; Tell lsp-mode to use plists instead of hash-tables for JSON deserialization.
 ;; Must be set before lsp-mode is byte-compiled or loaded; the flag is read at
 ;; compile time.  Pair with `(setq lsp-use-plists t)' in `lsp-core.el'.  This
