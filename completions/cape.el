@@ -34,11 +34,39 @@
             (append head (plist-put (copy-sequence props) :exclusive 'no)))
         result)))
 
-  ;; Defines an alias to set up cape-dict triggered by 3-character prefix
-  (defalias 'cape-dict-3 (cape-capf-prefix-length #'cape-dict 3)
-    "cape-dict that only fires after 3 typed characters.")
+  ;; In-memory English-word CAPF for prose buffers.
+  ;;
+  ;; Reads `cape-dict-file' once, caches the word list, and filters by prefix in
+  ;; elisp. Replaces cape-dict for prose, which shells out to grep on every
+  ;; cache miss and uses `-F` substring matching capped at `cape-dict-limit', a
+  ;; combination that hides actual prefix matches behind alphabetically-earlier
+  ;; substring matches and forces orderless (always appended as a fallback by
+  ;; `completion--styles') to surface them.
+  (defvar emacs-config--dict-words nil
+    "Cached dictionary word list for `emacs-config-cape-dict-prefix'.")
 
-  )
+  (defun emacs-config--dict-words ()
+    (or emacs-config--dict-words
+        (setq emacs-config--dict-words
+              (with-temp-buffer
+                (insert-file-contents cape-dict-file)
+                (split-string (buffer-string) "\n" t)))))
+
+  (defun emacs-config-cape-dict-prefix ()
+    "Prefix-only English-word CAPF; fires after 3 typed characters."
+    (when-let* ((bounds (bounds-of-thing-at-point 'word))
+                (beg (car bounds))
+                (end (cdr bounds))
+                ((>= (- end beg) 3)))
+      (list beg end
+            (completion-table-with-cache
+             (lambda (prefix)
+               (seq-filter (lambda (w) (string-prefix-p prefix w t))
+                           (emacs-config--dict-words))))
+            :annotation-function (lambda (_) " Dict")
+            :company-kind (lambda (_) 'text)
+            :category 'emacs-config-dict
+            :exclusive 'no))))
 
 (provide 'completions-cape)
 ;;; cape.el ends here

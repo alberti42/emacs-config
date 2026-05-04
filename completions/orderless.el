@@ -13,14 +13,8 @@
   (completion-styles '(orderless basic))
   (completion-category-defaults nil)
   (completion-category-overrides
-   '((file (styles basic partial-completion)) ; forcing cape-dict to basic
-                                        ; (orderless on large dictionary
-                                        ; CAPFs would rank oddly and can
-                                        ; be slow)
-     (cape-dict (styles basic))         ; forcing cape-dict to basic (orderless
-                                        ; on large dictionary CAPFs ranks oddly
-                                        ; and can be slow)
-     )))
+   '((file (styles basic partial-completion))
+     (emacs-config-dict (styles basic)))))
 
 (provide 'completions-orderless)
 ;;; orderless.el ends here

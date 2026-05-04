@@ -16,10 +16,11 @@
                                    (string-match-p "\\(COMMIT_EDITMSG\\|MERGE_MSG\\)$"
                                                    (buffer-file-name)))))
 
-                ;; English-word completion in prose buffers only. cape-dict loads a flat
-                ;; word file once into memory, so matching stays in-process (no aspell
-                ;; subprocess per keystroke).
-                (add-hook 'completion-at-point-functions #'cape-dict-3 nil t)
+                ;; English-word completion in prose buffers only. The CAPF
+                ;; loads cape-dict-file once into memory and filters by
+                ;; prefix in-process — no subprocess per keystroke.
+                (add-hook 'completion-at-point-functions
+                          #'emacs-config-cape-dict-prefix nil t)
 
                 (setq-local fill-column 72)
                 (soft-wrap-mode 1)))))
