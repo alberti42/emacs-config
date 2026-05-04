@@ -17,6 +17,29 @@ Example: (:light \"#eff1f5\" :dark \"#303446\") for Catppuccin.")
   Example: (:light (:added \"#00aa00\" :modified \"#aaaa00\" :deleted \"#aa0000\")
             :dark  (:added \"#00ff00\" :modified \"#ffff00\" :deleted \"#ff0000\"))")
 
+(defvar theme-harmonize-ansi-color-palette nil
+  "Plist of 16-color ANSI palettes for :light and :dark appearance.
+Each value is a 16-element vector of color strings in the standard
+ANSI order: black, red, green, yellow, blue, magenta, cyan, white,
+followed by the eight bright variants.
+
+Applied to the 16 `ansi-color-*' faces, which are the foundation that
+`term-color-*', `vterm-color-*', and `ghostel-color-*' all inherit
+from — so a single override here propagates to compilation buffers,
+eshell, term, vterm, and ghostel.")
+
+(defconst theme-harmonize--ansi-color-faces
+  [ansi-color-black          ansi-color-red
+   ansi-color-green          ansi-color-yellow
+   ansi-color-blue           ansi-color-magenta
+   ansi-color-cyan           ansi-color-white
+   ansi-color-bright-black   ansi-color-bright-red
+   ansi-color-bright-green   ansi-color-bright-yellow
+   ansi-color-bright-blue    ansi-color-bright-magenta
+   ansi-color-bright-cyan    ansi-color-bright-white]
+  "Ordered vector of the 16 standard ANSI color faces (since Emacs 28).
+Index matches the ANSI color number (0–15).")
+
 (defun theme-harmonize-theme (&rest _)
   "Synchronize package faces with the active theme.
 Called after every theme change and on new frame creation.
@@ -85,7 +108,36 @@ Add face propagation here as new packages need harmonizing."
       ;; Foreground for invisible spaces: match background so no artifact shows.
       (dolist (face '(git-gutter:unchanged git-gutter:separator))
         (when (facep face)
-          (set-face-foreground face bg))))))
+          (set-face-foreground face bg)))))
+
+  ;; ANSI 16-color palette: override `ansi-color-*'.  Both `term-color-*'
+  ;; (used by vterm) and `ghostel-color-*' inherit from these, so a single
+  ;; set of overrides recolors compilation, eshell, term, vterm, and ghostel
+  ;; together.  Both `:foreground' and `:background' are set: stock
+  ;; `ansi-color-*' faces have both attributes (e.g. green3 / green3), so
+  ;; leaving either one in place lets the original color name leak through
+  ;; whichever rendering path uses it (TTY color-name resolution can quantize
+  ;; e.g. `green3' to a darker palette entry).
+  (when theme-harmonize-ansi-color-palette
+    (require 'ansi-color)
+    (let* ((dark-p (eq (frame-parameter nil 'background-mode) 'dark))
+           (palette (if dark-p
+                        (plist-get theme-harmonize-ansi-color-palette :dark)
+                      (plist-get theme-harmonize-ansi-color-palette :light))))
+      (when (and palette (= (length palette) 16))
+        (dotimes (i 16)
+          (let ((face (aref theme-harmonize--ansi-color-faces i))
+                (color (aref palette i)))
+            (when (facep face)
+              (set-face-foreground face color)
+              (set-face-background face color))))
+        ;; Legacy: some code paths still consult `ansi-color-names-vector'
+        ;; (8 entries: black/red/green/yellow/blue/magenta/cyan/white).
+        (when (boundp 'ansi-color-names-vector)
+          (setq ansi-color-names-vector
+                (vector (aref palette 0) (aref palette 1) (aref palette 2)
+                        (aref palette 3) (aref palette 4) (aref palette 5)
+                        (aref palette 6) (aref palette 7))))))))
 
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'theme-harmonize-theme)

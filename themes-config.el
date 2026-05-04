@@ -55,7 +55,24 @@
               :dark "#303446"))   ; Catppuccin Frappe
   (setq theme-harmonize-git-gutter-colors
         '(:light (:added "#01e002" :modified "#ffb500" :deleted "#cf222e")
-                 :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149"))))
+                 :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149")))
+  ;; ANSI 16-color palette (Catppuccin Latte / Frappe — same as WezTerm) so
+  ;; vterm, ghostel, eshell, term, and compilation buffers render colors
+  ;; identically to the host terminal in TTY mode.  Order: 0–7 normal
+  ;; (black, red, green, yellow, blue, magenta, cyan, white) then 8–15 bright.
+  ;; Black/white slots follow WezTerm's Catppuccin plugin: ansi[0]=surface1,
+  ;; ansi[7]=subtext1, ansi[8]=surface2, ansi[15]=subtext0.  In Latte that
+  ;; means 0/8 are LIGHT grays and 7/15 are DARK grays — opposite of the
+  ;; "0=dark, 15=light" convention but matches what WezTerm renders.
+  (setq theme-harmonize-ansi-color-palette
+        '(:light ["#bcc0cc" "#d20f39" "#40a02b" "#df8e1d"
+                  "#1e66f5" "#ea76cb" "#179299" "#5c5f77"
+                  "#acb0be" "#d20f39" "#40a02b" "#df8e1d"
+                  "#1e66f5" "#ea76cb" "#179299" "#6c6f85"]
+          :dark  ["#51576d" "#e78284" "#a6d189" "#e5c890"
+                  "#8caaee" "#f4b8e4" "#81c8be" "#b5bfe2"
+                  "#626880" "#e78284" "#a6d189" "#e5c890"
+                  "#8caaee" "#f4b8e4" "#81c8be" "#a5adce"])))
 
 ;; Theme auto-detection via zac-theme-autodetection provided by
 ;; zsh-appearance-control plugin.  Reads the OS appearance state file
