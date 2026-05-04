@@ -393,6 +393,11 @@
  'org-config
  "Could not load org-config.el; Org mode enhancements are disabled.")
 
+;; PDF viewer (pdf-tools) with continuous scroll
+(emacs-config-load-module
+ 'pdf-tools-config
+ "Could not load pdf-tools-config.el; in-Emacs PDF viewing is disabled.")
+
 ;; emacs-jupyter (remote Jupyter kernels via kernel protocol; on-disk
 ;; format stays .org, no .ipynb).  Loads after org-config so the babel
 ;; jupyter backend registers cleanly on top of org-babel-load-languages.
