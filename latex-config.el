@@ -1,5 +1,16 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
+(defcustom latex-config-pdf-viewer 'pdf-tools
+  "Which PDF viewer AUCTeX uses for output-pdf jobs.
+Choices:
+  `skim'      – external macOS app, SyncTeX via Skim's displayline tool.
+  `pdf-tools' – in-Emacs viewer, continuous scroll, SyncTeX built-in.
+Switch with `M-x customize-variable RET latex-config-pdf-viewer' or
+by `setq' before `latex-config' loads."
+  :type '(choice (const :tag "Skim (macOS)"        skim)
+                 (const :tag "pdf-tools (in-Emacs)" pdf-tools))
+  :group 'tex)
+
 (use-package tex
   :straight auctex
   :defer t
@@ -94,38 +105,57 @@ Scans the first 10 lines of the buffer, case-insensitively.
   (let ((entry (assoc "View" TeX-command-list)))
     (when entry (setf (nth 3 entry) nil)))
 
-  ;; Automatically open the viewer after successful compilation.
-  ;; On macOS, explicitly revert the PDF in Skim before the SyncTeX
-  ;; forward-search jump so that the refreshed document is shown even
-  ;; when Skim's "Watch for file changes" is disabled.  The revert is
-  ;; a no-op if the document is not yet open (first compilation).
-  (add-hook 'TeX-after-compilation-finished-functions
-            (lambda (output-file)
-              (with-current-buffer TeX-command-buffer
-                (when (and (eq system-type 'darwin) (stringp output-file))
-                  (call-process "osascript" nil 0 nil
-                                "-e"
-                                (format "tell application \"Skim\" \
-to revert (documents whose path is \"%s\")"
-                                        (expand-file-name output-file))))
-                (TeX-view))))
-
   ;; Enable SyncTeX so forward search (C-c C-v) embeds position information.
   ;; TeX-source-correlate-mode adds -synctex=1 to the compilation command.
   (TeX-source-correlate-mode 1)
   (setq TeX-source-correlate-method 'synctex)
 
-  ;; macOS: use Skim as the PDF viewer.
-  ;; Skim's displayline script drives SyncTeX forward search (Emacs → Skim).
-  ;; Flags: -b shows the reading bar to indicate the target line in the PDF;
-  ;;        -g keeps Skim in the background (does not bring it to the foreground).
-  ;; TeX-source-correlate-start-server is set here because it is only needed
-  ;; for Skim's emacsclient callback (backward search: Skim → Emacs).
-  (when (eq system-type 'darwin)
-    (setq TeX-source-correlate-start-server t) ; always start server for inverse search
-    (setq TeX-view-program-list
-          '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %n %o %b")))
-    (setq TeX-view-program-selection '((output-pdf "Skim")))))
+  ;; PDF viewer + post-compilation revert.  Selection is driven by
+  ;; `latex-config-pdf-viewer'; both branches set up SyncTeX forward and
+  ;; inverse search.
+  (pcase latex-config-pdf-viewer
+    ('skim
+     ;; macOS: use Skim as the PDF viewer.
+     ;; Skim's displayline script drives SyncTeX forward search (Emacs → Skim).
+     ;; Flags: -b shows the reading bar to indicate the target line in the PDF;
+     ;;        -g keeps Skim in the background.
+     ;; `TeX-source-correlate-start-server' is needed for Skim's emacsclient
+     ;; callback (backward search: Skim → Emacs).
+     (when (eq system-type 'darwin)
+       (setq TeX-source-correlate-start-server t)
+       (setq TeX-view-program-list
+             '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %n %o %b")))
+       (setq TeX-view-program-selection '((output-pdf "Skim"))))
+     ;; Auto-open viewer after compile.  Explicitly revert in Skim before
+     ;; the SyncTeX jump so the refreshed document shows even when Skim's
+     ;; "Watch for file changes" is off; revert is a no-op on first compile.
+     (add-hook 'TeX-after-compilation-finished-functions
+               (lambda (output-file)
+                 (with-current-buffer TeX-command-buffer
+                   (when (and (eq system-type 'darwin) (stringp output-file))
+                     (call-process "osascript" nil 0 nil
+                                   "-e"
+                                   (format "tell application \"Skim\" \
+to revert (documents whose path is \"%s\")"
+                                           (expand-file-name output-file))))
+                   (TeX-view)))))
+
+    ('pdf-tools
+     ;; In-Emacs viewer.  pdf-tools registers itself in
+     ;; `TeX-view-program-list-builtin' (entry "PDF Tools" → wired to
+     ;; `pdf-sync-mode' for SyncTeX forward and inverse search), so we
+     ;; only have to select it.  Inverse search runs in-process; no
+     ;; emacsclient server needed.
+     (setq TeX-view-program-selection '((output-pdf "PDF Tools")))
+     ;; Auto-revert any open pdf-view buffer of the just-compiled PDF,
+     ;; then jump to the cursor's position via SyncTeX (also opens the
+     ;; viewer on first compile).
+     (add-hook 'TeX-after-compilation-finished-functions
+               #'TeX-revert-document-buffer)
+     (add-hook 'TeX-after-compilation-finished-functions
+               (lambda (_output-file)
+                 (with-current-buffer TeX-command-buffer
+                   (TeX-view)))))))
 
 (use-package preview
   :straight nil
