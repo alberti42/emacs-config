@@ -1,14 +1,19 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
-(defcustom latex-config-pdf-viewer 'pdf-tools
+(defcustom latex-config-pdf-viewer 'auto
   "Which PDF viewer AUCTeX uses for output-pdf jobs.
 Choices:
+  `auto'      – pdf-tools in GUI frames, Skim in TTY frames (decided
+                per-view, so it works correctly when GUI and TTY frames
+                coexist on the same daemon).
   `skim'      – external macOS app, SyncTeX via Skim's displayline tool.
   `pdf-tools' – in-Emacs viewer, continuous scroll, SyncTeX built-in.
+                Requires a GUI frame; will not work in TTY.
 Switch with `M-x customize-variable RET latex-config-pdf-viewer' or
 by `setq' before `latex-config' loads."
-  :type '(choice (const :tag "Skim (macOS)"        skim)
-                 (const :tag "pdf-tools (in-Emacs)" pdf-tools))
+  :type '(choice (const :tag "Auto (GUI → pdf-tools, TTY → Skim)" auto)
+                 (const :tag "Skim (macOS)"                       skim)
+                 (const :tag "pdf-tools (in-Emacs, GUI only)"     pdf-tools))
   :group 'tex)
 
 (use-package tex
@@ -155,6 +160,35 @@ to revert (documents whose path is \"%s\")"
      (add-hook 'TeX-after-compilation-finished-functions
                (lambda (_output-file)
                  (with-current-buffer TeX-command-buffer
+                   (TeX-view)))))
+
+    ('auto
+     ;; Both viewers registered; AUCTeX's selection predicate picks
+     ;; per-frame at view time (handles daemon sessions with both
+     ;; GUI and TTY frames open).  Skim needs the emacsclient server
+     ;; for inverse search; pdf-tools doesn't, but starting it is harmless.
+     (when (eq system-type 'darwin)
+       (setq TeX-source-correlate-start-server t)
+       (setq TeX-view-program-list
+             '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %n %o %b")))
+       (setq TeX-view-program-selection
+             '((output-pdf (lambda () (not (display-graphic-p))) "Skim")
+               (output-pdf "PDF Tools"))))
+     ;; Post-compile: dispatch on frame type at the moment the hook fires.
+     (add-hook 'TeX-after-compilation-finished-functions
+               (lambda (output-file)
+                 (with-current-buffer TeX-command-buffer
+                   (cond
+                    ((not (display-graphic-p))
+                     (when (and (eq system-type 'darwin) (stringp output-file))
+                       (call-process "osascript" nil 0 nil
+                                     "-e"
+                                     (format "tell application \"Skim\" \
+to revert (documents whose path is \"%s\")"
+                                             (expand-file-name output-file)))))
+                    (t
+                     (when (stringp output-file)
+                       (TeX-revert-document-buffer output-file))))
                    (TeX-view)))))))
 
 (use-package preview
