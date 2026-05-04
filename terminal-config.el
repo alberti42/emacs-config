@@ -89,19 +89,20 @@
              :type git
              :host github
              :repo "dakra/ghostel"
-             ;; Include the bundled `terminfo/' tree in the straight build dir.
-             ;; Straight's default :files spec keeps only `.el' and doc files;
-             ;; without this, ghostel's probe via
-             ;; (expand-file-name "terminfo" <package-dir>) fails and it falls
-             ;; back to TERM=xterm-256color with a warning.  Preserving the
-             ;; hashed subdirs is required: ghostel checks both the macOS
-             ;; layout (78/xterm-ghostty) and the Linux layout (x/xterm-ghostty).
+             ;; Include the bundled `etc/terminfo/' tree in the straight build
+             ;; dir.  Straight's default :files spec keeps only `.el' and doc
+             ;; files; without this, ghostel's probe via
+             ;; (expand-file-name "etc/terminfo" <resource-root>) fails and it
+             ;; falls back to TERM=xterm-256color with a warning.  Preserving
+             ;; the hashed subdirs is required: ghostel checks both the macOS
+             ;; layout (78/xterm-ghostty) and the Linux layout
+             ;; (x/xterm-ghostty).
              :files (:defaults
-                     ("terminfo"    "terminfo/xterm-ghostty.terminfo")
-                     ("terminfo/67" "terminfo/67/ghostty")
-                     ("terminfo/78" "terminfo/78/xterm-ghostty")
-                     ("terminfo/g"  "terminfo/g/ghostty")
-                     ("terminfo/x"  "terminfo/x/xterm-ghostty")))
+                     ("etc/terminfo"    "etc/terminfo/xterm-ghostty.terminfo")
+                     ("etc/terminfo/67" "etc/terminfo/67/ghostty")
+                     ("etc/terminfo/78" "etc/terminfo/78/xterm-ghostty")
+                     ("etc/terminfo/g"  "etc/terminfo/g/ghostty")
+                     ("etc/terminfo/x"  "etc/terminfo/x/xterm-ghostty")))
   :commands (ghostel)
   :custom
   (ghostel-shell shell-file-name)
