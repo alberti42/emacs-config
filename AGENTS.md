@@ -166,12 +166,12 @@ Wrapping:
 
 Completion submodules (loaded by `completion.el`):
 
-- `completions/styles.el`: baseline completion styles and category overrides.
-- `completions/orderless.el`: Orderless matching (command-palette style).
+- `completions/styles.el`: baseline completion styles and category overrides. Also installs an advice on `completion--styles` so per-category override styles fully **replace** the global `completion-styles` instead of being prepended (stock Emacs appends, silently re-introducing orderless as a fallback). → `docs/modules/completions.md`
+- `completions/orderless.el`: Orderless matching (command-palette style). Per-category overrides: `file` → `(basic partial-completion)`, `emacs-config-dict` → `(basic)`. → `docs/modules/completions.md`
 - `completions/minibuffer-vertico.el`: Vertico minibuffer UI (preferred).
 - `completions/minibuffer-icomplete.el`: Icomplete/Fido minibuffer UI (fallback).
 - `completions/corfu.el`: Corfu in-buffer completion UI (with TTY support).
-- `completions/cape.el`: extra CAPF sources via Cape.
+- `completions/cape.el`: extra CAPF sources via Cape. Also defines `emacs-config-cape-dict-prefix`, an in-memory English-word CAPF for prose buffers (Markdown, Org, plain text, LaTeX) that fires after 3 chars, tags with `:category 'emacs-config-dict`, and replaces upstream `cape-dict` (which shells out to `grep -F -m100` per cache miss and surfaces substring-matched noise like `apron` for `pro`). → `docs/modules/completions.md`
 - `completions/marginalia.el`: minibuffer annotations.
 - `completions/consult.el`: Consult commands + xref UI.
 
