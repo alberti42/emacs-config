@@ -106,5 +106,15 @@ or reveal in the system file manager."
       (overlay-put ov 'evaporate t)
       (overlay-put ov 'after-string string))))
 
+;; Eager refontification: jit-lock alone leaves diredfl's anchored matchers
+;; (which depend on the `dired-filename' property) painting only around point.
+;; Depth 90 runs after `nerd-icons-dired--refresh'.
+(defun dired-config--fontify-after-readin ()
+  "Eagerly refontify the dired buffer after readin completes."
+  (font-lock-flush)
+  (font-lock-ensure))
+
+(add-hook 'dired-after-readin-hook #'dired-config--fontify-after-readin 90)
+
 (provide 'dired-config)
 ;;; dired-config.el ends here
