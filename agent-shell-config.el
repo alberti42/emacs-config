@@ -8,6 +8,7 @@
   :straight t
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
+  (agent-shell-opencode-default-model-id "openai/gpt-5.4")
   :bind (:map agent-shell-mode-map
               ("M-RET" . newline)
               ("C-c a" . agent-shell-prompt-compose)))
