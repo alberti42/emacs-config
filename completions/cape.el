@@ -16,8 +16,8 @@
   ;; enabled globally, but removed in tex-mode where \commands must stay as-is.
   (add-to-list 'completion-at-point-functions #'cape-tex t)
 
-  ;; cape-dabbrev completes word from current buffers
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
+  ;; ;; cape-dabbrev completes word from current buffers
+  ;; (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
 
   :config
   ;; lsp-completion-at-point is exclusive by default: when it returns a
