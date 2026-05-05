@@ -16,6 +16,12 @@ by `setq' before `latex-config' loads."
                  (const :tag "pdf-tools (in-Emacs, GUI only)"     pdf-tools))
   :group 'tex)
 
+(defun latex-config--tty-frame-p ()
+  "Predicate for `TeX-view-program-selection': non-nil in TTY frames.
+Used by the `auto' branch of `latex-config-pdf-viewer' to route the
+viewer dynamically per frame."
+  (not (display-graphic-p)))
+
 (use-package tex
   :straight auctex
   :defer t
@@ -167,12 +173,15 @@ to revert (documents whose path is \"%s\")"
      ;; per-frame at view time (handles daemon sessions with both
      ;; GUI and TTY frames open).  Skim needs the emacsclient server
      ;; for inverse search; pdf-tools doesn't, but starting it is harmless.
+     ;; AUCTeX's selection format is ((TYPE PREDICATE...) VIEWER); each
+     ;; predicate must be a function symbol (no raw lambdas), evaluated
+     ;; at view time.
      (when (eq system-type 'darwin)
        (setq TeX-source-correlate-start-server t)
        (setq TeX-view-program-list
              '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %n %o %b")))
        (setq TeX-view-program-selection
-             '((output-pdf (lambda () (not (display-graphic-p))) "Skim")
+             '(((output-pdf latex-config--tty-frame-p) "Skim")
                (output-pdf "PDF Tools"))))
      ;; Post-compile: dispatch on frame type at the moment the hook fires.
      (add-hook 'TeX-after-compilation-finished-functions
