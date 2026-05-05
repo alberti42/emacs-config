@@ -27,7 +27,9 @@
         recentf-exclude
         (list (concat "\\`" (regexp-quote (file-truename temporary-file-directory)))
               "\\`/tmp/"
-              "\\`/private/var/folders/"))
+              "\\/COMMIT_EDITMSG\\'"
+              "\\`/\\(?:private\\)?var/folders/"
+              ))
   :bind
   ("C-x C-r" . recentf-open)
   :config
