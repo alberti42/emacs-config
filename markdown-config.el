@@ -281,6 +281,20 @@ is needed."
 
 ;;; -- markdown-ts-mode -------------------------------------------------------
 
+;; Emacs 31 ships markdown-ts-mode as the default for `.md' / `.markdown'.
+;; lsp-mode hard-`require's `markdown-mode' at load time (for hover popup
+;; rendering), and that require prepends an `auto-mode-alist' entry whose
+;; broader regex (mkd|mdown|mkdn|mdwn|mdx|md|markdown) shadows the built-in
+;; markdown-ts-mode association.  Rewrite the entry on `markdown-mode' load
+;; so the same regex routes to markdown-ts-mode.  This relies on lsp-mode
+;; (or some other consumer) actually loading markdown-mode; if nothing ever
+;; does, the hook is a no-op and the built-in `.md'/`.markdown' association
+;; is sufficient.
+(with-eval-after-load 'markdown-mode
+  (dolist (entry auto-mode-alist)
+    (when (eq (cdr entry) 'markdown-mode)
+      (setcdr entry 'markdown-ts-mode))))
+
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
   :mode (("\\.md\\'"       . markdown-ts-mode)
