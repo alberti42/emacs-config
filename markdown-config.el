@@ -290,8 +290,7 @@ is needed."
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
   :bind (:map markdown-ts-mode-map
               ("C-c C-o"     . markdown-config-follow-link-at-point)
-              ("C-c C-x RET" . markdown-ts-toggle-hide-markup)
-              ("C-c C-c g"   . grip-mode)))
+              ("C-c C-x RET" . markdown-ts-toggle-hide-markup)))
 
 ;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 
