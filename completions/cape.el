@@ -23,10 +23,10 @@
     (let (bufs)
       (walk-windows (lambda (w) (push (window-buffer w) bufs)) nil 'visible)
       (delete-dups bufs)))
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
-  (setq cape-dabbrev-min-length 3
-        cape-dabbrev-buffer-function #'emacs-config-cape-visible-buffers)
-
+  (add-to-list 'completion-at-point-functions
+               (cape-capf-prefix-length #'cape-dabbrev 3) t)
+  (setq cape-dabbrev-buffer-function #'emacs-config-cape-visible-buffers)
+  
   :config
   ;; lsp-completion-at-point is exclusive by default: when it returns a
   ;; non-nil result Emacs stops trying further CAPFs, so cape-file never

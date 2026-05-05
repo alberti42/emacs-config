@@ -13,7 +13,7 @@
   (completion-styles '(orderless basic))
   (completion-category-defaults nil)
   (completion-category-overrides
-   '((file (styles basic partial-completion))
+   '((file (styles orderless basic))
      (emacs-config-dict (styles basic)))))
 
 (provide 'completions-orderless)
