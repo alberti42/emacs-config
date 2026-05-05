@@ -16,8 +16,16 @@
   ;; enabled globally, but removed in tex-mode where \commands must stay as-is.
   (add-to-list 'completion-at-point-functions #'cape-tex t)
 
-  ;; ;; cape-dabbrev completes word from current buffers
-  ;; (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
+  ;; cape-dabbrev completes words from visible buffers (e.g. the Magit diff
+  ;; while editing COMMIT_EDITMSG). Min length 3 to keep typing cheap.
+  (defun emacs-config-cape-visible-buffers ()
+    "Return buffers currently displayed in any window on a visible frame."
+    (let (bufs)
+      (walk-windows (lambda (w) (push (window-buffer w) bufs)) nil 'visible)
+      (delete-dups bufs)))
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev t)
+  (setq cape-dabbrev-min-length 3
+        cape-dabbrev-buffer-function #'emacs-config-cape-visible-buffers)
 
   :config
   ;; lsp-completion-at-point is exclusive by default: when it returns a
