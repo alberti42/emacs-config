@@ -1139,7 +1139,10 @@ to the realized `margin' face before dispatching on the value's type,
 so images, stretches and xwidgets all share the gutter background
 that strings already inherited via `face_at_pos'.
 
-Two lines, each annotated with the same `outline-open.svg':
+Three lines, each carrying parallel annotations in BOTH the left and
+right margins (same `outline-open.svg' on each side, same variant per
+line).  The fix is symmetric — the C condition is `it->area !=
+TEXT_AREA' — so left and right should behave identically.
 
   Line 1: bare image spec — demonstrates the basic fix.  Background
           must be the gutter gray; the SVG triangle is filled via
@@ -1164,10 +1167,10 @@ Two lines, each annotated with the same `outline-open.svg':
           carrier's foreground is discarded; the triangle renders BLUE
           (margin's foreground), not yellow.  Packages that previously
           coloured a margin SVG via the carrier must move that intent
-          onto the image spec (channel shown by line 2) or onto
-          the icon spec via `define-icon' :face.
+          onto the image spec (channel shown by line 2).
 
-Expected (themed mode, FIX in place):
+Expected (themed mode, FIX in place), each line shows the same
+triangle in BOTH margins:
   Line 1: triangle BLUE   (margin's foreground)
   Line 2: triangle RED    (image-spec :foreground wins)
   Line 3: triangle BLUE   (carrier :foreground is ignored — limitation)
@@ -1203,31 +1206,41 @@ This buffer demonstrates a possible C-level fix for the SVG-in-margin
 background inconsistency reported by Juri Linkov.  See the docstring
 of `face-margin-test-012' for the full explanation.
 
-Look at the three annotated lines below.  In themed mode the test
-sets `margin' :foreground to BLUE so the source of `currentColor' is
-visible.
+Look at the three annotated lines below.  Each line carries the same
+SVG in BOTH the left and right margin, to verify that the fix is
+symmetric on left/right.  In themed mode the test sets `margin'
+:foreground to BLUE so the source of `currentColor' is visible.
 
 Line 1: bare SVG → triangle should be BLUE (margin's foreground)
 Line 2: SVG with `:foreground \"red\"' on the spec → triangle RED
 Line 3: carrier with `:foreground \"yellow\"', bare SVG → triangle
         BLUE (NOT yellow) — limitation of the C fix; the carrier
-        face is no longer a usable channel for SVG colour in margins
+        face is no longer a usable method for SVG colour in margins
 ")
-      (setq-local left-margin-width 2))
+      (setq-local left-margin-width 2)
+      (setq-local right-margin-width 2))
     (switch-to-buffer buf)
-    (set-window-margins (selected-window) 2 0)
+    (set-window-margins (selected-window) 2 2)
     (with-current-buffer buf
       (save-excursion
         (goto-char (point-min))
         (search-forward "Line 1: ")
         (beginning-of-line)
+        ;; Line 1 — bare image spec, both margins.
         (let ((ov (make-overlay (point) (1+ (point)))))
           (overlay-put
            ov 'before-string
            (propertize " " 'display
                        `((margin left-margin)
                          ,(create-image svg)))))
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'after-string
+           (propertize " " 'display
+                       `((margin right-margin)
+                         ,(create-image svg)))))
         (forward-line 1)
+        ;; Line 2 — image spec with :foreground "red", both margins.
         (let ((ov (make-overlay (point) (1+ (point)))))
           (overlay-put
            ov 'before-string
@@ -1235,7 +1248,18 @@ Line 3: carrier with `:foreground \"yellow\"', bare SVG → triangle
                        `((margin left-margin)
                          ,(create-image svg nil nil
                                         :foreground "red")))))
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'after-string
+           (propertize " " 'display
+                       `((margin right-margin)
+                         ,(create-image svg nil nil
+                                        :foreground "red")))))
         (forward-line 1)
+        ;; Line 3 — carrier face :foreground "yellow", bare image spec,
+        ;; both margins.  Demonstrates the limitation: the carrier face
+        ;; is discarded by the C fix, so the triangle should render BLUE
+        ;; on both sides, not yellow.
         (let ((ov (make-overlay (point) (1+ (point)))))
           (overlay-put
            ov 'before-string
@@ -1243,6 +1267,14 @@ Line 3: carrier with `:foreground \"yellow\"', bare SVG → triangle
                        'face '(:foreground "yellow")
                        'display
                        `((margin left-margin)
+                         ,(create-image svg)))))
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'after-string
+           (propertize " "
+                       'face '(:foreground "yellow")
+                       'display
+                       `((margin right-margin)
                          ,(create-image svg))))))
       (display-line-numbers-mode 1)
       (read-only-mode 1)
