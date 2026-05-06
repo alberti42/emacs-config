@@ -1122,5 +1122,131 @@ Lines below:
       (read-only-mode 1)
       (goto-char (point-min)))))
 
+;;; Test 012 — SVG image in margin: background should inherit `margin' face.
+
+(defun face-margin-test-012 (&optional mode)
+  "SVG image in left margin: background should match `margin' face.
+
+Reproducer for the follow-up issue reported by Juri Linkov on
+bug#80693 after the `margin' face landed: SVG images placed in the
+margin via overlays were rendered with the default-face background
+instead of inheriting the `margin' face background, producing visible
+\"holes\" in the gutter.
+
+The fix lives in `handle_single_display_spec' (xdisp.c): when a
+display spec lands in a margin area, the iterator's face id is reset
+to the realized `margin' face before dispatching on the value's type,
+so images, stretches and xwidgets all share the gutter background
+that strings already inherited via `face_at_pos'.
+
+Two lines, each annotated with the same `outline-open.svg':
+
+  Line 1: bare image spec — demonstrates the basic fix.  Background
+          must be the gutter gray; the SVG triangle is filled via
+          `currentColor', which resolves to the `margin' face's
+          foreground.  To make this verifiable, the test temporarily
+          sets `margin' :foreground to BLUE — a colour neither the
+          `default' face nor `line-number' uses under modus-operandi,
+          so a blue triangle on line 1 is positive evidence that
+          `currentColor' really did pick up the `margin' face.
+
+  Line 2: image spec with `:foreground \"red\"' — demonstrates the
+          documented channel for overriding a `currentColor' SVG's
+          colour.  Background must still be the gutter gray; the
+          triangle must be RED, overriding the `margin' face's blue.
+
+  Line 3: carrier propertized with `face '(:foreground \"yellow\")',
+          bare image spec — demonstrates a deliberate LIMITATION of
+          the C fix.  Before the fix, the carrier's face flowed into
+          `it->face_id' and reached `lookup_image', so a
+          `currentColor' SVG would render yellow.  The fix overwrites
+          `it->face_id' with the realized `margin' face, so the
+          carrier's foreground is discarded; the triangle renders BLUE
+          (margin's foreground), not yellow.  Packages that previously
+          coloured a margin SVG via the carrier must move that intent
+          onto the image spec (channel shown by line 2) or onto
+          the icon spec via `define-icon' :face.
+
+Expected (themed mode, FIX in place):
+  Line 1: triangle BLUE   (margin's foreground)
+  Line 2: triangle RED    (image-spec :foreground wins)
+  Line 3: triangle BLUE   (carrier :foreground is ignored — limitation)
+
+Expected (themed mode, FIX absent): line 1 shows a white square
+inside the gray gutter (the bug).  Line 2 likely also shows the white
+square: `:foreground' on the SVG only paints the path, not the
+surrounding rectangle, so the wrong rectangle fill is independent of
+the `:foreground' override.
+
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (svg (image-search-load-path "outline-open.svg"))
+         (buf (get-buffer-create "*face-margin-test-012*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    ;; Make `margin' :foreground distinguishable from `default' so we
+    ;; can see whether currentColor really resolves to the margin face.
+    (when (and (facep 'margin) (eq mode 'themed))
+      (set-face-foreground 'margin "blue"))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               "face-margin-test-012: SVG image in margin (bug#80693 follow-up)"
+               mode))
+      (insert "\
+This buffer demonstrates a possible C-level fix for the SVG-in-margin
+background inconsistency reported by Juri Linkov.  See the docstring
+of `face-margin-test-012' for the full explanation.
+
+Look at the three annotated lines below.  In themed mode the test
+sets `margin' :foreground to BLUE so the source of `currentColor' is
+visible.
+
+Line 1: bare SVG → triangle should be BLUE (margin's foreground)
+Line 2: SVG with `:foreground \"red\"' on the spec → triangle RED
+Line 3: carrier with `:foreground \"yellow\"', bare SVG → triangle
+        BLUE (NOT yellow) — limitation of the C fix; the carrier
+        face is no longer a usable channel for SVG colour in margins
+")
+      (setq-local left-margin-width 2))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 2 0)
+    (with-current-buffer buf
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "Line 1: ")
+        (beginning-of-line)
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'before-string
+           (propertize " " 'display
+                       `((margin left-margin)
+                         ,(create-image svg)))))
+        (forward-line 1)
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'before-string
+           (propertize " " 'display
+                       `((margin left-margin)
+                         ,(create-image svg nil nil
+                                        :foreground "red")))))
+        (forward-line 1)
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'before-string
+           (propertize " "
+                       'face '(:foreground "yellow")
+                       'display
+                       `((margin left-margin)
+                         ,(create-image svg))))))
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
