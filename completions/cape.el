@@ -26,7 +26,7 @@
   (add-to-list 'completion-at-point-functions
                (cape-capf-prefix-length #'cape-dabbrev 3) t)
   (setq cape-dabbrev-buffer-function #'emacs-config-cape-visible-buffers)
-  
+
   :config
   ;; lsp-completion-at-point is exclusive by default: when it returns a
   ;; non-nil result Emacs stops trying further CAPFs, so cape-file never
@@ -75,6 +75,17 @@
             :company-kind (lambda (_) 'text)
             :category 'emacs-config-dict
             :exclusive 'no))))
+
+;; yasnippet-capf: surface yasnippet keys (matching the active major mode and
+;; any `yas-activate-extra-mode' bridges) as completion candidates.  Prepended
+;; to `completion-at-point-functions' so snippet keys are offered before generic
+;; word sources like cape-dabbrev / cape-dict; lsp-mode's own CAPF still runs
+;; ahead of this in LSP buffers because lsp-mode prepends
+;; `lsp-completion-at-point' buffer-locally on activation.
+(use-package yasnippet-capf
+  :after yasnippet
+  :init
+  (add-to-list 'completion-at-point-functions #'yasnippet-capf))
 
 (provide 'completions-cape)
 ;;; cape.el ends here

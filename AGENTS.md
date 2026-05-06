@@ -173,7 +173,7 @@ Completion submodules (loaded by `completion.el`):
 - `completions/minibuffer-vertico.el`: Vertico minibuffer UI (preferred).
 - `completions/minibuffer-icomplete.el`: Icomplete/Fido minibuffer UI (fallback).
 - `completions/corfu.el`: Corfu in-buffer completion UI (with TTY support).
-- `completions/cape.el`: extra CAPF sources via Cape. Also defines `emacs-config-cape-dict-prefix`, an in-memory English-word CAPF for prose buffers (Markdown, Org, plain text, LaTeX) that fires after 3 chars, tags with `:category 'emacs-config-dict`, and replaces upstream `cape-dict` (which shells out to `grep -F -m100` per cache miss and surfaces substring-matched noise like `apron` for `pro`). → `docs/modules/completions.md`
+- `completions/cape.el`: extra CAPF sources via Cape. Also defines `emacs-config-cape-dict-prefix`, an in-memory English-word CAPF for prose buffers (Markdown, Org, plain text, LaTeX) that fires after 3 chars, tags with `:category 'emacs-config-dict`, and replaces upstream `cape-dict` (which shells out to `grep -F -m100` per cache miss and surfaces substring-matched noise like `apron` for `pro`). Also wires `yasnippet-capf` into `completion-at-point-functions` so yasnippet keys for the active major mode (and `yas-activate-extra-mode` bridges) surface as completion candidates. → `docs/modules/completions.md`
 - `completions/marginalia.el`: minibuffer annotations.
 - `completions/consult.el`: Consult commands + xref UI.
 

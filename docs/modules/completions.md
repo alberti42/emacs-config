@@ -12,7 +12,8 @@ makes sense in the context of the other two.
   that changes how the two interact.
 - `completions/orderless.el` — Orderless package and per-category
   overrides (`file`, `emacs-config-dict`).
-- `completions/cape.el` — Cape sources plus `emacs-config-cape-dict-prefix`.
+- `completions/cape.el` — Cape sources, `emacs-config-cape-dict-prefix`,
+  and the `yasnippet-capf` wiring.
 
 ## The keystone: overrides replace, not prepend
 
@@ -119,3 +120,20 @@ The cache is global state because the dictionary file is global state
 — there's only one `cape-dict-file`. If a future per-language
 dictionary requirement appears, the cache shape will need to change
 (keyed by file path or language).
+
+## yasnippet-capf
+
+`yasnippet-capf` is added to `completion-at-point-functions` from
+`cape.el` so snippet keys appear as completion candidates. It walks
+`yas--get-snippet-tables` for the current buffer, so it respects
+`major-mode`, parent modes, and any `yas-activate-extra-mode` bridges
+configured in `yasnippet-config.el` (e.g. AUCTeX's `LaTeX-mode` →
+`latex-mode` snippet folder). Selection triggers `yas-expand-snippet`,
+giving the normal placeholder/tab-stop UX.
+
+Wired with `add-to-list` (prepend) so snippet keys are tried before
+generic word sources like `cape-dabbrev` or the dict CAPF; in LSP
+buffers `lsp-completion-at-point` still runs first because lsp-mode
+prepends it buffer-locally on activation. Inside LSP buffers this
+mostly matters for *user* snippets in `yasnippets/` — server-returned
+placeholder candidates already arrive via lsp-mode's own CAPF.
