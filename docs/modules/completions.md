@@ -121,73 +121,51 @@ The cache is global state because the dictionary file is global state
 dictionary requirement appears, the cache shape will need to change
 (keyed by file path or language).
 
-## yasnippet-capf
+## Snippets are not in the auto-popup completion chain
 
-Snippet keys appear as completion candidates via `yasnippet-capf`,
-which walks `yas--get-snippet-tables` for the current buffer
-(respecting `major-mode`, parent modes, and any
-`yas-activate-extra-mode` bridges configured in
-`yasnippet-config.el`). Selection triggers `yas-expand-snippet`.
+Yasnippet keys are *not* surfaced through any CAPF — there is no
+`yasnippet-capf`-style entry in `completion-at-point-functions`,
+neither globally nor inside the LSP / prose supers.
 
-The CAPF actually registered everywhere is
-`emacs-config-yasnippet-capf`, defined in `cape.el`. It wraps the bare
-`yasnippet-capf` with two adjustments:
+Why: auto-popup snippet completion was tried and dropped. The
+failure modes:
 
-1. **`cape-capf-prefix-length` gate at 3 chars.** Snippet keys are
-   practically always ≥3 chars; gating skips snippet-key noise on 1–2
-   char input where the much larger LSP candidate list dominates
-   anyway.
-2. **Literal-prefix candidate filter via `:predicate`.** The bare CAPF
-   returns *every* snippet for the active mode and lets completion
-   styles do the filtering. Combined with orderless's substring
-   semantics, that surfaces every snippet whose key contains the
-   typed character anywhere — distracting. The predicate restricts
-   the candidate set to snippets whose key *starts with* the typed
-   prefix, regardless of the active completion style.
+- Snippet keys are practically always ≥3 chars, so any auto-popup
+  integration needs a length gate, which fights the typical
+  "I know I have a snippet for this but forgot the key" workflow
+  (you can't see the snippet by typing a hint of it).
+- `cape-dabbrev` and the dict CAPF return non-empty results for
+  almost every 3+ char prefix, so flat-chain ordering shadows
+  snippet candidates whenever buffer text duplicates a snippet key
+  (concrete failure: typing `ltex-en` in a markdown file that
+  already contains the literal text `ltex-en` — dabbrev wins, the
+  `ltex-en.yasnippet` candidate never surfaces).
+- The fixes (predicate-based prefix filter, super-merge with
+  yasnippet inside, syntax-table widening for `-`, etc.) added
+  meaningful complexity for a workflow the user reaches for rarely.
 
-The predicate-based filter is what makes the prefix-only behaviour
-hold inside `cape-capf-super` too: `cape-capf-super` overwrites the
-inner CAPF's `:category` with its own (`cape-super`), so a per-category
-style override like `(yasnippet (styles basic))` would only kick in for
-the standalone use, not inside the merged super. Predicates flow
-through the super untouched, so prefix-only filtering applies in both
-LSP and non-LSP buffers.
-
-**In LSP buffers**, `lsp-core.el`'s `lsp-completion-mode-hook` replaces
-the bare `lsp-completion-at-point` entry with a `cape-capf-super` that
-merges `emacs-config-yasnippet-capf` and LSP into one popup, with
-snippets ranked first. The super is wrapped in
-`cape-capf-properties :exclusive 'no` so the chain still falls through
-to `cape-file` / `cape-tex` when neither inner CAPF matches.
-
-The standalone `emacs-config-yasnippet-capf` entry remains in the
-global chain — redundant but harmless inside LSP buffers (the super
-already covers it), and the active snippet source in non-LSP buffers.
+Snippet insertion is now a deliberate, on-demand action:
+**`C-c y` → `yas-insert-snippet`**, bound in `yasnippet-config.el`.
+That command lists *all* snippets for the active mode (and parents,
+and any `yas-activate-extra-mode` bridges) in a single minibuffer
+prompt with vertico+orderless filtering — no prefix gate, no
+shadowing, no source-of-record ambiguity. Pick by key or by name.
 
 ## Prose super-CAPF: dabbrev + dict
 
 Prose buffers (Markdown, Org, plain text, LaTeX) hook
-`emacs-config-cape-prose` instead of the bare dict CAPF. It is a
-`cape-capf-super` of `(cape-capf-prefix-length #'cape-dabbrev 3)` and
-`emacs-config-cape-dict-prefix`, wrapped with
-`cape-capf-properties :exclusive 'no`.
+`emacs-config-cape-prose` instead of either bare source. It is a
+`cape-capf-super` of:
 
-Why merge:
+1. `(cape-capf-prefix-length #'cape-dabbrev 3)` — buffer-recent words.
+2. `emacs-config-cape-dict-prefix` — English dictionary.
 
-- Both inner CAPFs use word bounds — bounds match, super-CAPF safe.
-- Their candidate sets are complementary: dabbrev surfaces
-  buffer-recent words (project-specific names, jargon, identifiers
-  from a code window), dict surfaces the English dictionary. They
-  almost never overlap.
-- In a flat chain, the dict CAPF returns a non-empty result for
-  almost every 3+ char prefix (≈250k English words → there's always
-  a match), so `:exclusive 'no` fall-through never happens and
-  `cape-dabbrev` is effectively dormant in prose. The merge fixes
-  that by ranking both sources side-by-side.
+…wrapped with `cape-capf-properties :exclusive 'no`. Both sources
+share word bounds, so the super-CAPF merge is safe.
 
-Order: dabbrev first → buffer-recent words appear above dictionary
-words (most relevant first).
-
-The standalone global `cape-dabbrev` entry stays — it's the
-word-completion source for code buffers, where the dict CAPF is not
-hooked.
+Why merge (instead of a flat chain): dict produces a non-empty result
+for almost every 3+ char prefix (≈250k English words), so
+`:exclusive 'no` fall-through from dict to dabbrev never happens.
+Without the super, dabbrev would be effectively dormant in prose.
+The merge ranks both sources side-by-side. Order: dabbrev first →
+buffer-recent words appear above dictionary words.

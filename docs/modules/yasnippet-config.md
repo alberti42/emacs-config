@@ -24,6 +24,41 @@ consumes the engine at completion time.
   `yas-activate-extra-mode` so a single snippet folder serves both
   modes.
 
+## Insertion UX — `C-c y` for `yas-insert-snippet`
+
+Snippets are *not* surfaced through any auto-popup completion
+(`completion-at-point-functions`). Insertion is bound to **`C-c y`**
+(`yas-insert-snippet`), which prompts in the minibuffer with the
+full snippet list for the current major mode, its parents, and any
+`yas-activate-extra-mode` bridges — filtered with vertico+orderless.
+
+Why on-demand instead of CAPF-driven:
+
+- A previous iteration wired `yasnippet-capf` into the global CAPF
+  chain, the LSP super-CAPF (`lsp-core.el`), and the prose super-CAPF
+  (`completions/cape.el`). The complexity stack ended up being:
+  `cape-capf-prefix-length` (≥3 char gate) +
+  `cape-capf-properties :category yasnippet` (per-category
+  completion-style override) + a custom `:predicate` (literal-prefix
+  filter, since orderless's substring matching turns single-char
+  triggers into noise) + `with-syntax-table` shadowing of `-` (so
+  `mpl-setup`-style keys are recognised in `python-ts-mode` where
+  `-` is punctuation) + Emacs 30+ snippet-folder gotchas
+  (`python-ts-mode` ↛ `python-mode`).
+- Even after all that, two failure modes remained: the 3-char gate
+  fights the typical "I know I have a snippet but forgot the key"
+  workflow, and `cape-dabbrev` shadows snippet keys whenever the
+  buffer text contains the same string (e.g. `ltex-en` written
+  literally in a markdown note).
+- For a workflow used a few times per session, on-demand insertion
+  through a minibuffer prompt is simpler and more reliable than any
+  amount of auto-popup machinery.
+
+The keybinding is added in `yasnippet-config.el`'s `:bind` clause.
+Default yasnippet keymap (`yas-minor-mode-map`) bindings —
+`yas-expand` on TAB, `yas-prev/next-field`, etc. — remain
+untouched.
+
 ## Invariants — do not change without reading
 
 ### `yas-alias-to-yas/prefix-p` must be set in `:init`, not `:config`

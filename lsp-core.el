@@ -61,11 +61,11 @@
   (setq lsp-eldoc-enable-hover t)
   ;; If this is set to nil, eldoc will show only the symbol information.
   (setq lsp-eldoc-render-all nil)
-  ;; `lsp-completion-no-cache' and `lsp-completion-use-last-result' kept
-  ;; at their defaults (caching enabled, last result reused on
-  ;; interrupt).  `cape-capf-buster' wraps `lsp-completion-at-point' in
-  ;; the LSP super-CAPF below and busts the cache when the typed prefix
-  ;; changes, which is the right invalidation granularity.
+  ;; `lsp-completion-no-cache' and `lsp-completion-use-last-result' kept at
+  ;; their defaults (caching enabled, last result reused on interrupt).
+  ;; `cape-capf-buster' wraps `lsp-completion-at-point' in the LSP Super-Capf
+  ;; below and busts the cache when the typed prefix changes, which is the right
+  ;; invalidation granularity.
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
 
@@ -204,19 +204,30 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;; yasnippet (the snippet expansion engine consumed by lsp-mode for
 ;; placeholder completion candidates) is configured separately in
 ;; `yasnippet-config.el' and loaded from `init.el' before this module.
+;; Snippet *insertion* is bound to `C-c y' (`yas-insert-snippet') —
+;; intentionally not auto-popup-completion-driven; see
+;; `yasnippet-config.el' for the rationale.
 
-;;; -- Super-CAPF for lsp-completion-at-point ----------------------------------
+;;; -- LSP completion wrapper --------------------------------------------------
 
-;; In LSP buffers, merge `yasnippet-capf' and `lsp-completion-at-point'
-;; into a single `cape-capf-super' so both candidate sets appear in one
-;; popup.  Order: yasnippet first (snippet keys ranked above LSP
-;; symbols, gated to ≥3 chars to skip noise on 1–2 char prefixes); LSP
-;; second, wrapped in `cape-capf-buster' to invalidate its cache as the
-;; prefix changes (LSP returns context-sensitive candidates).
+;; `lsp-completion-mode' (enabled per buffer when an LSP client attaches)
+;; prepends `lsp-completion-at-point' to `completion-at-point-functions'.
+;; We replace that bare entry with a wrapped form that adds two
+;; behaviours:
 ;;
-;; We use `cape-capf-buster' on `lsp-completion-at-point', which effecttively
-;; overrides LSP's response `isIncomplete' flag. In fact, the LSP
-;; `textDocument/completion' response carries an `isIncomplete' flag:
+;; 1. `cape-capf-buster' invalidates the LSP cache whenever the typed prefix
+;;    changes, forcing lsp-mode to re-issue the request on every keystroke.
+;; 2. `cape-capf-properties :exclusive 'no' makes the chain fall through to
+;;    subsequent CAPFs (`cape-file' inside path strings, `cape-tex' after `\',
+;;    the prose Super-Capf, ...) when LSP returns no candidates.  This replaces
+;;    the older `:filter-return cape-nonexclusive' advice on
+;;    `lsp-completion-at-point' → exclusivity now lives next to the CAPF that
+;;    needs it instead of being injected via advice.
+;;
+;; Commentary on `cape-capf-buster' vs. `isIncomplete'
+;;
+;; The LSP `textDocument/completion' response carries an `isIncomplete'
+;; flag:
 ;;
 ;;   - `isIncomplete: false' → "this list is complete for this prefix;
 ;;     if the user types more chars you can filter it client-side, no
@@ -227,10 +238,10 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;; lsp-mode honours that: with `false' it caches the response and
 ;; filters locally; with `true' it re-queries each keystroke.
 ;;
-;; `cape-capf-buster' invalidates the CAPF cache whenever the typed prefix
-;;  changes, forcing lsp-mode to re-issue the request.  Wrapping
-;;  `lsp-completion-at-point' in it is therefore equivalent to treating every
-;;  response as `isIncomplete: true'.
+;; `cape-capf-buster' invalidates the CAPF cache whenever the typed
+;; prefix changes, so wrapping `lsp-completion-at-point' in it is
+;; equivalent to overriding `isIncomplete: false' from the server
+;; and treating every response as `isIncomplete: true'.
 ;;
 ;; That is intentionally conservative.  Reasons we want it:
 ;;
@@ -241,45 +252,31 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;;   2. Context vs. prefix — `isIncomplete' describes the list for
 ;;      the current prefix, but a single keystroke can move across a
 ;;      syntactic boundary (`.', string delimiter, scope change)
-;;      where the correct candidate set is genuinely different from
-;;      a client-side filter of the cached list.
+;;      where the correct candidate set is genuinely different from a
+;;      client-side filter of the cached list.
 ;;   3. Cost is negligible — one extra round-trip per keystroke to a
 ;;      local server is sub-millisecond; far cheaper than the cost of
 ;;      a stale popup.
 ;;
-;; To honour the server's hint instead (cache when `isIncomplete:
-;; false', re-query when `true'), drop `cape-capf-buster' below and
-;; leave `lsp-completion-no-cache' / `lsp-completion-use-last-result'
+;; To honour the server's hint instead, drop `cape-capf-buster' below
+;; and leave `lsp-completion-no-cache' / `lsp-completion-use-last-result'
 ;; at their defaults.
-;;
-;; The super-CAPF is wrapped in `cape-capf-properties' with `:exclusive 'no' so
-;; when neither inner CAPF matches the typed prefix, Emacs falls through to
-;; subsequent CAPFs (`cape-file' inside path strings, `cape-tex' after `\',
-;; etc.).  This provides a cleaner replacement for the older `:filter-return
-;; cape-nonexclusive' advice on `lsp-completion-at-point' — exclusivity now
-;; lives next to the CAPF that needs it instead of being injected via advice.
 
-(defun emacs-config--lsp-completion-merge-snippets ()
-  "Replace `lsp-completion-at-point' with a yasnippet+LSP super-CAPF.
-Uses the shared `emacs-config-yasnippet-capf' wrapper so the ≥3 char
-gate and literal-prefix candidate filter apply uniformly across LSP and
-non-LSP buffers."
-  (when (and (fboundp 'cape-capf-super)
-             (fboundp 'emacs-config-yasnippet-capf))
+(defun emacs-config--lsp-completion-setup ()
+  "Wrap `lsp-completion-at-point' with cache busting and non-exclusivity."
+  (when (fboundp 'cape-capf-buster)
     (setq-local completion-at-point-functions
-                (cons (cape-capf-properties
-                       (cape-capf-super
-                        #'emacs-config-yasnippet-capf
-                        ;; wrap lsp-completion-at-point in cape-capf-buster
-                        (cape-capf-buster #'lsp-completion-at-point))
-                       :exclusive 'no)
-                      ;; remove the lsp-mode default CAPF based on
-                      ;; lsp-completion-at-point
-                      (delq #'lsp-completion-at-point
-                            (copy-sequence completion-at-point-functions))))))
+                (cons
+                 ;; prepend our wrapped CAPF to the front of the list
+                 (cape-capf-properties
+                  (cape-capf-buster #'lsp-completion-at-point)
+                  :exclusive 'no)
+                 ;; drop the bare lsp-completion-at-point
+                 (delq #'lsp-completion-at-point
+                       (copy-sequence completion-at-point-functions))))))
 
 (add-hook 'lsp-completion-mode-hook
-          #'emacs-config--lsp-completion-merge-snippets)
+          #'emacs-config--lsp-completion-setup)
 
 (provide 'lsp-core)
 

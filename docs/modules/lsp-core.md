@@ -30,41 +30,46 @@ uses to expand server-returned placeholders is configured separately in
 - **`which-key`**: `lsp-enable-which-key-integration` is added to
   `lsp-mode-hook` so the `C-c l` prefix shows the popup.
 
-## Completion in LSP buffers — yasnippet + LSP merged super-CAPF
+## Completion in LSP buffers — `lsp-completion-at-point` wrapped
 
-`lsp-completion-mode-hook` runs
-`emacs-config--lsp-completion-merge-snippets`, which replaces the bare
-`lsp-completion-at-point` entry that lsp-mode just prepended with a
-single merged CAPF:
+`lsp-completion-mode-hook` runs `emacs-config--lsp-completion-setup`,
+which replaces the bare `lsp-completion-at-point` entry that
+lsp-mode just prepended with a wrapped form:
 
 ```elisp
 (cape-capf-properties
- (cape-capf-super
-  (cape-capf-prefix-length #'yasnippet-capf 3)
-  (cape-capf-buster #'lsp-completion-at-point))
+ (cape-capf-buster #'lsp-completion-at-point)
  :exclusive 'no)
 ```
 
 What each layer does:
 
-- `cape-capf-super` merges yasnippet keys with LSP candidates into
-  one popup. They share identifier-shaped bounds, so the merge is safe.
-- `cape-capf-prefix-length 3` keeps yasnippet quiet on 1–2 char input,
-  where the much larger LSP candidate list dominates anyway.
 - `cape-capf-buster` invalidates LSP's prefix cache between
-  keystrokes — necessary because LSP returns context-sensitive
-  candidates that must be re-fetched as the prefix changes.
+  keystrokes. This effectively overrides the server's
+  `isIncomplete: false` hint and treats every response as
+  `isIncomplete: true` — a deliberately conservative choice that
+  guards against server bugs (e.g. servers reporting "complete" when
+  they truncated their list) and against single-keystroke context
+  changes (crossing `.`, string boundaries, scope) where the cached
+  candidate list is no longer correct. See the comment in
+  `lsp-core.el` for the full rationale and how to revert if you
+  want to honor `isIncomplete: false`.
 - `cape-capf-properties :exclusive 'no` lets the chain fall through
   to subsequent CAPFs (`cape-file` inside path strings, `cape-tex`
-  after `\`, prose super, …) when neither inner CAPF has a match.
-  This replaces the older `:filter-return cape-nonexclusive` advice
-  on `lsp-completion-at-point` — exclusivity now lives next to the
+  after `\`, prose super, …) when LSP returns no candidates. This
+  replaces the older `:filter-return cape-nonexclusive` advice on
+  `lsp-completion-at-point` — exclusivity now lives next to the
   CAPF that needs it instead of being injected via advice.
 
-Order matters: yasnippet first → snippet keys ranked above LSP
-symbols in the popup. With `cape-capf-super` the result is a *merged*
-view (not "winner takes all"), so you still see LSP alternatives
-alongside the snippet match.
+**Snippets are intentionally not merged into this CAPF.** A previous
+iteration wrapped both `yasnippet-capf` and `lsp-completion-at-point`
+in `cape-capf-super` so they shared one popup, but the workflow
+("auto-popup must show snippet keys as I type") didn't justify the
+complexity (3-char gates, syntax-table widening for `-`,
+predicate-based prefix filtering, mode-derivation gotchas in
+Emacs 30+ for `python-ts-mode` vs `python-mode`). Snippets are now
+inserted on demand via `C-c y` (`yas-insert-snippet`) — see
+`docs/modules/yasnippet-config.md`.
 
 ## Hover info — three independent display systems
 

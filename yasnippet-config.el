@@ -1,7 +1,7 @@
 ;;; yasnippet-config.el --- Snippet engine -*- lexical-binding: t; -*-
 
-;; yasnippet: Snippet engine.
-;;
+;;; -- yasnippet: Snippet engine ----------------------------------------------
+
 ;; Originally pulled in to act as the expansion engine for lsp-mode
 ;; completion candidates: many LSP servers (Python, TS, etc.) return
 ;; "snippets" rather than plain text, e.g.
@@ -14,7 +14,8 @@
 ;; `arg2'.  The same engine is also used by the snippet libraries under
 ;; `yasnippets/' for interactive expansion in editing modes.
 ;;
-;; --- Directory Structure & Control Files -------------------------------------
+;; DIRECTORY STRUCTURE & CONTROL FILES
+;;
 ;; To ensure snippets are correctly discovered, avoid placing any yasnippet
 ;; control files (e.g., .yas-parents, .yas-make-groups, .yas-metadata) directly
 ;; in the root of the "yasnippets" directory.
@@ -27,6 +28,15 @@
 ;; exactly and are CASE-SENSITIVE (e.g., "LaTeX-mode" for AUCTeX vs.
 ;; "latex-mode" for the built-in mode).  Use `yas-activate-extra-mode' as seen
 ;; below to bridge naming gaps between different packages.
+;;
+;; INSERTION UX
+;;
+;; Snippets are *not* surfaced through auto-popup completion (no
+;; `yasnippet-capf' wiring).  That route was tried and abandoned.
+;;
+;; Instead, `C-c y' is bound to `yas-insert-snippet': lists *all*
+;; snippets for the active mode (and parents / extra-modes) in a
+;; minibuffer prompt with vertico+orderless filtering.
 
 (use-package yasnippet
   :init
@@ -35,6 +45,7 @@
   ;; Skip the legacy `yas/*' aliases entirely so they don't clutter M-x.
   ;; Must be set before yasnippet loads to take effect.
   (setq yas-alias-to-yas/prefix-p nil)
+  :bind ("C-c y" . yas-insert-snippet)
   :config
   (yas-global-mode 1)
   (yas-reload-all)

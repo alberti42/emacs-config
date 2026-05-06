@@ -29,76 +29,7 @@
 
   :config
 
-;;; -- yasnippet-capf proposing yasnippet keys for completion ------------------
-
-  ;; It matches the active major mode and any `yas-activate-extra-mode' bridges
-  ;; for the completion candidates
-  ;;
-  ;; Two adjustments on top of bare `yasnippet-capf':
-  ;;
-  ;; 1. Literal-prefix candidate filter via `:predicate'. The bare CAPF
-  ;;    returns *every* snippet for the active mode and lets completion
-  ;;    styles do the filtering. Combined with orderless's substring
-  ;;    semantics, that surfaces every snippet whose key contains the
-  ;;    typed character anywhere — distracting even after one keystroke.
-  ;;    The predicate restricts the candidate set to snippets whose key
-  ;;    *starts with* the typed prefix, regardless of the completion
-  ;;    style in effect (so the behaviour stays prefix-only even inside
-  ;;    `cape-capf-super', whose merged `:category cape-super' would
-  ;;    otherwise mask any per-category style override).
-  ;;
-  ;; 2. ≥3 char gate via `cape-capf-prefix-length'. Snippet keys are
-  ;;    practically always 3+ chars; gating saves the popup from
-  ;;    snippet-key noise on 1–2 char input where the much larger LSP
-  ;;    candidate list dominates anyway.
-  ;;
-  ;; The wrapped function `emacs-config-yasnippet-capf' is the form used
-  ;; both for the global registration here and inside the LSP super-CAPF
-  ;; in `lsp-core.el', so the prefix-only / 3-char rules apply uniformly.
-  (use-package yasnippet-capf
-    :after yasnippet
-    :init
-    (defun emacs-config--yasnippet-capf-strict ()
-      "Like `yasnippet-capf', but
-1. widen bounds detection to include `-' (yasnippet-capf's regex
-   `\\sw\\|\\s_' misses `-' in modes like python-ts-mode where it has
-   punctuation syntax, so typing `mpl-' matches only `mpl' and the
-   `point in or just after match' check in `thing-at-point-looking-at'
-   fails — yasnippet-capf returns nil and snippet candidates never
-   surface).  Shadowed only around `yasnippet-capf'; expansion runs
-   in the original syntax table, untouched.
-2. restrict candidates to literal-prefix matches."
-      (let* ((tbl (let ((s (copy-syntax-table (syntax-table))))
-                    (modify-syntax-entry ?- "_" s)
-                    s))
-             (orig (with-syntax-table tbl (yasnippet-capf))))
-        (pcase orig
-          (`(,beg ,end ,table . ,plist)
-           (let* ((prefix (buffer-substring-no-properties beg end))
-                  (existing-pred (plist-get plist :predicate))
-                  (prefix-pred
-                   (lambda (key &optional val)
-                     (let ((s (cond
-                               ((symbolp key) (symbol-name key))
-                               ((consp key)
-                                (let ((k (car key)))
-                                  (if (symbolp k) (symbol-name k) k)))
-                               (t key))))
-                       (and (string-prefix-p prefix s t)
-                            (or (null existing-pred)
-                                (funcall existing-pred key val)))))))
-             `(,beg ,end ,table
-                    :predicate ,prefix-pred
-                    :category yasnippet
-                    ,@plist))))))
-
-    (defalias 'emacs-config-yasnippet-capf
-      (cape-capf-prefix-length #'emacs-config--yasnippet-capf-strict 3)
-      "yasnippet-capf gated to ≥3 chars and filtered to literal-prefix matches.")
-
-    (add-to-list 'completion-at-point-functions #'emacs-config-yasnippet-capf))
-
-;;; -- English-word CAPF for prose buffers. -----------------------------------
+;;; -- English-word CAPF for prose buffers. ------------------------------------
 
   ;; Reads `cape-dict-file' once, caches the word list, and filters by prefix in
   ;; elisp. Replaces cape-dict for prose, which shells out to grep on every
@@ -133,23 +64,35 @@
             :category 'emacs-config-dict
             :exclusive 'no))))
 
-;;; -- Cape for prose combining cape-dabbrev and cape --------------------------
+;;; -- Cape for prose: merged dabbrev + dict -----------------------------------
 
-;; This cape is used in Markdown, Org, plain text, LaTeX, ...
+;; Used in Markdown, Org, plain text, LaTeX, …  Merges two word-bounded
+;; sources into one popup via `cape-capf-super':
 ;;
-;; It combines `cape-dabbrev' (recent words from visible buffers) with
-;; `emacs-config-cape-dict-prefix' (English dictionary), both gated to ≥3 chars.
-;; Both inner CAPFs share word bounds, so `cape-capf-super' merges their
-;; candidate sets cleanly.
+;;   - `cape-dabbrev'                 — recent words from visible buffers.
+;;   - `emacs-config-cape-dict-prefix' — English dictionary.
 ;;
-;; Order matters: dabbrev first → buffer-recent words (project-specific
-;; names, jargon) rank above dictionary words.  Without the super, dict
-;; produces a non-empty result for almost every 3+ char prefix and the
-;; chain never falls through to dabbrev.
+;; Both share word bounds, so the merge is safe.  Order: dabbrev first
+;; → buffer-recent words (project-specific names, jargon) rank above
+;; dictionary words.
+;;
+;; Why merge instead of a flat chain: dict produces a non-empty result
+;; for almost every 3+ char prefix (≈250k English words → there's
+;; always a match), so `:exclusive 'no' fall-through never happens and
+;; `cape-dabbrev' would be effectively dormant in prose. The super
+;; ranks both side-by-side instead.
 ;;
 ;; `:exclusive 'no' lets the chain fall through to subsequent CAPFs
-;; (cape-file inside path strings, cape-tex after \) when neither
+;; (cape-file inside path strings, cape-tex after `\') when neither
 ;; dabbrev nor dict matches.
+;;
+;; Snippets are intentionally *not* in this super.  Auto-popup
+;; completion for snippet keys was a poor fit (3-char gate fights with
+;; "I know snippets exist but forgot the key", dabbrev shadowed
+;; matches when buffer text duplicated a snippet key, etc.).  Snippet
+;; insertion is now bound to `C-c y' (`yas-insert-snippet') in
+;; `yasnippet-config.el' — manual trigger, lists *all* snippets for
+;; the active mode in one minibuffer prompt.
 (with-eval-after-load 'cape
   (defalias 'emacs-config-cape-prose
     (cape-capf-properties
