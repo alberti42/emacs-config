@@ -1,7 +1,9 @@
 # lsp-core.el
 
 Shared LSP infrastructure used by every `lsp-*-config.el` module: client
-core, diagnostics, UI overlays, and snippet engine.
+core, diagnostics, and UI overlays. The snippet engine that lsp-mode
+uses to expand server-returned placeholders is configured separately in
+`yasnippet-config.el` — see `docs/modules/yasnippet-config.md`.
 
 ## External packages
 
@@ -13,23 +15,20 @@ core, diagnostics, UI overlays, and snippet engine.
   this, early diagnostics trigger "Invalid face reference" warnings.
 - `flycheck` — diagnostics frontend (left-fringe indicators).
 - `lsp-ui` — sideline hints, doc child frames.
-- `yasnippet` — expansion engine for LSP snippet completions (servers
-  return placeholder strings like `"fn(${1:arg1}, ${2:arg2})"`; without
-  yasnippet you'd see the literal text instead of interactive tab-stops).
 
 ## Cross-module touchpoints
 
 - Loaded by every language module (`lsp-python-config.el`,
-  `lsp-rust-config.el`, …) — they all assume the keymap prefix, completion
-  provider choice, and yasnippet directory set here.
+  `lsp-rust-config.el`, …) — they all assume the keymap prefix and
+  completion provider choice set here.
+- **`yasnippet-config.el`** — must be loaded before this module; lsp-mode
+  hands snippet completions to yasnippet at runtime.
 - **`completions/corfu.el`** + **`completions/cape.el`** are the actual
   completion frontend; this is signalled to lsp-mode via
   `lsp-completion-provider :none` (without it, lsp-mode tries to set up
   company-mode and prints a warning).
 - **`which-key`**: `lsp-enable-which-key-integration` is added to
   `lsp-mode-hook` so the `C-c l` prefix shows the popup.
-- Snippet directory: `yasnippets/` under the config root.
-
 ## Hover info — three independent display systems
 
 | System              | What it shows                                  | When it shows           |
@@ -123,24 +122,3 @@ inside `lsp-diagnostics--flycheck-start` (see the comment on the
 available via `flycheck-error-id`. Safe to delete the commented block at
 some point.
 
-## Yasnippet directory layout — easy to break
-
-Snippet root is `<config>/yasnippets/`. Two rules that *will* silently
-break snippet discovery if violated:
-
-1. **No yasnippet control files in the root** (`.yas-parents`,
-   `.yas-make-groups`, `.yas-metadata`). If any are present, yasnippet
-   treats the root as a single mode-specific directory (for a mode named
-   `"yasnippets"`) and refuses to scan subdirectories — every per-mode
-   folder becomes invisible.
-
-2. **Folder names must exactly match the major-mode symbol; case
-   matters**. AUCTeX uses `LaTeX-mode` (capital L, capital T), the
-   built-in mode is `latex-mode`. They are different directories.
-   Use `yas-activate-extra-mode` to bridge naming gaps; the file
-   does this for AUCTeX:
-   - `LaTeX-mode-hook` activates `latex-mode` snippets.
-
-   For Markdown the snippet directory is named `markdown-ts-mode/`
-   (matching the only Markdown major mode this config installs); no
-   bridge is needed.

@@ -200,54 +200,9 @@ KEY is the JSON object key as a string, e.g. method or id."
   :bind (:map lsp-ui-mode-map
               ("C-c l h g" . lsp-ui-doc-glance)))
 
-;; yasnippet: Snippet engine for interactive LSP expansions.
-;;
-;; While yasnippet is a standalone template system, its primary role here is
-;; to act as the "expansion engine" for lsp-mode completion candidates.
-;;
-;; Many LSP servers (Python, TS, etc.) return "snippets" for completions
-;; rather than plain text. For example, a function completion might be:
-;;   "my_function(${1:arg1}, ${2:arg2})"
-;;
-;; Without yasnippet:
-;;   LSP inserts the literal string "my_function(${1:arg1}, ${2:arg2})" or
-;;   just "my_function", forcing you to manually type the arguments.
-;;
-;; With yasnippet:
-;;   The text is inserted as "my_function(arg1, arg2)", your cursor is
-;;   placed on "arg1", and hitting TAB jumps you directly to "arg2".
-;;
-;; Integration Flow:
-;; 1. Corfu displays candidates.
-;; 2. You select one that is a snippet (marked with a [S] icon).
-;; 3. lsp-mode passes the snippet string to yasnippet for expansion.
-;; 4. yasnippet handles the interactive tab-stops and placeholders.
-;;
-;; --- Directory Structure & Control Files -------------------------------------
-;; To ensure snippets are correctly discovered, avoid placing any yasnippet
-;; control files (e.g., .yas-parents, .yas-make-groups, .yas-metadata) directly
-;; in the root of the "yasnippets" directory.
-;;
-;; If such a file exists in the root, yasnippet will treat that folder as a
-;; single mode-specific directory (for a mode named "yasnippets") and will
-;; NOT scan its subdirectories (like LaTeX-mode/ or markdown-ts-mode/).
-;;
-;; Folder names within "yasnippets" must match the Emacs major-mode symbol
-;; exactly and are CASE-SENSITIVE (e.g., "LaTeX-mode" for AUCTeX vs.
-;; "latex-mode" for the built-in mode). Use `yas-activate-extra-mode` as seen
-;; below to bridge naming gaps between different packages.
-(use-package yasnippet
-  :init
-  (setq yas-snippet-dirs
-        (list (expand-file-name "yasnippets" emacs-config-dir)))
-  :config
-  (yas-global-mode 1)
-  (yas-reload-all)
-  ;; AUCTeX's LaTeX-mode does not derive from latex-mode; ensure it picks up
-  ;; the snippets from yasnippets/latex-mode/
-  (with-eval-after-load 'tex
-    (add-hook 'LaTeX-mode-hook
-              (lambda () (yas-activate-extra-mode 'latex-mode)))))
+;; yasnippet (the snippet expansion engine consumed by lsp-mode for
+;; placeholder completion candidates) is configured separately in
+;; `yasnippet-config.el' and loaded from `init.el' before this module.
 
 (provide 'lsp-core)
 

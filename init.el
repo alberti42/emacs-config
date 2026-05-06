@@ -327,6 +327,12 @@
 
 ;;;; -- LSP clients ------------------------------------------------------------
 
+;; yasnippet: snippet engine.  Loaded before lsp-core because lsp-mode
+;; expands LSP completion placeholders through it.
+(emacs-config-load-module
+ 'yasnippet-config
+ "Could not load yasnippet-config.el; snippet expansion is disabled.")
+
 ;; LSP modules
 (emacs-config-load-module
  'lsp-core
