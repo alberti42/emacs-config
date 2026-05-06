@@ -62,11 +62,12 @@ faces without disturbing comments or existing markup."
     (soft-wrap-mode 1)
     (latex-config--setup-font-lock)
 
-    ;; English-word completion in prose buffers only. The CAPF loads
-    ;; cape-dict-file once into memory and filters by prefix in-process
-    ;; — no subprocess per keystroke.
+    ;; Prose word-completion: merged dabbrev + in-memory dictionary
+    ;; super-CAPF (defined in completions/cape.el). Surfaces
+    ;; buffer-recent words alongside dictionary words in one popup,
+    ;; both gated to ≥3 chars.
     (add-hook 'completion-at-point-functions
-              #'emacs-config-cape-dict-prefix nil t)
+              #'emacs-config-cape-prose nil t)
 
     ;; Remove cape-tex in LaTeX docume
     (setq-local completion-at-point-functions
