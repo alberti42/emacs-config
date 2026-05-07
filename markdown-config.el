@@ -303,8 +303,12 @@ is needed."
   (markdown-ts-hide-markup t)
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
   :bind (:map markdown-ts-mode-map
-              ("C-c C-o"     . markdown-config-follow-link-at-point)
-              ("C-c C-x RET" . markdown-ts-toggle-hide-markup)))
+              ("C-c C-o"     . markdown-config-follow-link-at-point) ; Same as in classic markdown-mode for `markdown-follow-thing-at-point'
+              ("C-c C-x RET" . markdown-ts-toggle-hide-markup)
+              ("M-<left>"    . nil)     ; Free M-<left>/M-<right> for word navigation (Emacs default `left-word'/`right-word')
+              ("M-<right>"   . nil)
+              ("C-c C-x l"   . markdown-ts-promote) ; Use bindings as in classic markdown-mode
+              ("C-c C-x r"   . markdown-ts-demote)))
 
 ;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 
