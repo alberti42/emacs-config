@@ -1280,5 +1280,128 @@ Line 3: carrier with `:foreground \"yellow\"', bare SVG → triangle
       (read-only-mode 1)
       (goto-char (point-min)))))
 
+;;; Test 013 — flymake margin indicator: explicit `:inherit default'
+;;;            overrides `margin' face background.
+
+(defun face-margin-test-013 (&optional mode)
+  "Real flymake margin indicator test (bug#80693 follow-up).
+
+This test calls the real `flymake--bs-display' — the function
+flymake.el uses to build its margin display spec — for each of the
+three diagnostic types (error, warning, note) and renders the
+returned spec as an overlay `before-string'.  No simulation: this
+is the exact code path flymake-mode goes through to produce a
+margin indicator.
+
+The bug Juri Linkov reported: flymake's per-character face is built
+as `:inherit (... default)'.  The `default' element of that chain
+brings `default's :background into the realized face attributes.
+When the displayed string is then merged on top of `MARGIN_FACE_ID'
+via `face_at_string_position', the inherited :background wins — so
+the indicator renders with the frame default background, not the
+margin background.  The bug is independent of the SVG/image C fix
+that landed for the image branch; it is in the string branch and
+is purely a flymake.el issue.
+
+Two side-by-side blocks share the same buffer:
+
+  BUG block (lines 1-3): real `flymake--bs-display'.  In themed
+    mode each indicator should appear with the frame default
+    background (white), breaking the gutter's continuity.
+
+  FIX block (lines 4-6): local mirror of `flymake--bs-display' with
+    Juri's one-line change applied — `:inherit (... default)' →
+    `:inherit (... margin)'.  Each indicator's background blends
+    into the margin gutter.
+
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (require 'flymake)
+  (require 'compile)
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-013*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               "face-margin-test-013: flymake margin indicator (bug#80693 follow-up)"
+               mode))
+      (insert "\
+This buffer demonstrates the flymake-margin-background bug Juri Linkov
+reported.  Each line below carries a real `flymake--bs-display'
+indicator in the left margin (calling flymake's own code, not a
+reproduction).  See the docstring of `face-margin-test-013' for the
+full explanation.
+
+BUG (current flymake): indicator background should match the gutter
+                       gray; instead it shows the frame default.
+
+  Line 1: flymake-error
+  Line 2: flymake-warning
+  Line 3: flymake-note
+
+FIX (Juri's proposed flymake.el patch — `:inherit (... default)' →
+     `:inherit (... margin)'): indicator blends into the gutter.
+
+  Line 4: flymake-error
+  Line 5: flymake-warning
+  Line 6: flymake-note
+")
+      (setq-local left-margin-width 2))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 2 0)
+    (with-current-buffer buf
+      (cl-flet ((bs-display-fixed (type)
+                  ;; Local mirror of `flymake--bs-display' with Juri's
+                  ;; one-line change applied: `:inherit (... default)'
+                  ;; → `:inherit (... margin)'.  Everything else is a
+                  ;; verbatim copy of the relevant branch of
+                  ;; flymake--bs-display.
+                  (let* ((indicator (get type 'flymake-margin-string))
+                         (value (if (symbolp indicator)
+                                    (symbol-value indicator)
+                                  indicator))
+                         (valuelist (if (listp value) value (list value)))
+                         (indicator-car (car valuelist)))
+                    (when (and (stringp indicator-car)
+                               flymake-margin-indicator-position)
+                      `((margin ,flymake-margin-indicator-position)
+                        ,(propertize indicator-car
+                                     'face `(:inherit (,(cdr valuelist)
+                                                       margin))))))))
+        (save-excursion
+          (goto-char (point-min))
+          ;; BUG block — real flymake--bs-display.
+          (search-forward "Line 1: ")
+          (beginning-of-line)
+          (dolist (type '(flymake-error flymake-warning flymake-note))
+            (let ((spec (flymake--bs-display type 'margins)))
+              (when spec
+                (let ((ov (make-overlay (point) (1+ (point)))))
+                  (overlay-put
+                   ov 'before-string
+                   (propertize "!" 'display spec)))))
+            (forward-line 1))
+          ;; FIX block — local mirror with Juri's change.
+          (goto-char (point-min))
+          (search-forward "Line 4: ")
+          (beginning-of-line)
+          (dolist (type '(flymake-error flymake-warning flymake-note))
+            (let ((spec (bs-display-fixed type)))
+              (when spec
+                (let ((ov (make-overlay (point) (1+ (point)))))
+                  (overlay-put
+                   ov 'before-string
+                   (propertize "!" 'display spec)))))
+            (forward-line 1))))
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
