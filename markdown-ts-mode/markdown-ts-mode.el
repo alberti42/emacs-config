@@ -1525,6 +1525,29 @@ OVERRIDE, START, and END are passed through to
                                 "\n")))
         (remove-text-properties node-start node-end '(display nil))))))
 
+(defun markdown-ts--refresh-thematic-breaks (frame)
+  "Re-fontify thematic breaks in markdown-ts-mode buffers shown on FRAME.
+Hook function for `window-size-change-functions'.  The displayed
+run of `markdown-ts-thematic-break-character' is sized to
+`window-max-chars-per-line' at fontify-time and cached in a
+`display' text property; without this hook the cached span would
+not track window-geometry changes.
+
+The flush is scoped to `thematic_break' nodes so other (potentially
+expensive) fontification — natively fontified code blocks, embedded
+language ranges — is left untouched."
+  (dolist (win (window-list frame 'no-mini))
+    (with-current-buffer (window-buffer win)
+      (when (and (derived-mode-p 'markdown-ts-mode)
+                 markdown-ts-hide-markup)
+        (when-let* ((parser (treesit-parser-create 'markdown))
+                    (root (treesit-parser-root-node parser)))
+          (dolist (node (treesit-query-capture
+                         root '((thematic_break) @_break)
+                         nil nil t))
+            (font-lock-flush (treesit-node-start node)
+                             (treesit-node-end node))))))))
+
 (defun markdown-ts--fontify-code-block (node _override _start _end &rest _)
   "Fontify code block content NODE with a background overlay.
 Use `markdown-ts-code-block-markup-hidden' when markup is hidden,
@@ -5217,6 +5240,11 @@ NOTE: Call this function only when the treesit `markdown' and
            (make-local-variable 'font-lock-extra-managed-props)
            (dolist (prop '(invisible display button category action help-echo))
              (add-to-list 'font-lock-extra-managed-props prop)))
+
+         ;; Re-fontify thematic breaks on window-geometry changes so the
+         ;; cached `display' string tracks `window-max-chars-per-line'.
+         (add-hook 'window-size-change-functions
+                   #'markdown-ts--refresh-thematic-breaks)
 
          (when (treesit-ready-p 'html t)
            (treesit-parser-create 'html)
