@@ -59,49 +59,56 @@ See test buffer for full explanation."
   (interactive)
   (markdown-ts-test--load-theme)
   (let ((buf (get-buffer-create "*markdown-ts-test-001*"))
-        (target-width 60))
+        (target-width 78))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
       (insert (markdown-ts-test--title
-               "markdown-ts-test-001: thematic break overflows visible text area"))
+               "markdown-ts-test-001: thematic break overflow under line-numbers + margin"))
       (insert "\
-This test demonstrates a bug in `markdown-ts--fontify-thematic-break'.
+This test exercises the rendering of `thematic_break' nodes by
+`markdown-ts--fontify-thematic-break' when `markdown-ts-hide-markup'
+is on and the `markdown-ts-thematic-break' face has `:extend' non-nil
+(the default, via `shadow').  The pre-patch implementation sized the
+display-property span using
 
-When `markdown-ts-hide-markup' is on and the `markdown-ts-thematic-break'
-face has `:extend' non-nil (the default, via `shadow'), the function
-replaces the thematic-break node with a `display' property containing
-N copies of the thematic-break character followed by a newline, where
+  N = (window-body-width) - col
 
-  N = (- (window-body-width) col)
+`window-body-width' counts the columns reserved by
+`display-line-numbers-mode' as available, since the line-number area
+is part of the body in Emacs's terminology; fringes and per-character
+face metrics are also not accounted for.  The rendered run therefore
+exceeds the area actually available to the buffer text and wraps onto
+a stub second visual line.
 
-When the window has a non-zero right margin --- which is how soft-wrap
-focus modes such as olivetti, visual-fill-column, writeroom-mode, and
-darkroom constrain the visible text area --- the rendered line
-overflows and wraps.  A short stub of horizontal bars appears on a
-second visual line, breaking the visual flow.
-
-The width also varies with the frame width in a way that does not
-simply track the writable text area, suggesting the math does not
-account for the actual area available to the row (margins, fringes,
-wrap/line-prefix).
+The patch replaces the call with `window-max-chars-per-line' (passing
+the `markdown-ts-thematic-break' face).  That function returns the
+number of characters that can be displayed on one visual line, taking
+the line-number gutter, fringes, margins, and face metrics into
+account, so the run fits flush within the writable text area.
 
 Setup applied to this buffer:
 
   - `markdown-ts-mode' enabled.
   - `markdown-ts-hide-markup' on.
   - `visual-line-mode' on.
+  - `display-line-numbers-mode' on (reserves a left gutter that the
+    pre-patch code over-counted).
   - The selected window has a right margin reserved so the text area
-    is constrained to ~60 columns.
+    is constrained to 72 columns.
 
-Expected (correct fix): the rendered horizontal-bar run fills exactly
-the visible text area in one row.  No second visual line appears.
+What to observe:
 
-Actual (bug): the rendered run is wider than the visible text area
-and wraps; a stub second visual line of horizontal bars appears.
+  Patched Emacs:    the horizontal-bar run fills exactly the visible
+                    text area in one row.  No stub second visual line
+                    appears below it.
 
-Resize the frame width to confirm: the stub width changes as the
-frame width changes, instead of always exactly filling the text area.
+  Unpatched Emacs:  the run extends beyond the visible text area and
+                    wraps onto a short second visual line of
+                    horizontal bars.  The stub width tracks the
+                    line-number gutter width: toggle
+                    `display-line-numbers-mode' to confirm the math
+                    is independent of the writable area.
 
 ---
 
