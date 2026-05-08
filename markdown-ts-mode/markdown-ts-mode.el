@@ -1523,12 +1523,19 @@ OVERRIDE, START, and END are passed through to
                                   (- (window-max-chars-per-line
                                       win 'markdown-ts-thematic-break)
                                      col)
-                                12)))
-            (put-text-property node-start node-end
+                                12))
+                 ;; Cover the dashes only, not the trailing newline.  This
+                 ;; keeps point at end-of-line outside the display range
+                 ;; while the user is typing `---', avoiding the cursor
+                 ;; placement glitch where the visual caret jumps to the
+                 ;; top of the window (point falling inside a `display'
+                 ;; string with an embedded newline).
+                 (display-end (save-excursion
+                                (goto-char node-start)
+                                (line-end-position))))
+            (put-text-property node-start display-end
                                'display
-                               (concat
-                                (make-string span-length char)
-                                "\n")))
+                               (make-string span-length char)))
         (remove-text-properties node-start node-end '(display nil))))))
 
 (defun markdown-ts--refresh-thematic-breaks (frame)
