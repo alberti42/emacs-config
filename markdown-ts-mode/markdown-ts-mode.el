@@ -1511,11 +1511,17 @@ OVERRIDE, START, and END are passed through to
       (if (and markdown-ts-hide-markup char (char-displayable-p char))
           (let* ((col (save-excursion (goto-char node-start)
                                       (current-column)))
+                 ;; Use the window actually displaying this buffer rather
+                 ;; than the selected window, which may be the minibuffer
+                 ;; (Vertico, completion frameworks) and would yield a
+                 ;; misleading width.
+                 (win (or (get-buffer-window (current-buffer))
+                          (get-buffer-window (current-buffer) t)))
                  ;; Span if the face has non-nil :extend.
                  (span-length (if (face-attribute 'markdown-ts-thematic-break
                                                   :extend nil 'default)
                                   (- (window-max-chars-per-line
-                                      nil 'markdown-ts-thematic-break)
+                                      win 'markdown-ts-thematic-break)
                                      col)
                                 12)))
             (put-text-property node-start node-end
