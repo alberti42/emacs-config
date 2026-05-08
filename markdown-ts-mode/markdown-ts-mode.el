@@ -1514,7 +1514,9 @@ OVERRIDE, START, and END are passed through to
                  ;; Span if the face has non-nil :extend.
                  (span-length (if (face-attribute 'markdown-ts-thematic-break
                                                   :extend nil 'default)
-                                  (- (window-body-width) col)
+                                  (- (window-max-chars-per-line
+                                      nil 'markdown-ts-thematic-break)
+                                     col)
                                 12)))
             (put-text-property node-start node-end
                                'display
