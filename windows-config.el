@@ -44,24 +44,29 @@ connecting client's environment.  Falls back to `getenv' for non-daemon Emacs."
     (when (windows-config--in-tmux-p)
       (call-process-shell-command "tmux if -F '#{pane_at_bottom}' '' 'select-pane -D'" nil nil))))
 
-;; Split windows and switch to the other buffer instead of mirroring the current one.
+;; Split windows, focus the new one, and show the other buffer there.
+;; In `dired-mode' the new window keeps mirroring the current dired buffer.
 (defun windows-config-split-right ()
-  "Split window right and show the other buffer in the new window.
-In `dired-mode', preserves default behavior (mirroring current buffer)."
+  "Split window right and focus the new window.
+In `dired-mode', the new window mirrors the current dired buffer;
+otherwise it shows the other buffer."
   (interactive)
-  (split-window-right)
-  (unless (derived-mode-p 'dired-mode)
+  (let ((dired (derived-mode-p 'dired-mode)))
+    (split-window-right)
     (other-window 1)
-    (switch-to-buffer (other-buffer))))
+    (unless dired
+      (switch-to-buffer (other-buffer)))))
 
 (defun windows-config-split-below ()
-  "Split window below and show the other buffer in the new window.
-In `dired-mode', preserves default behavior (mirroring current buffer)."
+  "Split window below and focus the new window.
+In `dired-mode', the new window mirrors the current dired buffer;
+otherwise it shows the other buffer."
   (interactive)
-  (split-window-below)
-  (unless (derived-mode-p 'dired-mode)
+  (let ((dired (derived-mode-p 'dired-mode)))
+    (split-window-below)
     (other-window 1)
-    (switch-to-buffer (other-buffer))))
+    (unless dired
+      (switch-to-buffer (other-buffer)))))
 
 ;; Change default behavior when splitting windows
 (keymap-global-set "C-x 3" #'windows-config-split-right)
