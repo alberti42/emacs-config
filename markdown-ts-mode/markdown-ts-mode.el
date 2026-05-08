@@ -1561,6 +1561,33 @@ language ranges — is left untouched."
             (font-lock-flush (treesit-node-start node)
                              (treesit-node-end node))))))))
 
+(defun markdown-ts--post-self-insert-advance-thematic-break ()
+  "Advance point past a freshly typed thematic break.
+Hooked on `post-self-insert-hook'.  When the user types the third
+character of a `---', `***', or `___' run that the parser recognises
+as a thematic break, the rendered horizontal bar replaces the dashes
+and the natural place to continue typing is the line below.  Move
+point there; insert a newline first if the bar is at `point-max'.
+
+`font-lock-ensure' is called before checking the parser to make sure
+the tree is up to date for the current line and the display property
+has been applied (so the user sees the bar before the cursor jump)."
+  (when (and markdown-ts-hide-markup
+             (memq last-command-event '(?- ?* ?_))
+             (eolp))
+    (let ((bol (line-beginning-position))
+          (eol (line-end-position)))
+      (when (save-excursion
+              (goto-char bol)
+              (looking-at "\\(?:---+\\|\\*\\*\\*+\\|___+\\)[ \t]*$"))
+        (font-lock-ensure bol eol)
+        (let ((node (treesit-node-at bol)))
+          (when (and node
+                     (string= (treesit-node-type node) "thematic_break"))
+            (if (= (point) (point-max))
+                (insert "\n")
+              (forward-char 1))))))))
+
 (defun markdown-ts--fontify-code-block (node _override _start _end &rest _)
   "Fontify code block content NODE with a background overlay.
 Use `markdown-ts-code-block-markup-hidden' when markup is hidden,
@@ -5258,6 +5285,12 @@ NOTE: Call this function only when the treesit `markdown' and
          ;; cached `display' string tracks `window-max-chars-per-line'.
          (add-hook 'window-size-change-functions
                    #'markdown-ts--refresh-thematic-breaks)
+
+         ;; After typing the third dash/asterisk/underscore of a thematic
+         ;; break, advance point below the rendered bar.
+         (add-hook 'post-self-insert-hook
+                   #'markdown-ts--post-self-insert-advance-thematic-break
+                   nil t)
 
          (when (treesit-ready-p 'html t)
            (treesit-parser-create 'html)
