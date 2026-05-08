@@ -112,7 +112,8 @@ Paragraph above the thematic break.
 Paragraph below the thematic break.
 ")
       (markdown-ts-mode)
-      (visual-line-mode 1))
+      (visual-line-mode 1)
+      (display-line-numbers-mode 1))
     (switch-to-buffer buf)
     (let ((right (max 0 (- (window-total-width) target-width))))
       (set-window-margins (selected-window) 0 right))
