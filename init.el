@@ -200,6 +200,11 @@
   :custom
   (soft-wrap-load-diagnostics nil))
 
+;; Olivetti: centred prose layout (alternative to soft-wrap for testing).
+(emacs-config-load-module
+ 'olivetti-config
+ "Could not load olivetti-config.el; olivetti is disabled.")
+
 ;; Tree-sitter grammars (auto-install missing ones)
 (emacs-config-load-module
  'treesitter-config
