@@ -19,7 +19,8 @@
   :straight (git-gutter
              :host github
              :repo "alberti42/fork-git-gutter"
-             :branch "fix/git-gutter-faces"
+             ;; :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
+             :branch "fix/visual-line"
              :files ("git-gutter.el"))
   :config
   ;; Live-ish updates (idle timer).
