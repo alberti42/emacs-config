@@ -42,12 +42,6 @@
   ;; buffers with no modifications yet (no 'diffinfos).
   (setq git-gutter:always-show-separator nil)
   (setq git-gutter:unchanged-sign nil)
-
-  ;; Disable git-gutter for large files
-  (advice-add 'git-gutter-mode :before-while
-              (lambda (&rest _)
-                (or (not (buffer-file-name))
-                    (<= (buffer-size) 250000)))) ; disable for larger than 250 KB
   
   (global-git-gutter-mode 1)
 
