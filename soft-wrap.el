@@ -75,6 +75,16 @@ When nil, the current value of `fill-column' is used when enabling.")
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
+(defvar-local soft-wrap--centered nil
+  "Non-nil to centre the body horizontally (olivetti-style).
+Toggle interactively with `soft-wrap-olivetti'.
+
+When nil (the default), only the right margin is grown to hit the
+target wrap width.  When non-nil, both margins are grown symmetrically
+so the body is centred in the window; the saved (pre-`soft-wrap-mode')
+left margin is preserved as the inner floor, so gutters reserved on the
+left (e.g. by `git-gutter') keep working.")
+
 ;;; Mode definitions ----------------------------------------------------------
 
 (defvar soft-wrap-mode-map (make-sparse-keymap)
@@ -88,6 +98,8 @@ When nil, the current value of `fill-column' is used when enabling.")
   "Menu for `soft-wrap-mode'."
   '("Soft Wrap Mode"
     ["Set wrap width..." soft-wrap-set-width]
+    ["Centred layout (olivetti)" soft-wrap-olivetti
+     :style toggle :selected soft-wrap--centered]
     "---"
     ["Turn off minor mode" (soft-wrap-mode -1)]
     ["Help for minor mode" (describe-function 'soft-wrap-mode)]))
@@ -114,12 +126,30 @@ dynamically) or accepts any integer."
     (soft-wrap--refresh-buffer-windows)))
 
 ;;;###autoload
+(defun soft-wrap-olivetti ()
+  "Toggle olivetti-style centred layout while `soft-wrap-mode' is active.
+
+When enabled, the body is centred horizontally by growing both window
+margins symmetrically.  The buffer's pre-existing left margin (e.g.
+the column reserved for `git-gutter') is preserved as the inner floor,
+so gutters keep working."
+  (interactive)
+  (unless soft-wrap-mode
+    (user-error "Soft-wrap-mode is not active in this buffer"))
+  (setq-local soft-wrap--centered (not soft-wrap--centered))
+  (soft-wrap--refresh-buffer-windows)
+  (message "Soft-wrap centring %s"
+           (if soft-wrap--centered "enabled" "disabled")))
+
+;;;###autoload
 (define-minor-mode soft-wrap-mode
   "Buffer-local minor mode for visual soft wrapping at a target column.
 
 The target column is taken from `soft-wrap-default-width' if non-nil,
 otherwise from `fill-column'."
-  :lighter (:eval (format " Wrap:%d" (or soft-wrap--target-width fill-column)))
+  :lighter (:eval (format " Wrap:%d%s"
+                          (or soft-wrap--target-width fill-column)
+                          (if soft-wrap--centered "·" "")))
   :keymap soft-wrap-mode-map
   :group 'soft-wrap
   (if soft-wrap-mode
@@ -183,48 +213,83 @@ font metrics."
 
 ;;; Window margin management --------------------------------------------------
 
-(defun soft-wrap--save-window-right-margin (window)
-  "Save WINDOW's current right margin as a window parameter (once only).
-The value is wrapped in a list so nil (not set) is distinguished from
-absence of the parameter (not yet saved)."
+(defun soft-wrap--save-window-margins (window)
+  "Save WINDOW's current left and right margins as window parameters.
+Each side is saved at most once; subsequent calls are no-ops.  Values
+are wrapped in a list so nil (not set) is distinguished from absence of
+the parameter (not yet saved)."
   (when (window-live-p window)
-    (unless (window-parameter window 'soft-wrap--saved-right-margin)
-      (set-window-parameter window 'soft-wrap--saved-right-margin
-                            (list (cdr (window-margins window)))))))
+    (let ((m (window-margins window)))
+      (unless (window-parameter window 'soft-wrap--saved-left-margin)
+        (set-window-parameter window 'soft-wrap--saved-left-margin
+                              (list (car m))))
+      (unless (window-parameter window 'soft-wrap--saved-right-margin)
+        (set-window-parameter window 'soft-wrap--saved-right-margin
+                              (list (cdr m)))))))
 
-(defun soft-wrap--restore-window-right-margin (window)
-  "Restore WINDOW's right margin from the saved window parameter."
+(defun soft-wrap--restore-window-margins (window)
+  "Restore WINDOW's left and right margins from the saved window parameters."
   (when (window-live-p window)
-    (let ((saved (window-parameter window 'soft-wrap--saved-right-margin)))
-      (when saved
+    (let ((sl (window-parameter window 'soft-wrap--saved-left-margin))
+          (sr (window-parameter window 'soft-wrap--saved-right-margin)))
+      (when (or sl sr)
         (let* ((m (window-margins window))
-               (left (or (car m) 0)))
-          (set-window-margins window left (car saved)))
+               (left  (if sl (car sl) (car m)))
+               (right (if sr (car sr) (cdr m))))
+          (set-window-margins window left right))
+        (set-window-parameter window 'soft-wrap--saved-left-margin nil)
         (set-window-parameter window 'soft-wrap--saved-right-margin nil)))))
 
 (defun soft-wrap--adjust-window-margins (window)
-  "Adjust WINDOW's right margin to hit the target wrap width."
+  "Adjust WINDOW's margins to hit the target wrap width.
+By default only the right margin is grown.  When the buffer-local
+`soft-wrap--centered' is non-nil, both margins grow symmetrically; the
+saved (pre-mode) left margin is preserved as the inner floor."
   (when (window-live-p window)
     (let ((buf (window-buffer window)))
       (when (buffer-live-p buf)
         (with-current-buffer buf
           (when soft-wrap-mode
-            ;; Save the original right margin before the first adjustment.
+            ;; Save the original margins before the first adjustment.
             ;; The once-only guard in the save function makes this a no-op
             ;; on subsequent calls.
-            (soft-wrap--save-window-right-margin window)
+            (soft-wrap--save-window-margins window)
             (let* ((target (soft-wrap--window-target-width window))
+                   (saved-left  (or (car (window-parameter
+                                          window 'soft-wrap--saved-left-margin))
+                                    0))
+                   (saved-right (or (car (window-parameter
+                                          window 'soft-wrap--saved-right-margin))
+                                    0))
                    (margins (window-margins window))
-                   (left (or (car margins) 0))
-                   (right (or (cdr margins) 0))
-                   (cur (window-max-chars-per-line window))
-                   (delta (- cur target))
-                   (new-right (max 0 (+ right delta))))
-              (when (fboundp 'soft-wrap--trace-log)
-                (soft-wrap--trace-log "adjust: margins-at-entry=%S left=%d right=%d cur=%d target=%d new-right=%d"
-                                      margins left right cur target new-right))
-              (unless (= new-right right)
-                (set-window-margins window left new-right)))))))))
+                   (cur-left  (or (car margins) 0))
+                   (cur-right (or (cdr margins) 0)))
+              ;; Reset to saved margins first so `window-max-chars-per-line'
+              ;; reports the natural body width.  No redisplay happens
+              ;; between the two `set-window-margins' calls, so the user
+              ;; sees a single visible margin change.
+              (unless (and (= cur-left saved-left) (= cur-right saved-right))
+                (set-window-margins window saved-left saved-right))
+              (let* ((natural (window-max-chars-per-line window))
+                     (delta (- natural target))
+                     (new-left  saved-left)
+                     (new-right saved-right))
+                (when (> delta 0)
+                  (if soft-wrap--centered
+                      (let* ((half  (/ delta 2))
+                             (other (- delta half)))
+                        (setq new-left  (+ saved-left  half))
+                        (setq new-right (+ saved-right other)))
+                    (setq new-right (+ saved-right delta))))
+                (when (fboundp 'soft-wrap--trace-log)
+                  (soft-wrap--trace-log
+                   "adjust: saved=%S cur=%S target=%d natural=%d delta=%d new=%S centered=%S"
+                   (cons saved-left saved-right)
+                   (cons cur-left cur-right)
+                   target natural delta
+                   (cons new-left new-right)
+                   soft-wrap--centered))
+                (set-window-margins window new-left new-right)))))))))
 
 (defun soft-wrap--refresh-buffer-windows ()
   "Refresh margins for all windows showing the current buffer."
@@ -310,30 +375,44 @@ Called by `soft-wrap-mode' when toggled off."
   ;; Restore managed variables (includes auto-fill-function).
   (soft-wrap--restore-state)
 
-  ;; Restore each window's right margin to what it was before soft-wrap enabled.
+  ;; Restore each window's margins to what they were before soft-wrap enabled.
   (dolist (w (get-buffer-window-list (current-buffer) nil t))
-    (soft-wrap--restore-window-right-margin w))
+    (soft-wrap--restore-window-margins w))
 
-  (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode))
+  (kill-local-variable 'soft-wrap--saved-visual-wrap-prefix-mode)
+  (kill-local-variable 'soft-wrap--centered))
 
 ;;; Split-window compatibility -------------------------------------------------
 
 (defun soft-wrap--around-split-window (orig-fn &optional window size side pixelwise)
-  "Temporarily clear the soft-wrap right margin so `split-window' succeeds.
-Without this, the large right margin makes Emacs think the window is too
-narrow to split.  After the split, the window-state-change hook recalculates
-margins for both resulting windows."
+  "Temporarily clear soft-wrap margins so `split-window' succeeds.
+Without this, large margins make Emacs think the window is too narrow
+to split.  In centred mode both margins are cleared; otherwise only
+the right margin is touched and the user's original left margin (e.g.
+a column reserved for `git-gutter') is preserved across the split.
+After the split, the window-state-change hook recalculates margins for
+both resulting windows."
   (let* ((win (or window (selected-window)))
          (buf (window-buffer win))
          (active (and (buffer-live-p buf)
                       (buffer-local-value 'soft-wrap-mode buf)))
+         (centered (and active
+                        (buffer-local-value 'soft-wrap--centered buf)))
          (margins (when active (window-margins win)))
-         (old-right (when active (or (cdr margins) 0))))
-    (when (and active (> old-right 0))
-      (set-window-margins win (or (car margins) 0) 0))
+         (old-left  (when active (or (car margins) 0)))
+         (old-right (when active (or (cdr margins) 0)))
+         (saved-left (when active
+                       (or (car (window-parameter
+                                 win 'soft-wrap--saved-left-margin))
+                           old-left)))
+         (touched (and active
+                       (or (> old-right 0)
+                           (and centered (> old-left saved-left))))))
+    (when touched
+      (set-window-margins win (if centered 0 saved-left) 0))
     (unwind-protect
         (funcall orig-fn window size side pixelwise)
-      (when (and active (> old-right 0) (window-live-p win))
+      (when (and touched (window-live-p win))
         (soft-wrap--adjust-window-margins win)))))
 
 ;;; Optional diagnostics -------------------------------------------------------
