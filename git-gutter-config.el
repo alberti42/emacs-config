@@ -41,7 +41,7 @@
   ;; Determines whether to show the separator-sign and the unchanged-sign for
   ;; buffers with no modifications yet (no 'diffinfos).
   (setq git-gutter:always-show-separator nil)
-  (setq git-gutter:unchanged-sign "")
+  (setq git-gutter:unchanged-sign nil)
 
   ;; Disable git-gutter for large files
   (advice-add 'git-gutter-mode :before-while
