@@ -48,6 +48,20 @@ If nil, use `fill-column'. If an integer, that value is used when
   :group 'soft-wrap)
 
 
+(defcustom soft-wrap-default-centered nil
+  "Whether `soft-wrap-mode' starts with centred layout enabled.
+
+When non-nil, every buffer entering `soft-wrap-mode' has its body
+centred horizontally by default — an olivetti-inspired layout
+implemented on top of soft-wrap's column-accurate width calculation.
+Toggle at runtime with `soft-wrap-centered'.  For per-mode opt-in
+(e.g. centred Markdown but right-only everywhere else), call
+`(soft-wrap-centered 1)' in the relevant mode hook after enabling
+`soft-wrap-mode'."
+  :type 'boolean
+  :group 'soft-wrap)
+
+
 ;;; Internal state ------------------------------------------------------------
 
 (defvar-local soft-wrap--saved-vars-state nil
@@ -76,8 +90,8 @@ When nil, the current value of `fill-column' is used when enabling.")
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
 (defvar-local soft-wrap--centered nil
-  "Non-nil to centre the body horizontally (olivetti-style).
-Toggle interactively with `soft-wrap-olivetti'.
+  "Non-nil to centre the body horizontally.
+Toggle interactively with `soft-wrap-centered'.
 
 When nil (the default), only the right margin is grown to hit the
 target wrap width.  When non-nil, both margins are grown symmetrically
@@ -98,7 +112,7 @@ left (e.g. by `git-gutter') keep working.")
   "Menu for `soft-wrap-mode'."
   '("Soft Wrap Mode"
     ["Set wrap width..." soft-wrap-set-width]
-    ["Centred layout (olivetti)" soft-wrap-olivetti
+    ["Centred layout" soft-wrap-centered
      :style toggle :selected soft-wrap--centered]
     "---"
     ["Turn off minor mode" (soft-wrap-mode -1)]
@@ -126,20 +140,32 @@ dynamically) or accepts any integer."
     (soft-wrap--refresh-buffer-windows)))
 
 ;;;###autoload
-(defun soft-wrap-olivetti ()
-  "Toggle olivetti-style centred layout while `soft-wrap-mode' is active.
+(defun soft-wrap-centered (&optional arg)
+  "Toggle centred layout while `soft-wrap-mode' is active.
 
 When enabled, the body is centred horizontally by growing both window
-margins symmetrically.  The buffer's pre-existing left margin (e.g.
-the column reserved for `git-gutter') is preserved as the inner floor,
-so gutters keep working."
-  (interactive)
+margins symmetrically — an olivetti-inspired layout, but built on
+soft-wrap's column-accurate width calculation.  The buffer's
+pre-existing left margin (e.g. the column reserved for `git-gutter')
+is preserved as the inner floor, so gutters keep working.
+
+With no ARG, toggle.  With a positive ARG, enable centring; with a
+non-positive ARG, disable it.  This makes the command usable as both
+an interactive toggle and an explicit setter in mode hooks, e.g.
+  (add-hook \\='markdown-mode-hook
+            (lambda () (soft-wrap-mode 1) (soft-wrap-centered 1)))"
+  (interactive "P")
   (unless soft-wrap-mode
     (user-error "Soft-wrap-mode is not active in this buffer"))
-  (setq-local soft-wrap--centered (not soft-wrap--centered))
+  (setq-local soft-wrap--centered
+              (cond
+               ((null arg) (not soft-wrap--centered))
+               ((and (numberp arg) (> arg 0)) t)
+               (t nil)))
   (soft-wrap--refresh-buffer-windows)
-  (message "Soft-wrap centring %s"
-           (if soft-wrap--centered "enabled" "disabled")))
+  (when (called-interactively-p 'interactive)
+    (message "Soft-wrap centring %s"
+             (if soft-wrap--centered "enabled" "disabled"))))
 
 ;;;###autoload
 (define-minor-mode soft-wrap-mode
@@ -337,6 +363,7 @@ Called by `soft-wrap-mode' when toggled on."
   (setq-local auto-hscroll-mode nil)
 
   (setq-local soft-wrap--target-width soft-wrap-default-width)
+  (setq-local soft-wrap--centered soft-wrap-default-centered)
   (setq-local soft-wrap--warned-mismatch nil)
 
   (visual-line-mode 1)
