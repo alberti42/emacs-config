@@ -8,6 +8,25 @@
 
 ;;; Code:
 
+;; Show "(current/total)" match counter in the isearch prompt.
+(setq isearch-lazy-count t)
+(setq lazy-count-prefix-format "(%s/%s) "
+      lazy-count-suffix-format nil)
+
+;; Lazy-highlight the whole buffer (not just the visible window) so motion lands in painted regions.
+(setq lazy-highlight-buffer t)
+
+;; Keep at default nil: ultra-scroll's pixel-scrolling bypasses the scroll-command path, so isearch
+;; stays active during wheel scrolling without this. Setting it to t fights ultra-scroll because
+;; isearch then tries to keep the current match in view, snapping the window back on every event.
+(setq isearch-allow-scroll nil)
+
+;; Let M-< / M-> / C-v / M-v move within isearch instead of exiting it.
+(setq isearch-allow-motion t)
+
+;; Treat any whitespace in the query as a run of whitespace (matches across line breaks).
+(setq search-whitespace-regexp "[ \t\r\n]+")
+
 (defvar search-recenter-edge-threshold 5
   "Trigger scrolling when the isearch match is within this many lines of the window edge.")
 
