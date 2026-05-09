@@ -8,6 +8,7 @@
             (lambda ()
               (setq-local fill-column 100)
               (soft-wrap-mode 1)
+              ;; (olivetti-mode 1)
 
               ;; Prose word-completion: merged dabbrev + in-memory
               ;; dictionary super-CAPF (defined in completions/cape.el).
