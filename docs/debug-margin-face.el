@@ -28,22 +28,43 @@
 ;;   emacs -Q --load /path/to/debug-margin-face.el \
 ;;             --eval "(face-margin-test-NNN 'themed)"
 ;;
-;; Replace NNN with the test number (001 through 009, plus 007b), and
-;; 'themed with 'standard as needed.
+;; Replace NNN with the test name from the index below, and 'themed
+;; with 'standard as needed.  The tests can also be run interactively
+;; within Emacs via M-x.
 ;;
-;; The tests can also be run interactively within Emacs via M-x.  For
-;; tests 003–009, a prompt will appear in the minibuffer to choose
-;; between the 'themed and 'standard modes.
+;; Test index (see each test's docstring for full details):
+;;
+;;   - face-margin-test-001   Stripe bug demo (no 'margin' customization).
+;;   - face-margin-test-002   Fix demo ('margin' matches 'line-number' bg).
+;;   - face-margin-test-003   2-column margin: face interaction + empty fill.
+;;   - face-margin-test-004   Right margin as layout padding + visual-wrap.
+;;   - face-margin-test-004b  Margin background bleed (wide left/right margins).
+;;   - face-margin-test-005   'margin' font attributes (:weight, :height).
+;;   - face-margin-test-006   Buffer-local 'margin' isolation (face-remap).
+;;   - face-margin-test-007   Horizontal scrolling.
+;;   - face-margin-test-007b  Horizontal scrolling without line-number column.
+;;   - face-margin-test-008   RTL text with colored 'margin'.
+;;   - face-margin-test-009   Built-in Flymake margin indicators (2-col).
+;;   - face-margin-test-010a  Variable-pitch: 'margin' inherits 'variable-pitch'.
+;;   - face-margin-test-010b  Variable-pitch: 'margin' uses :height 2.0.
+;;   - face-margin-test-010c  Variable-pitch: 'default' uses a variable-pitch font.
+;;   - face-margin-test-010d  Variable-pitch: combined stress (010c + :height 2.0).
+;;   - face-margin-test-011   Margin face on truncated rows.
+;;   - face-margin-test-012   SVG image in margin (bug#80693 follow-up).
+;;   - face-margin-test-013   Flymake margin indicator (bug#80693 follow-up).
+;;
+;; Mode handling:
+;;
+;; Tests 001 and 002 are paired and run in fixed modes: 001 is in
+;; 'standard' mode to show the stripe bug using only built-in
+;; components; 002 is in 'themed' mode to show the fix.  All other
+;; tests prompt for the mode interactively, or accept it as a single
+;; symbol argument ('themed or 'standard).
 ;;
 ;; The script is designed to run on unpatched Emacs without crashing.  On
 ;; unpatched builds, the 'margin' face does not exist, so all tests
 ;; gracefully fall back to 'standard' mode, allowing the reviewer to
 ;; demonstrate the pre-patch behavior before applying the fix.
-;;
-;; Tests 001 and 002 are paired: 001 is fixed to 'standard' mode to show
-;; the stripe bug using only built-in components; 002 is fixed to 'themed'
-;; mode to show the fix.  Tests 003–009 allow choosing the mode via an
-;; interactive prompt.
 
 ;;; Code:
 
