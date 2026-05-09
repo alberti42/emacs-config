@@ -123,6 +123,12 @@
 ;; Save minibuffer history
 (savehist-mode 1)
 
+;; Typing with an active region replaces it (modern editor behavior).
+(delete-selection-mode 1)
+
+;; Focus the *Help* window when it pops up so `q` closes it without an extra C-x o.
+(setq help-window-select t)
+
 ;; Recently visited files
 (emacs-config-load-module
  'recentf-config
