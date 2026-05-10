@@ -45,15 +45,6 @@
 ;; causes horizontal truncation of icons in dired and elsewhere.
 (set-face-attribute 'default nil :family "JetBrainsMonoNL Nerd Font Mono" :height 180 :weight 'light)
 
-;; JetBrainsMonoNL Nerd Font Mono lacks glyphs in the Miscellaneous Symbols
-;; and Arrows block (U+2B00–U+2BFF) — e.g. ⯈/⯆ used by `org-modern' for
-;; level 3+ heading fold indicators.  Without an explicit mapping macOS
-;; either renders tofu or falls back to a font with mismatched metrics.
-;; `Iosevka Nerd Font Mono' covers this block with consistently-sized
-;; monospace glyphs that align well with JetBrainsMono's metrics.
-;; Harmless on TTY frames, which ignore fontset entries.
-(set-fontset-font t '(#x2b00 . #x2bff) "Iosevka Nerd Font Mono" nil 'append)
-
 ;; Make `fixed-pitch' follow the `default' face so packages that distinguish
 ;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
 ;; mu4e body, `mixed-pitch-mode') render in the same font as the rest of the

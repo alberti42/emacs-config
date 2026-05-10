@@ -60,12 +60,7 @@
   ;; Heading editing/insertion ergonomics.
   (org-special-ctrl-a/e t)
   (org-insert-heading-respect-content t)
-  (org-catch-invisible-edits 'show-and-error)
-  ;; Tag column settings: with `org-modern' tags become boxed labels, so the
-  ;; historic right-flush alignment via padding spaces no longer makes sense.
-  (org-auto-align-tags nil)
-  (org-tags-column 0)
-  (org-agenda-tags-column 0)
+  (org-catch-invisible-edits 'show-and-error)  
   ;; Compact fold ellipsis.
   (org-ellipsis "…")
   :config
@@ -172,7 +167,7 @@
   :bind (:map org-mode-map
               ("C-c t e" . my/org-toggle-emphasis-markers))
   :custom
-  (org-appear-autoemphasis t)
+  (org-appear-autoemphasis nil)
   (org-appear-autolinks t)
   (org-appear-autosubmarkers t)
   :config
@@ -187,13 +182,33 @@
     (message "Org emphasis markers: %s"
              (if org-hide-emphasis-markers "hidden" "visible"))))
 
-;; Modern visual style for Org buffers (headlines, keywords, tables, blocks,
-;; tags, timestamps).  Uses text properties — no SVG, fragments stay editable.
-(use-package org-modern
-  :after org
-  :hook
-  (org-mode . org-modern-mode)
-  (org-agenda-finalize . org-modern-agenda))
+;; ;; Modern visual style for Org buffers (headlines, keywords, tables, blocks,
+;; ;; tags, timestamps).  Uses text properties — no SVG, fragments stay editable.
+;; (use-package org-modern
+;;   :after org
+;;   :hook
+;;   (org-mode . org-modern-mode)
+;;   (org-agenda-finalize . org-modern-agenda)
+;;   :config  
+;;   ;; JetBrainsMonoNL Nerd Font Mono lacks glyphs in the Miscellaneous Symbols
+;;   ;; and Arrows block (U+2B00–U+2BFF) — e.g. ⯈/⯆ used by `org-modern' for
+;;   ;; level 3+ heading fold indicators.  Without an explicit mapping macOS
+;;   ;; either renders tofu or falls back to a font with mismatched metrics.
+;;   ;; `Iosevka Nerd Font Mono' covers this block with consistently-sized
+;;   ;; monospace glyphs that align well with JetBrainsMono's metrics.
+;;   ;; Harmless on TTY frames, which ignore fontset entries.
+;;   (set-fontset-font t '(#x2b00 . #x2bff) "Iosevka Nerd Font Mono" nil 'append)
+;;   :custom
+;;   ;; Tag column settings: with `org-modern' tags become boxed labels, so the
+;;   ;; historic right-flush alignment via padding spaces no longer makes sense.
+;;   (org-auto-align-tags nil)
+;;   (org-tags-column 0)
+;;   (org-agenda-tags-column 0)
+;;   ;; Plain ASCII tables align cleanly because they use only characters from
+;;   ;; the default font; org-modern's prettified box-drawing borders pull
+;;   ;; glyphs from another range whose cell width disagrees with
+;;   ;; JetBrainsMonoNL, breaking column alignment.
+;;   (org-modern-table nil))
 
 (provide 'org-config)
 ;;; org-config.el ends here
