@@ -153,13 +153,23 @@
 (use-package org-appear
   :hook (org-mode . org-appear-mode)
   :after org
+  :bind (:map org-mode-map
+              ("C-c t e" . my/org-toggle-emphasis-markers))
   :custom
   (org-appear-autoemphasis t)
   (org-appear-autolinks t)
   (org-appear-autosubmarkers t)
   :config
   ;; Hide emphasis markers as default setting
-  (setq org-hide-emphasis-markers t))
+  (setq org-hide-emphasis-markers t)
+
+  (defun my/org-toggle-emphasis-markers ()
+    "Toggle `org-hide-emphasis-markers' and re-fontify the buffer."
+    (interactive)
+    (setq org-hide-emphasis-markers (not org-hide-emphasis-markers))
+    (font-lock-flush)
+    (message "Org emphasis markers: %s"
+             (if org-hide-emphasis-markers "hidden" "visible"))))
 
 (provide 'org-config)
 ;;; org-config.el ends here
