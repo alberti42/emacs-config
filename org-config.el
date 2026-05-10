@@ -52,6 +52,22 @@
   (org-latex-preview-process-default 'dvisvgm)
   ;; Cap the maximum size of images
   (org-image-actual-width '(800))
+  ;; Display LaTeX entity macros and sub/superscripts as Unicode in prose and
+  ;; headings (e.g. \alpha → α, H_2O → H₂O).  Complements
+  ;; `org-latex-preview-mode': inside math fragments the SVG preview takes
+  ;; over the visual, this fills in everywhere else.
+  (org-pretty-entities t)
+  ;; Heading editing/insertion ergonomics.
+  (org-special-ctrl-a/e t)
+  (org-insert-heading-respect-content t)
+  (org-catch-invisible-edits 'show-and-error)
+  ;; Tag column settings: with `org-modern' tags become boxed labels, so the
+  ;; historic right-flush alignment via padding spaces no longer makes sense.
+  (org-auto-align-tags nil)
+  (org-tags-column 0)
+  (org-agenda-tags-column 0)
+  ;; Compact fold ellipsis.
+  (org-ellipsis "…")
   :config
   ;; Pre-emptive stale-.fmt purge.  After a TeX Live upgrade, pdfTeX refuses the
   ;; precompiled preamble `.fmt' files cached under
