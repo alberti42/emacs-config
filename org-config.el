@@ -187,5 +187,13 @@
     (message "Org emphasis markers: %s"
              (if org-hide-emphasis-markers "hidden" "visible"))))
 
+;; Modern visual style for Org buffers (headlines, keywords, tables, blocks,
+;; tags, timestamps).  Uses text properties — no SVG, fragments stay editable.
+(use-package org-modern
+  :after org
+  :hook
+  (org-mode . org-modern-mode)
+  (org-agenda-finalize . org-modern-agenda))
+
 (provide 'org-config)
 ;;; org-config.el ends here
