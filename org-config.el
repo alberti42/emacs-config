@@ -167,13 +167,13 @@
   :bind (:map org-mode-map
               ("C-c t e" . my/org-toggle-emphasis-markers))
   :custom
-  (org-appear-autoemphasis nil)
   (org-appear-autolinks t)
   (org-appear-autosubmarkers t)
-  :config
+  ;; Reveal markers at point 
+  (org-appear-autoemphasis t)
   ;; Hide emphasis markers as default setting
-  (setq org-hide-emphasis-markers t)
-
+  (org-hide-emphasis-markers nil)
+  :config
   (defun my/org-toggle-emphasis-markers ()
     "Toggle `org-hide-emphasis-markers' and re-fontify the buffer."
     (interactive)
