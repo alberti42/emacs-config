@@ -16,6 +16,12 @@
 ;; Lazy-highlight the whole buffer (not just the visible window) so motion lands in painted regions.
 (setq lazy-highlight-buffer t)
 
+;; Keep highlights painted after isearch exits, so motion/scroll commands that exit isearch
+;; (arrow keys, custom C-v/M-v lambdas without the `isearch-motion' property, etc.) still leave
+;; the buffer-wide matches visible. Starting a new search replaces them; `M-x lazy-highlight-cleanup'
+;; clears them outright.
+(setq lazy-highlight-cleanup nil)
+
 ;; Keep at default nil: ultra-scroll's pixel-scrolling bypasses the scroll-command path, so isearch
 ;; stays active during wheel scrolling without this. Setting it to t fights ultra-scroll because
 ;; isearch then tries to keep the current match in view, snapping the window back on every event.
