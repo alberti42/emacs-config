@@ -281,10 +281,10 @@
  'magit-config
  "Could not load magit-config.el; Magit is disabled.")
 
-;; Project tree (TTY-friendly)
-(emacs-config-load-module
- 'treemacs-config
- "Could not load treemacs-config.el; Treemacs is disabled.")
+;; ;; Project tree (TTY-friendly)
+;; (emacs-config-load-module
+;;  'treemacs-config
+;;  "Could not load treemacs-config.el; Treemacs is disabled.")
 
 ;; inheritenv: propagate buffer-local `process-environment' and `exec-path'
 ;; from the caller buffer into commands that internally pop to a fresh
