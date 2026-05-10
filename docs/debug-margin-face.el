@@ -52,6 +52,7 @@
 ;;   - face-margin-test-011   Margin face on truncated rows.
 ;;   - face-margin-test-012   SVG image in margin (bug#80693 follow-up).
 ;;   - face-margin-test-013   Flymake margin indicator (bug#80693 follow-up).
+;;   - face-margin-test-014   Truncated row + margin annotation (bug#80693 follow-up).
 ;;
 ;; Mode handling:
 ;;
@@ -1420,6 +1421,109 @@ FIX (Juri's proposed flymake.el patch — `:inherit (... default)' →
                    ov 'before-string
                    (propertize "!" 'display spec)))))
             (forward-line 1))))
+      (display-line-numbers-mode 1)
+      (read-only-mode 1)
+      (goto-char (point-min)))))
+
+;;; Test 014 — truncated row + margin annotation: post-annotation
+;;;            margin slots are not filled with the `margin' face.
+
+(defun face-margin-test-014 (&optional mode)
+  "Truncated row with margin annotation: the margin slot(s) AFTER the
+annotation glyph are not filled with the `margin' face.
+
+Reproducer for the issue Juri Linkov reported on bug#80693 (the
+follow-up after Eli's image-in-margin C fix had landed): on long
+truncated rows that also carry a left-margin overlay annotation, the
+slots immediately to the right of the annotation glyph render with
+the wrong background — the `margin' face does not extend to fill them.
+
+The bug is specific to the truncation path.  On non-truncated rows,
+the loop in `extend_face_to_end_of_line' in xdisp.c correctly fills
+the remaining margin slots with the `margin' face.  On truncated rows,
+that fill appears to be skipped or short-circuited, likely one of the
+truncation arms in `display_line' either does not call
+`extend_face_to_end_of_line' for this scenario, or calls it before
+the annotation glyph has been placed.
+
+Three lines below cover the relevant combinations of TRUNCATED ×
+ANNOTATION:
+
+  Line 1: short line + annotation        → CONTROL (non-truncated).
+          Both margin columns are gray.  Demonstrates that the
+          fill loop works correctly on the non-truncated path.
+
+  Line 2: long (truncated) line + annotation → THE BUG.
+          Column 1 carries the annotation with the right background;
+          column 2 should be gray but instead shows the wrong background.
+
+  Line 3: long (truncated) line, no annotation → CONTROL (test 011
+          path).  Both margin columns appear gray.  Confirms that
+          truncation alone, without an overlay, is handled correctly
+          (fix from the original `margin' face patch).
+
+Expected (themed mode, BUG present): line 2 has a visible \"hole\" in
+the second margin column on the truncated row.
+
+Expected (themed mode, once the BUG is fixed): all three lines show two
+uniformly gray margin columns.
+
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-014*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               "face-margin-test-014: truncated row + margin annotation (bug#80693 follow-up)"
+               mode))
+      (insert "\
+This buffer reproduces the truncated-row × margin-annotation bug
+Juri Linkov reported.  Three lines reproduce the relevant
+combinations.  See the docstring of `face-margin-test-014' for the
+full explanation.
+
+Look at the second column of the left margin on each line:
+
+Line 1 (short + annotation)          → both margin cols should be gray
+Line 2 (truncated + annotation)      → BUG: col 2 shows wrong bg
+Line 3 (truncated, no annotation)    → both margin cols should be gray
+")
+      ;; Three content lines.  Line 1 is short; lines 2 and 3 are very
+      ;; long so they will truncate at any reasonable window width.
+      (insert "Short line A\n")
+      (insert (make-string 250 ?L) "\n")
+      (insert (make-string 250 ?L) "\n")
+      (setq-local left-margin-width 2)
+      (setq-local truncate-lines t))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 2 0)
+    (with-current-buffer buf
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "Short line A")
+        (beginning-of-line)
+        ;; Line 1 — annotation in column 1 of left margin.
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'before-string
+           (face-margin-test--make-sign
+            "!" `(:foreground "red" :background ,ln-bg))))
+        (forward-line 1)
+        ;; Line 2 — same annotation, but on a long truncated line.
+        (let ((ov (make-overlay (point) (1+ (point)))))
+          (overlay-put
+           ov 'before-string
+           (face-margin-test--make-sign
+            "!" `(:foreground "red" :background ,ln-bg))))
+        ;; Line 3 — no annotation, just the long truncated line.
+        )
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))
