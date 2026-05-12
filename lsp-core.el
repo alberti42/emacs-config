@@ -208,8 +208,14 @@ KEY is the JSON object key as a string, e.g. method or id."
 ;; dedicated `right-margin' column instead of the text area -- usable in prose
 ;; buffers where the text area has no horizontal slack.
 ;;
-;; Enabled per mode (e.g. `syntaxes/latex.el'), not globally.  Backends are
-;; set buffer-locally there; only the display style is configured here.
+;; Enabled per mode (e.g. `syntaxes/latex.el'), not globally.  Backends are set
+;; buffer-locally there; only the display style is configured here.
+
+;; `sideline-lsp' and `sideline-flycheck' declare `(sideline ...)' in their
+;; Package-Requires; without this entry straight would resolve that dep by
+;; pulling the upstream package from MELPA, masking our `local/' patch.
+(add-to-list 'straight-built-in-pseudo-packages 'sideline)
+
 (use-package sideline
   :straight nil
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
@@ -227,17 +233,7 @@ KEY is the JSON object key as a string, e.g. method or id."
   (setq sideline-lsp-code-actions-prefix ""))
 
 (use-package sideline-flycheck
-  :commands (sideline-flycheck)
-  :hook (flycheck-mode . sideline-flycheck-setup))
-
-;; Helper for modes that use `sideline-mode' instead of `lsp-ui-sideline':
-;; install on `lsp-managed-mode-hook' (buffer-local) so that each managed-mode
-;; setup -- including secondary servers attaching as add-on workspaces, e.g.
-;; LTEX+ -- re-disables `lsp-ui-sideline-mode'.
-(defun emacs-config-disable-lsp-ui-sideline ()
-  "Disable `lsp-ui-sideline-mode' in the current buffer."
-  (when (bound-and-true-p lsp-ui-sideline-mode)
-    (lsp-ui-sideline-mode -1)))
+  :commands (sideline-flycheck sideline-flycheck-setup))
 
 ;;; -- yasnippet setup ---------------------------------------------------------
 

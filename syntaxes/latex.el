@@ -73,17 +73,24 @@ faces without disturbing comments or existing markup."
     (setq-local completion-at-point-functions
                 (remove #'cape-tex completion-at-point-functions))
 
-    ;; Route LSP / flycheck diagnostics to the real `right-margin' via
-    ;; sideline.  Soft-wrap already reserves the margin column; sideline
-    ;; reuses that space without resizing it.
+    ;; Route LSP / flycheck diagnostics to the real `right-margin' via sideline.
+    ;; Soft-wrap already reserves the margin column; sideline reuses that space
+    ;; without resizing it.
+    ;;
+    ;; `sideline-flycheck-setup' is added to `flycheck-mode-hook' buffer-locally
+    ;; (rather than globally from `lsp-core.el') to keep blast radius confined
+    ;; to LaTeX while the integration is being developed.  It fires when LSP
+    ;; eventually enables flycheck-mode in this buffer.
     (setq-local sideline-backends-right '(sideline-flycheck sideline-lsp))
     (sideline-mode 1)
+    (add-hook 'flycheck-mode-hook #'sideline-flycheck-setup nil t)
 
-    ;; `lsp-ui-sideline-mode' is re-enabled each time `lsp-managed-mode'
-    ;; runs (including LTEX+ attaching as a second add-on workspace), so
-    ;; the disable hook must fire on every managed-mode setup.
-    (add-hook 'lsp-managed-mode-hook
-              #'emacs-config-disable-lsp-ui-sideline nil t))
+    ;; Preempt `lsp-ui-sideline-mode': `lsp--auto-configure' fires from several
+    ;; lifecycle points (`lsp-managed-mode' setup and `lsp-after-open-hook'
+    ;; workspace init), so a post-hoc disable loses the race to the next enable.
+    ;; Setting `lsp-ui-sideline-enable' nil buffer-locally tells each
+    ;; `lsp-ui-mode' setup to skip sideline.
+    (setq-local lsp-ui-sideline-enable nil))
 
 ;;; -- Hooks -------------------------------------------------------------------
 
