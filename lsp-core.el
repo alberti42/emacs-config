@@ -221,7 +221,12 @@ KEY is the JSON object key as a string, e.g. method or id."
   :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   :commands (sideline-mode global-sideline-mode sideline-render)
   :init
-  (setq sideline-display-area 'right-margin))
+  (setq sideline-display-area 'right-margin
+        ;; Stack right-side labels downward starting at point's line, so the
+        ;; first label aligns with the paragraph the diagnostic refers to
+        ;; rather than ending one row above it.
+        sideline-order-right 'down
+        sideline-backends-right-skip-current-line nil))
 
 (use-package sideline-lsp
   :commands (sideline-lsp)
