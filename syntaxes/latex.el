@@ -59,9 +59,6 @@ faces without disturbing comments or existing markup."
   (defun latex-config--setup-latex-buffer ()
     "Initialize LaTeX-specific buffer settings and font-lock rules."
     (setq-local fill-column 100)
-    (setq-local lsp-ui-sideline-show-hover nil)
-    (setq-local lsp-ui-sideline-show-code-actions nil)
-    (setq-local lsp-ui nil)
     (soft-wrap-mode 1)
     (latex-config--setup-font-lock)
 
@@ -74,7 +71,19 @@ faces without disturbing comments or existing markup."
 
     ;; Remove cape-tex in LaTeX docume
     (setq-local completion-at-point-functions
-                (remove #'cape-tex completion-at-point-functions)))
+                (remove #'cape-tex completion-at-point-functions))
+
+    ;; Route LSP / flycheck diagnostics to the real `right-margin' via
+    ;; sideline.  Soft-wrap already reserves the margin column; sideline
+    ;; reuses that space without resizing it.
+    (setq-local sideline-backends-right '(sideline-flycheck sideline-lsp))
+    (sideline-mode 1)
+
+    ;; `lsp-ui-sideline-mode' is re-enabled each time `lsp-managed-mode'
+    ;; runs (including LTEX+ attaching as a second add-on workspace), so
+    ;; the disable hook must fire on every managed-mode setup.
+    (add-hook 'lsp-managed-mode-hook
+              #'emacs-config-disable-lsp-ui-sideline nil t))
 
 ;;; -- Hooks -------------------------------------------------------------------
 

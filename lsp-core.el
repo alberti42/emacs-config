@@ -201,19 +201,51 @@ KEY is the JSON object key as a string, e.g. method or id."
   :bind (:map lsp-ui-mode-map
               ("C-c l h g" . lsp-ui-doc-glance)))
 
-;; sideline-lsp: replace the default 💡 prefix with a glyph whose metrics
-;; match the text font.  The emoji light bulb is taller than the default
-;; line height, so margin labels using it would force per-line height
-;; recomputation as point moves -- visible as text flicker.
-(with-eval-after-load 'sideline-lsp
+;;; -- Sideline setup ----------------------------------------------------------
+;;
+;; Alternative to lsp-ui-sideline.  Our local copy (`local/sideline.el') carries
+;; a patch adding `sideline-display-area', which can route labels into the
+;; dedicated `right-margin' column instead of the text area -- usable in prose
+;; buffers where the text area has no horizontal slack.
+;;
+;; Enabled per mode (e.g. `syntaxes/latex.el'), not globally.  Backends are
+;; set buffer-locally there; only the display style is configured here.
+(use-package sideline
+  :straight nil
+  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
+  :commands (sideline-mode global-sideline-mode sideline-render)
+  :init
+  (setq sideline-display-area 'right-margin))
+
+(use-package sideline-lsp
+  :commands (sideline-lsp)
+  :init
+  ;; The default `💡 ' prefix is an emoji whose glyph is taller than the text
+  ;; font; rendering it in the margin forces per-line height recomputation as
+  ;; point moves, visible as text flicker.  Empty string suppresses the prefix
+  ;; entirely.
   (setq sideline-lsp-code-actions-prefix ""))
 
-;; yasnippet (the snippet expansion engine consumed by lsp-mode for
-;; placeholder completion candidates) is configured separately in
-;; `yasnippet-config.el' and loaded from `init.el' before this module.
-;; Snippet *insertion* is bound to `C-c y' (`yas-insert-snippet') —
-;; intentionally not auto-popup-completion-driven; see
-;; `yasnippet-config.el' for the rationale.
+(use-package sideline-flycheck
+  :commands (sideline-flycheck)
+  :hook (flycheck-mode . sideline-flycheck-setup))
+
+;; Helper for modes that use `sideline-mode' instead of `lsp-ui-sideline':
+;; install on `lsp-managed-mode-hook' (buffer-local) so that each managed-mode
+;; setup -- including secondary servers attaching as add-on workspaces, e.g.
+;; LTEX+ -- re-disables `lsp-ui-sideline-mode'.
+(defun emacs-config-disable-lsp-ui-sideline ()
+  "Disable `lsp-ui-sideline-mode' in the current buffer."
+  (when (bound-and-true-p lsp-ui-sideline-mode)
+    (lsp-ui-sideline-mode -1)))
+
+;;; -- yasnippet setup ---------------------------------------------------------
+
+;; yasnippet (the snippet expansion engine consumed by lsp-mode for placeholder
+;; completion candidates) is configured separately in `yasnippet-config.el' and
+;; loaded from `init.el' before this module.  Snippet *insertion* is bound to
+;; `C-c y' (`yas-insert-snippet') — intentionally not
+;; auto-popup-completion-driven; see `yasnippet-config.el' for the rationale.
 
 ;;; -- LSP completion wrapper --------------------------------------------------
 
