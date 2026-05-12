@@ -583,6 +583,14 @@ available lines in both directions (up & down)."
 ;; `sideline-backends-right-skip-current-line' is set, that line is
 ;; pre-populated in `sideline--occupied-lines-right' by
 ;; `sideline--reset-occupied-lines').
+;;
+;; Note: this walks buffer lines, not visual rows.  In soft-wrapped prose
+;; that means labels can leave variable gaps in the margin (every wrap
+;; continuation row of a buffer line carries no margin content).  A
+;; visual-row variant was tried via `vertical-motion' but was too slow
+;; once `set-window-margins' was in play; see
+;; `docs/sideline-visual-row-xdisp-proposal.md' for the proposed upstream
+;; xdisp.c primitive that would solve this efficiently.
 (defun sideline--find-margin-line (direction &optional retried)
   "Find a free visible line for `right-margin' rendering.
 Walk visible lines in DIRECTION (`up' or `down') starting at point;
@@ -722,8 +730,13 @@ FACE, NAME, ON-LEFT, and ORDER for details."
           (when action  ; apply action listener
             (let ((keymap (sideline--create-keymap action candidate)))
               (add-text-properties 0 len-text `(keymap ,keymap mouse-face highlight) text)))
-          (if on-left (format sideline-format-left text)
-            (format sideline-format-right text))))
+          (cond
+           ;; LOCAL PATCH: margin mode skips `sideline-format-right'.  Its
+           ;; leading whitespace was meant to separate label from source in
+           ;; text-area mode; in the real margin it's wasted column space.
+           (margin-mode text)
+           (on-left     (format sideline-format-left text))
+           (t           (format sideline-format-right text)))))
        (len-title (sideline--str-len title))
        ;; LOCAL PATCH: margin mode bypasses the text-width line search.
        (data (if margin-mode
