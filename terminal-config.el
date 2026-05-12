@@ -27,10 +27,15 @@
   ;; tmux-map (windows-config.el).  Cannot use customize-set-variable: its :set
   ;; handler calls `vterm--exclude-keys`, which unbinds C-c in vterm-mode-map
   ;; and wipes the C-c X bindings (C-c C-t, C-c C-l, ...) that the defvar added
-  ;; after the exclude pass.  setq avoids the :set handler; we unbind C-b in the
-  ;; map ourselves.
+  ;; after the exclude pass.  setq avoids the :set handler; we install the
+  ;; exception for C-b ourselves.  Note: simply unbinding (define-key ... nil)
+  ;; is not enough — vterm-mode-map has a [t] catch-all bound to
+  ;; vterm--self-insert that forwards every unbound key to the terminal, so an
+  ;; unbound C-b would still be intercepted.  We must copy the global binding
+  ;; (the tmux-map prefix) into vterm-mode-map, mirroring step 2 of
+  ;; vterm--exclude-keys.
   (setq vterm-keymap-exceptions (cons "C-b" vterm-keymap-exceptions))
-  (define-key vterm-mode-map (kbd "C-b") nil)
+  (define-key vterm-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
   
   :bind (:map vterm-mode-map
               ;; Map C-c C-c to send a literal C-c (SIGINT) to the terminal.
@@ -108,12 +113,18 @@
   (ghostel-shell shell-file-name)
   (ghostel-term "xterm-ghostty")
   :config
-  ;; ghostel-mode-map is a defvar built at load time from ghostel-keymap-exceptions;
-  ;; updating the list after load has no effect on the already-built map.
-  ;; We must directly remove the C-b binding so it falls through to the global
-  ;; tmux-map prefix (windows-config.el) and C-b <arrow> etc. work.
-  (add-to-list 'ghostel-keymap-exceptions "C-b")  ; effective for future reloads
-  (define-key ghostel-mode-map (kbd "C-b") nil)
+  ;; ghostel's default input mode is the minor mode `ghostel-semi-char-mode',
+  ;; and *its* keymap (`ghostel-semi-char-mode-map') shadows the major-mode map.
+  ;; That minor-mode map is built at load time by
+  ;; `ghostel--define-terminal-keys', which binds every C-<letter> not listed in
+  ;; `ghostel-keymap-exceptions' to a lambda that forwards the ASCII control
+  ;; code to the terminal.  `add-to-list' here is too late to affect the
+  ;; already-built map, so we rebind C-b directly in both maps to the global
+  ;; tmux-map prefix (windows-config.el) so C-b <arrow> etc. work.  The
+  ;; add-to-list call is kept for any future rebuild of the map.
+  (add-to-list 'ghostel-keymap-exceptions "C-b")
+  (define-key ghostel-mode-map           (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+  (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
   :bind (:map ghostel-mode-map
               ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
               ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the

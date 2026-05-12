@@ -17,9 +17,10 @@ Terminal emulator setup: `term`, `eshell`, `vterm`, `ghostel`, plus the `ev`
 ## Dependencies on other modules
 
 - **`windows-config.el`** owns `tmux-map` on `C-b`. This module deliberately
-  exposes `C-b` to Emacs in both `vterm-mode-map` and `ghostel-mode-map` so
-  the prefix and `C-b <arrow>` window navigation work inside terminal
-  buffers. Removing the C-b exposure breaks pane navigation.
+  exposes `C-b` to Emacs in `vterm-mode-map`, `ghostel-mode-map`, and
+  `ghostel-semi-char-mode-map` (the minor-mode map for ghostel's default
+  input mode) so the prefix and `C-b <arrow>` window navigation work inside
+  terminal buffers. Removing the C-b exposure breaks pane navigation.
 
 ## Invariants — do not change without reading
 
@@ -31,18 +32,45 @@ C-l`, `C-c C-r`, `C-c C-n`, `C-c C-p`) that the `vterm-mode-map` defvar added
 *after* the exclude pass. The handler only re-runs `vterm--exclude-keys`; it
 does not replay the defvar, and vterm exposes no rebuild helper.
 
-The current code uses `setq` to bypass the handler, then `(define-key
-vterm-mode-map (kbd "C-b") nil)` to perform the single excise the handler
-would have done for that one key.
+The current code uses `setq` to bypass the handler, then performs the
+single excise manually for C-b. **Unbinding alone is not enough**:
+`vterm-mode-map` has a `[t]` catch-all bound to `vterm--self-insert` that
+forwards every otherwise-unbound key to the terminal, so a plain
+`(define-key vterm-mode-map (kbd "C-b") nil)` would still leak C-b to the
+shell. We must copy the global binding into `vterm-mode-map`, mirroring
+the second step of `vterm--exclude-keys`:
 
-### ghostel: `add-to-list` on `ghostel-keymap-exceptions` is not enough
+```elisp
+(define-key vterm-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+```
 
-`ghostel-mode-map` is a `defvar` built at load time from
-`ghostel-keymap-exceptions`. Updating the list in `:config` runs after the
-map is built and has no effect on the existing bindings. The explicit
-`(define-key ghostel-mode-map (kbd "C-b") nil)` is required to remove the
-already-built binding. The `add-to-list` is kept so future reloads pick it
-up.
+This makes C-b a prefix in vterm-mode-map that resolves to the global
+`tmux-map`.
+
+### ghostel: the real interceptor is `ghostel-semi-char-mode-map`, not `ghostel-mode-map`
+
+ghostel's default input mode is the minor mode `ghostel-semi-char-mode`,
+and *its* keymap shadows the major-mode map. The minor-mode map is built
+at load time by `ghostel--define-terminal-keys`, which binds every
+`C-<letter>` not listed in `ghostel-keymap-exceptions` to a lambda that
+forwards the ASCII control code to the terminal. So C-b gets a "send ^B"
+lambda unless excluded — and `add-to-list 'ghostel-keymap-exceptions
+"C-b"` in `:config` runs *after* the map is built, with no retroactive
+effect.
+
+The fix is to rebind C-b explicitly in both `ghostel-mode-map` *and*
+`ghostel-semi-char-mode-map`, pointing at the global `tmux-map` prefix:
+
+```elisp
+(define-key ghostel-mode-map           (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+(define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+```
+
+The `add-to-list` call is kept so any future rebuild of the map picks up
+the exception via the normal mechanism.
+
+Note: `ghostel-char-mode-map` is intentionally *not* patched. char mode is
+designed to forward every key — including C-b — to the terminal.
 
 ### Forward keys with `*-send-string`, not `*-send-key`
 
