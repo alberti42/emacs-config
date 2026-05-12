@@ -201,6 +201,13 @@ KEY is the JSON object key as a string, e.g. method or id."
   :bind (:map lsp-ui-mode-map
               ("C-c l h g" . lsp-ui-doc-glance)))
 
+;; sideline-lsp: replace the default 💡 prefix with a glyph whose metrics
+;; match the text font.  The emoji light bulb is taller than the default
+;; line height, so margin labels using it would force per-line height
+;; recomputation as point moves -- visible as text flicker.
+(with-eval-after-load 'sideline-lsp
+  (setq sideline-lsp-code-actions-prefix ""))
+
 ;; yasnippet (the snippet expansion engine consumed by lsp-mode for
 ;; placeholder completion candidates) is configured separately in
 ;; `yasnippet-config.el' and loaded from `init.el' before this module.
