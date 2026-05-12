@@ -40,6 +40,9 @@
           (save-buffers-kill-terminal arg))))))
 (global-set-key (kbd "C-x C-c") #'my/confirm-save-buffers-kill-terminal)
 
+;; Unbind `transpose-chars': too easy to hit by mistake when reaching for C-y.
+(global-unset-key (kbd "C-t"))
+
 ;; Add reference to Emacs C source files
 (let ((src "~/Documents/Programming/Others/fork-emacs"))
   (when (file-directory-p src)
