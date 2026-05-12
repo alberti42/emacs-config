@@ -138,6 +138,25 @@
   :type 'string
   :group 'sideline)
 
+;; LOCAL PATCH: right-margin rendering.
+(defcustom sideline-display-area 'text
+  "Where to render right-side sideline content.
+
+If `text' (default), use end-of-line stretchy whitespace inside the text
+area -- the original behavior.
+
+If `right-margin', route labels into the window's `right-margin' column
+via a `(margin right-margin)' display spec.  This module does NOT set
+margin width; whoever owns the margin (e.g. `soft-wrap-mode', Olivetti,
+or a manual `set-window-margins' call) is responsible for reserving
+columns.  When no margin is reserved, labels simply do not render.
+
+Only affects right-side rendering; left-side rendering always uses the
+text area."
+  :type '(choice (const :tag "Text area (default)" text)
+                 (const :tag "Real right margin" right-margin))
+  :group 'sideline)
+
 (defcustom sideline-priority 100
   "Overlays' priority."
   :type 'integer
@@ -558,6 +577,44 @@ available lines in both directions (up & down)."
         (and (not exceeded)
              (sideline--find-line str-len on-left (if going-up 'down 'up) t)))))
 
+;; LOCAL PATCH: simpler line finder for margin mode.  Margin position is
+;; fixed -- it does not depend on source-line width -- so we only need a
+;; line that is not already occupied and not the current line (when
+;; `sideline-backends-right-skip-current-line' is set, that line is
+;; pre-populated in `sideline--occupied-lines-right' by
+;; `sideline--reset-occupied-lines').
+(defun sideline--find-margin-line (direction &optional retried)
+  "Find a free visible line for `right-margin' rendering.
+Walk visible lines in DIRECTION (`up' or `down') starting at point;
+return (BOL BOL BOL) for the first line not in
+`sideline--occupied-lines-right', or nil if none are available in either
+direction.  RETRIED is set internally when recursing into the opposite
+direction so we do not loop forever."
+  (let ((going-up   (eq direction 'up))
+        (skip-first t)
+        (break-it   nil)
+        (found      nil))
+    (save-excursion
+      (while (not break-it)
+        (if skip-first (setq skip-first nil)
+          (forward-visible-line (if going-up -1 1)))
+        (cond
+         ((or (if going-up (bobp) (eobp))
+              (if going-up
+                  (< (point) (sideline--render-data :win-start))
+                (> (point) (sideline--render-data :win-end))))
+          (setq break-it t))
+         ((not (memq (line-beginning-position)
+                     sideline--occupied-lines-right))
+          (let ((bol (line-beginning-position)))
+            (push bol sideline--occupied-lines-right)
+            (setq found (list bol bol bol)
+                  break-it t))))))
+    (or found
+        (and (not retried)
+             (sideline--find-margin-line
+              (if going-up 'down 'up) t)))))
+
 (defun sideline--create-keymap (action candidate)
   "Create keymap for sideline ACTION.
 
@@ -652,6 +709,9 @@ FACE, NAME, ON-LEFT, and ORDER for details."
                candidate))
        (len-text (length text))
        (len-cand (length candidate))
+       ;; LOCAL PATCH: margin-mode flag.
+       (margin-mode (and (not on-left)
+                         (eq sideline-display-area 'right-margin)))
        (title
         (progn
           (unless (get-text-property 0 'face candidate)  ; If no face, we apply one
@@ -665,15 +725,19 @@ FACE, NAME, ON-LEFT, and ORDER for details."
           (if on-left (format sideline-format-left text)
             (format sideline-format-right text))))
        (len-title (sideline--str-len title))
-       (data (let ((sideline--max-remain-spaces 0)          ; Reset before use.
-                   (sideline--max-remain-spaces-line nil))  ; Reset before use.
-               (sideline--find-line len-title on-left order)))
+       ;; LOCAL PATCH: margin mode bypasses the text-width line search.
+       (data (if margin-mode
+                 (sideline--find-margin-line order)
+               (let ((sideline--max-remain-spaces 0)          ; Reset before use.
+                     (sideline--max-remain-spaces-line nil))  ; Reset before use.
+                 (sideline--find-line len-title on-left order))))
        (pos-start (nth 0 data)) (pos-end (nth 1 data)) (occ-pt (nth 2 data))
        (hscroll (sideline--render-data :hscroll))
        (offset (- 0 hscroll))
-       ;; Truncate
+       ;; Truncate (text-area mode only; in margin mode Emacs clips at the
+       ;; margin column and we don't widen it -- see `sideline-display-area').
        (title
-        (or (and sideline-truncate
+        (or (and (not margin-mode) sideline-truncate
                  (let* ((win-width (sideline--render-data :win-width))
                         (end-col (save-excursion
                                    (goto-char pos-end)
@@ -691,15 +755,19 @@ FACE, NAME, ON-LEFT, and ORDER for details."
                      (truncate-string-to-width title available-space 0 nil
                                                suffix))))
             title))
-       ;; Align left/right
-       (str (concat
-             (unless on-left
-               (propertize " "
-                           'display
-                           `((space :align-to (- right ,(sideline--align-right title offset)))
-                             (space :width 0))
-                           `cursor t))
-             title)))
+       ;; LOCAL PATCH: build display string -- margin-mode uses a `(margin
+       ;; right-margin)' carrier; otherwise the original text-area carrier.
+       (str (cond
+             (margin-mode
+              (propertize " " 'display `((margin right-margin) ,title)))
+             (on-left title)
+             (t
+              (concat (propertize " "
+                                  'display
+                                  `((space :align-to (- right ,(sideline--align-right title offset)))
+                                    (space :width 0))
+                                  'cursor t)
+                      title)))))
 
     ;; Create overlay
     (let* ((len-str (length str))
