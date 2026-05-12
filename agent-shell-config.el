@@ -16,7 +16,21 @@
    '("opencode" "acp" "--attach" "http://localhost:4096"))
   :bind (:map agent-shell-mode-map
               ("M-RET" . newline)
-              ("C-c a" . agent-shell-prompt-compose)))
+              ("C-c a" . agent-shell-prompt-compose))
+  :config
+  ;; When agent-shell is launched from a dired buffer, anchor the agent at that
+  ;; buffer's listed directory instead of letting the package walk up to the
+  ;; project root.  Other launch contexts (file buffers, etc.) keep the
+  ;; package's default projectile/project.el resolution.
+  (defun my/agent-shell-cwd-dired-advice (orig-fn &rest args)
+    "Around-advice for `agent-shell-cwd': use dired's dir when applicable.
+Also trust the agent-shell buffer's own `default-directory' for
+in-session calls — otherwise the package would re-resolve via project.el
+on every ACP message and walk back up to the git root."
+    (if (derived-mode-p 'dired-mode 'agent-shell-mode)
+        (expand-file-name default-directory)
+      (apply orig-fn args)))
+  (advice-add 'agent-shell-cwd :around #'my/agent-shell-cwd-dired-advice))
 
 (provide 'agent-shell-config)
 ;;; agent-shell-config.el ends here
