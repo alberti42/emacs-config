@@ -175,23 +175,19 @@ window's column offset with nothing to reveal."
       (read-only-mode -1)
       (erase-buffer)
       (insert "\
-truncation-flag-test-001 — motivation (no patch used here)
-==========================================================
+truncation-flag-test-001 — the problem (no patch used here)
+===========================================================
 
-IMPORTANT: this test does NOT exercise the new patch.  It demonstrates
-the typical application that motivates the patch — gating horizontal
-scrolling on whether the buffer is actually truncated — implemented
-with the only tool available WITHOUT the patch: pure Elisp.
+When `truncate-lines' is enabled it is desirable to also enable
+horizontal scrolling, so the user can conveniently reach text that is
+outside the visible window.  This is what most other editors do, and
+the combination of `truncate-lines' + horizontal scrolling is the
+configuration most users adopt.
 
-The patch itself only adds the C primitive `window-truncated-p'.  It
-does not touch or add anything about horizontal scrolling.  Hscroll is
-used here purely as the worked example because it makes the question
-\"is anything truncated?\" easy to feel: when nothing is truncated,
-scrolling sideways reveals nothing and merely drifts the column offset.
-
-Horizontal mouse-wheel scrolling is also off by default in stock Emacs;
-the demo installs buffer-local wheel bindings so a trackpad can drive
-the gate.  The mode-mirror gate used here is:
+This buffer reproduces exactly that setup: `truncate-lines' is t and
+horizontal mouse-wheel and key bindings are installed (stock Emacs
+does not bind horizontal wheel events).  Scrolling is gated by the
+cheapest pre-patch check available:
 
     (defun truncation-flag-test--gate-mode-mirror ()
       (or truncate-lines
@@ -199,13 +195,24 @@ the gate.  The mode-mirror gate used here is:
                truncate-partial-width-windows
                ...)))
 
-This is the cheapest pre-patch approximation: it answers \"is truncation
-MODE active for this window?\" rather than \"did any line actually
-overflow?\".  A faithful pure-Elisp answer would have to iterate every
-visible line and call into the display engine for each one (e.g. via
-`window-text-pixel-size'), which is far more expensive than a single
-boolean read and still leaves edge cases around the left-edge hscroll
-indicator.  We do not attempt it here.
+The gate inspects `truncate-lines' (and `truncate-partial-width-windows')
+— i.e. whether truncation MODE is active.  It has no way to know
+whether any line in the buffer is actually being truncated right now;
+that depends on the rendered content and the current window width.
+
+The consequence: when the window is wide enough that every line fits,
+the gate still says ALLOWED.  Touching the trackpad sideways then
+slides the text off-screen even though there is nothing to reveal —
+exactly the annoyance most editors inhibit by disabling hscroll when
+content is not truncated.
+
+One could in principle close this gap from Elisp by scanning every
+visible line (e.g. with `window-text-pixel-size') on each scroll event.
+This test does not do that: such a scan is linear in the number of
+visible lines, runs on every event, and is not worth the code and the
+cost.  The next test (truncation-flag-test-002) shows the alternative:
+a few lines of C plus a few lines of Elisp, virtually zero runtime
+cost compared with unpatched Emacs.
 
 Bindings (buffer-local):
   M-<right> / <wheel-left>   try scroll-left   (reveal text on the right)
@@ -219,13 +226,9 @@ Try this:
      A swipe / M-<right> scrolls and reveals hidden text.
 
   2. Widen the window so EVERY line fits.  M-? still reports \"ALLOWED\"
-     — but this is a FALSE POSITIVE: the gate only knows that truncation
-     mode is on, not that no line actually overflows.  A swipe still
-     moves the column offset, silently pushing the visible content off
-     the left edge with nothing on the right to reveal.
-
-Compare with truncation-flag-test-002, which uses the patch and gets
-this right.
+     — false positive: the gate only knows the mode is on.  A swipe
+     still moves the column offset, silently pushing the visible
+     content off the left edge with nothing on the right to reveal.
 
 Sample lines:
 ")
