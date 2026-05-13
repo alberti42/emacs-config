@@ -181,8 +181,9 @@ truncation-flag-test-001 — the problem (no patch used here)
 When `truncate-lines' is enabled it is desirable to also enable
 horizontal scrolling, so the user can conveniently reach text that is
 outside the visible window.  This is what most other editors do, and
-the combination of `truncate-lines' + horizontal scrolling is the
-configuration most users adopt.
+the combination of `truncate-lines' + horizontal scrolling is a
+configuration that is likely adopted by many if not the majority
+of users.
 
 This buffer reproduces exactly that setup: `truncate-lines' is t and
 horizontal mouse-wheel and key bindings are installed (stock Emacs
@@ -196,15 +197,15 @@ cheapest pre-patch check available:
                ...)))
 
 The gate inspects `truncate-lines' (and `truncate-partial-width-windows')
-— i.e. whether truncation MODE is active.  It has no way to know
+i.e. whether truncation MODE is active.  It has no way to know
 whether any line in the buffer is actually being truncated right now;
 that depends on the rendered content and the current window width.
 
 The consequence: when the window is wide enough that every line fits,
 the gate still says ALLOWED.  Touching the trackpad sideways then
-slides the text off-screen even though there is nothing to reveal —
-exactly the annoyance most editors inhibit by disabling hscroll when
-content is not truncated.
+slides the text off-screen even though there is nothing to reveal,
+exactly the annoyance most editors (I tested VS Code and Sublime)
+inhibit by disabling hscroll when content is not truncated.
 
 One could in principle close this gap from Elisp by scanning every
 visible line (e.g. with `window-text-pixel-size') on each scroll event.
