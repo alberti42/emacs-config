@@ -56,23 +56,11 @@
 
 ;;; -- Smart horizontal scrolling ----------------------------------------------
 ;;
-;; Horizontal scroll events are suppressed when the window wraps lines,
-;; because scrolling sideways would have no visible effect there.
-;;
-;; `scroll-config--hscroll-applicable-p' decides this by checking whether
-;; truncation mode is active for the window, mirroring the logic in
-;; xdisp.c:init_iterator.  It answers "is truncation mode on?" rather than
-;; "does any line actually overflow?" — the latter would require scanning
-;; pixel widths across every visible line on each trackpad event, which is
-;; too expensive.  The false-positive (truncation on, all lines short enough
-;; to fit) is harmless: the user swipes and nothing moves.
-;;
-;; The false-positive (truncation on, all lines short enough to fit) is
-;; mildly annoying: hscroll still moves the window's column offset, so the
-;; cursor appears to drift sideways even though no content is hidden.  A
-;; pixel-perfect solution would require a C-level flag in the window struct
-;; set by the display engine whenever it renders a truncation glyph, but that
-;; is not worth the complexity here.
+;; Horizontal scroll events are suppressed when no line in the window is
+;; truncated, since scrolling sideways would have no visible effect there.
+;; `window-truncated-p' is a C primitive added in the local truncation-flag
+;; patch; it reports whether the most recent redisplay actually showed a
+;; truncation indicator.
 
 (defvar-local scroll-config-suppress-hscroll nil
   "When non-nil in the current buffer, suppress horizontal wheel scroll.
@@ -83,32 +71,10 @@ need the full window width reported to the child process; flipping
 `truncate-lines' to nil would cost a column to the continuation glyph.")
 
 (defun scroll-config--hscroll-applicable-p ()
-  "Return non-nil when the selected window truncates long lines.
-Mirrors the logic in xdisp.c init_iterator."
-  (and
-   (not scroll-config-suppress-hscroll)
-   (or
-    ;; Explicit per-buffer truncation: the buffer asked for truncation
-    ;; regardless of window geometry.
-    truncate-lines
-
-    ;; Implicit truncation via `truncate-partial-width-windows': Emacs
-    ;; automatically truncates lines in windows that do not occupy the full
-    ;; frame width (i.e. side-by-side splits), to avoid confusing wrapped text.
-    ;; Three sub-conditions must all hold:
-    (and
-     ;; 1. The window is narrower than the frame.  Full-width windows are
-     ;;    exempt: `truncate-partial-width-windows' only applies to splits.
-     (not (window-full-width-p))
-     ;; 2. The feature is enabled at all (nil disables it entirely).
-     truncate-partial-width-windows
-     ;; 3. Width threshold check.  The variable can be t (truncate all
-     ;;    partial-width windows unconditionally) or an integer N (truncate
-     ;;    only when the window is narrower than N columns).  When it is an
-     ;;    integer, a wide-enough split is still allowed to wrap.
-     (if (integerp truncate-partial-width-windows)
-         (< (window-total-width) truncate-partial-width-windows)
-       t)))))
+  "Return non-nil when horizontal scrolling can actually reveal content."
+  (and (not scroll-config-suppress-hscroll)
+       (or (not (fboundp 'window-truncated-p))
+           (window-truncated-p))))
 
 (defun scroll-config-horizontal (event &optional _arg)
   "Horizontal scroll EVENT with pixel-proportional column steps."
