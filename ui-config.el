@@ -83,6 +83,10 @@
   (setq ns-alternate-modifier 'meta
         ns-right-alternate-modifier 'none))
 
+;; macOS: avoid using native full screen in separate macOS space
+(when (eq system-type 'darwin)
+  (setq ns-use-native-fullscreen nil))
+
 ;; Default frame size; TTY frames ignore these.
 ;; (add-to-list 'default-frame-alist '(width . 200))
 ;; (add-to-list 'default-frame-alist '(fullscreen . fullheight))
