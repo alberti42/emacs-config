@@ -1,6 +1,6 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
-(defcustom latex-config-pdf-viewer 'skim
+(defcustom latex-config-pdf-viewer 'auto
   "Which PDF viewer AUCTeX uses for output-pdf jobs.
 Choices:
   `auto'      – pdf-tools in GUI frames, Skim in TTY frames (decided
@@ -8,9 +8,7 @@ Choices:
                 coexist on the same daemon).
   `skim'      – external macOS app, SyncTeX via Skim's displayline tool.
   `pdf-tools' – in-Emacs viewer, continuous scroll, SyncTeX built-in.
-                Requires a GUI frame; will not work in TTY.
-Switch with `M-x customize-variable RET latex-config-pdf-viewer' or
-by `setq' before `latex-config' loads."
+                Requires a GUI frame; will not work in TTY."
   :type '(choice (const :tag "Auto (GUI → pdf-tools, TTY → Skim)" auto)
                  (const :tag "Skim (macOS)"                       skim)
                  (const :tag "pdf-tools (in-Emacs, GUI only)"     pdf-tools))
