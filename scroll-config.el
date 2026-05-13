@@ -56,11 +56,16 @@
 
 ;;; -- Smart horizontal scrolling ----------------------------------------------
 ;;
-;; Horizontal scroll events are suppressed when no line in the window is
-;; truncated, since scrolling sideways would have no visible effect there.
-;; `window-truncated-p' is a C primitive added in the local truncation-flag
-;; patch; it reports whether the most recent redisplay actually showed a
-;; truncation indicator.
+;; Horizontal scroll events are gated per-direction so that scrolling stops
+;; at the natural extents of the visible content: no scrolling past column 0
+;; on the left, and no scrolling once all text on the right is visible.
+;;
+;; `window-truncated-on-left-p' / `window-truncated-on-right-p' are C
+;; primitives added in the local truncation-flag patch; they report whether
+;; the most recent redisplay actually drew a truncation indicator on the
+;; corresponding edge.  Using these is preferable to `(> (window-hscroll) 0)'
+;; for the "scroll back to 0" case because they handle right-to-left
+;; paragraph direction correctly.
 
 (defvar-local scroll-config-suppress-hscroll nil
   "When non-nil in the current buffer, suppress horizontal wheel scroll.
@@ -70,11 +75,16 @@ reveal.  Decoupled from `truncate-lines' because terminal emulators
 need the full window width reported to the child process; flipping
 `truncate-lines' to nil would cost a column to the continuation glyph.")
 
-(defun scroll-config--hscroll-applicable-p ()
-  "Return non-nil when horizontal scrolling can actually reveal content."
+(defun scroll-config--hscroll-allowed-p (direction)
+  "Return non-nil when a wheel event in DIRECTION can reveal content.
+DIRECTION is the wheel event symbol: `wheel-left' (scrolls right,
+revealing text on the left) or `wheel-right' (scrolls left, revealing
+text on the right)."
   (and (not scroll-config-suppress-hscroll)
-       (or (not (fboundp 'window-truncated-p))
-           (window-truncated-p))))
+       (or (not (fboundp 'window-truncated-on-left-p))
+           (if (eq direction 'wheel-left)
+               (window-truncated-on-left-p)
+             (window-truncated-on-right-p)))))
 
 (defun scroll-config-horizontal (event &optional _arg)
   "Horizontal scroll EVENT with pixel-proportional column steps."
@@ -90,12 +100,7 @@ need the full window width reported to the child process; flipping
          (direction (event-basic-type event)))
     (when (framep window) (setq window (frame-selected-window window)))
     (with-selected-window window
-      (if (or ;; The window is already hscrolled: allow scrolling back to
-           ;; column 0 even if truncation mode is no longer active.
-           (> (window-hscroll) 0)
-           ;; Truncation is active in this window, so horizontal
-           ;; scrolling can actually reveal hidden content.
-           (scroll-config--hscroll-applicable-p))
+      (if (scroll-config--hscroll-allowed-p direction)
           (if delta-info
               (let* ((raw-pixels (abs (cdr delta-info)))
                      (raw-cols   (abs (car delta-info))))

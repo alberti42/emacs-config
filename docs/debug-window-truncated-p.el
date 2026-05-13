@@ -2,29 +2,40 @@
 
 ;;; Commentary:
 ;;
-;; Interactive demo for the local Emacs patch that adds a C primitive
-;; `window-truncated-p'.  The primitive answers a single question:
+;; Interactive demo for the local Emacs patch that adds two C primitives:
 ;;
-;;   "Did the most recent redisplay of WINDOW show any truncation
-;;    indicator (left-edge hscroll glyph or right-edge truncation
-;;    glyph / fringe bitmap)?"
+;;   `window-truncated-on-left-p'   t if the most recent redisplay of
+;;                                  WINDOW showed a truncation indicator
+;;                                  on the left edge (hscroll glyph).
 ;;
-;; The patch itself only adds the flag.  Horizontal scrolling is a
-;; *typical* application of that flag, not part of the patch — any
-;; user can write a small Elisp piece that gates `scroll-left' /
-;; `scroll-right' on the answer.  This demo uses horizontal scrolling
-;; as the worked example because it is the most intuitive case.
+;;   `window-truncated-on-right-p'  t if the most recent redisplay of
+;;                                  WINDOW showed a truncation indicator
+;;                                  on the right edge (right-edge
+;;                                  truncation glyph / fringe bitmap).
+;;
+;; The patch itself only adds these flags.  Horizontal scrolling is a
+;; *typical* application of them, not part of the patch — any user can
+;; write a small Elisp piece that gates `scroll-left' / `scroll-right'
+;; on the answer.  This demo uses horizontal scrolling as the worked
+;; example because it is the most intuitive case.
 ;;
 ;; The demo provides two tests:
 ;;
 ;;   - `truncation-flag-test-001'  Motivation: shows the typical use case
-;;                                 for the flag (gating hscroll) implemented
+;;                                 for the flags (gating hscroll) implemented
 ;;                                 WITHOUT the patch, in pure Elisp.  This
-;;                                 test does NOT exercise the new primitive.
+;;                                 test does NOT exercise the new primitives.
 ;;
 ;;   - `truncation-flag-test-002'  Demonstrates the patch in action: the
-;;                                 same use case implemented with the new
-;;                                 `window-truncated-p' primitive.
+;;                                 same use case, gated per direction
+;;                                 using the two new primitives so that
+;;                                 scrolling stops at the natural extents
+;;                                 on each side.
+;;
+;;   - `truncation-flag-test-003'  Same as test 002, but the buffer
+;;                                 contains right-to-left (Hebrew) text.
+;;                                 Verifies that the directional gating
+;;                                 also works correctly under RTL.
 ;;
 ;; Both tests open a buffer with a mix of long and short lines and bind
 ;;
@@ -46,7 +57,7 @@
 ;;             --eval "(truncation-flag-test-002)" -nw
 ;;
 ;; The file is safe to load on stock (unpatched) Emacs: test 002 detects
-;; the missing primitive via `fboundp' and explains in its buffer header
+;; the missing primitives via `fboundp' and explains in its buffer header
 ;; what would happen.
 
 ;;; Code:
@@ -67,13 +78,30 @@
   (dotimes (_ 3) (insert truncation-flag-test--long-line "\n"))
   (dotimes (_ 3) (insert truncation-flag-test--short-line "\n")))
 
+(defconst truncation-flag-test--short-line-rtl
+  "שלום עולם."
+  "A short Hebrew (RTL) line guaranteed to fit even in a narrow window.")
+
+(defconst truncation-flag-test--long-line-rtl
+  "שלום וברוכים הבאים לעולם של עורכי טקסט עתיקים התומכים גם בכיוון כתיבה מימין לשמאל בצורה נכונה ויעילה."
+  "A long Hebrew (RTL) line that overflows a typical 80-column window.")
+
+(defun truncation-flag-test--insert-sample-rtl ()
+  "Insert short and long Hebrew (RTL) lines into the current buffer."
+  (dotimes (_ 3) (insert truncation-flag-test--short-line-rtl "\n"))
+  (dotimes (_ 3) (insert truncation-flag-test--long-line-rtl "\n"))
+  (dotimes (_ 3) (insert truncation-flag-test--short-line-rtl "\n")))
+
 ;;; Gates --------------------------------------------------------------------
 
-(defun truncation-flag-test--gate-mode-mirror ()
+(defun truncation-flag-test--gate-mode-mirror (_direction)
   "Pre-patch gate: mirror the logic in xdisp.c:init_iterator.
 Answers \"is truncation mode active for this window?\" — *not*
 \"does any line actually overflow?\".  Returns t when truncation
-mode applies, even if every visible line happens to fit."
+mode applies, even if every visible line happens to fit.  The
+mode-mirror approach is direction-agnostic: there is no way to
+tell from Elisp which edge (if any) is actually truncated.
+DIRECTION is therefore ignored."
   (or truncate-lines
       (and (not (window-full-width-p))
            truncate-partial-width-windows
@@ -81,13 +109,16 @@ mode applies, even if every visible line happens to fit."
                (< (window-total-width) truncate-partial-width-windows)
              t))))
 
-(defun truncation-flag-test--gate-via-flag ()
-  "Post-patch gate: ask the C display engine directly.
-Falls through (returns t) on un-patched Emacs so the demo can
-still be run; on a patched build this returns t only when the
-most recent redisplay actually emitted a truncation indicator."
-  (or (not (fboundp 'window-truncated-p))
-      (window-truncated-p)))
+(defun truncation-flag-test--gate-via-flag (direction)
+  "Post-patch gate: ask the C display engine for the relevant edge.
+DIRECTION is `left' (scroll-left, reveal right side) or `right'
+\(scroll-right, reveal left side).  Consults the corresponding
+primitive added by the patch.  Falls through (returns t) on
+un-patched Emacs so the demo can still be run."
+  (or (not (fboundp 'window-truncated-on-left-p))
+      (if (eq direction 'left)
+          (window-truncated-on-right-p)
+        (window-truncated-on-left-p))))
 
 ;;; Interactive commands -----------------------------------------------------
 
@@ -97,9 +128,9 @@ most recent redisplay actually emitted a truncation indicator."
 (defun truncation-flag-test--try-scroll (direction)
   "Attempt to scroll the selected window by one column in DIRECTION.
 DIRECTION is `left' or `right'.  Consults the buffer-local gate
-and echoes the outcome."
+\(passing DIRECTION) and echoes the outcome."
   (let* ((gate truncation-flag-test--gate)
-         (allowed (and gate (funcall gate))))
+         (allowed (and gate (funcall gate direction))))
     (cond
      ((not gate)
       (message "No gate installed in this buffer."))
@@ -108,7 +139,7 @@ and echoes the outcome."
       (message "Gate allowed scroll-%s (hscroll=%d)."
                direction (window-hscroll)))
      (t
-      (message "Gate blocked scroll-%s (no truncation detected)."
+      (message "Gate blocked scroll-%s (no truncation on that edge)."
                direction)))))
 
 (defun truncation-flag-test-scroll-left ()
@@ -122,13 +153,14 @@ and echoes the outcome."
   (truncation-flag-test--try-scroll 'right))
 
 (defun truncation-flag-test-show-gate ()
-  "Show what the buffer-local gate would currently answer."
+  "Show what the buffer-local gate would currently answer for both directions."
   (interactive)
   (let ((gate truncation-flag-test--gate))
     (if (not gate)
         (message "No gate installed in this buffer.")
-      (message "Gate says: %s."
-               (if (funcall gate) "scroll ALLOWED" "scroll BLOCKED")))))
+      (message "scroll-left (reveal right): %s | scroll-right (reveal left): %s"
+               (if (funcall gate 'left)  "ALLOWED" "BLOCKED")
+               (if (funcall gate 'right) "ALLOWED" "BLOCKED")))))
 
 (defun truncation-flag-test-wheel-left (event)
   "Handle a `wheel-left' EVENT: try gated scroll-left in the event's window.
@@ -218,18 +250,21 @@ cost compared with unpatched Emacs.
 Bindings (buffer-local):
   M-<right> / <wheel-left>   try scroll-left   (reveal text on the right)
   M-<left>  / <wheel-right>  try scroll-right  (reveal text on the left)
-  M-?                        show current gate answer
+  M-?                        show current per-direction gate answers
 
 Try this:
 
   1. Make the window narrow enough that the long lines (sample below)
-     overflow.  M-? reports \"ALLOWED\" — correct: there IS truncation.
-     A swipe / M-<right> scrolls and reveals hidden text.
+     overflow.  M-? reports BOTH directions ALLOWED — but note this
+     gate is direction-agnostic (it cannot tell left from right edges),
+     so even right after opening the buffer scroll-right is reported
+     ALLOWED despite hscroll=0 and no text on the left.
 
-  2. Widen the window so EVERY line fits.  M-? still reports \"ALLOWED\"
-     — false positive: the gate only knows the mode is on.  A swipe
-     still moves the column offset, silently pushing the visible
-     content off the left edge with nothing on the right to reveal.
+  2. Widen the window so EVERY line fits.  M-? still reports BOTH
+     directions ALLOWED — false positive: the gate only knows the
+     mode is on.  A swipe still moves the column offset, silently
+     pushing the visible content off the left edge with nothing on
+     the right to reveal.
 
 Sample lines:
 ")
@@ -242,70 +277,155 @@ Sample lines:
     (switch-to-buffer buf)))
 
 (defun truncation-flag-test-002 ()
-  "Post-patch demo: gate horizontal scrolling via `window-truncated-p'.
+  "Post-patch demo: gate horizontal scrolling directionally.
 
-Uses the new C primitive added by the patch.  Reports actual
-rendered truncation, so the false-positive shown in test 001
-disappears: when every visible line fits, the gate correctly
-blocks the scroll.
+Uses the new C primitives added by the patch
+\(`window-truncated-on-left-p' / `window-truncated-on-right-p').
+Reports actual rendered truncation per edge, so scrolling stops
+at the natural extents on each side and the false-positive shown
+in test 001 disappears.
 
-On an unpatched build the primitive is absent.  The gate falls
+On an unpatched build the primitives are absent.  The gate falls
 through to t (always allowed), matching stock behavior; a banner
 at the top of the buffer warns about this."
   (interactive)
-  (let* ((patched (fboundp 'window-truncated-p))
+  (let* ((patched (fboundp 'window-truncated-on-left-p))
          (buf (get-buffer-create "*truncation-flag-test-002*")))
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
       (unless patched
         (insert "\
-WARNING: this Emacs build does NOT expose `window-truncated-p'.  The gate
-in this test falls through and always allows scroll, matching stock
-behavior.  Run this test from the patched Emacs to see the difference.
+WARNING: this Emacs build does NOT expose `window-truncated-on-left-p'
+or `window-truncated-on-right-p'.  The gate in this test falls through
+and always allows scroll, matching stock behavior.  Run this test from
+the patched Emacs to see the difference.
 
-")
-        )
+"))
       (insert "\
-truncation-flag-test-002 — the patch in action (window-truncated-p)
+truncation-flag-test-002 — the patch in action (directional gating)
 ===================================================================
 
-This test exercises the new C primitive added by the patch.  It is the
-same worked example as test 001 (gating horizontal scrolling on actual
-truncation), but the gate now consults the display engine directly
-instead of approximating in pure Elisp:
+This test exercises the two C primitives added by the patch.  It is
+the same worked example as test 001 (gating horizontal scrolling on
+actual truncation), but the gate now consults the display engine
+directly, and does so per edge:
 
-    (defun truncation-flag-test--gate-via-flag ()
-      (or (not (fboundp 'window-truncated-p))
-          (window-truncated-p)))
+    (defun truncation-flag-test--gate-via-flag (direction)
+      (or (not (fboundp 'window-truncated-on-left-p))
+          (if (eq direction 'left)
+              (window-truncated-on-right-p)   ; scroll-left reveals right
+            (window-truncated-on-left-p))))   ; scroll-right reveals left
+
+The two predicates are independent: each looks for one bit in the
+current glyph matrix and stops on the first hit.  This means
+scrolling stops at the natural extents on each side, like VS Code
+and Sublime do: you cannot scroll-left past the rightmost visible
+content, and you cannot scroll-right past column 0.
 
 The patch itself adds nothing about horizontal scrolling — only the
-flag.  Any user can write a gate like the one above; this is just one
-typical application.
+two flags.  Any user can write a gate like the one above; this is
+just one typical application.
 
 Bindings (buffer-local):
   M-<right> / <wheel-left>   try scroll-left   (reveal text on the right)
   M-<left>  / <wheel-right>  try scroll-right  (reveal text on the left)
-  M-?                        show current gate answer
+  M-?                        show current per-direction gate answers
 
 Try this:
 
   1. Make the window narrow enough that the long lines (sample below)
-     overflow.  M-? reports \"ALLOWED\".  A swipe / M-<right> scrolls
-     and reveals hidden text.
+     overflow.  M-? reports scroll-left ALLOWED, scroll-right BLOCKED
+     (hscroll is still 0, nothing on the left to reveal).  A swipe /
+     M-<right> scrolls and reveals hidden text on the right.
 
-  2. Widen the window so every line fits without truncation.  M-? now
-     reports \"BLOCKED\" — the false positive from test 001 is gone:
-     the primitive asks the C display engine whether a truncation
-     indicator was actually drawn, and the answer is no.
+  2. After some M-<right> presses, M-? now reports BOTH directions
+     ALLOWED: the long lines still overflow on the right, and column 0
+     is now off the left.  M-<left> walks the offset back toward 0.
 
-  3. Once the gate has BLOCKED scrolling, hscroll never advanced past 0,
-     so subsequent attempts also block.  Compare with test 001, where
-     the column offset may have already drifted away from 0.
+  3. Once hscroll returns to 0, scroll-right becomes BLOCKED again.
+
+  4. Widen the window so every line fits.  scroll-left now also
+     BLOCKS — the false positive from test 001 is gone: the primitive
+     asks the C display engine whether a truncation indicator was
+     actually drawn on the right edge, and the answer is no.
 
 Sample lines:
 ")
       (truncation-flag-test--insert-sample)
+      (setq-local truncate-lines t)
+      (setq-local truncation-flag-test--gate
+                  #'truncation-flag-test--gate-via-flag)
+      (truncation-flag-test--install-keys)
+      (goto-char (point-min)))
+    (switch-to-buffer buf)))
+
+(defun truncation-flag-test-003 ()
+  "Post-patch demo with right-to-left (Hebrew) content.
+
+Same directional gating as `truncation-flag-test-002', but the
+buffer contains Hebrew text so paragraphs render visually from
+right to left.  The new C primitives report which visual edge
+\(left or right) was actually truncated by the display engine, so
+gating Just Works under RTL: scroll-left still reveals visual
+content on the visual right edge, regardless of paragraph
+direction."
+  (interactive)
+  (let* ((patched (fboundp 'window-truncated-on-left-p))
+         (buf (get-buffer-create "*truncation-flag-test-003*")))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (unless patched
+        (insert "\
+WARNING: this Emacs build does NOT expose `window-truncated-on-left-p'
+or `window-truncated-on-right-p'.  The gate in this test falls through
+and always allows scroll, matching stock behavior.  Run this test from
+the patched Emacs to see the difference.
+
+"))
+      (insert "\
+truncation-flag-test-003 — directional gating under RTL (Hebrew)
+================================================================
+
+Same setup as truncation-flag-test-002, but the buffer contains
+Hebrew text so paragraphs render visually right-to-left: each long
+Hebrew line begins on the visual right edge and ends on the visual
+left edge.
+
+The new C primitives report which VISUAL edge was truncated by the
+display engine.  So the directional gating works identically under
+RTL: a wheel-right event (which calls `scroll-left' to expose more
+content on the visual right) is allowed exactly when the right edge
+of the rendered output actually carries a truncation indicator,
+regardless of whether the underlying paragraph is LTR or RTL.
+
+Bindings (buffer-local):
+  M-<right> / <wheel-left>   try scroll-left   (reveal visual right)
+  M-<left>  / <wheel-right>  try scroll-right  (reveal visual left)
+  M-?                        show current per-direction gate answers
+
+Try this:
+
+  1. Make the window narrow enough that the long Hebrew lines (below)
+     overflow.  M-? reports scroll-left ALLOWED, scroll-right BLOCKED.
+     A swipe / M-<right> scrolls visually leftward.  The right edge
+     of the rendered Hebrew text is what gets revealed — i.e. the
+     middle/end of the logical sentence.
+
+  2. After some M-<right> presses, M-? reports BOTH ALLOWED: long
+     lines still extend off the visual right, AND content is now
+     hidden off the visual left.  M-<left> walks the offset back.
+
+  3. Once back at hscroll 0, scroll-right is BLOCKED again.
+
+  4. Widen the window until every Hebrew line fits.  Both directions
+     BLOCK — same as in test 002.  The bidi reordering has not
+     confused the predicates.
+
+Sample lines (Hebrew, right-aligned by RTL paragraph layout):
+")
+      (truncation-flag-test--insert-sample-rtl)
       (setq-local truncate-lines t)
       (setq-local truncation-flag-test--gate
                   #'truncation-flag-test--gate-via-flag)
