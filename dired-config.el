@@ -65,7 +65,21 @@ or reveal in the system file manager."
 (defun dired-sort-by-ext ()             (interactive) (dired-sort-other "-lX"))
 (defun dired-sort-by-ext-r ()           (interactive) (dired-sort-other "-lXr"))
 
+(defun dired-goto-first-file ()
+  "Move point to the first non-trivial file in the Dired listing."
+  (interactive)
+  (goto-char (point-min))
+  (dired-initial-position default-directory))
+
+(defun dired-goto-last-file ()
+  "Move point to the last file in the Dired listing."
+  (interactive)
+  (goto-char (point-max))
+  (dired-previous-line 1))
+
 (with-eval-after-load 'dired
+  (define-key dired-mode-map [remap beginning-of-buffer] #'dired-goto-first-file)
+  (define-key dired-mode-map [remap end-of-buffer]       #'dired-goto-last-file)
   (define-key dired-mode-map (kbd "O") #'dired-open-with)
   (define-key dired-mode-map (kbd ".") #'dired-omit-mode)
   ;; Sorting commands mirroring keybindings from Yazi
