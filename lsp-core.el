@@ -69,12 +69,7 @@
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration))
 
-;; lsp-diagnostics: NOT a standalone package — this is the `lsp-diagnostics.el'
-;; file that ships inside the `lsp-mode' package.  We use `use-package' purely
-;; for its declarative loading semantics (`:after lsp-mode' defers `require'
-;; until lsp-mode is loaded).
-;;
-;; Force-requiring this module ensures its faces (e.g.
+;; Force-requiring lsp-diagnostics ensures its faces (e.g.
 ;; `lsp-flycheck-info-unnecessary' for "unused" diagnostics) are defined
 ;; before any server sends a diagnostic that references them — otherwise
 ;; early diagnostics trigger "Invalid face reference" warnings.
