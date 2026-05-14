@@ -73,24 +73,11 @@ faces without disturbing comments or existing markup."
     (setq-local completion-at-point-functions
                 (remove #'cape-tex completion-at-point-functions))
 
-    ;; Route LSP / flycheck diagnostics to the real `right-margin' via sideline.
+    ;; Route sideline labels into the real `right-margin' for prose buffers.
     ;; Soft-wrap already reserves the margin column; sideline reuses that space
-    ;; without resizing it.
-    ;;
-    ;; `sideline-flycheck-setup' is added to `flycheck-mode-hook' buffer-locally
-    ;; (rather than globally from `lsp-core.el') to keep blast radius confined
-    ;; to LaTeX while the integration is being developed.  It fires when LSP
-    ;; eventually enables flycheck-mode in this buffer.
-    (setq-local sideline-backends-right '(sideline-flycheck sideline-lsp))
-    (sideline-mode 1)
-    (add-hook 'flycheck-mode-hook #'sideline-flycheck-setup nil t)
-
-    ;; Preempt `lsp-ui-sideline-mode': `lsp--auto-configure' fires from several
-    ;; lifecycle points (`lsp-managed-mode' setup and `lsp-after-open-hook'
-    ;; workspace init), so a post-hoc disable loses the race to the next enable.
-    ;; Setting `lsp-ui-sideline-enable' nil buffer-locally tells each
-    ;; `lsp-ui-mode' setup to skip sideline.
-    (setq-local lsp-ui-sideline-enable nil))
+    ;; without resizing it.  Sideline itself is enabled globally from
+    ;; `lsp-core.el'; only the display area is overridden here.
+    (setq-local sideline-display-area 'right-margin))
 
 ;;; -- Hooks -------------------------------------------------------------------
 

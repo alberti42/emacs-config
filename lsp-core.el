@@ -171,57 +171,36 @@ KEY is the JSON object key as a string, e.g. method or id."
   ;; and degrade gracefully in TTY.
   (setq flycheck-indication-mode 'left-fringe))
 
+;; lsp-ui: keep the package loaded so `lsp--auto-configure' can call
+;; `(lsp-ui-mode)', but disable all visible features — sideline is handled
+;; by the `sideline' framework below, hover docs by ElDoc + C-c l h h.
 (use-package lsp-ui
   :after lsp-mode
   :commands lsp-ui-mode
   :init
-  ;; lsp-mode automatically enables lsp-ui-mode unless lsp-auto-configure is nil.
-  (setq lsp-ui-doc-enable t)
-
-  ;; Positioning based on frame capabilities:
-  ;; - GUI: Supports child-frames and pixel math, enabling true 'at-point' floating.
-  ;; - TTY: Lacks child-frames; lsp-ui falls back to a standard window split.
-  ;;        We explicitly set 'top' for TTY to avoid the failed 'at-point' math
-  ;;        and keep the behavior predictable and transparent.
-  (setq lsp-ui-doc-position 'at-point)
-
-  ;; Use child-frames where available (GUI).
-  (setq lsp-ui-doc-use-childframe t)
-  ;; Hover docs are handled by ElDoc (echo area); use glance (C-c l h g) for
-  ;; the full child-frame popup on demand.
-  (setq lsp-ui-doc-show-with-cursor nil)
-  (setq lsp-ui-doc-show-with-mouse nil)
-
-  ;; Sideline: show diagnostics and code-action hints inline, but not hover —
-  ;; that would duplicate what ElDoc already shows in the echo area.
-  (setq lsp-ui-sideline-enable t)
-  (setq lsp-ui-sideline-show-hover t)
-  (setq lsp-ui-sideline-show-diagnostics t)
-  (setq lsp-ui-sideline-show-code-actions t)
-  :bind (:map lsp-ui-mode-map
-              ("C-c l h g" . lsp-ui-doc-glance)))
+  (setq lsp-ui-doc-enable nil)
+  (setq lsp-ui-sideline-enable nil))
 
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
-;; Alternative to lsp-ui-sideline.  Our local copy (`local/sideline.el') carries
-;; a patch adding `sideline-display-area', which can route labels into the
-;; dedicated `right-margin' column instead of the text area -- usable in prose
-;; buffers where the text area has no horizontal slack.
-;;
-;; Enabled per mode (e.g. `syntaxes/latex.el'), not globally.  Backends are set
-;; buffer-locally there; only the display style is configured here.
+;; Replacement for lsp-ui-sideline.  Our local copy (`local/sideline.el')
+;; carries a patch adding `sideline-display-area', which can route labels into
+;; the dedicated `right-margin' column instead of the text area -- usable in
+;; prose buffers where the text area has no horizontal slack.  Code buffers use
+;; the default text-area display; prose modes (e.g. LaTeX) override
+;; `sideline-display-area' buffer-locally.
 
-;; `sideline-lsp' and `sideline-flycheck' declare `(sideline ...)' in their
-;; Package-Requires; without this entry straight would resolve that dep by
-;; pulling the upstream package from MELPA, masking our `local/' patch.
-(add-to-list 'straight-built-in-pseudo-packages 'sideline)
+;; ;; `sideline-lsp' and `sideline-flycheck' declare `(sideline ...)' in their
+;; ;; Package-Requires; without this entry straight would resolve that dep by
+;; ;; pulling the upstream package from MELPA, masking our `local/' patch.
+;; (add-to-list 'straight-built-in-pseudo-packages 'sideline)
 
 (use-package sideline
-  :straight nil
-  :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
-  :commands (sideline-mode global-sideline-mode sideline-render)
+  ;; :straight nil
+  ;; :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
+  :hook (flycheck-mode . sideline-mode)
   :init
-  (setq sideline-display-area 'right-margin
+  (setq sideline-backends-right '(sideline-flycheck sideline-lsp)
         ;; Stack right-side labels downward starting at point's line, so the
         ;; first label aligns with the paragraph the diagnostic refers to
         ;; rather than ending one row above it.
@@ -238,7 +217,7 @@ KEY is the JSON object key as a string, e.g. method or id."
   (setq sideline-lsp-code-actions-prefix ""))
 
 (use-package sideline-flycheck
-  :commands (sideline-flycheck sideline-flycheck-setup))
+  :hook (flycheck-mode . sideline-flycheck-setup))
 
 ;;; -- yasnippet setup ---------------------------------------------------------
 
