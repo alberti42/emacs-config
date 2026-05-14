@@ -14,7 +14,17 @@ uses to expand server-returned placeholders is configured separately in
   diagnostics) are defined before any server can reference them. Without
   this, early diagnostics trigger "Invalid face reference" warnings.
 - `flycheck` — diagnostics frontend (left-fringe indicators).
-- `lsp-ui` — sideline hints, doc child frames.
+- `sideline` — generic inline-annotation framework, hooked to
+  `flycheck-mode` so it activates wherever flycheck does.
+- `sideline-flycheck` — sideline backend rendering flycheck diagnostics
+  at end of line ("this is wrong").
+- `sideline-lsp` — sideline backend rendering LSP code actions per line
+  ("do this to fix it"), queried directly from `lsp-mode`.
+
+`lsp-ui` is no longer used. Sideline replaces `lsp-ui-sideline`; the
+on-demand hover popup `lsp-ui-doc-glance` was removed because ElDoc
+(echo area) plus `C-c l h h` (`lsp-describe-thing-at-point`) covered
+the same workflow.
 
 ## Cross-module touchpoints
 
@@ -71,26 +81,28 @@ Emacs 30+ for `python-ts-mode` vs `python-mode`). Snippets are now
 inserted on demand via `C-c y` (`yas-insert-snippet`) — see
 `docs/modules/yasnippet-config.md`.
 
-## Hover info — three independent display systems
+## Hover info and inline annotations — independent display systems
 
-| System              | What it shows                                  | When it shows           |
-| ------------------- | ---------------------------------------------- | ----------------------- |
-| ElDoc (echo area)   | symbol signature only (`lsp-eldoc-render-all nil`) | always, on cursor move |
-| lsp-ui-sideline     | hover, diagnostics, code-action hints         | inline, right of line   |
-| lsp-ui-doc child frame | full hover docs                              | **on demand** via `C-c l h g` (`lsp-ui-doc-glance`) |
+| System              | What it shows                                  | When it shows                      |
+| ------------------- | ---------------------------------------------- | ---------------------------------- |
+| ElDoc (echo area)   | symbol signature only (`lsp-eldoc-render-all nil`) | always, on cursor move         |
+| sideline-flycheck   | diagnostics from flycheck                      | inline, right of each diagnostic line |
+| sideline-lsp        | code actions offered by the LSP server         | inline, right of current line      |
+| full hover docs     | full hover documentation buffer                | **on demand** via `C-c l h h` (`lsp-describe-thing-at-point`) |
 
-The sideline shows hover *in addition* to ElDoc; the duplication is
-deliberate so the inline view doesn't disappear when you move past the
-symbol. The lsp-ui-doc child frame is **not** shown automatically — both
-`lsp-ui-doc-show-with-cursor` and `lsp-ui-doc-show-with-mouse` are
-explicitly `nil`.
+Diagnostics flow: LSP server → lsp-mode → flycheck → `sideline-flycheck`.
+Code actions flow: LSP server → lsp-mode → `sideline-lsp` directly (per
+line), bypassing flycheck — flycheck has no concept of "fixes", only
+errors. The two are separate packages because the `sideline` ecosystem
+treats them as distinct backends; `lsp-ui-sideline` previously bundled
+both into one package.
 
 ## Key bindings
 
 | Key            | Action                                             |
 | -------------- | -------------------------------------------------- |
 | `C-c l`        | LSP keymap prefix                                  |
-| `C-c l h g`    | `lsp-ui-doc-glance` — pop the full doc child frame |
+| `C-c l h h`    | `lsp-describe-thing-at-point` — full hover docs    |
 
 ## Performance / behavior knobs
 
@@ -124,28 +136,18 @@ loaded, you get "Invalid face reference" warnings. The
 `use-package lsp-diagnostics :straight nil :after lsp-mode` block exists
 purely to force `require` at the right time.
 
-### lsp-ui-doc is on-demand only
+### No automatic hover popup
 
-The child-frame popup is not automatic. If you find this surprising while
-moving the cursor over a symbol and seeing nothing, that's by design:
-ElDoc gives you the signature in the echo area; `C-c l h g` pops the
-full popup. Don't flip `lsp-ui-doc-show-with-cursor` to `t` without
-considering the visual noise — the previous decision was that automatic
-popup competes with ElDoc and sideline.
+The `lsp-ui-doc` child-frame is no longer wired up — `lsp-ui` is not
+installed. Hover information is split across:
 
-### Kind-First Routing patch is currently DISABLED
+- **ElDoc** (echo area): one-line signature, follows the cursor.
+- **`C-c l h h`** (`lsp-describe-thing-at-point`): full docs in a help
+  buffer, on demand.
 
-The block starting at the comment "Patched lsp--parser-on-message to
-prioritize 'method' (Kind-First routing)" is wrapped in `(when nil ...)`.
-The patch is *defined* but *not active*. It was previously enabled to
-prevent protocol deadlocks when server-initiated requests collide with
-client IDs (see `docs/lsp-mode-01-collision-resolution.md`). If symptoms
-recur (LSP hangs, "Received a response without a matching request"
-warnings), re-enable by removing the `(when nil ...)` wrapper.
-
-The earlier `CLAUDE.md` text ("Includes a global surgical patch …
-prevents protocol deadlocks") is **stale** — it described the patch as
-active.
+If you find yourself wanting an at-point floating popup again, re-add
+`lsp-ui` and bind `lsp-ui-doc-glance` to a key — but consider whether
+the echo area + help buffer combination already covers the workflow.
 
 ### Session file `~/.config/emacs/.lsp-session-v1` is intentionally bypassed
 
@@ -156,11 +158,16 @@ stale across `project.el` root changes.
 
 ### Commented-out fork `alberti42/fork-lsp-mode` is no longer needed
 
-The `:straight (... :branch "show-diagnostic-codes" ... )` recipe at
-lines 11–16 references a personal fork that exposed diagnostic codes via
-flycheck. Upstream lsp-mode now passes `:id code?` to `flycheck-error-new`
-inside `lsp-diagnostics--flycheck-start` (see the comment on the
-`flycheck` `use-package` block), so diagnostic codes are natively
-available via `flycheck-error-id`. Safe to delete the commented block at
-some point.
+The `:straight (... :branch "integrated" ... )` recipe at lines 11–16
+references a personal fork that carried several patches. All of them
+have since been merged upstream:
+
+- Kind-First JSON-RPC routing (prevents protocol deadlocks when
+  server-initiated requests collide with client IDs).
+- Diagnostic codes exposed via `flycheck-error-id` — upstream lsp-mode
+  now passes `:id code?` to `flycheck-error-new` inside
+  `lsp-diagnostics--flycheck-start`.
+- Two further critical patches in the same series.
+
+Safe to delete the commented `:straight` recipe.
 
