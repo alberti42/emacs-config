@@ -147,6 +147,22 @@
   (setq sideline-lsp-code-actions-prefix ""))
 
 (use-package sideline-flycheck
+  ;; Point at local fork carrying `sideline-flycheck-show-error-id', a new
+  ;; defcustom that appends the diagnostic code (e.g. \"reportUnusedExpression\")
+  ;; to the rendered message via `flycheck-error-format-message-and-id'.
+  ;; Pending upstream PR to https://github.com/emacs-sideline/sideline-flycheck.
+  :straight (sideline-flycheck
+             :type git
+             :host github
+             :local-repo "/Users/andrea/Documents/Programming/Others/fork-sideline-flycheck"
+             :branch "fix/reporting-error-code"
+             :repo "alberti42/fork-sideline-flycheck")
+  :init
+  (setq sideline-flycheck-show-error-id t
+        ;; `line' shows every diagnostic on its own line, matching the
+        ;; `lsp-ui-sideline' workflow.  Default `point' only renders the
+        ;; diagnostic at the current cursor line.
+        sideline-flycheck-display-mode 'line)
   :hook (flycheck-mode . sideline-flycheck-setup))
 
 ;;; -- yasnippet setup ---------------------------------------------------------
