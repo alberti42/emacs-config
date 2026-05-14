@@ -89,16 +89,6 @@
   ;; and degrade gracefully in TTY.
   (setq flycheck-indication-mode 'left-fringe))
 
-;; lsp-ui: keep the package loaded so `lsp--auto-configure' can call
-;; `(lsp-ui-mode)', but disable all visible features — sideline is handled
-;; by the `sideline' framework below, hover docs by ElDoc + C-c l h h.
-(use-package lsp-ui
-  :after lsp-mode
-  :commands lsp-ui-mode
-  :init
-  (setq lsp-ui-doc-enable nil)
-  (setq lsp-ui-sideline-enable nil))
-
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
 ;; Replacement for lsp-ui-sideline.  Our local copy (`local/sideline.el')
