@@ -22,6 +22,14 @@
              ;; :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
              :branch "fix/visual-line"
              :files ("git-gutter.el"))
+  ;; git-gutter does not define `git-gutter-mode-map' (its `define-minor-mode'
+  ;; form has no :keymap argument), so we bind globally.  The commands are
+  ;; well-namespaced and no-op when there are no hunks.
+  :bind (("C-c v p" . git-gutter:popup-hunk)
+         ("C-c v n" . git-gutter:next-hunk)
+         ("C-c v N" . git-gutter:previous-hunk)
+         ("C-c v s" . git-gutter:stage-hunk)
+         ("C-c v r" . git-gutter:revert-hunk))
   :config
   ;; Live-ish updates (idle timer).
   (setq git-gutter:update-interval 0)
@@ -44,6 +52,15 @@
   (setq git-gutter:unchanged-sign nil)
   
   (global-git-gutter-mode 1)
+
+  ;; Show the hunk popup in a right-side window that persists across
+  ;; `git-gutter:next-hunk' / `git-gutter:previous-hunk' calls (which
+  ;; auto-refresh the popup buffer when it is alive).
+  (add-to-list 'display-buffer-alist
+               '("\\*git-gutter:diff\\*"
+                 (display-buffer-in-side-window)
+                 (side . right)
+                 (window-width . 0.4)))
 
   ;; Keep gutter in sync after Magit refreshes.
   (with-eval-after-load 'magit
