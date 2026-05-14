@@ -1,304 +1,50 @@
-# markdown-ts-mode: ATX heading marker whitespace not hidden — PR in preparation
+# markdown-ts-mode: ATX heading marker whitespace not hidden — fixed upstream
 
-**Status (2026-04-25)**: bug confirmed locally; minimal fix applied to
-a patched copy at `local/markdown-ts-mode.el`, loaded ahead of the
-bundled file via `:load-path` in the `markdown-ts-mode` `use-package`
-block in `markdown-config.el`. The runtime workaround that previously
-sat in `markdown-config--markdown-ts-mode-setup` (a custom
-`atx_heading` treesit fontifier extending invisibility forward through
-trailing whitespace) has been removed — the patched local copy fixes
-the issue at source. Upstream report not yet filed.
+**Status (2026-05-14)**: fixed upstream in commit `286833e401d` ("Add
+read-only `markdown-ts-view-mode` (bug#81023)", 2026-05-12). The
+local patched copy at `local/markdown-ts-mode.el` and the `:load-path`
+entry in the `markdown-ts-mode` `use-package` block in
+`markdown-config.el` have been removed. No further action on the
+markdown-ts-mode side; this note is kept as a historical record.
 
-## TL;DR
+## What the bug was
 
-When `markdown-ts-hide-markup` is on, `markdown-ts--fontify-delimiter`
-sets the `invisible` text property on the `atx_h[1-6]_marker` node
-range — i.e., only the `#` characters themselves. The single space
-that separates the marker from the heading text is left visible,
-which leaves the heading title offset by one column instead of
-sitting flush at column 0 where the user expects when "hide markup"
-is in effect. Fix: use a heading-specific fontifier that extends the
-invisible region forward through any trailing whitespace, and route
-the six `atx_h[1-6]_marker` captures through it instead of the
-generic delimiter fontifier.
+When `markdown-ts-hide-markup` was on, `markdown-ts--fontify-delimiter`
+set the `invisible` text property only on the `atx_h[1-6]_marker`
+node range — i.e., the `#` characters themselves. The single space
+that separates the marker from the heading text was left visible, so
+the heading title sat one column off the left edge instead of flush
+at column 0 where the user expects when "hide markup" is in effect.
 
-## Affected scope
+## Upstream fix
 
-- **Emacs core** `lisp/textmodes/markdown-ts-mode.el` — confirmed
-  broken (Emacs 31.0.50, prerelease).
-- **LionyxML's MELPA package**
-  (https://github.com/LionyxML/markdown-ts-mode) — different code
-  base; status not investigated for this issue.
+`286833e401d` introduces a dedicated `markdown-ts--fontify-atx-delimiter`
+that extends the `invisible` region forward through any trailing
+whitespace between the marker and the heading text, and routes the six
+`atx_h[1-6]_marker` captures through it instead of the generic
+delimiter fontifier. The fix is in
+`lisp/textmodes/markdown-ts-mode.el` on Emacs `master`.
 
-PR target: Emacs core only, via `M-x report-emacs-bug`.
+Verified on master (2026-05-14): the prefix `### ` is fully invisible
+when `markdown-ts-hide-markup` is on, and the heading title renders
+flush at column 0.
 
-## Root cause
+## Related — still open
 
-The bundled `markdown-ts--fontify-delimiter`:
+`visual-wrap-prefix-mode` has a separate latent bug: when it computes
+the wrap-prefix's `min-width`, it does not consult
+`buffer-invisibility-spec`, so column space is reserved for invisible
+characters. This was partially closed by branch-local commit
+`c2de8aa08fa` ("Don't reserve column-width for invisible prefixes in
+visual-wrap") — the fully-invisible-prefix case. The
+partially-invisible case (some chars hidden, others visible) is still
+unhandled. The c2de8aa0 patch has not yet been filed upstream; see
+the visual-wrap report when it goes out.
 
-```elisp
-(defun markdown-ts--fontify-delimiter (node override start end &rest _)
-  "Fontify delimiter NODE and optionally hide its markup."
-  (treesit-fontify-with-override
-   (treesit-node-start node) (treesit-node-end node)
-   'markdown-ts-delimiter override start end)
-  (when markdown-ts-hide-markup
-    (put-text-property (treesit-node-start node) (treesit-node-end node)
-                       'invisible 'markdown-ts--markup)))
-```
-
-is registered against six ATX marker captures:
-
-```elisp
-:language 'markdown
-:feature 'heading
-:override 'prepend
-'((atx_h1_marker) @markdown-ts--fontify-delimiter
-  (atx_h2_marker) @markdown-ts--fontify-delimiter
-  ...
-  (atx_h6_marker) @markdown-ts--fontify-delimiter)
-```
-
-The tree-sitter-markdown grammar emits `atx_h*_marker` for the `#`
-characters only — the whitespace between the marker and the heading
-text is **not** part of the marker node. So the `put-text-property`
-above hides the `#`s and stops; the trailing space is left visible.
-
-For a level-3 heading `### List of contents`, the rendered line is
-the literal space (column 0) followed by `List of contents` (starting
-at column 1). The user sees a one-column offset that grows by one
-per level only when also paired with the `visual-wrap-prefix-mode`
-column-reservation bug (separate PR), so without `visual-wrap-prefix-mode`
-the offset is a stable +1 regardless of level.
-
-This same fontifier is used for many other delimiter constructs
-(block quote markers, fenced code block delimiters, emphasis
-delimiters, …), where there is *no* trailing whitespace to worry
-about. Modifying it in place would incorrectly affect those
-constructs. The right fix is a heading-specific variant.
-
-## Why this is a bug, not intentional behavior
-
-Pre-empting the reasonable maintainer reflex of *"the trailing space
-is a syntactic separator, leaving it visible is intentional — and the
-level-correlated indentation looks like a feature anyway."*
-
-**The user contract for `markdown-ts-hide-markup`.** When a user
-turns the option on, they are asking for a rendered-view
-approximation of the document. WYSIWYG markdown renderers (Typora,
-Obsidian preview, VS Code preview, GitHub) place all heading levels
-flush at column 0; size and weight vary by level, indentation does
-not. That is the canonical "rendered look" the toggle is named after.
-
-**Precedent in `org-mode`.** Org's analogous facilities are explicit,
-named, and orthogonal:
-
-- `org-hide-leading-stars` hides leading stars but keeps the last
-  star + space visible — a deliberate structural cue. The visible
-  remainder is documented as a feature.
-- `org-indent-mode` is a *separate* minor mode with its own name that
-  hides stars *and* indents the title by level — a tree-outline look,
-  switched on by users who want it.
-
-Both are designed, named, opt-in choices. Neither is a side-effect
-of "hide markup" that users have to reverse-engineer. By comparison,
-`markdown-ts-mode` has a single `markdown-ts-hide-markup` toggle and
-no `markdown-ts-indent-mode` equivalent. If a tree-outline rendering
-were ever wanted, it would be a separately-named feature, not the
-default behavior of the markup-hiding toggle.
-
-**The current behavior is not a designed feature.** Without
-`visual-wrap-prefix-mode` active, the offset is a constant **+1
-column at every heading level**:
-
-| Heading | Expected (WYSIWYG) | Actual without `visual-wrap` | Actual with `visual-wrap` |
-| --- | --- | --- | --- |
-| `### A`   | `A` | ` A` (1 col)  | `    A` (4 cols)  |
-| `##### A` | `A` | ` A` (1 col)  | `      A` (6 cols) |
-
-The level-correlated indent that *might* look intentional only
-appears when `visual-wrap-prefix-mode` is active, because that mode
-reserves `min-width` proportional to the prefix's character count
-(`(string-width prefix)`, which doesn't consult
-`buffer-invisibility-spec`). That is itself a bug in `visual-wrap.el`
-— filed separately.
-
-**A designed feature does not depend on bugs in unrelated subsystems
-to manifest.** If level-based indentation under
-`markdown-ts-hide-markup` were intentional, it would live in
-`markdown-ts-mode.el` as an explicit `display` / `line-prefix` /
-`put-text-property` decision, with a defcustom and a commit message
-that says so. It would not require `visual-wrap-prefix-mode`'s
-`min-width` accounting to be active to appear, and it would not
-collapse to a constant +1 the moment that mode is turned off. A
-"feature" that only works as a side-effect of an orthogonal
-subsystem's measurement bug is not a feature.
-
-## Reproduction recipe
-
-```
-emacs -Q
-M-x markdown-ts-mode
-### Heading text
-M-: (setq-local markdown-ts-hide-markup t)
-M-: (markdown-ts--set-hide-markup t)
-;; expected: "Heading text" sits at column 0.
-;; actual:   "Heading text" sits at column 1.
-M-: (get-text-property (line-beginning-position) 'invisible)
-;; => markdown-ts--markup       ← marker '###' is hidden, good
-M-: (get-text-property (+ (line-beginning-position) 3) 'invisible)
-;; => nil                       ← the space between marker and title is NOT hidden
-```
-
-The third character (`#` at column 2) is invisible; the fourth
-(the space) is not. So the visible portion of the line begins with a
-literal space, indenting the title by one column.
-
-## Evidence — node structure
-
-```elisp
-(treesit-node-children
- (treesit-parent-until
-  (treesit-node-at (line-beginning-position) 'markdown)
-  (lambda (n) (string= (treesit-node-type n) "atx_heading"))
-  t))
-;; => ((atx_h3_marker BEG END) (inline BEG' END'))
-```
-
-`END` (end of the marker node) and `BEG'` (start of the inline
-content) are *not* equal — there's exactly one whitespace character
-between them, and that character is not part of either node, so no
-fontifier covers it.
-
-## Proposed patch
-
-```diff
---- a/lisp/textmodes/markdown-ts-mode.el
-+++ b/lisp/textmodes/markdown-ts-mode.el
-@@ -168,6 +168,27 @@ markdown-ts--fontify-delimiter
-     (put-text-property (treesit-node-start node) (treesit-node-end node)
-                        'invisible 'markdown-ts--markup)))
-
-+(defun markdown-ts--fontify-atx-marker (node override start end &rest _)
-+  "Fontify an ATX heading marker NODE and hide its markup.
-+
-+Like `markdown-ts--fontify-delimiter', but when
-+`markdown-ts-hide-markup' is on, also hides the whitespace separating
-+the marker from the heading text — without that, the heading title
-+ends up indented by one column rather than sitting flush with the
-+left edge where the user expects it.
-+
-+OVERRIDE, START, and END are passed through to
-+`treesit-fontify-with-override'."
-+  (treesit-fontify-with-override
-+   (treesit-node-start node) (treesit-node-end node)
-+   'markdown-ts-delimiter override start end)
-+  (when markdown-ts-hide-markup
-+    (save-excursion
-+      (goto-char (treesit-node-end node))
-+      (skip-chars-forward " \t")
-+      (put-text-property (treesit-node-start node) (point)
-+                         'invisible 'markdown-ts--markup))))
-+
- (defvar markdown-ts--treesit-settings
-   (treesit-font-lock-rules
-    :language 'markdown-inline
-@@ -189,12 +210,12 @@ markdown-ts--treesit-settings
-    :language 'markdown
-    :feature 'heading
-    :override 'prepend
--   '((atx_h1_marker) @markdown-ts--fontify-delimiter
--     (atx_h2_marker) @markdown-ts--fontify-delimiter
--     (atx_h3_marker) @markdown-ts--fontify-delimiter
--     (atx_h4_marker) @markdown-ts--fontify-delimiter
--     (atx_h5_marker) @markdown-ts--fontify-delimiter
--     (atx_h6_marker) @markdown-ts--fontify-delimiter)
-+   '((atx_h1_marker) @markdown-ts--fontify-atx-marker
-+     (atx_h2_marker) @markdown-ts--fontify-atx-marker
-+     (atx_h3_marker) @markdown-ts--fontify-atx-marker
-+     (atx_h4_marker) @markdown-ts--fontify-atx-marker
-+     (atx_h5_marker) @markdown-ts--fontify-atx-marker
-+     (atx_h6_marker) @markdown-ts--fontify-atx-marker)
-
-    :language 'markdown
-    :feature 'paragraph
-```
-
-Notes for the maintainer:
-
-- The `markdown-ts-delimiter` face continues to apply to *only* the
-  marker node range (the `treesit-fontify-with-override` call is
-  unchanged) — only the `invisible` property is extended through
-  trailing whitespace. The face range stays accurate; the
-  invisibility range matches what users expect from "hide markup".
-- All non-heading delimiter captures (block quote markers, fenced
-  code block delimiters, emphasis delimiters, info strings,
-  block continuations, code span delimiters) keep routing through
-  the original `markdown-ts--fontify-delimiter`. None of them have a
-  trailing-whitespace concern, so they are intentionally untouched.
-- `skip-chars-forward " \t"` matches the standard ATX-heading lexer
-  contract (one or more space/tab characters between marker and
-  text). It does not cross a newline, so an empty heading
-  (`###` followed immediately by EOL) is handled correctly — the
-  invisible region simply ends at the marker.
-
-## Local fix in this repo
-
-We carry a patched copy of `markdown-ts-mode.el` at
-`local/markdown-ts-mode.el`, identical to the upstream Emacs 31 file
-plus the new `markdown-ts--fontify-atx-marker` helper and the routing
-update for the six marker captures. The `markdown-ts-mode`
-`use-package` block in `markdown-config.el` prepends
-`<emacs-config-dir>/local/` to `load-path` via `:load-path`, so the
-patched copy is loaded ahead of the bundled file. The runtime
-workaround that previously lived in
-`markdown-config--markdown-ts-mode-setup` (a custom `atx_heading`
-fontifier registered as `markdown-config-heading-extras`) has been
-removed.
-
-When the upstream fix lands in a stable Emacs release: delete
-`local/markdown-ts-mode.el`, remove `:load-path` from the
-`use-package` block in `markdown-config.el` (only if no other local
-markdown patches remain), update this note's status line.
-
-## How to file the report
-
-Emacs uses email-based contribution to debbugs.gnu.org, not GitHub
-PRs.
-
-```
-M-x report-emacs-bug
-```
-
-Subject suggestion:
-
-> `markdown-ts-mode: ATX heading marker whitespace not hidden when markdown-ts-hide-markup is on`
-
-Body should include:
-
-1. The reproduction recipe (above) — keeps it actionable.
-2. The `get-text-property` evidence on the post-marker space —
-   pinpoints the gap as "the marker node range stops at the last `#`,
-   and no fontifier covers the trailing whitespace".
-3. The "why this is a bug, not intentional behavior" framing
-   (above) — pre-empts the *"trailing space is a syntactic
-   separator, the indent is a feature"* deflection.  The closer:
-   *a designed feature does not depend on bugs in unrelated subsystems
-   to manifest*.  Without `visual-wrap-prefix-mode`, the offset
-   collapses to a constant +1 at every level — clearly not a
-   level-aware indentation feature.
-4. The note that all *other* delimiter constructs are intentionally
-   untouched — answers the maintainer's first instinct ("why a new
-   function instead of modifying `markdown-ts--fontify-delimiter`?").
-5. The patch — under the ~15-line FSF threshold; no copyright
-   assignment required.
-6. A pointer to the closely-related visual-wrap PR (file the two
-   together if both are filed in the same window — they compose:
-   without the visual-wrap fix, this fix alone still leaves headings
-   indented by `(length marker) + 1` columns when
-   `visual-wrap-prefix-mode` is active; without this fix, the
-   visual-wrap fix doesn't trigger at all because the visible
-   trailing space defeats the "fully-invisible prefix" predicate).
-
-Once filed, link the debbugs URL here and update the **Status** line
-at the top.
+The two bugs composed in the wild: without the upstream
+markdown-ts-mode fix, the trailing space stayed visible, which
+defeated c2de8aa0's "fully-invisible prefix" predicate and let the
+visual-wrap min-width hole show as a multi-column gap proportional to
+heading level. With the upstream markdown-ts-mode fix in place the
+gap collapses, but the visual-wrap assumption (`string-width` ignores
+invisibility) is still wrong and worth filing on its own merits.
