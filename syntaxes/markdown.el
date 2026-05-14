@@ -8,6 +8,15 @@
             (lambda ()
               (setq-local fill-column 100)
               (setq-local soft-wrap-default-centered t)
+              ;; Drop `#' from the default `adaptive-fill-regexp' for
+              ;; markdown-ts-mode.  ATX headings are one-shot opening markers,
+              ;; not paragraph continuation prefixes; they should not be
+              ;; repeated on continuation lines or reserve column space.  This
+              ;; also sidesteps a visual-wrap.el bug where invisible prefix
+              ;; characters still reserve column space, but the override is
+              ;; useful on its own merits.
+              (setq-local adaptive-fill-regexp
+                          "[-–!|%;>*·•‣⁃◦ \t]*")
               (soft-wrap-mode 1)
               ;; (olivetti-mode 1)
 
