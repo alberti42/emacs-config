@@ -69,6 +69,17 @@
   :config
   (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration))
 
+;;; -- flycheck integration for diagnostic -------------------------------------
+;;
+;; - Diagnostics flow: LSP server → lsp-mode → flycheck → sideline-flycheck
+;;
+;; - Code actions flow: LSP server → lsp-mode → sideline-lsp (queried directly
+;;                      per line, bypassing flycheck)
+;; 
+;; Flycheck is purely an error-reporting framework.  Code actions are an
+;; LSP-specific feature, so sideline-lsp talks to lsp-mode directly to fetch
+;; them.
+
 ;; Force-requiring lsp-diagnostics ensures its faces (e.g.
 ;; `lsp-flycheck-info-unnecessary' for "unused" diagnostics) are defined
 ;; before any server sends a diagnostic that references them — otherwise
@@ -91,13 +102,24 @@
 
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
-;; Replacement for lsp-ui-sideline.  Our local copy (`local/sideline.el')
-;; carries a patch adding `sideline-display-area', which can route labels into
-;; the dedicated `right-margin' column instead of the text area -- usable in
-;; prose buffers where the text area has no horizontal slack.  Code buffers use
-;; the default text-area display; prose modes (e.g. LaTeX) override
-;; `sideline-display-area' buffer-locally.
+;; Replacement for lsp-ui-sideline.  Two backends, each handling a distinct
+;; LSP concept:
+;;
+;; - `sideline-flycheck': shows diagnostics → errors/warnings the LSP server
+;;                        or linter already found
+;;
+;; - `sideline-lsp': shows code actions → these are the fixes the LSP server
+;;                   offers ("do this to fix it"), queried per line directly
+;;                   from lsp-mode.
 
+;; We also have local copy (`local/sideline.el') carrying an experimental patch
+;; adding `sideline-display-area', which can route labels into the dedicated
+;; `right-margin' column instead of the text area -- usable in prose buffers
+;; where the text area has no horizontal slack.  Code buffers use the default
+;; text-area display; prose modes (e.g. LaTeX) override `sideline-display-area'
+;; buffer-locally.  The experimental patch is not stable yet, there it is
+;; disabled for the moment.
+;;
 ;; ;; `sideline-lsp' and `sideline-flycheck' declare `(sideline ...)' in their
 ;; ;; Package-Requires; without this entry straight would resolve that dep by
 ;; ;; pulling the upstream package from MELPA, masking our `local/' patch.
