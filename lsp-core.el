@@ -154,8 +154,8 @@
   :straight (sideline-flycheck
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Others/fork-sideline-flycheck"
-             :branch "fix/reporting-error-code"
+             ;; :local-repo "/Users/andrea/Documents/Programming/Others/fork-sideline-flycheck"
+             ;; :branch "fix/reporting-error-code"
              :repo "alberti42/fork-sideline-flycheck")
   :init
   (setq sideline-flycheck-show-error-id t
