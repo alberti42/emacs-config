@@ -43,7 +43,8 @@
   ;; Use exactly 1 column for git-gutter indicators.
   (setq git-gutter:window-width 1)
   ;; Separator sign following the change sign; it is appended, but will be
-  ;; clipped unless window-width >= 2; thus it is effectively only displayed if we reserved a larger window-width than 1; it can be used to separate the
+  ;; clipped unless window-width >= 2; thus it is effectively only displayed if
+  ;; we reserved a larger window-width than 1; it can be used to separate the
   ;; change signs from the rest.
   (setq git-gutter:separator-sign nil)
   ;; Determines whether to show the separator-sign and the unchanged-sign for
