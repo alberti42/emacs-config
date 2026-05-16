@@ -27,12 +27,13 @@
 ;; which degrades silently on a TTY.
 ;;
 ;; Tests:
-;;   001  Visible fixed-pitch prefix (baseline / regression check).
-;;   002  Fully invisible prefix (the original bug).
-;;   003  Partially invisible prefix.
-;;   004  Variable-pitch font (GUI only).
-;;   005  Non-zero `visual-wrap-extra-indent'.
-;;   006  markdown-ts-mode + `markdown-ts-hide-markup' (real-world repro).
+;;   001   Visible fixed-pitch prefix (baseline / regression check).
+;;   002   Fully invisible prefix (the original bug).
+;;   003   Partially invisible prefix.
+;;   004a  Variable-pitch narrow prefix `;;; ' (GUI only).
+;;   004b  Variable-pitch wide prefix   `%%% ' (GUI only).
+;;   005   Non-zero `visual-wrap-extra-indent'.
+;;   006   markdown-ts-mode + `markdown-ts-hide-markup' (real-world repro).
 
 ;;; Code:
 
@@ -166,10 +167,11 @@ Sample line:
       (insert visual-wrap-test--long "\n"))
     (visual-wrap-test--show buf)))
 
-(defun visual-wrap-test-004 ()
-  "Variable-pitch prefix.  See banner in the test buffer."
-  (interactive)
-  (let ((buf (visual-wrap-test--prepare "*visual-wrap-test-004*")))
+(defun visual-wrap-test--variable-pitch (name prefix narrow-or-wide)
+  "Set up a variable-pitch test buffer named NAME with PREFIX.
+NARROW-OR-WIDE is the string \"narrow\" or \"wide\", used only in
+the banner."
+  (let ((buf (visual-wrap-test--prepare name)))
     (with-current-buffer buf
       (when (display-graphic-p)
         (variable-pitch-mode 1))
@@ -182,13 +184,14 @@ test 001).  Re-run inside a GUI frame to actually test the
 variable-pitch path.
 
 "))
-      (insert "\
-visual-wrap-test-004 — variable-pitch prefix
-============================================
+      (insert (format "\
+visual-wrap-test — variable-pitch %s prefix `%s'
+=================================================
 
 Mode: `text-mode' + `variable-pitch-mode' (GUI only).  The
-paragraph below starts with `### ', which in a proportional font
-has a non-integer column width.
+paragraph below starts with `%s', whose natural pixel width in
+a proportional font is %s than the same number of monospace
+columns.
 
 This is the case Jim Porter's 2024 commit was designed to handle:
 under the old `(max string-width (ceiling pixel/avg-space))'
@@ -200,21 +203,34 @@ the prefix's pixel width directly, so no rounding occurs.
 paragraph wraps.
 
 Expected with the redesign:
-  * Line 1 renders `### ' at its natural pixel width.
+  * Line 1 renders `%s' at its natural pixel width.
   * Continuation visual lines align with the first character that
-    follows `### ' on line 1, in pixels — no visible jitter
+    follows `%s' on line 1, in pixels — no visible jitter
     between line 1 and the wrapped lines.
 
-To compare against the pre-redesign behavior, build a stock Emacs
-and re-run this test; you should see a small but real horizontal
-gap between the prefix end on line 1 and the start of
-continuation lines.
+To compare against the pre-redesign behavior, re-run this test
+without `--load'ing the local patched `visual-wrap.el' (i.e. let
+the built-in version handle the buffer).  You should see a small
+but real horizontal gap between the prefix end on line 1 and the
+start of continuation lines.
 
 Sample line:
 
-### ")
+%s" narrow-or-wide prefix prefix narrow-or-wide prefix prefix prefix))
       (insert visual-wrap-test--long "\n"))
     (visual-wrap-test--show buf)))
+
+(defun visual-wrap-test-004a ()
+  "Variable-pitch narrow prefix `;;; '.  See banner in the test buffer."
+  (interactive)
+  (visual-wrap-test--variable-pitch
+   "*visual-wrap-test-004a*" ";;; " "narrower"))
+
+(defun visual-wrap-test-004b ()
+  "Variable-pitch wide prefix `%%% '.  See banner in the test buffer."
+  (interactive)
+  (visual-wrap-test--variable-pitch
+   "*visual-wrap-test-004b*" "%%% " "wider"))
 
 (defun visual-wrap-test-005 ()
   "Non-zero `visual-wrap-extra-indent'.  See banner in the test buffer."
@@ -258,7 +274,6 @@ Sample line:
   "markdown-ts-mode + `markdown-ts-hide-markup'.  See banner in the test buffer."
   (interactive)
   (let ((have-mode (fboundp 'markdown-ts-mode))
-        (have-toggle (fboundp 'markdown-ts-toggle-hide-markup))
         (buf (get-buffer-create "*visual-wrap-test-006*")))
     (with-current-buffer buf
       (read-only-mode -1)
@@ -304,9 +319,13 @@ Sample headings:
 ### ")
       (insert visual-wrap-test--long "\n")
       (when have-mode
-        (markdown-ts-mode))
-      (when have-toggle
-        (markdown-ts-toggle-hide-markup))
+        (markdown-ts-mode)
+        ;; Enable hide-markup directly.  `markdown-ts-toggle-hide-markup'
+        ;; is not autoloaded, so it is not yet bound at the time the
+        ;; enclosing `let' captures `fboundp' on entry.
+        (setq markdown-ts-hide-markup t)
+        (add-to-invisibility-spec 'markdown-ts--markup)
+        (font-lock-flush))
       (goto-char (point-min))
       (visual-wrap-prefix-mode 1))
     (switch-to-buffer buf)))
