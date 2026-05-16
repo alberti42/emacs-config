@@ -1,6 +1,6 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
-(defcustom latex-config-pdf-viewer 'auto
+(defcustom latex-config-pdf-viewer 'skim
   "Which PDF viewer AUCTeX uses for output-pdf jobs.
 Choices:
   `auto'      – pdf-tools in GUI frames, Skim in TTY frames (decided
