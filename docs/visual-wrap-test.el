@@ -34,6 +34,7 @@
 ;;   004b  Variable-pitch wide prefix   `%%% ' (GUI only).
 ;;   005   Non-zero `visual-wrap-extra-indent'.
 ;;   006   markdown-ts-mode + `markdown-ts-hide-markup' (real-world repro).
+;;   007   org-table-style `|' prefix (regression check for bug#73882).
 
 ;;; Code:
 
@@ -360,6 +361,51 @@ align with the start of the visible heading text):
       (goto-char (point-min))
       (visual-wrap-prefix-mode 1))
     (switch-to-buffer buf)))
+
+(defun visual-wrap-test-007 ()
+  "Org-table-style `|' prefix.  See banner in the test buffer."
+  (interactive)
+  (let ((buf (visual-wrap-test--prepare "*visual-wrap-test-007*")))
+    (with-current-buffer buf
+      (insert "\
+visual-wrap-test-007 — org-table-style `|' prefix (bug#73882 regression)
+========================================================================
+
+Mode: `text-mode'.  The buffer below contains a pre-aligned org-style
+table.  `|' is in the default `adaptive-fill-regexp', so each table
+row is treated as a logical line with `| ' as its first-line prefix.
+
+Original bug: with `global-visual-wrap-prefix-mode' enabled, the table
+cells in the first column got misaligned because `min-width' from a
+prior fontification of the same `|' character accumulated on each
+pass, inflating the width past one space.  Reporter:
+Arthur Elsenaar, 2024-10-19.  Fixed by Jim Porter as 81a5beb8af0
+\(strip prior `min-width' before measuring the prefix).
+
+The pixel-direct redesign supersedes that fix at a lower level: no
+`min-width' display property is installed at all, so there is nothing
+that can accumulate across fontification passes.
+
+`visual-wrap-prefix-mode' is enabled in this buffer.
+
+Expected:
+  * The table cells stay aligned.  Each `|' character in every column
+    sits at the same horizontal position from row to row.
+  * No `min-width' property appears anywhere on the table text.
+
+To compare against the pre-Jim-Porter behavior, you would need to
+revert his commit and ours; this is purely a regression check today.
+
+Sample table:
+
+| head   | 1 | 2 | 3 | 4 |
+|--------+---+---+---+---|
+| apple  |   |   |   |   |
+| orange |   |   |   |   |
+| pear   |   |   |   |   |
+| banana |   |   |   |   |
+"))
+    (visual-wrap-test--show buf)))
 
 (provide 'visual-wrap-test)
 
