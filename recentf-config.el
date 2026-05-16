@@ -19,7 +19,7 @@
                          (expand-file-name "~/.cache")))
          (dir (expand-file-name "emacs" cache-home)))
     (make-directory dir t)
-    (setq recentf-save-file (expand-file-name "recentf" dir)))
+    (setq recentf-save-file (expand-file-name "recentf.eld" dir)))
   (setq recentf-max-saved-items 200
         recentf-max-menu-items 50
         recentf-auto-cleanup 'mode
