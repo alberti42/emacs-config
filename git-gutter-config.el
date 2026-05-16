@@ -30,6 +30,10 @@
          ("C-c v N" . git-gutter:previous-hunk)
          ("C-c v s" . git-gutter:stage-hunk)
          ("C-c v r" . git-gutter:revert-hunk))
+  ;; `:bind' implies `:defer t', which would delay `global-git-gutter-mode'
+  ;; until the first `C-c v ...' call.  Force eager load so the gutter shows
+  ;; up immediately in all buffers.
+  :demand t
   :config
   ;; Live-ish updates (idle timer).
   (setq git-gutter:update-interval 0)
