@@ -317,5 +317,44 @@ is needed."
   :straight t
   :defer t)
 
+;;; -- debug function ----------------------------------------------------------
+
+;; The function below was provided off-the-list by Rahul Juliato (maintainer of markdown-ts-mode).
+;;
+;; When a problem occurs, move the point over where the problem is and
+;; M-x my/md-recreate-inline-parser-at-point RET.
+
+(defun my/md-recreate-inline-parser-at-point ()
+  "Delete stale local markdown-inline parser+overlay covering point, recreate."
+  (interactive)
+  (let* ((p (point))
+         (target-ov
+          (catch 'f
+            (dolist (ov (overlays-in (point-min) (point-max)))
+              (let ((pr (overlay-get ov 'treesit-parser)))
+                (when (and pr
+                           (overlay-get ov 'treesit-parser-local-p)
+                           (eq (treesit-parser-language pr) 'markdown-inline)
+                           (<= (overlay-start ov) p (overlay-end ov)))
+                  (throw 'f ov)))))))
+    (unless target-ov (user-error "No markdown-inline overlay covers point"))
+    (let* ((old-pr (overlay-get target-ov 'treesit-parser))
+           (host (overlay-get target-ov 'treesit-host-parser))
+           (level (treesit-parser-embed-level old-pr))
+           (r-start (overlay-start target-ov))
+           (r-end (overlay-end target-ov)))
+      (treesit-parser-delete old-pr)
+      (delete-overlay target-ov)
+      (let ((new (treesit-parser-create 'markdown-inline nil t 'embedded))
+            (ov (make-overlay r-start r-end nil nil t)))
+        (treesit-parser-set-embed-level new level)
+        (overlay-put ov 'treesit-parser new)
+        (overlay-put ov 'treesit-parser-local-p t)
+        (overlay-put ov 'treesit-host-parser host)
+        (overlay-put ov 'treesit-parser-ov-timestamp (buffer-chars-modified-tick))
+        (treesit-parser-set-included-ranges new `((,r-start . ,r-end)))
+        (font-lock-flush r-start r-end)
+        (message "Recreated markdown-inline parser for (%d . %d)" r-start r-end)))))
+
 (provide 'markdown-config)
 ;;; markdown-config.el ends here
