@@ -25,24 +25,11 @@
 
 ;;; Commentary:
 
-;; Local copy of `visual-wrap.el' carrying Stefan Monnier's proposed
-;; redesign (emacs-devel discussion, 2026-05):
-;;
-;;   * `visual-wrap--content-prefix' returns the first-line prefix's
-;;     natural pixel width instead of a column count.
-;;   * `visual-wrap--apply-to-line' no longer installs a `min-width'
-;;     display property on the first line.  The continuation
-;;     `wrap-prefix' uses pixel-form `:align-to', i.e. `(space :align-to
-;;     (PIX))', which aligns continuation lines to the same pixel
-;;     column as the end of the first-line prefix without touching
-;;     line 1 itself.
-;;
-;; This avoids reserving column-space for invisible prefix characters
-;; (e.g. hidden `###' markers in `markdown-ts-mode' with
-;; `markdown-ts-hide-markup' enabled).  Such characters render at 0
-;; pixels on line 1 already; the old code's `min-width' computation
-;; padded them back out using `string-width', which doesn't consult
-;; `buffer-invisibility-spec'.
+;; This package provides the `visual-wrap-prefix-mode' minor mode
+;; which sets the wrap-prefix property on the fly so that
+;; single-long-line paragraphs get word-wrapped in a way similar to
+;; what you'd get with M-q using adaptive-fill-mode, but without
+;; actually changing the buffer's text.
 
 ;;; Code:
 
@@ -142,9 +129,8 @@ members of `visual-wrap--safe-display-specs' (which see)."
 
 (defun visual-wrap--adjust-prefix (prefix)
   "Adjust PREFIX with `visual-wrap-extra-indent'.
-If PREFIX is a number it is treated as a pixel width and
-`visual-wrap-extra-indent' is converted from canonical-char columns
-to pixels before being added."
+If PREFIX is a number it is a pixel count; the extra indent is
+converted from canonical-char columns to pixels before being added."
   (if (numberp prefix)
       (+ (* visual-wrap-extra-indent
             (string-pixel-width " " (current-buffer)))
@@ -162,14 +148,7 @@ to pixels before being added."
         "")))))
 
 (defun visual-wrap--apply-to-line ()
-  "Apply visual-wrapping properties to the logical line starting at point.
-
-Per Stefan Monnier's proposed redesign (emacs-devel, 2026-05): when
-`visual-wrap--content-prefix' returns a number (pixel width of the
-first-line prefix), do NOT install a `min-width' display property on
-line 1.  Instead, set the continuation `wrap-prefix' to a pixel-form
-`:align-to', so wrapped lines line up with the end of the first-line
-prefix without forcing line 1 to a wider rendering."
+  "Apply visual-wrapping properties to the logical line starting at point."
   (when-let* ((first-line-prefix (fill-match-adaptive-prefix))
               (next-line-prefix (visual-wrap--content-prefix
                                  first-line-prefix (point))))
@@ -177,8 +156,8 @@ prefix without forcing line 1 to a wider rendering."
     (put-text-property
      (point) (pos-eol) 'wrap-prefix
      (if (numberp next-line-prefix)
-         ;; Pixel-form `:align-to': the list `(PIX)' tells the display
-         ;; engine that PIX is in pixels (not canonical-char columns).
+         ;; Pixel-form `:align-to': `(PIX)' is interpreted in pixels,
+         ;; not canonical-char columns.
          `(space :align-to (,next-line-prefix))
        next-line-prefix))))
 
@@ -187,19 +166,8 @@ prefix without forcing line 1 to a wider rendering."
 POSITION is the position in the buffer where PREFIX is located.
 
 This returns a string prefix to use for subsequent lines; a number,
-indicating the pixel width to use for whitespace alignment; or nil, if
-PREFIX was empty.
-
-Per Stefan Monnier's proposed redesign (emacs-devel, 2026-05): the
-whitespace width returned here is the natural pixel width of PREFIX
-itself.  Previously this function returned a column count derived from
-`(max (string-width prefix) (ceiling pixel-width avg-space-width))',
-which forced line 1's prefix to a rounded column width via a
-`min-width' display property.  That rounding reserved space for
-invisible characters (which render at 0 pixels but still have a
-positive `string-width').  Returning the natural pixel width here, and
-using it directly as the `:align-to' target, makes the continuation
-whitespace match what line 1 actually occupies on screen."
+indicating the pixel width to use for whitespace alignment; or nil if
+PREFIX was empty."
   (cond
    ((string= prefix "")
     nil)
@@ -216,7 +184,10 @@ whitespace match what line 1 actually occupies on screen."
     prefix)
    (t
     ;; Whitespace continuation: return the natural pixel width of the
-    ;; first-line prefix.  No `min-width' to install on line 1.
+    ;; first-line prefix.  This honors `buffer-invisibility-spec', so
+    ;; invisible prefix characters do not reserve column space, and
+    ;; lets continuation lines line up pixel-accurately with proportional
+    ;; fonts.
     (add-display-text-property 0 (length prefix) 'min-width nil prefix)
     (string-pixel-width prefix (current-buffer)))))
 
