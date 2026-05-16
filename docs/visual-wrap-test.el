@@ -281,7 +281,7 @@ Sample line:
       (kill-all-local-variables)
       (unless have-mode
         (insert "\
-WARNING: this Emacs build does not expose `markdown-ts-mode'.
+WARNING: this Emacs build does not expose `markdown-ts-mode`.
 Test 006 cannot run.  Use Emacs 31 or newer.
 
 "))
@@ -289,15 +289,15 @@ Test 006 cannot run.  Use Emacs 31 or newer.
 visual-wrap-test-006 — markdown-ts-mode + hide-markup (real-world repro)
 =======================================================================
 
-Mode: `markdown-ts-mode' with `markdown-ts-hide-markup' enabled.
+Mode: `markdown-ts-mode` with `markdown-ts-hide-markup` enabled.
 This is the case that originally exposed the bug.  The ATX
-heading marker `### ' carries `invisible markdown-ts--markup',
-which is in `buffer-invisibility-spec' while hide-markup is on.
+heading marker `### ` carries `invisible markdown-ts--markup`,
+which is in `buffer-invisibility-spec` while hide-markup is on.
 
-Default `adaptive-fill-regexp' matches `### ' as a paragraph
+Default `adaptive-fill-regexp` matches `### ` as a paragraph
 prefix.  Under the old code, hidden hashes were still counted by
-`string-width', so the heading text shifted right by four columns
-the moment `visual-wrap-prefix-mode' came on — visible even
+`string-width`, so the heading text shifted right by four columns
+the moment `visual-wrap-prefix-mode` came on — visible even
 without any wrapping happening.
 
 Two cases are demonstrated below: a short heading (no wrap
@@ -305,17 +305,34 @@ needed, but the shift was visible) and a long heading (wraps,
 and the continuation must align with the visible heading text).
 
 Expected with the redesign:
-  * Short heading: not shifted; reads as `A short heading'.
+  * Short heading: not shifted; reads as `A short heading`.
   * Long heading: line 1 not shifted; continuation visual lines
     align with the start of the visible heading text.
 
 To compare, comment out the local override that loads the patched
-`visual-wrap.el', restart, and re-run; you should see the heading
+`visual-wrap.el`, restart, and re-run; you should see the heading
 text on line 1 shift right by four columns.
 
-Sample headings:
+Possible markdown-ts-mode bug (out of scope here): the single
+space between `###` and the heading text is left visible — only
+the three `#` characters get `invisible markdown-ts--markup`.
+The visible heading therefore starts at column 1, not column 0,
+even with `markdown-ts-hide-markup` on.  Reading
+`markdown-ts--fontify-atx-delimiter` suggests the invisibility
+range was intended to include that space (the end position is
+computed via `(1- (point))` after `re-search-forward` lands on
+the first non-blank).  I recall this being fixed in the past;
+it may have resurfaced.  Worth filing if confirmed against a
+clean recent build.
+
+Case 1 — short heading (no wrap; the shift was visible without
+wrapping under the old code):
 
 ### A short heading
+
+Case 2 — long heading (wraps; continuation visual lines must
+align with the start of the visible heading text):
+
 ### ")
       (insert visual-wrap-test--long "\n")
       (when have-mode
