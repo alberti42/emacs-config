@@ -16,7 +16,7 @@
               ;; characters still reserve column space, but the override is
               ;; useful on its own merits.
               (setq-local adaptive-fill-regexp
-                          "[-–!|%;>*·•‣⁃◦ \t]*")
+                          "[|%;>·•‣⁃◦ \t]*")
               (soft-wrap-mode 1)
               ;; (olivetti-mode 1)
 
