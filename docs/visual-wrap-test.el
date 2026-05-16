@@ -214,6 +214,20 @@ the built-in version handle the buffer).  You should see a small
 but real horizontal gap between the prefix end on line 1 and the
 start of continuation lines.
 
+Known artifact in this banner (out of scope here): on close
+inspection in GUI, the bullet-prefix line `  * Continuation…'
+above sits a few pixels right of its follow-on buffer lines that
+start with four spaces.  This is a banner-content effect, not the
+prefix line wrapping.  `  * ' and `    ' are separate adaptive-fill
+prefixes on independent buffer lines, and `visual-wrap.el'
+processes them independently: it has no notion of \"these lines
+belong to one logical bullet\".  Under the old code the step was
+an estimated ~17 pixels (column-rounded `min-width' on `  * '
+line, no processing on `    ' lines).  The redesign drops it to
+an estimated ~2 pixels (natural pixel width of `  * ' is slightly
+larger than that of
+`    ' in a proportional font), small enough to look aligned.
+
 Sample line:
 
 %s" narrow-or-wide prefix prefix narrow-or-wide prefix prefix prefix))
