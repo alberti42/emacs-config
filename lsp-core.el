@@ -98,7 +98,14 @@
   :init
   ;; left-fringe: fringes are always present in GUI frames (no layout jitter)
   ;; and degrade gracefully in TTY.
-  (setq flycheck-indication-mode 'left-fringe))
+  (setq flycheck-indication-mode 'left-fringe)
+  :config
+  ;; Widen the ID column in `flycheck-list-errors' so diagnostic codes are
+  ;; readable; the default width of 6 clips everything past a few characters.
+  ;; One can also use M-x `tabulated-list-widen-current-column' (}) /
+  ;; `tabulated-list-narrow-current-column' ({) to adjust the current column's
+  ;; width interactively (the change is buffer-local and doesn't persist).
+  (setf (aref flycheck-error-list-format 4) '("ID" 18 t)))
 
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
