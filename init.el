@@ -1,5 +1,23 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
+;; Pin the emoji font to Apple Color Emoji at a reduced point size so its
+;; ascent+descent fits inside JetBrains Mono NL's line box.  Without this, a
+;; line containing an emoji (e.g. 💡) jumps to the emoji font's taller line
+;; box and causes vertical jitter as you type.  14 is the largest size that
+;; still fits at the current `default' :height of 180; raising it brings the
+;; jitter back.
+;;
+;; Must live in init.el rather than early-init.el: the initial GUI frame is
+;; created between the two and wipes the emoji fontset entry.  Hooked on
+;; `after-make-frame-functions' as well so daemon/emacsclient GUI frames
+;; (where init.el ran without a graphical display) also pick it up.
+(defun emacs-config-setup-emoji-fontset (&optional _frame)
+  "Map the `emoji' script to Apple Color Emoji at a reduced size."
+  (set-fontset-font t 'emoji (font-spec :family "Apple Color Emoji" :size 14)))
+
+(emacs-config-setup-emoji-fontset)
+(add-hook 'after-make-frame-functions #'emacs-config-setup-emoji-fontset)
+
 ;; Disable bidirectional text reordering for better performance.
 (setq-default bidi-display-reordering 'left-to-right
               bidi-paragraph-direction 'left-to-right)
@@ -499,3 +517,4 @@
              :repo "alberti42/emacs-tmux-tandem")
   :config
   (tmux-tandem-enable))
+
