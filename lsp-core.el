@@ -105,7 +105,18 @@
   ;; One can also use M-x `tabulated-list-widen-current-column' (}) /
   ;; `tabulated-list-narrow-current-column' ({) to adjust the current column's
   ;; width interactively (the change is buffer-local and doesn't persist).
-  (setf (aref flycheck-error-list-format 4) '("ID" 18 t)))
+  (setf (aref flycheck-error-list-format 4) '("ID" 18 t))
+  
+  ;; The default `flycheck-highlighting-style' is
+  ;;
+  ;;   (conditional 4 level-face (delimiters "" ""))
+  ;;
+  ;; This means that regions >4 lines are rendered with empty-string delimiters
+  ;; → effectively invisible.  Replace the empty delimiters with real glyphs so
+  ;; longer diagnostic regions (e.g. misspelled words flagged by LTEX+) are
+  ;; visible alongside the short-region wave underline.
+  (setq flycheck-highlighting-style
+        '(conditional 4 level-face (delimiters "»" "«"))))
 
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
