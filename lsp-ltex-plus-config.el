@@ -27,7 +27,7 @@
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
   (lsp-ltex-plus-completion-enabled nil)
-  (lsp-ltex-plus-apply-kind-first-patch nil)
+  ;; (lsp-ltex-plus-apply-kind-first-patch nil)
   (lsp-ltex-plus-check-programming-languages nil)
   (lsp-ltex-plus-show-progress nil)
   ;; (lsp-ltex-plus-ltex-ls-log-level "fine")
