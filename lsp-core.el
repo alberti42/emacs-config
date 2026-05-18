@@ -161,11 +161,7 @@
 (use-package sideline-lsp
   :commands (sideline-lsp)
   :init
-  ;; The default `💡 ' prefix is an emoji whose glyph is taller than the text
-  ;; font; rendering it in the margin forces per-line height recomputation as
-  ;; point moves, visible as text flicker.  Empty string suppresses the prefix
-  ;; entirely.
-  (setq sideline-lsp-code-actions-prefix ""))
+  (setq sideline-lsp-code-actions-prefix "💡"))
 
 (use-package sideline-flycheck
   ;; Point at local fork carrying `sideline-flycheck-show-error-id', a new
