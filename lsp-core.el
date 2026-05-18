@@ -67,7 +67,10 @@
   ;; below and busts the cache when the typed prefix changes, which is the right
   ;; invalidation granularity.
   :config
-  (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration))
+  (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
+  ;; We disable LSP server alive (https://github.com/nobody-famous/alive-lsp)
+  ;; for lisp files because it requires a server running on port 8006.
+  (add-to-list 'lsp-disabled-clients 'alive-lsp))
 
 ;;; -- flycheck integration for diagnostic -------------------------------------
 ;;
