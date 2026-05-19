@@ -39,6 +39,7 @@
 ;; minibuffer prompt with vertico+orderless filtering.
 
 (use-package yasnippet
+  :demand t
   :init
   (setq yas-snippet-dirs
         (list (expand-file-name "yasnippets" emacs-config-dir)))
