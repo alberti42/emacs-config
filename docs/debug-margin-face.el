@@ -53,6 +53,7 @@
 ;;   - face-margin-test-012   SVG image in margin (bug#80693 follow-up).
 ;;   - face-margin-test-013   Flymake margin indicator (bug#80693 follow-up).
 ;;   - face-margin-test-014   Truncated row + margin annotation (bug#80693 follow-up).
+;;   - face-margin-test-015   Margin string inherits face from underlying text (bug#80693 follow-up).
 ;;
 ;; Mode handling:
 ;;
@@ -1527,6 +1528,65 @@ Line 3 (truncated, no annotation)    → both margin cols should be gray
       (display-line-numbers-mode 1)
       (read-only-mode 1)
       (goto-char (point-min)))))
+
+;;; Test 015 — margin string inherits face from underlying buffer text.
+
+(defun face-margin-test-015 ()
+  "Margin display string inherits face from the underlying buffer text.
+
+Reproducer for the bug#80693 follow-up regression reported by J.P.
+<jp@neverwas.me>: a string displayed in the margin via a `display'
+property should render with the face attached to the underlying
+buffer character.
+
+Setup: insert \"demo:?\" and attach to the `?' character a `display'
+property installing \"[test]\" in the right margin, plus a
+`font-lock-face' of `font-lock-warning-face' on the same character.
+A 10-column right margin is enabled so the string is visible.
+
+Expected (with the fix): \"[test]\" appears in the right margin in
+the warning-face foreground (red).
+
+Expected (without the fix, on an unpatched build): \"[test]\" appears
+in the right margin with the default foreground; the warning face
+contributes nothing."
+  (interactive)
+  (let ((buf (get-buffer-create "*face-margin-test-015*")))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (font-lock-mode 1)
+      (insert "face-margin-test-015: margin string inherits face from underlying buffer text (bug#80693 follow-up)\n\n")
+      (insert "\
+This buffer reproduces the bug#80693 follow-up regression J.P.
+<jp@neverwas.me> reported on the bug thread.
+
+The line \"demo:?\" below carries a `display' text property on its
+last character (`?') that installs the string \"[test]\" in the right
+margin.  That same character also carries a `font-lock-face' of
+`font-lock-warning-face'.
+
+A 10-column right margin is enabled on this window so the string is
+visible.
+
+Look at \"[test]\" in the right margin on the demo line below:
+
+  - With the fix:    \"[test]\" appears in the warning-face foreground
+                     (red).
+  - Without the fix: \"[test]\" appears in the default foreground;
+                     the warning face contributes nothing.
+
+See the docstring of `face-margin-test-015' for the full explanation.
+
+demo:?")
+      (add-text-properties
+       (1- (pos-eol)) (pos-eol)
+       '( display ((margin right-margin) "[test]")
+          font-lock-face font-lock-warning-face))
+      (setq-local right-margin-width 10)
+      (read-only-mode 1))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) nil 10)))
 
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
