@@ -1531,7 +1531,7 @@ Line 3 (truncated, no annotation)    → both margin cols should be gray
 
 ;;; Test 015 — margin string inherits face from underlying buffer text.
 
-(defun face-margin-test-015 ()
+(defun face-margin-test-015 (&optional mode)
   "Margin display string inherits face from the underlying buffer text.
 
 Reproducer for the bug#80693 follow-up regression reported by J.P.
@@ -1545,21 +1545,30 @@ property installing \"[test]\" in the right margin, plus a
 A 10-column right margin is enabled so the string is visible.
 
 Expected (with the fix): \"[test]\" appears in the right margin in
-the warning-face foreground (red).
+the warning-face foreground (red) on the `margin' face background
+(matching `line-number').
 
 Expected (without the fix, on an unpatched build): \"[test]\" appears
-in the right margin with the default foreground; the warning face
-contributes nothing."
-  (interactive)
-  (let ((buf (get-buffer-create "*face-margin-test-015*")))
+in the right margin with the default foreground on the default
+background; neither the warning face nor the margin background are
+honored.
+
+Optional argument MODE is `themed' (default) or `standard'."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-015*")))
+    (face-margin-test--apply-mode mode ln-bg)
     (with-current-buffer buf
       (read-only-mode -1)
       (erase-buffer)
       (font-lock-mode 1)
-      (insert "face-margin-test-015: margin string inherits face from underlying buffer text (bug#80693 follow-up)\n\n")
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title "face-margin-test-015: margin string inherits face from underlying buffer text" mode))
       (insert "\
-This buffer reproduces the bug#80693 follow-up regression J.P.
-<jp@neverwas.me> reported on the bug thread.
+This buffer reproduces the bug#80693 follow-up regression reported by
+J.P. <jp@neverwas.me> on the bug thread.
 
 The line \"demo:?\" below carries a `display' text property on its
 last character (`?') that installs the string \"[test]\" in the right
@@ -1572,11 +1581,10 @@ visible.
 Look at \"[test]\" in the right margin on the demo line below:
 
   - With the fix:    \"[test]\" appears in the warning-face foreground
-                     (red).
-  - Without the fix: \"[test]\" appears in the default foreground;
-                     the warning face contributes nothing.
-
-See the docstring of `face-margin-test-015' for the full explanation.
+                     (red) on the `margin' background (gray).
+  - Without the fix: \"[test]\" appears in the default foreground on
+                     the default background; neither the warning face
+                     nor the margin background are honored.
 
 demo:?")
       (add-text-properties
