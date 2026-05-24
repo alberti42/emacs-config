@@ -115,6 +115,14 @@ left (e.g. by `git-gutter') keep working.")
 (define-key soft-wrap-mode-map (kbd "C-c }") #'soft-wrap-expand)
 (define-key soft-wrap-mode-map (kbd "C-c {") #'soft-wrap-shrink)
 
+(defvar soft-wrap-width-repeat-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "}" #'soft-wrap-expand)
+    (define-key map "{" #'soft-wrap-shrink)
+    map))
+(put 'soft-wrap-expand 'repeat-map 'soft-wrap-width-repeat-map)
+(put 'soft-wrap-shrink 'repeat-map 'soft-wrap-width-repeat-map)
+
 (easy-menu-define soft-wrap-mode-menu soft-wrap-mode-map
   "Menu for `soft-wrap-mode'."
   '("Soft Wrap Mode"
