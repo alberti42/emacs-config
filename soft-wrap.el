@@ -48,6 +48,11 @@ If nil, use `fill-column'. If an integer, that value is used when
   :group 'soft-wrap)
 
 
+(defcustom soft-wrap-width-step 2
+  "Number of columns added or removed by `soft-wrap-expand'/`soft-wrap-shrink'."
+  :type 'integer
+  :group 'soft-wrap)
+
 (defcustom soft-wrap-default-centered nil
   "Whether `soft-wrap-mode' starts with centred layout enabled.
 
@@ -107,11 +112,15 @@ left (e.g. by `git-gutter') keep working.")
 ;; Disable manual horizontal trackpad/mouse scrolling while soft-wrap is active.
 (define-key soft-wrap-mode-map (kbd "<wheel-left>") #'ignore)
 (define-key soft-wrap-mode-map (kbd "<wheel-right>") #'ignore)
+(define-key soft-wrap-mode-map (kbd "C-c }") #'soft-wrap-expand)
+(define-key soft-wrap-mode-map (kbd "C-c {") #'soft-wrap-shrink)
 
 (easy-menu-define soft-wrap-mode-menu soft-wrap-mode-map
   "Menu for `soft-wrap-mode'."
   '("Soft Wrap Mode"
     ["Set wrap width..." soft-wrap-set-width]
+    ["Expand wrap area" soft-wrap-expand]
+    ["Shrink wrap area" soft-wrap-shrink]
     ["Centred layout" soft-wrap-centered
      :style toggle :selected soft-wrap--centered]
     "---"
@@ -138,6 +147,36 @@ dynamically) or accepts any integer."
     (setq-local soft-wrap--target-width new-width)
     (setq-local soft-wrap--warned-mismatch nil)
     (soft-wrap--refresh-buffer-windows)))
+
+(defun soft-wrap-expand (&optional step)
+  "Widen the wrap area by STEP columns (default `soft-wrap-width-step').
+Seeds `soft-wrap--target-width' from `fill-column' on first use so
+the wrap width becomes independent of `fill-column'."
+  (interactive "P")
+  (unless soft-wrap-mode
+    (user-error "Soft-wrap-mode is not active in this buffer"))
+  (let ((delta (or step soft-wrap-width-step)))
+    (setq-local soft-wrap--target-width
+                (+ (or soft-wrap--target-width fill-column) delta))
+    (setq-local soft-wrap--warned-mismatch nil)
+    (soft-wrap--refresh-buffer-windows)
+    (message "Soft-wrap width: %d" soft-wrap--target-width)))
+
+(defun soft-wrap-shrink (&optional step)
+  "Narrow the wrap area by STEP columns (default `soft-wrap-width-step').
+Seeds `soft-wrap--target-width' from `fill-column' on first use so
+the wrap width becomes independent of `fill-column'."
+  (interactive "P")
+  (unless soft-wrap-mode
+    (user-error "Soft-wrap-mode is not active in this buffer"))
+  (let* ((delta (or step soft-wrap-width-step))
+         (new (- (or soft-wrap--target-width fill-column) delta)))
+    (when (<= new 0)
+      (user-error "Wrap width would be %d; must be positive" new))
+    (setq-local soft-wrap--target-width new)
+    (setq-local soft-wrap--warned-mismatch nil)
+    (soft-wrap--refresh-buffer-windows)
+    (message "Soft-wrap width: %d" soft-wrap--target-width)))
 
 ;;;###autoload
 (defun soft-wrap-centered (&optional arg)
