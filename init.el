@@ -40,6 +40,11 @@
 (setq create-lockfiles nil)       ; stop lock files (.#filename)
 (setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
+;; Never create a new frame for emacsclient requests — always reuse the existing
+;; one.  Overrides `-c` so even external tools that spawn emacsclient cannot
+;; accidentally open a second frame.
+(setq server-window 'switch-to-buffer)
+
 ;; Confirm before C-x C-c: too easy to hit by accident.  `confirm-kill-emacs'
 ;; only fires when Emacs actually exits; in emacsclient frames C-x C-c closes
 ;; the frame without killing the daemon, so wrap the command directly and mirror
