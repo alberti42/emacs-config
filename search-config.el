@@ -59,6 +59,10 @@ Uses `search-recenter-edge-threshold' to decide when to scroll, and
 ;; last input action (which would remove an entire yank in one keystroke).
 (define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
 
+;; Navigate isearch history with M-up/M-down (mirrors M-p/M-n).
+(define-key isearch-mode-map (kbd "M-<up>") #'isearch-ring-retreat)
+(define-key isearch-mode-map (kbd "M-<down>") #'isearch-ring-advance)
+
 (defun consult-fd-here ()
   "Like `consult-fd' but rooted at `default-directory' instead of the project root."
   (interactive)
