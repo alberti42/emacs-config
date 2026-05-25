@@ -41,9 +41,17 @@
 (setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
 ;; Never create a new frame for emacsclient requests — always reuse the existing
-;; one.  Overrides `-c` so even external tools that spawn emacsclient cannot
-;; accidentally open a second frame.
-(setq server-window 'switch-to-buffer)
+;; one.  If the buffer is already visible in a window, select that window
+;; instead of duplicating it in the current one.  Overrides `-c` so even
+;; external tools that spawn emacsclient cannot accidentally open a second
+;; frame.
+(defun my/server-switch-to-buffer (buffer)
+  "Select the window already showing BUFFER, or switch in the current window."
+  (let ((win (get-buffer-window buffer)))
+    (if win
+        (select-window win)
+      (switch-to-buffer buffer))))
+(setq server-window #'my/server-switch-to-buffer)
 
 ;; Confirm before C-x C-c: too easy to hit by accident.  `confirm-kill-emacs'
 ;; only fires when Emacs actually exits; in emacsclient frames C-x C-c closes
