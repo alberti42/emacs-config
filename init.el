@@ -174,6 +174,11 @@
  'search-config
  "Could not load search-config.el; using default project search backend.")
 
+;; Editable grep buffers (pairs with embark-export for project-wide replace)
+(emacs-config-load-module
+ 'wgrep-config
+ "Could not load wgrep-config.el; editable grep buffers are disabled.")
+
 ;; Completion system (minibuffer + in-buffer)
 (emacs-config-load-module
  'completion
