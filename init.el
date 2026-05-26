@@ -526,6 +526,12 @@
  'scroll-config
  "Could not load scroll-config.el; scrolling settings are disabled.")
 
+;; rmate-protocol server for editing remote files over SSH tunnels.
+(use-package remacs
+  :straight nil
+  :load-path emacs-config-dir
+  :commands (remacs-start remacs-stop))
+
 ;; tmux open-file bridge: open files in Emacs from tmux via IPC.
 ;; Requires Emacs 29+ for server-after-make-frame-hook.
 (use-package tmux-tandem
