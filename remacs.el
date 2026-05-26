@@ -124,6 +124,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
                   (forward-line (1- line)))))))
         (puthash buf file remacs--files)
         (pop-to-buffer buf)
+        (select-frame-set-input-focus (selected-frame))
         (message "[remacs] opened %s" display-name)))))
 
 (defun remacs--file-cleanup (file)
