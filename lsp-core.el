@@ -119,7 +119,27 @@
   ;; longer diagnostic regions (e.g. misspelled words flagged by LTEX+) are
   ;; visible alongside the short-region wave underline.
   (setq flycheck-highlighting-style
-        '(conditional 4 level-face (delimiters "»" "«"))))
+        '(conditional 4 level-face (delimiters "»" "«")))
+
+  ;; Flycheck sets a fringe-only `wrap-prefix' on error overlays (a continuation
+  ;; bitmap).  Overlay properties trump text properties, so when an error lands
+  ;; on the first character of a visual continuation line, the indentation from
+  ;; `visual-wrap-prefix-mode' is clobbered and the line jumps to column 0.
+  ;; Compose the two: the fringe indicator renders in the fringe (zero text-area
+  ;; width) and the existing wrap-prefix supplies the indentation.  Mirrors the
+  ;; `line-prefix' preservation flycheck already does.
+  (defun emacs-config--flycheck-compose-wrap-prefix (_err overlay)
+    (when-let* ((indicator (overlay-get overlay 'wrap-prefix))
+                (buf (overlay-buffer overlay))
+                ((buffer-live-p buf)))
+      (with-current-buffer buf
+        (let ((existing (get-text-property
+                         (overlay-start overlay) 'wrap-prefix)))
+          (when (stringp existing)
+            (overlay-put overlay 'wrap-prefix
+                         (concat indicator existing)))))))
+  (advice-add 'flycheck--setup-highlighting :after
+              #'emacs-config--flycheck-compose-wrap-prefix))
 
 ;;; -- Sideline setup ----------------------------------------------------------
 ;;
