@@ -56,8 +56,4 @@
 ;; anything else relying on `fixed-pitch' will lose fixed-width rendering.
 (set-face-attribute 'fixed-pitch nil :inherit 'default)
 
-;; Shadow the package visual-wrap in core Emacs with our local copy containing a
-;; bug for bug#81039.
-(load "/Users/andrea/google-drive/dotfiles/.config/emacs/local/visual-wrap")
-
 ;;; early-init.el ends here
