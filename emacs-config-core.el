@@ -98,6 +98,32 @@ On success, return non-nil."
 (dolist (pkg '(project flymake xref jsonrpc eldoc))
   (add-to-list 'straight-built-in-pseudo-packages pkg))
 
+(defconst emacs-config-patches-dir
+  (expand-file-name "patches" emacs-config-dir)
+  "Directory containing patch files for straight-managed packages.")
+
+(defun emacs-config-patch-package (package &rest patches)
+  "Register :pre-build commands to apply PATCHES to PACKAGE.
+PATCHES are filenames relative to `emacs-config-patches-dir'.
+Each patch is applied idempotently: already-applied patches are
+skipped, failures emit a warning instead of aborting startup."
+  (let ((cmds
+         (mapcar
+          (lambda (p)
+            (let ((path (expand-file-name p emacs-config-patches-dir)))
+              `(eval
+                (let ((default-directory
+                       (straight--repos-dir ,(symbol-name package))))
+                  (unless (zerop (call-process
+                                 "git" nil nil nil
+                                 "apply" "--reverse" "--check" ,path))
+                    (unless (zerop (call-process
+                                   "git" nil nil nil "apply" ,path))
+                      (warn ,(format "%s: patch %s failed to apply"
+                                     package p))))))))
+          patches)))
+    (straight-register-package `(,package :pre-build ,cmds))))
+
 ;; Install and configure use-package via straight.
 ;;
 ;; straight.el is our package manager: it can install packages from ELPA/MELPA
