@@ -97,17 +97,19 @@
 ;; flycheck-error-new (see lsp-diagnostics--flycheck-start), so diagnostic
 ;; codes (e.g. "reportPossiblyUnbound") are natively available in flycheck
 ;; via flycheck-error-id — no override needed here.
+(emacs-config-patch-package 'flycheck
+                            "preserve-wrap-prefix.patch")
+
 (use-package flycheck
-  :straight (flycheck
-             :type git
-             :host github
-             :local-repo "/Users/andrea/Documents/Programming/Others/fork-flycheck"
-             :repo "alberti42/fork-flycheck"
-             :branch "fix/preserve-wrap-prefix")
   :init
   ;; left-fringe: fringes are always present in GUI frames (no layout jitter)
   ;; and degrade gracefully in TTY.
   (setq flycheck-indication-mode 'left-fringe)
+  ;; Disable the continuation fringe indicator on wrapped error lines.
+  ;; The main indicator (before-string) is sufficient; the continuation
+  ;; indicator in wrap-prefix conflicts with before-string when both
+  ;; land on the same visual line (word-wrap boundary).
+  (setq flycheck-indication-mode-continuation nil)
   :config
   ;; Widen the ID column in `flycheck-list-errors' so diagnostic codes are
   ;; readable; the default width of 6 clips everything past a few characters.
