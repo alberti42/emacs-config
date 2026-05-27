@@ -27,7 +27,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
   "Map from buffer to its `remacs--file'.")
 
 
-;;; ---- File (one per `open' command) ----
+;;; -- File (one per `open' command) -------------------------------------------
 
 (cl-defstruct remacs--file
   "State for a single file opened via the rmate protocol."
@@ -136,7 +136,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
       (delete-directory (remacs--file-temp-dir file)))))
 
 
-;;; ---- Connection (one per TCP client) ----
+;;; -- Connection (one per TCP client) -----------------------------------------
 
 (cl-defstruct remacs--connection
   "State for one TCP connection from an rmate client."
@@ -163,7 +163,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
   "Unprocessed bytes carried across filter calls.")
 
 
-;;; ---- Network plumbing ----
+;;; -- Network plumbing --------------------------------------------------------
 
 (defun remacs--filter (process output)
   "Accumulate OUTPUT from PROCESS and dispatch lines."
@@ -253,7 +253,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
     (process-send-string client "remacs\n")))
 
 
-;;; ---- Hooks ----
+;;; -- Hooks -------------------------------------------------------------------
 
 (defun remacs--on-save ()
   "After-save hook: send buffer contents back to the rmate client."
@@ -276,7 +276,7 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
       (remhash (current-buffer) remacs--files))))
 
 
-;;; ---- Public API ----
+;;; -- Public API --------------------------------------------------------------
 
 ;;;###autoload
 (defun remacs-start ()
