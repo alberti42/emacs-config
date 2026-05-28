@@ -125,6 +125,11 @@
   (add-to-list 'ghostel-keymap-exceptions "C-b")
   (define-key ghostel-mode-map           (kbd "C-b") (lookup-key global-map (kbd "C-b")))
   (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+  ;; Full key passthrough for TUIs needing an exotic chord: `C-c M-d'
+  ;; (ghostel-char-mode) captures *every* key — including C-c, C-b, C-g —
+  ;; and forwards it to the terminal.  `M-RET' (or C-M-m / C-c C-j) is the
+  ;; only way back to semi-char mode.  Note: the C-M-m -> \e\r binding below
+  ;; does not apply in char mode, where C-M-m exits instead.
   :bind (:map ghostel-mode-map
               ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
               ;; Same caveat as vterm: Emacs resolves C-SPC to set-mark-command before the
