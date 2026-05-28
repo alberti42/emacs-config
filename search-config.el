@@ -55,9 +55,9 @@ Uses `search-recenter-edge-threshold' to decide when to scroll, and
 
 (add-hook 'isearch-update-post-hook #'search-recenter-isearch-match)
 
-;; DEL deletes one character from the search string instead of undoing the
-;; last input action (which would remove an entire yank in one keystroke).
-(define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
+;; ;; DEL deletes one character from the search string instead of undoing the
+;; ;; last input action (which would remove an entire yank in one keystroke).
+;; (define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
 
 ;; Navigate isearch history with M-up/M-down (mirrors M-p/M-n).
 (define-key isearch-mode-map (kbd "M-<up>") #'isearch-ring-retreat)
