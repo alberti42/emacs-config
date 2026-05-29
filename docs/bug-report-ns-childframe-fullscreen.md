@@ -142,6 +142,37 @@ non-native fullscreen toggle; built with the patch (the same tree, only
 the hunk above added), it stays hidden, and a legitimately-visible popup
 is unaffected.
 
+## Appendix: unrelated typo noticed nearby
+
+While working in the same method I noticed a likely typo, sent as a
+*separate* commit (it is an independent change and not part of the fix
+above). The two `-respondsToSelector:` guards in
+`setParentChildRelationships` test `@selector(toggleFullScreen)` — without
+the trailing colon — but the method is `-toggleFullScreen:`. The
+colon-less selector matches nothing, so the guarded block is always
+skipped.
+
+This is harmless on modern builds: the guards are inside
+`#if MAC_OS_X_VERSION_MIN_REQUIRED < 1070`, so on any deployment target of
+10.7 or later they are compiled out and the fullscreen handling runs
+unconditionally. It would only misbehave on a binary that targets
+pre-10.7 yet runs on 10.7+, where it would skip taking a child frame out
+of native fullscreen. Trivial one-character fix on each line:
+
+    @@ -9947,7 +9947,7 @@ - (void)setParentChildRelationships
+     #ifdef NS_IMPL_COCOA
+     #if MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    -      if ([ourView respondsToSelector:@selector (toggleFullScreen)])
+    +      if ([ourView respondsToSelector:@selector (toggleFullScreen:)])
+     #endif
+
+    @@ -9972,7 +9972,7 @@ - (void)setParentChildRelationships
+     #ifdef NS_IMPL_COCOA
+     #if MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    -      if ([ourView respondsToSelector:@selector (toggleFullScreen)])
+    +      if ([ourView respondsToSelector:@selector (toggleFullScreen:)])
+     #endif
+
 ---
 
 ## Notes (not for the report)
@@ -152,3 +183,6 @@ is unaffected.
 - Same-tree A/B confirmed (bug present without the hunk, gone with it),
   build string pasted into the Proposed fix section.
 - Attach `docs/debug-childframe-fullscreen.el` to the report.
+- Two commits on branch `fix-ns-invisible-child-frame-resurrection`: the
+  fix (`df013257100`) and the separate appendix typo fix (`a7537e38578`).
+  Keep them as distinct commits if sending patches.
