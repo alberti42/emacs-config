@@ -3,20 +3,22 @@
 ;;; Commentary:
 ;;
 ;; Reproducer for an Emacs macOS (NS) port bug: a child frame that Emacs
-;; has made *invisible* is brought back onto the screen whenever the
-;; parent frame rebuilds its parent/child window relationships -- e.g. on
-;; `toggle-frame-fullscreen' (and likewise when a monitor is connected or
-;; disconnected, or the undecorated status is toggled).
+;; has made *invisible* is forced back onto the screen when the parent
+;; frame rebuilds its parent/child window relationships -- which is what
+;; `toggle-frame-fullscreen' does (the same rebuild also happens when a
+;; monitor is connected/disconnected, or the undecorated status is
+;; toggled).
 ;;
 ;; The child frame's `frame-visible-p' stays nil throughout, so Emacs
 ;; never repaints to clear it: it sits on screen as a dead,
 ;; non-interactive surface that C-g cannot dismiss.  This is what users of
 ;; child-frame completion popups (corfu, company-box, ...) see as a "stuck
-;; completion popup" after, for example, waking a laptop on a new monitor.
+;; completion popup" after, for example, entering fullscreen or waking a
+;; laptop on a different monitor.
 ;;
-;; This reproducer uses ONLY built-in primitives -- `make-frame' with a
-;; `parent-frame' parameter, `make-frame-invisible', and
-;; `toggle-frame-fullscreen' -- so it needs no third-party packages.
+;; This reproducer uses ONLY built-in primitives -- a plain child frame
+;; (`make-frame' with a `parent-frame' parameter) plays the role corfu's
+;; popup would, so no third-party package is needed.
 ;;
 ;; Root cause: in src/nsterm.m, -[EmacsWindow setParentChildRelationships]
 ;; reattaches every child frame to its parent via -addChildWindow:ordered:
@@ -30,19 +32,15 @@
 ;;
 ;;   emacs -Q --load /path/to/debug-childframe-fullscreen.el
 ;;
-;; then either run the whole sequence automatically:
+;; then follow the instructions printed in *scratch* (reproduced below).
 ;;
-;;   M-x childframe-fullscreen-run
+;;   1. M-x childframe-fullscreen-step-1-show   ; show a child frame (the popup)
+;;   2. M-x childframe-fullscreen-step-2-hide   ; hide it (make-frame-invisible)
+;;   3. M-x toggle-frame-fullscreen             ; STOCK command -> triggers the bug
 ;;
-;; or step through it manually (more deterministic for a report):
-;;
-;;   M-x childframe-fullscreen-step-1-show         ; yellow popup appears
-;;   M-x childframe-fullscreen-step-2-hide         ; popup disappears (hidden)
-;;   M-x childframe-fullscreen-step-3-fullscreen   ; popup REAPPEARS in fullscreen
-;;
-;; Expected: the popup stays hidden across the fullscreen transition.
-;; Actual (buggy): it reappears as dead, non-interactive text even though
-;; (frame-visible-p childframe-fullscreen--child) returns nil.
+;; Expected: the child frame stays hidden across the fullscreen transition.
+;; Actual (buggy): it reappears, although `frame-visible-p' is still nil
+;; (confirm with M-x childframe-fullscreen-status) and C-g cannot dismiss it.
 
 ;;; Code:
 
@@ -53,12 +51,10 @@
 (setq ns-use-native-fullscreen nil)
 
 (defvar childframe-fullscreen--child nil
-  "Child frame standing in for a completion popup.")
+  "The child frame that stands in for a completion popup.")
 
 (defun childframe-fullscreen--make ()
-  "Create and show a child frame over the selected frame."
-  (when (frame-live-p childframe-fullscreen--child)
-    (delete-frame childframe-fullscreen--child))
+  "Create and show a child frame over the selected frame, return it."
   (let* ((parent (selected-frame))
          (buf (get-buffer-create "*childframe-popup*"))
          (child (make-frame
@@ -69,7 +65,7 @@
                    (no-focus-on-map . t)
                    (left . 140)
                    (top . 140)
-                   (width . 24)
+                   (width . 26)
                    (height . 6)
                    (internal-border-width . 2)
                    (vertical-scroll-bars . nil)
@@ -80,61 +76,121 @@
                    (visibility . t)))))
     (with-current-buffer buf
       (erase-buffer)
-      (insert "GHOST POPUP\n-----------\ncandidate-1\ncandidate-2\ncandidate-3"))
+      (insert "POPUP CHILD FRAME\n"
+              "-----------------\n"
+              "contents do not matter;\n"
+              "only that this frame\n"
+              "exists and was shown."))
     (set-window-buffer (frame-root-window child) buf)
-    (setq childframe-fullscreen--child child)))
+    ;; Keep working in the parent so the reviewer can run M-x here.
+    (select-frame-set-input-focus parent)
+    child))
 
+;;;###autoload
 (defun childframe-fullscreen-step-1-show ()
-  "Step 1: show the child frame (a completion popup appearing)."
-  (interactive)
-  (childframe-fullscreen--make)
-  (message "Step 1 done: child shown.  Next: M-x childframe-fullscreen-step-2-hide"))
+  "Step 1 of 2: create and SHOW a child frame over this one.
 
-(defun childframe-fullscreen-step-2-hide ()
-  "Step 2: hide the child frame (dismissing the popup, e.g. with C-g)."
+This stands in for corfu (or company-box, ...) popping up its
+completion child frame.  A small yellow frame appears near the
+top-left of this frame.  Its contents are irrelevant -- the bug
+depends only on the fact that a child frame was created and shown.
+
+Next: M-x childframe-fullscreen-step-2-hide"
   (interactive)
   (when (frame-live-p childframe-fullscreen--child)
-    (make-frame-invisible childframe-fullscreen--child))
-  (message "Step 2 done: hidden, frame-visible-p = %s.  Next: M-x childframe-fullscreen-step-3-fullscreen"
-           (and (frame-live-p childframe-fullscreen--child)
-                (frame-visible-p childframe-fullscreen--child))))
+    (delete-frame childframe-fullscreen--child))
+  (setq childframe-fullscreen--child (childframe-fullscreen--make))
+  (message "Step 1 done: child frame shown.  Next: M-x childframe-fullscreen-step-2-hide"))
 
-(defun childframe-fullscreen-step-3-fullscreen ()
-  "Step 3: toggle fullscreen.  BUG: the hidden child frame reappears."
+;;;###autoload
+(defun childframe-fullscreen-step-2-hide ()
+  "Step 2 of 2: HIDE the child frame with `make-frame-invisible'.
+
+The yellow frame vanishes.  This stands in for corfu dismissing
+its popup: corfu calls exactly `make-frame-invisible' on its child
+frame when you select a candidate or press C-g.
+
+This sets up the bug's precondition: a child frame that is invisible
+\(`frame-visible-p' returns nil) but is still parented to this frame.
+
+Next: M-x toggle-frame-fullscreen  (the stock command -- it triggers
+the bug all by itself)."
   (interactive)
-  (toggle-frame-fullscreen)
-  (run-with-timer
-   1.5 nil
-   (lambda ()
-     (message
-      "Step 3 done: fullscreen toggled.  frame-visible-p(child) = %s.  BUG if the yellow popup is visible."
-      (and (frame-live-p childframe-fullscreen--child)
-           (frame-visible-p childframe-fullscreen--child))))))
+  (if (frame-live-p childframe-fullscreen--child)
+      (progn
+        (make-frame-invisible childframe-fullscreen--child)
+        (message "Step 2 done: child hidden, frame-visible-p = %s.  Now run: M-x toggle-frame-fullscreen"
+                 (frame-visible-p childframe-fullscreen--child)))
+    (message "No child frame -- run M-x childframe-fullscreen-step-1-show first")))
 
-(defun childframe-fullscreen-run ()
-  "Run the full sequence automatically with pauses."
+;;;###autoload
+(defun childframe-fullscreen-status ()
+  "Diagnostic: report the child frame's liveness and visibility.
+
+Run this after M-x toggle-frame-fullscreen.  On a buggy build the
+yellow frame is visible on screen yet this reports
+`frame-visible-p' = nil -- Emacs believes it is hidden, which is why
+nothing (C-g included) repaints to clear it."
   (interactive)
-  (childframe-fullscreen-step-1-show)
-  (run-with-timer 2 nil #'childframe-fullscreen-step-2-hide)
-  (run-with-timer 4 nil #'childframe-fullscreen-step-3-fullscreen))
+  (if (frame-live-p childframe-fullscreen--child)
+      (message "child: live=t  frame-visible-p=%s  position=%S"
+               (frame-visible-p childframe-fullscreen--child)
+               (frame-position childframe-fullscreen--child))
+    (message "child: no live child frame")))
 
-;; Drop instructions into *scratch* on load.
+;; Print the walkthrough into *scratch* on load.
 (with-current-buffer (get-buffer-create "*scratch*")
   (erase-buffer)
-  (insert ";; NS invisible child-frame resurrection -- reproducer\n"
-          ";;\n"
-          ";; Automatic:  M-x childframe-fullscreen-run\n"
-          ";;\n"
-          ";; Manual (recommended for the report):\n"
-          ";;   1. M-x childframe-fullscreen-step-1-show        ; yellow popup appears\n"
-          ";;   2. M-x childframe-fullscreen-step-2-hide        ; popup disappears (invisible)\n"
-          ";;   3. M-x childframe-fullscreen-step-3-fullscreen  ; popup REAPPEARS in fullscreen,\n"
-          ";;                                                   ; though frame-visible-p is nil\n"
-          ";;\n"
-          ";; Expected: the popup stays hidden across the fullscreen transition.\n"
-          ";; Actual:   it reappears as dead, non-interactive text.\n"))
+  (insert "\
+;; ============================================================
+;;  NS bug reproducer: invisible child frame reappears
+;;  on M-x toggle-frame-fullscreen
+;; ============================================================
+;;
+;; WHAT THIS SHOWS
+;; ---------------
+;; On the macOS (NS) port, a child frame that Emacs has made invisible is
+;; forced back onto the screen when the parent frame rebuilds its child
+;; window relationships -- which is what toggle-frame-fullscreen does.
+;; Emacs still believes the child is invisible, so it never repaints to
+;; clear it; it sits there as dead, non-interactive text that C-g cannot
+;; remove.  This is the \"stuck corfu/company completion popup\" seen after
+;; entering fullscreen or moving the laptop to another monitor.
+;;
+;; Only built-in primitives are used.  A plain child frame plays the role
+;; corfu's popup would; corfu itself is NOT needed.
+;;
+;; DO THESE IN ORDER
+;; -----------------
+;;
+;;   1.  M-x childframe-fullscreen-step-1-show
+;;       Shows a child frame over this one (the yellow box).
+;;       Stand-in for corfu popping up its completion popup.
+;;       The box's contents are irrelevant to the bug.
+;;
+;;   2.  M-x childframe-fullscreen-step-2-hide
+;;       Hides it via (make-frame-invisible CHILD); the box vanishes.
+;;       Stand-in for corfu dismissing its popup -- corfu calls exactly
+;;       make-frame-invisible when you pick a candidate or press C-g.
+;;       Precondition is now set: an INVISIBLE child frame still parented
+;;       to this frame (frame-visible-p -> nil).
+;;
+;;   3.  M-x toggle-frame-fullscreen          <-- STOCK Emacs command
+;;       Triggers the bug.  Entering fullscreen rebuilds the child-window
+;;       relationships and pushes the invisible box back onto the screen.
+;;
+;;       BUG:  the yellow box reappears even though it is still invisible.
+;;             Confirm with  M-x childframe-fullscreen-status  (reports
+;;             frame-visible-p = nil while the box is on screen).  C-g
+;;             cannot dismiss it.
+;;       OK :  with the fix, the box stays hidden across the transition.
+;;
+;; Steps 1 and 2 only reconstruct the precondition; the actual trigger is
+;; the unmodified built-in toggle-frame-fullscreen.
+\n"))
 
 (switch-to-buffer "*scratch*")
-(message "Reproducer loaded.  See *scratch*, or run M-x childframe-fullscreen-run")
+(goto-char (point-min))
+(message "Reproducer loaded.  Follow the steps in *scratch* (start: M-x childframe-fullscreen-step-1-show)")
 
 ;;; debug-childframe-fullscreen.el ends here

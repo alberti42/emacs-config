@@ -34,16 +34,20 @@ only built-in primitives (`make-frame` with a `parent-frame` parameter,
 
 Then, manually:
 
-    M-x childframe-fullscreen-step-1-show         ; a yellow child frame appears
-    M-x childframe-fullscreen-step-2-hide         ; it disappears (make-frame-invisible)
-    M-x childframe-fullscreen-step-3-fullscreen   ; toggle-frame-fullscreen
+    M-x childframe-fullscreen-step-1-show   ; show a child frame (stand-in for the popup)
+    M-x childframe-fullscreen-step-2-hide   ; hide it via make-frame-invisible
+    M-x toggle-frame-fullscreen             ; stock command -- triggers the bug
+
+The first two commands only reconstruct the precondition (a child frame
+that has been made invisible but is still parented to the frame); the
+trigger is the unmodified built-in `toggle-frame-fullscreen`.
 
 Expected: the child frame stays hidden across the fullscreen transition.
 
 Actual: the child frame reappears in the fullscreen frame even though
 `(frame-visible-p ...)` returns nil, and it cannot be removed with `C-g`.
-Each step echoes the frame's `frame-visible-p` so the discrepancy is
-explicit.
+Run `M-x childframe-fullscreen-status` to confirm the discrepancy: it
+reports `frame-visible-p` = nil while the frame is plainly on screen.
 
 (The reproducer sets `ns-use-native-fullscreen` to nil for determinism;
 the bug also occurs with native fullscreen and on monitor hot-plug, which
