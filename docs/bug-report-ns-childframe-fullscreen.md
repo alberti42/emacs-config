@@ -123,9 +123,9 @@ cannot resurrect it.
     +
     +      /* -addChildWindow: orders the child window onto the screen, so
     +         rebuilding the parent/child relationships (e.g. when entering
-    +         fullscreen or after a display reconfiguration) resurrects child
-    +         frames that Emacs considers invisible.  Honor the frame's own
-    +         visibility state and order it back out if it should be hidden.  */
+    +         fullscreen) resurrects child frames that Emacs considers
+    +         invisible.  Honor the frame's own visibility state and order it
+    +         back out if it should be hidden.  */
     +      if (!FRAME_VISIBLE_P (ourFrame))
     +        [self orderOut:nil];
          }
