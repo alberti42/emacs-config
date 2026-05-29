@@ -47,7 +47,7 @@ frame stays hidden across and after the fullscreen transition.
 
 Actual buggy behavior: the child frame reappears in the fullscreen frame
 even though `(frame-visible-p ...)` returns nil, and it cannot be
-removed with `C-g` or simply by resizing the Emacs frame (macOS window).
+removed with `C-g`.
 
 Note that to trigger the bug, the reproducer sets
 `ns-use-native-fullscreen` to nil so that fullscreen operation is done
@@ -110,9 +110,9 @@ state about what Emacs believes about the visibility of the child frame
 surface persists.
 
 Because this gate keys solely on `FRAME_VISIBLE_P`, no user action that
-merely forces a redisplay clears the ghost: pressing `C-g`, resizing the
-frame, or otherwise provoking a repaint all leave the child frame
-untouched, since redisplay skips it while it is flagged invisible. The
+merely forces a redisplay clears the ghost: pressing `C-g` or otherwise
+provoking a repaint leaves the child frame untouched, since redisplay
+skips it while it is flagged invisible. The
 frame only returns to correct behavior when its owning package (corfu,
 company-box, …) next reuses the cached child frame: that goes through
 `make-frame-visible`, which sets `FRAME_VISIBLE_P` and brings the frame
