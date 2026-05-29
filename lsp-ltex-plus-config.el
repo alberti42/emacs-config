@@ -26,6 +26,8 @@
   (lsp-ltex-plus-show-latency t)
   (lsp-ltex-plus-trace-server "message")
   (lsp-ltex-plus-multi-root t)
+  (lsp-ltex-plus-minFragmentSize 500)
+  (lsp-ltex-plus-fragmentCacheTtlMinutes 30)
   (lsp-ltex-plus-completion-enabled nil)
   ;; (lsp-ltex-plus-apply-kind-first-patch nil)
   (lsp-ltex-plus-check-programming-languages nil)
