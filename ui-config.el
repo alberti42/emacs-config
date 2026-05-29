@@ -112,19 +112,25 @@
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
 ;; after-make-frame-functions (daemon/emacsclient GUI frame).
 (defun emacs-config-center-frame (&optional frame)
-  "Center FRAME on its current monitor (GUI only)."
+  "Center FRAME on its current monitor (GUI only).
+Skip frames whose `fullscreen' state already fixes both dimensions
+\(maximized or fullboth): repositioning them only shifts them off the
+screen corner."
   (when (display-graphic-p)
     (let* ((frame (or frame (selected-frame)))
+           (fs (frame-parameter frame 'fullscreen))
            (wa (and (fboundp 'frame-monitor-workarea)
                     (frame-monitor-workarea frame))))
-      (when (and wa (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
+      (when (and wa
+                 (not (memq fs '(maximized fullboth)))
+                 (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
         (let* ((mx (nth 0 wa))
                (my (nth 1 wa))
                (mw (nth 2 wa))
                (mh (nth 3 wa))
                (fw (frame-outer-width frame))
                (fh (frame-outer-height frame))
-               (y (if (eq (frame-parameter frame 'fullscreen) 'fullheight)
+               (y (if (eq fs 'fullheight)
                       my
                     (+ my (/ (- mh fh) 2)))))
           (set-frame-position frame
