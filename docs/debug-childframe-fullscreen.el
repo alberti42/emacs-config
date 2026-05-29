@@ -4,17 +4,20 @@
 ;;
 ;; Reproducer for an Emacs macOS (NS) port bug: a child frame that Emacs
 ;; has made *invisible* is forced back onto the screen when the parent
-;; frame rebuilds its parent/child window relationships -- which is what
-;; `toggle-frame-fullscreen' does (the same rebuild also happens when a
-;; monitor is connected/disconnected, or the undecorated status is
-;; toggled).
+;; frame rebuilds its parent/child window relationships.  Non-native
+;; `toggle-frame-fullscreen' does this -- it allocates a fresh window
+;; whose initializer rebuilds the relationships.
+;;
+;; NOTE: *native* fullscreen does NOT reproduce the bug.  The native path
+;; hands off to AppKit without allocating a new window, so the buggy
+;; re-attach never runs.  You MUST keep `ns-use-native-fullscreen' nil
+;; (set below) to see the bug -- this is likely why it went unnoticed.
 ;;
 ;; The child frame's `frame-visible-p' stays nil throughout, so Emacs
 ;; never repaints to clear it: it sits on screen as a dead,
 ;; non-interactive surface that C-g cannot dismiss.  This is what users of
 ;; child-frame completion popups (corfu, company-box, ...) see as a "stuck
-;; completion popup" after, for example, entering fullscreen or waking a
-;; laptop on a different monitor.
+;; completion popup" after entering fullscreen.
 ;;
 ;; This reproducer uses ONLY built-in primitives -- a plain child frame
 ;; (`make-frame' with a `parent-frame' parameter) plays the role corfu's
@@ -44,10 +47,11 @@
 
 ;;; Code:
 
-;; The bug reproduces with both native and non-native fullscreen (and on
-;; monitor hot-plug, which is fullscreen-independent).  Non-native is
-;; selected here because it is 100% deterministic and needs no Space
-;; animation; remove this line to test the native path.
+;; Non-native fullscreen is REQUIRED to reproduce the bug.  The non-native
+;; path allocates a fresh EmacsWindow whose initializer rebuilds the
+;; parent/child relationships (the buggy re-attach).  Native fullscreen
+;; (ns-use-native-fullscreen t) hands off to AppKit without allocating a
+;; new window, so the re-attach never runs and the bug does NOT appear.
 (setq ns-use-native-fullscreen nil)
 
 (defvar childframe-fullscreen--child nil
@@ -155,7 +159,7 @@ nothing (C-g included) repaints to clear it."
 ;; Emacs still believes the child is invisible, so it never repaints to
 ;; clear it; it sits there as dead, non-interactive text that C-g cannot
 ;; remove.  This is the \"stuck corfu/company completion popup\" seen after
-;; entering fullscreen or moving the laptop to another monitor.
+;; entering fullscreen.
 ;;
 ;; Only built-in primitives are used.  A plain child frame plays the role
 ;; corfu's popup would; corfu itself is NOT needed.

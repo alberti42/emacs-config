@@ -7,22 +7,19 @@ Severity: normal. Built from Emacs 31.0.60 (NS/Cocoa, macOS).
 
 ## Subject
 
-`31.0.60; [NS] invisible child frame reappears on toggle-frame-fullscreen / monitor change`
+`31.0.60; [NS] invisible child frame reappears on (non-native) toggle-frame-fullscreen`
 
 ## Body
 
 On the macOS (NS) port, a child frame that Emacs has made *invisible*
-reappears on screen whenever the parent frame rebuilds its parent/child
-window relationships — for example on `toggle-frame-fullscreen`, when a
-monitor is connected or disconnected, or when the undecorated status is
-toggled.
+reappears on screen when the parent frame rebuilds its parent/child window
+relationships, which is what non-native `toggle-frame-fullscreen` does.
 
 The child frame's `frame-visible-p` stays nil throughout, so Emacs never
 repaints to clear it: it remains on screen as a dead, non-interactive
 surface that `C-g` cannot dismiss. In practice this is what users of
 child-frame completion popups (corfu, company-box, …) see as a "stuck
-completion popup" after, for example, waking a laptop on a different
-monitor.
+completion popup".
 
 ## How to reproduce
 
@@ -49,9 +46,10 @@ Actual: the child frame reappears in the fullscreen frame even though
 Run `M-x childframe-fullscreen-status` to confirm the discrepancy: it
 reports `frame-visible-p` = nil while the frame is plainly on screen.
 
-(The reproducer sets `ns-use-native-fullscreen` to nil for determinism;
-the bug also occurs with native fullscreen and on monitor hot-plug, which
-is fullscreen-independent.)
+(The reproducer sets `ns-use-native-fullscreen` to nil because the bug
+requires the *non-native* fullscreen path — see Analysis. With native
+fullscreen the child frame does NOT reappear; this likely explains why
+the bug went unnoticed.)
 
 ## Analysis
 
@@ -62,11 +60,8 @@ calls:
     [parentWindow addChildWindow:self ordered:NSWindowAbove];
 
 `-addChildWindow:ordered:` orders the child window onto the screen. This
-method runs on every relationship rebuild — including the one triggered by
-entering fullscreen (for non-native fullscreen, through the fresh
-`EmacsWindow` created in `-toggleFullScreen:`) and by a display
-reconfiguration. The reattach loop a few lines below walks every child
-frame:
+method runs whenever the parent/child relationships are rebuilt. The
+reattach loop a few lines below walks every child frame:
 
     FOR_EACH_FRAME (tail, frame)
       {
@@ -77,6 +72,14 @@ frame:
 
 Neither the `addChildWindow:` call nor this loop checks `FRAME_VISIBLE_P`,
 so a child frame Emacs had hidden is brought back onto the screen.
+
+This is reached on a relationship rebuild. `-toggleFullScreen:` reaches
+it only on the *non-native* path: it allocates a fresh `EmacsWindow`
+whose initializer calls `setParentChildRelationships`. With native
+fullscreen (`ns-use-native-fullscreen` t), `-toggleFullScreen:` hands off
+to AppKit (`[[self window] toggleFullScreen:sender]`) and returns without
+allocating a window, so the re-attach loop never runs and the child frame
+is not resurrected — this is presumably why the bug has gone unnoticed.
 
 Emacs then never corrects this, because on the NS port
 `frame_redisplay_p` (`src/frame.c`) decides whether to redisplay a frame
