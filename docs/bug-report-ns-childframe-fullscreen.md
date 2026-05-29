@@ -132,10 +132,15 @@ cannot resurrect it.
 
        /* Check our child windows are configured correctly.  */
 
-Verified on macOS with a same-tree A/B at 31.0.60: built without the
-patch, the reproducer's child frame reappears on the fullscreen toggle;
-built with the patch (the same tree, only the hunk above added), it stays
-hidden, and a legitimately-visible popup is unaffected.
+Verified with a same-tree A/B on:
+
+    GNU Emacs 31.0.60 (build 50, aarch64-apple-darwin25.4.0,
+    NS appkit-2685.50 Version 26.4.1 (Build 25E253)) of 2026-05-29
+
+Built without the patch, the reproducer's child frame reappears on the
+non-native fullscreen toggle; built with the patch (the same tree, only
+the hunk above added), it stays hidden, and a legitimately-visible popup
+is unaffected.
 
 ---
 
@@ -144,7 +149,6 @@ hidden, and a legitimately-visible popup is unaffected.
 - The two evidence lines are `setParentChildRelationships` (the unguarded
   `addChildWindow:`) and `frame_redisplay_p` (NS trusts `FRAME_VISIBLE_P`
   alone). Everything else is supporting context.
-- Same-tree A/B confirmed (bug present without the hunk, gone with it).
-  Optionally paste the exact build string from `M-x emacs-version` for
-  precision.
+- Same-tree A/B confirmed (bug present without the hunk, gone with it),
+  build string pasted into the Proposed fix section.
 - Attach `docs/debug-childframe-fullscreen.el` to the report.
