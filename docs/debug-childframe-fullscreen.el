@@ -40,6 +40,9 @@
 ;;   1. M-x childframe-fullscreen-step-1-show   ; show a child frame (the popup)
 ;;   2. M-x childframe-fullscreen-step-2-hide   ; hide it (make-frame-invisible)
 ;;   3. M-x toggle-frame-fullscreen             ; STOCK command -> triggers the bug
+;;   (optional) M-x childframe-fullscreen-bring-into-view
+;;                                              ; if the resurrected box landed
+;;                                              ; off-screen, move it into view
 ;;
 ;; Expected: the child frame stays hidden across the fullscreen transition.
 ;; Actual (buggy): it reappears, although `frame-visible-p' is still nil
@@ -115,7 +118,8 @@ its popup: corfu calls exactly `make-frame-invisible' on its child
 frame when you select a candidate or press C-g.
 
 This sets up the bug's precondition: a child frame that is invisible
-\(`frame-visible-p' returns nil) but is still parented to this frame.
+\(`frame-visible-p' returns nil) but whose `parent-frame' is still set --
+which is what the relationship rebuild keys on to re-attach it.
 
 Next: M-x toggle-frame-fullscreen  (the stock command -- it triggers
 the bug all by itself)."
@@ -141,6 +145,27 @@ nothing (C-g included) repaints to clear it."
                (frame-visible-p childframe-fullscreen--child)
                (frame-position childframe-fullscreen--child))
     (message "child: no live child frame")))
+
+;;;###autoload
+(defun childframe-fullscreen-bring-into-view ()
+  "Move the resurrected child frame to a visible spot near the top-left.
+
+After M-x toggle-frame-fullscreen the ghost child frame's position is
+recomputed during the window rebuild and can land partly or fully
+off-screen (e.g. a negative top), so on a large display you may not see
+it at all.  This moves it to (80, 80) relative to the parent -- near the
+top-left of the fullscreen frame -- so it is on screen.  It does NOT
+change the frame's (still nil) visibility: it remains the same stale
+ghost, repositioned just to make the bug deterministic and reproducible
+regardless of the screen settings."
+  (interactive)
+  (if (frame-live-p childframe-fullscreen--child)
+      (progn
+        (set-frame-position childframe-fullscreen--child 80 80)
+        (message "child moved to %S; frame-visible-p still %s"
+                 (frame-position childframe-fullscreen--child)
+                 (frame-visible-p childframe-fullscreen--child)))
+    (message "No child frame -- run the earlier steps first")))
 
 ;; Print the walkthrough into *scratch* on load.
 (with-current-buffer (get-buffer-create "*scratch*")
@@ -176,8 +201,8 @@ nothing (C-g included) repaints to clear it."
 ;;       Hides it via (make-frame-invisible CHILD); the box vanishes.
 ;;       Stand-in for corfu dismissing its popup -- corfu calls exactly
 ;;       make-frame-invisible when you pick a candidate or press C-g.
-;;       Precondition is now set: an INVISIBLE child frame still parented
-;;       to this frame (frame-visible-p -> nil).
+;;       Precondition is now set: an INVISIBLE child frame whose
+;;       parent-frame is still set (frame-visible-p -> nil).
 ;;
 ;;   3.  M-x toggle-frame-fullscreen          <-- STOCK Emacs command
 ;;       Triggers the bug.  Entering fullscreen rebuilds the child-window
@@ -188,6 +213,15 @@ nothing (C-g included) repaints to clear it."
 ;;             frame-visible-p = nil while the box is on screen).  C-g
 ;;             cannot dismiss it.
 ;;       OK :  with the fix, the box stays hidden across the transition.
+;;
+;;   (optional)  M-x childframe-fullscreen-bring-into-view
+;;       If you do NOT see the box after toggling fullscreen, it is because
+;;       it appears outside the visible area: its position is recomputed
+;;       during the rebuild and can land off-screen (e.g. a negative top)
+;;       on large displays.  Run this to reposition it into view -- it does
+;;       not change the visibility (still the same invisible-but-shown
+;;       ghost).  The only purpose of this command is to make the buggy
+;;       behavior completely deterministic and reproducible.
 ;;
 ;; Steps 1 and 2 only reconstruct the precondition; the actual trigger is
 ;; the unmodified built-in toggle-frame-fullscreen.
