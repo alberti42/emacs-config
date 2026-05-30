@@ -90,29 +90,7 @@
 ;; Default frame size; TTY frames ignore these.
 ;; (add-to-list 'default-frame-alist '(width . 200))
 ;; (add-to-list 'default-frame-alist '(fullscreen . fullheight))
-;; (add-to-list 'default-frame-alist '(fullscreen . maximized))
-(defun my/fullscreen-top-level-frame (&optional frame)
-  "Put FRAME into non-native fullscreen, but never child frames."
-  (let ((frame (or frame (selected-frame))))
-    ;; corfu (like posframe and most child-frame libraries) suppresses
-    ;; after-make-frame-functions precisely so global per-frame setup doesn't
-    ;; touch its popup. The hook isn't called for those frames. The guard (not
-    ;; (frame-parameter frame 'parent-frame)) is belt-and-suspenders that
-    ;; never gets exercised in practice. It is a cheap insurance that can be
-    ;; kept.
-    (when (and (display-graphic-p frame)
-               (not (frame-parameter frame 'parent-frame)))
-      ;; Defer one tick: the real (non-native) fullscreen swap only runs
-      ;; once the frame is visible (ns_fullscreen_hook guards on
-      ;; FRAME_VISIBLE_P).  Setting it synchronously here would land as a
-      ;; size-only "maximized" hint instead.
-      (run-at-time 0 nil
-                   (lambda (f)
-                     (when (frame-live-p f)
-                       (set-frame-parameter f 'fullscreen 'fullboth)))
-                   frame))))
-(add-hook 'emacs-startup-hook        #'my/fullscreen-top-level-frame)
-(add-hook 'after-make-frame-functions #'my/fullscreen-top-level-frame)
+(add-to-list 'default-frame-alist '(fullscreen . fullboth))
 
 ;; Ensure GUI Emacs creates/raises a frame.
 ;; - Some macOS setups can start Emacs without presenting a visible window.
