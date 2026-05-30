@@ -54,6 +54,7 @@
 ;;   - face-margin-test-013   Flymake margin indicator (bug#80693 follow-up).
 ;;   - face-margin-test-014   Truncated row + margin annotation (bug#80693 follow-up).
 ;;   - face-margin-test-015   Margin string inherits face from underlying text (bug#80693 follow-up).
+;;   - face-margin-test-016   Margin string + (height ...) display spec (bug#80693 follow-up).
 ;;
 ;; Mode handling:
 ;;
@@ -1595,6 +1596,137 @@ demo:?")
       (read-only-mode 1))
     (switch-to-buffer buf)
     (set-window-margins (selected-window) nil 10)))
+
+;;; Test 016 — margin string + (height ...) display spec; practical
+;;;            observation that the visually useful configurations are
+;;;            already handled by the documented `margin' face flow.
+
+(defun face-margin-test-016 (&optional mode)
+  "Margin string combined with a `(height ...)' display spec.
+
+Reproducer for the construction Eli Zaretskii proposed on bug#80693
+as a counterexample to `face_at_buffer_position'-based inheritance:
+a display value of the form
+
+  ((height 1.5) ((margin left-margin) \"MARGIN\"))
+
+attached to a single character.  In that construction, the height
+adjustment lives only in the display spec.  `face_at_buffer_position'
+inspects `face' / `font-lock-face' properties at the position and
+does not see the height; only the iterator's saved `face_id' (as
+returned by `underlying_face_id') carries it.
+
+Three lines below cover the relevant combinations:
+
+  Line 1: bare (margin ...) display, no height anywhere.  CONTROL.
+          The margin glyph renders at the `margin' face's normal
+          height; nothing to inherit.
+
+  Line 2: ((height 1.5) ((margin left-margin) \"MARGIN\")) on the
+          carrier character.  The margin glyph renders at 1.5x only
+          if the iterator carries the height through to the margin
+          string (either via underlying_face_id, or via the
+          iterator-local bookkeeping prototype attached to the
+          bug#80693 thread).
+
+          On master without the prototype, the margin glyph renders
+          at the normal margin height.
+
+          With the prototype OR with `underlying_face_id', the margin
+          glyph renders at 1.5x — but is clipped at the top, because
+          the line's text-area side is still at normal height and
+          does not accommodate the taller glyph.  This is the
+          practical observation that informs section 1 of the reply:
+          the construction is not visually usable as drawn.
+
+  Line 3: same intent (taller margin glyph) but the height is
+          expressed as a face attribute on the buffer text, not as a
+          display spec.  The buffer character carries
+          `:height 1.5' on a face that the text area renders at 1.5x,
+          which bumps the line height.  The margin string carries
+          the same face explicitly (the documented flow per the
+          manual).  `face_at_buffer_position' picks up `:height 1.5'
+          natively because the property is in the face channel; no
+          iterator-side bookkeeping required.
+
+          This is the version a real-world author would actually
+          ship: the line is tall enough, the margin glyph is tall
+          enough, and the documented API on master handles it
+          without any C-level machinery.
+
+Lines 1 and 3 work on the current master without any further patch.
+Line 2 demonstrates the case that requires the iterator-local
+prototype to render correctly — and even then, only renders \"taller
+margin glyph clipped at top\", which is not what an author would
+ship.
+
+Optional argument MODE is `themed' (default) or `standard'.
+Interactively, Emacs prompts to choose between themed and standard."
+  (interactive (list (if (eq (read-char-choice "Mode — [t]hemed or [s]tandard? " '(?t ?s)) ?s) 'standard 'themed)))
+  (face-margin-test--load-theme)
+  (let* ((mode (or mode 'themed))
+         (ln-bg (face-background 'line-number nil t))
+         (buf (get-buffer-create "*face-margin-test-016*")))
+    (face-margin-test--apply-mode mode ln-bg)
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (insert (face-margin-test--mode-header mode))
+      (insert (face-margin-test--title
+               "face-margin-test-016: margin string + (height ...) display spec (bug#80693 follow-up)"
+               mode))
+      (insert "\
+This buffer reproduces the height + margin construction from the
+bug#80693 discussion.  See the docstring of `face-margin-test-016'
+for the full explanation.
+
+Look at the left margin on each of the three demo lines below.
+
+  Line 1 (control, no height anywhere):
+")
+      (let ((p (point))) (insert "X\n")
+           (put-text-property p (1+ p) 'display
+                              '((margin left-margin) "MARGIN")))
+      (insert "
+  Line 2 (height + margin in the same display value; the construction
+  Eli proposed; see prototype patch on the bug thread):
+")
+      (let ((p (point))) (insert "X\n")
+           (put-text-property p (1+ p) 'display
+                              '((height 1.5)
+                                ((margin left-margin) "MARGIN"))))
+      (insert "
+  Line 3 (height on the buffer face — the natural author flow; works
+  on the current master without any extra machinery):
+")
+      (let ((p (point))) (insert "X\n")
+           (put-text-property
+            p (1+ p) 'face
+            '(:height 1.5))
+           (put-text-property
+            p (1+ p) 'display
+            (list '(margin left-margin)
+                  (propertize "MARGIN" 'face '(:height 1.5)))))
+      (insert "
+What to compare across the three lines:
+
+  - Line 1's MARGIN glyph: normal margin height, normal line height.
+  - Line 2's MARGIN glyph: only larger if the build carries the
+    iterator-local bookkeeping prototype or uses underlying_face_id.
+    Even when larger, it is clipped at the top because the line's
+    text-area side is still at normal height.
+  - Line 3's MARGIN glyph: always larger, and the line is tall enough
+    to fit it.  This is the visually usable construction and it works
+    on master because `face_at_buffer_position' reads :height
+    directly from the buffer face.
+")
+      (setq-local left-margin-width 8)
+      (read-only-mode 1))
+    (switch-to-buffer buf)
+    (set-window-margins (selected-window) 8 0)
+    (with-current-buffer buf
+      (display-line-numbers-mode 1)
+      (goto-char (point-min)))))
 
 (provide 'debug-left-margin)
 ;;; debug-left-margin.el ends here
