@@ -9,57 +9,30 @@ Severity: normal. Built from Emacs 31.0.60 (NS/Cocoa, macOS).
 
 `31.0.60; [NS] invisible child frame reappears on (non-native) toggle-frame-fullscreen`
 
-## Body
+## How the bug typically manifests
 
-On the macOS (NS) port, a dismissed completion popup can get **stuck on
-screen as a dead, unresponsive rectangle**.
+On the macOS (NS) port, a dismissed completion popup can get stuck on
+screen as a dead, unresponsive rectangle.
 
-If you use a completion UI that draws its popup in a child frame (corfu,
-company-box, ...), here is what you see: you dismiss the popup (pick a
-candidate or hit `C-g`), later you run `M-x toggle-frame-fullscreen`, and
-the popup you already dismissed **reappears** in the fullscreen frame. It
-just sits there — you cannot click it, you cannot select anything in it,
-and `C-g` will not clear it. The only way to get rid of it is to pop a
-fresh completion, which replaces the stale one.
+For users who rely on a completion UI that draws its popup in a child
+frame (corfu, company-box, ...), here is what they see: they dismiss the
+popup (pick a candidate or hit `C-g`), later they run `M-x
+toggle-frame-fullscreen`, and the popup they already dismissed
+**reappears** in the fullscreen frame. It just sits there — the user
+cannot click it, cannot select anything in it, and `C-g` will not
+clear it. The only way to get rid of it is to pop a fresh completion,
+which replaces the stale one.
+
+The attached screenshot (`real-world-demonstration-child-frame-bug.jpg`)
+shows exactly this: a corfu completion popup left stuck and unresponsive
+over an `init.el` buffer.
 
 Under the hood: the leftover popup is a child frame that Emacs has made
-invisible (`frame-visible-p` returns nil), but which the window server is
-still displaying. Non-native `toggle-frame-fullscreen` rebuilds the
-frame's parent/child window relationships, and that rebuild re-attaches —
-and so re-shows — the hidden child frame. Because Emacs still believes the
-frame is invisible (`frame-visible-p` stays nil), it never repaints to
-clear it, so the stale surface lingers. (Details in Analysis below.)
-
-## How to reproduce
-
-`emacs -Q` with the attached `debug-childframe-fullscreen.el`, which uses
-only built-in primitives (`make-frame` with a `parent-frame` parameter,
-`make-frame-invisible`, `toggle-frame-fullscreen`):
-
-    emacs -Q --load debug-childframe-fullscreen.el
-
-Then, manually:
-
-    M-x childframe-fullscreen-step-1-show   ; show a child frame (stand-in for the popup)
-    M-x childframe-fullscreen-step-2-hide   ; hide it via make-frame-invisible
-    M-x toggle-frame-fullscreen             ; stock command -- triggers the bug
-
-The first two commands set up the preconditions for the bug to manifest
-(a child frame that has been made invisible but is still parented to the
-frame); when these preconditions are set up, the actual trigger is the
-built-in `toggle-frame-fullscreen`.
-
-Expected: the window is maximized to the full screen, and the child
-frame stays hidden across and after the fullscreen transition.
-
-Actual buggy behavior: the child frame reappears in the fullscreen frame
-even though `(frame-visible-p ...)` returns nil, and it cannot be
-removed with `C-g`.
-
-Note that to trigger the bug, the reproducer sets
-`ns-use-native-fullscreen` to nil so that fullscreen operation is done
-with the *non-native* fullscreen path; see Analysis below. With native
-fullscreen, the behavior is correct (the child frame stays invisible).
+invisible (`frame-visible-p` returns nil), but which the window server
+is still displaying. Non-native `toggle-frame-fullscreen` rebuilds the
+frame's parent/child window relationships, and that operation
+re-attaches -- and so re-shows -- the hidden child frame. Details in
+Analysis below.
 
 ## Detailed Analysis
 
@@ -112,7 +85,7 @@ The X branch already guards against exactly this situation -- a frame
 the compositor still shows while Emacs believes it is invisible -- by
 also consulting the server's reported visibility, not just the internal
 state about what Emacs believes about the visibility of the child frame
-(`FRAME_VISIBLE_P (f)`). The NS branch has no equivalent, so when
+(`FRAME_VISIBLE_P (f)`). The NS branch implements no equivalent, so when
 `FRAME_VISIBLE_P` is nil, the frame is never repainted and the stale
 surface persists.
 
@@ -129,6 +102,47 @@ but the only way to get rid of the stale popup is to make the owning
 package pop a fresh one, which sometimes can be frustrating for the
 user. Luckily, if the maintainers approve the fix proposed below, this
 bug can be fixed with the addition of a couple of lines of code.
+
+## How to reproduce
+
+`emacs -Q` with the attached `debug-childframe-fullscreen.el`, which uses
+only built-in primitives (`make-frame` with a `parent-frame` parameter,
+`make-frame-invisible`, `toggle-frame-fullscreen`):
+
+    emacs -Q --load debug-childframe-fullscreen.el
+
+Then, manually:
+
+    M-x childframe-fullscreen-step-1-show   ; show a child frame (stand-in for the popup)
+    M-x childframe-fullscreen-step-2-hide   ; hide it via make-frame-invisible
+    M-x toggle-frame-fullscreen             ; stock command -- triggers the bug
+    M-x childframe-fullscreen-bring-into-view ; (optional) if the box landed off-screen
+
+The first two commands set up the preconditions for the bug to manifest
+(a child frame that has been made invisible but is still parented to the
+frame); when these preconditions are set up, the actual trigger is the
+built-in `toggle-frame-fullscreen`.
+
+The fourth command is optional. If you do NOT see the box after toggling
+fullscreen, it is because it appears outside the visible area: its
+position is recomputed during the rebuild and can land off-screen
+(e.g. a negative top) on large displays.
+`childframe-fullscreen-bring-into-view` repositions it into view.
+Importantly, it does not change the visibility. Its only purpose is to
+make the buggy behavior completely deterministic and reproducible
+regardless of the screen size.
+
+Expected: the window is maximized to the full screen, and the child
+frame stays hidden across and after the fullscreen transition.
+
+Actual buggy behavior: the child frame reappears in the fullscreen frame
+even though `(frame-visible-p ...)` returns nil, and it cannot be
+removed with `C-g`.
+
+Note that to trigger the bug, the reproducer sets
+`ns-use-native-fullscreen` to nil so that fullscreen operation is done
+with the *non-native* fullscreen path. With native fullscreen, the
+behavior is correct (the child frame stays invisible).
 
 ## Proposed fix
 
@@ -177,10 +191,10 @@ patch, on:
 
 Built without the patch, the reproducer's child frame reappears on the
 non-native fullscreen toggle; built with the patch (the same tree, only
-the hunk above added), it stays hidden, and a legitimately-visible popup
-is unaffected.
+the hunk above added), the initially hidden popup stays hidden, whereas
+a legitimately visible popup is unaffected.
 
-## Appendix: unrelated typo noticed nearby
+## Appendix: unrelated code-typo noticed nearby
 
 While working in the same method I noticed a likely typo, sent as a
 *separate* commit to make it clear that this is an independent change and
@@ -225,6 +239,9 @@ one-character fix on each line:
 - Same-tree A/B confirmed (bug present without the hunk, gone with it),
   build string pasted into the Proposed fix section.
 - Attach `docs/debug-childframe-fullscreen.el` to the report.
+- Attach the screenshot `real-world-demonstration-child-frame-bug.jpg`
+  (referenced in "How the bug typically manifests"). It can only be an
+  attachment — `report-emacs-bug` is plaintext, so no inline image.
 - Branch `fix-ns-invisible-child-frame-resurrection` holds two distinct
   commits: the fix, and the separate `toggleFullScreen:` typo fix. Keep
   them as separate patches when sending (`git format-patch`).
