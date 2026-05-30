@@ -53,6 +53,15 @@
       (switch-to-buffer buffer))))
 (setq server-window #'my/server-switch-to-buffer)
 
+;; Finder/macOS "Open with Emacs" does NOT go through emacsclient, so
+;; `server-window' above does not apply to it.  It arrives as a native NS
+;; Apple Event handled by Emacs's own open-file path, governed by
+;; `ns-pop-up-frames'.  Its default `fresh' reuses the first frame but opens a
+;; NEW frame for every subsequent file; nil always reuses the selected frame,
+;; matching the single-frame workflow above.
+(when (eq system-type 'darwin)
+  (setq ns-pop-up-frames nil))
+
 ;; Confirm before C-x C-c: too easy to hit by accident.  `confirm-kill-emacs'
 ;; only fires when Emacs actually exits; in emacsclient frames C-x C-c closes
 ;; the frame without killing the daemon, so wrap the command directly and mirror
