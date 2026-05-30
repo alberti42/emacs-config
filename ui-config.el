@@ -87,10 +87,68 @@
 (when (eq system-type 'darwin)
   (setq ns-use-native-fullscreen nil))
 
-;; Default frame size; TTY frames ignore these.
-;; (add-to-list 'default-frame-alist '(width . 200))
-;; (add-to-list 'default-frame-alist '(fullscreen . fullheight))
+;; Default frame size + fullscreen toggle.
+;; Frames are born fullscreen (fullboth).  F11 toggles to a windowed frame whose
+;; size and position are whatever they were before going fullscreen, falling back
+;; to the `emacs-config-frame-width'/`emacs-config-frame-height' size, centered,
+;; the first time (since a frame created fullscreen never had a windowed
+;; geometry).  TTY frames ignore frame sizing.
+(defvar emacs-config-frame-width 160
+  "Default windowed frame width in characters, used when leaving fullscreen.")
+
+(defvar emacs-config-frame-height 50
+  "Default windowed frame height in characters, used when leaving fullscreen.")
+
 (add-to-list 'default-frame-alist '(fullscreen . fullboth))
+
+;; CUSTOM TOGGLE REPLACING BUILT-IN TOGGLE-FRAME-FULLSCREEN
+;;
+;; Because frames are born fullscreen (see `default-frame-alist' above), so they
+;; never had a windowed geometry.  The built-in toggle, when leaving fullscreen,
+;; just clears the `fullscreen' parameter and relies on the toolkit/WM to
+;; restore the previous windowed size — which here doesn't exist, so we land
+;; in an arbitrary WM-default frame.  It also never recenters (our centering
+;; only runs on frame-creation hooks, not on toggle).  This command fixes both:
+;; it stashes the windowed size and position on the way into fullscreen and
+;; restores them on the way out (falling back to the `emacs-config-frame-*' size,
+;; centered, on the very first toggle).  Net effect: no windowed geometry has to
+;; be preconfigured at startup: we start fullscreen and recover a properly
+;; sized+placed window on F11.
+(defun emacs-config-toggle-fullscreen (&optional frame)
+  "Toggle FRAME between fullboth fullscreen and a windowed size+position.
+On entering fullscreen, remember the current windowed size and position;
+on leaving, restore them.  The first time out of fullscreen there is no
+remembered geometry, so fall back to the `emacs-config-frame-width' /
+`emacs-config-frame-height' size and center the frame."
+  (interactive)
+  (let* ((frame (or frame (selected-frame)))
+         (fs (frame-parameter frame 'fullscreen)))
+    (if (memq fs '(fullscreen fullboth))
+        ;; Leaving fullscreen: drop fullscreen, restore size, then restore the
+        ;; stored position (or center if we have none yet).
+        (let ((size (or (frame-parameter frame 'emacs-config-windowed-size)
+                        (cons emacs-config-frame-width
+                              emacs-config-frame-height)))
+              (pos (frame-parameter frame 'emacs-config-windowed-position)))
+          (set-frame-parameter frame 'fullscreen nil)
+          (set-frame-size frame (car size) (cdr size))
+          ;; Defer positioning so the WM has applied the new outer size first.
+          (if pos
+              (run-at-time 0 nil
+                           (lambda (f l tp)
+                             (when (frame-live-p f)
+                               (set-frame-position f l tp)))
+                           frame (car pos) (cdr pos))
+            (run-at-time 0 nil #'emacs-config-center-frame frame)))
+      ;; Entering fullscreen: stash the current size and position, then go
+      ;; fullboth.
+      (set-frame-parameter frame 'emacs-config-windowed-size
+                           (cons (frame-width frame) (frame-height frame)))
+      (set-frame-parameter frame 'emacs-config-windowed-position
+                           (frame-position frame))
+      (set-frame-parameter frame 'fullscreen 'fullboth))))
+
+(global-set-key [f11] #'emacs-config-toggle-fullscreen)
 
 ;; Ensure GUI Emacs creates/raises a frame.
 ;; - Some macOS setups can start Emacs without presenting a visible window.
@@ -121,8 +179,11 @@ screen corner."
            (fs (frame-parameter frame 'fullscreen))
            (wa (and (fboundp 'frame-monitor-workarea)
                     (frame-monitor-workarea frame))))
+      ;; Fullscreen/maximized frames are sized and positioned by the window
+      ;; manager; calling `set-frame-position' on them only shoves the
+      ;; already-full-size frame partly off-screen.  Leave them alone.
       (when (and wa
-                 (not (memq fs '(maximized fullboth)))
+                 (not (memq fs '(fullboth fullscreen maximized)))
                  (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
         (let* ((mx (nth 0 wa))
                (my (nth 1 wa))
