@@ -17,7 +17,7 @@ External packages: none — built entirely on the bundled `treesit`.
 
 ## Cross-module touchpoints
 
-- **`lsp-kotlin-config.el`** depends on the Kotlin grammar **pin** here.
+- **`lsp-kotlin-config.el`** depends on the Kotlin grammar tracked here.
   See the invariants section below.
 - **`markdown-config.el`** configures `markdown-ts-mode` directly via
   `:mode` on `\\.md\\'` and `\\.markdown\\'`. There is no longer a
@@ -37,7 +37,7 @@ External packages: none — built entirely on the bundled `treesit`.
 | `bash`            | `tree-sitter/tree-sitter-bash`                                           |                                                                        |
 | `zsh`             | `tree-sitter-grammars/tree-sitter-zsh`                                   | dedicated grammar; remapped to `bash-ts-mode` (no `zsh-ts-mode` exists) |
 | `python`          | `tree-sitter/tree-sitter-python`                                         |                                                                        |
-| `kotlin`          | `fwcd/tree-sitter-kotlin` **pinned at `57170e50`**                       | see invariants                                                         |
+| `kotlin`          | `fwcd/tree-sitter-kotlin` (master)                                       | see invariants                                                         |
 | `markdown`        | `tree-sitter-grammars/tree-sitter-markdown`, **branch `split_parser`**, subdir `tree-sitter-markdown/src` | needs `markdown-inline` too                |
 | `markdown-inline` | same repo + branch, subdir `tree-sitter-markdown-inline/src`             | required by `markdown` for inline parsing                              |
 
@@ -64,24 +64,29 @@ External packages: none — built entirely on the bundled `treesit`.
 
 ## Invariants — do not change without reading
 
-### Kotlin grammar is pinned at `57170e50`
+### Kotlin grammar tracks `master` (do not re-pin to an old commit)
 
 ```elisp
-(kotlin "https://github.com/fwcd/tree-sitter-kotlin" "57170e50")
+(kotlin "https://github.com/fwcd/tree-sitter-kotlin")
 ```
 
-Commits on or after `55622a4` (2026-04-11, "Multi-dollar string
-interpolation" #260) replaced the literal `"$"` / `"${"` tokens in the
-`_interpolation` rule with external-scanner rules, which breaks
-`kotlin-ts-mode`'s `string` font-lock feature — interpolation
-boundaries are no longer recognized as terminals, so the highlighter
-fails for the whole string.
+This was previously pinned at `57170e50` to stay before the
+external-scanner interpolation tokens added by `55622a4` (2026-04-11,
+"Multi-dollar string interpolation" #260). That pin is now **inverted**:
+current `kotlin-ts-mode` (the `string` feature) queries the
+`interpolation_identifier_start` / `interpolation_expression_start` /
+`interpolation_expression_end` nodes that *only* the post-`55622a4`
+grammar provides. Pinning to the old grammar makes those node types
+absent, so treesit can't compile the `string` feature and disables it
+entirely (`treesit-font-lock-rules-mismatch`).
 
-If you unpin: re-test `kotlin-ts-mode` font-lock on a `.kt` file
-containing string interpolations (`"hello $name"` and `"sum: ${a+b}"`)
-before merging.
+So: don't re-pin to a pre-`55622a4` commit. If you ever do pin (for
+reproducibility), pick a commit at or after `55622a4` that still has
+those three nodes, and re-test font-lock on a `.kt` file with string
+interpolations (`"hello $name"` and `"sum: ${a+b}"`) before merging.
 
-`lsp-kotlin-config.md` references this pin from the cross-module side.
+`lsp-kotlin-config.md` references this grammar dependency from the
+cross-module side.
 
 ### Markdown needs the `split_parser` branch *and* both grammars
 

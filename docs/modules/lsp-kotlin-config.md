@@ -20,13 +20,13 @@ useful only when `kotlin-lsp` is unavailable on the platform.
 ## Cross-module touchpoints
 
 - **`lsp-core.el`** — base LSP infrastructure (`lsp-deferred`, etc.).
-- **`treesitter-config.el`** — provides the Kotlin grammar. **The grammar
-  is pinned** to commit `57170e50`. Newer commits (`55622a4` and after,
-  2026-04-11, "Multi-dollar string interpolation" #260) replaced the
-  literal `"$"` / `"${"` tokens in the `_interpolation` rule with
-  external-scanner rules, which breaks `kotlin-ts-mode`'s `string`
-  font-lock feature. Don't unpin without re-checking that font-lock still
-  works — see the inline comment in `treesitter-config.el`.
+- **`treesitter-config.el`** — provides the Kotlin grammar, tracking
+  `master`. Current `kotlin-ts-mode` queries the external-scanner
+  interpolation nodes (`interpolation_*_start`/`_end`) added in `55622a4`
+  (2026-04-11, "Multi-dollar string interpolation" #260), so the grammar
+  must be at or after that commit or treesit disables the `string`
+  font-lock feature (`treesit-font-lock-rules-mismatch`). Don't re-pin to
+  an older commit — see the inline comment in `treesitter-config.el`.
 - **`apheleia-config.el`** — registers `ktlint` for `kotlin-ts-mode`
   buffers (auto-format on save).
 
