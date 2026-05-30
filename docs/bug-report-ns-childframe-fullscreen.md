@@ -11,17 +11,24 @@ Severity: normal. Built from Emacs 31.0.60 (NS/Cocoa, macOS).
 
 ## Body
 
-On the macOS (NS) port, a child frame that Emacs has made *invisible*
-reappears on screen when the parent frame rebuilds its parent/child window
-relationships, which is what non-native `toggle-frame-fullscreen` does.
+On the macOS (NS) port, a dismissed completion popup can get **stuck on
+screen as a dead, unresponsive rectangle**.
 
-Because the child frame's `frame-visible-p` (`src/frame.c`) stays nil
-throughout, Emacs never repaints the child frame to clear it: it remains
-on screen as a dead, non-interactive surface that `C-g` cannot
-dismiss. Typically, this bug manifests for users of child-frame
-completion popups (corfu, company-box, ...), who see the child frame
-after maximizing to fullscreen as a stuck, unresponsive completion
-popup.
+If you use a completion UI that draws its popup in a child frame (corfu,
+company-box, ...), here is what you see: you dismiss the popup (pick a
+candidate or hit `C-g`), later you run `M-x toggle-frame-fullscreen`, and
+the popup you already dismissed **reappears** in the fullscreen frame. It
+just sits there — you cannot click it, you cannot select anything in it,
+and `C-g` will not clear it. The only way to get rid of it is to pop a
+fresh completion, which replaces the stale one.
+
+Under the hood: the leftover popup is a child frame that Emacs has made
+invisible (`frame-visible-p` returns nil), but which the window server is
+still displaying. Non-native `toggle-frame-fullscreen` rebuilds the
+frame's parent/child window relationships, and that rebuild re-attaches —
+and so re-shows — the hidden child frame. Because Emacs still believes the
+frame is invisible (`frame-visible-p` stays nil), it never repaints to
+clear it, so the stale surface lingers. (Details in Analysis below.)
 
 ## How to reproduce
 
