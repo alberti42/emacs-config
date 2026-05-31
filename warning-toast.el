@@ -49,6 +49,15 @@
   "Maximum width, in columns, of a warning toast."
   :type 'integer)
 
+(defcustom warning-toast-margin '(1 . 2)
+  "Breathing room kept between the toast and the window edges.
+The value is a cons (NUM-ROWS . NUM-COLUMNS).  NUM-COLUMNS avoids the
+composited screen line overflowing the right text boundary (which would
+wrap it into empty continuation lines).  NUM-ROWS keeps the toast off the
+first/last screen rows, which are often only partially visible under pixel
+scrolling and would clip the popon."
+  :type '(cons (integer :tag "Rows") (integer :tag "Columns")))
+
 (defcustom warning-toast-min-level :warning
   "Minimum warning level that raises a toast.
 In increasing severity: `:debug', `:warning', `:error', `:emergency'.
@@ -138,12 +147,24 @@ logged to the `*Warnings*' buffer); emergencies keep their window."
          (win (warning-toast--target-window))
          (bw (window-body-width win))
          (bh (window-body-height win))
+         ;; `window-body-width' counts the line-number columns, but buffer
+         ;; text cannot use them; subtract so the toast stays inside the
+         ;; usable text area (otherwise the composited line wraps).
+         (lnw (with-selected-window win
+                (if (bound-and-true-p display-line-numbers)
+                    (line-number-display-width)
+                  0)))
+         (avail (max 1 (- bw lnw)))
+         (mrow (if (consp warning-toast-margin)
+                   (car warning-toast-margin) warning-toast-margin))
+         (mcol (if (consp warning-toast-margin)
+                   (cdr warning-toast-margin) warning-toast-margin))
          (x (pcase warning-toast-corner
-              ((or 'top-right 'bottom-right) (max 0 (- bw pw)))
-              (_ 0)))
+              ((or 'top-right 'bottom-right) (max 0 (- avail pw mcol)))
+              (_ mcol)))
          (y (pcase warning-toast-corner
-              ((or 'bottom-left 'bottom-right) (max 0 (- bh ph)))
-              (_ 0))))
+              ((or 'bottom-left 'bottom-right) (max 0 (- bh ph mrow)))
+              (_ mrow))))
     ;; popon has no face argument; it honours text properties on the string,
     ;; and each line is already padded to PW columns so the face background
     ;; fills the whole block.
