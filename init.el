@@ -147,6 +147,7 @@
   :straight nil  ; use built-in which-key (Emacs 30+), don't fetch via straight
   :config
   (setq which-key-idle-delay 1.0)
+  (setq which-key-separator " → ")
   (which-key-mode 1))
 
 ;; vundo: visual undo tree, navigate undo history as a tree diagram.
