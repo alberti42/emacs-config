@@ -303,13 +303,27 @@ is needed."
   :custom
   (markdown-ts-hide-markup t)
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
+  ;; Keep M-<left>/M-<right> as word navigation everywhere (Emacs default
+  ;; `left-word'/`right-word') and route structural left/right onto
+  ;; `C-c C-x <left>'/`<right>' instead.  The chord is symmetric and
+  ;; context-sensitive: outside a table it promotes/demotes the heading;
+  ;; inside a table the higher-priority `markdown-ts-in-table-mode-map'
+  ;; takes over and moves the current column.
   :bind (:map markdown-ts-mode-map
-              ("C-c C-o"     . markdown-config-follow-link-at-point) ; Same as in classic markdown-mode for `markdown-follow-thing-at-point'
-              ("C-c C-x RET" . markdown-ts-toggle-hide-markup)
-              ("M-<left>"    . nil)     ; Free M-<left>/M-<right> for word navigation (Emacs default `left-word'/`right-word')
-              ("M-<right>"   . nil)
-              ("C-c C-x l"   . markdown-ts-promote) ; Use bindings as in classic markdown-mode
-              ("C-c C-x r"   . markdown-ts-demote)))
+              ("C-c C-o"      . markdown-config-follow-link-at-point) ; Same as in classic markdown-mode for `markdown-follow-thing-at-point'
+              ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
+              ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
+              ("M-<right>"    . nil)
+              ("C-c C-x <left>"  . markdown-ts-promote)
+              ("C-c C-x <right>" . markdown-ts-demote)
+              ;; Inside a table this minor-mode map shadows the major-mode map
+              ;; above.  Restore word navigation on M-<left>/M-<right> and put
+              ;; the column-move commands on the symmetric C-c C-x arrows.
+              :map markdown-ts-in-table-mode-map
+              ("M-<left>"        . left-word)
+              ("M-<right>"       . right-word)
+              ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
+              ("C-c C-x <right>" . markdown-ts-table-move-column-right)))
 
 ;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 
