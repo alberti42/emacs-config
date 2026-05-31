@@ -12,7 +12,7 @@
   ;;            :type git
   ;;            :host github
   ;;            :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
-  ;;            :branch "integrated"
+  ;;            :branch "fix/serverInfo"
   ;;            :repo "alberti42/fork-lsp-mode")
   :commands (lsp lsp-deferred)
   :init
