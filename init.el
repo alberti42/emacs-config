@@ -130,6 +130,12 @@
  'welcome-config
  "Could not load welcome-config.el; startup splash is disabled.")
 
+;; Transient corner toast (popon, TTY+GUI) for `display-warning' messages,
+;; so warnings don't hide silently in the `*Warnings*' buffer.
+(emacs-config-load-module
+ 'warning-toast
+ "Could not load warning-toast.el; warnings use the default *Warnings* buffer.")
+
 ;; Built-ins
 ;; cl-lib: Common Lisp compatibility helpers used by many packages.
 (use-package cl-lib
