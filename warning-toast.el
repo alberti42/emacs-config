@@ -105,7 +105,9 @@ logged to the `*Warnings*' buffer); emergencies keep their window."
     (split-string (buffer-string) "\n")))
 
 (defun warning-toast--block (level type message)
-  "Build the padded, equal-width text block for the toast."
+  "Return the padded, equal-width text block for a LEVEL, TYPE, MESSAGE toast.
+LEVEL selects the header label, TYPE is shown in brackets, and MESSAGE is
+word-wrapped to `warning-toast-max-width'."
   (let* ((head (format "%s  [%s]" (warning-toast--label level)
                        (warning-toast--type-string type)))
          (body (warning-toast--wrap (string-trim (format "%s" message))
@@ -175,7 +177,11 @@ logged to the `*Warnings*' buffer); emergencies keep their window."
           (run-with-timer warning-toast-duration nil #'warning-toast-dismiss))))
 
 (defun warning-toast--advice (orig type message &optional level buffer-name)
-  "Around advice for `display-warning': add a toast, optionally hush the window."
+  "Around advice for `display-warning' (ORIG): toast the TYPE/MESSAGE warning.
+ORIG is called with TYPE, MESSAGE, LEVEL and BUFFER-NAME unchanged.  A toast
+is shown for LEVEL at or above `warning-toast-min-level'; when
+`warning-toast-suppress-window' is non-nil the `*Warnings*' window is hushed
+for sub-`:emergency' levels."
   (let ((level (or level :warning)))
     (prog1
         (if warning-toast-suppress-window
