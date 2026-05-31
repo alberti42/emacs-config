@@ -110,6 +110,14 @@
   ;; indicator in wrap-prefix conflicts with before-string when both
   ;; land on the same visual line (word-wrap boundary).
   (setq flycheck-indication-mode-continuation nil)
+  ;; Remove the per-buffer error cap (default 400).  When a checker exceeds
+  ;; it, flycheck *discards all* its errors and disables the checker for the
+  ;; buffer — so nothing is highlighted, the fringe stays empty, and
+  ;; `flycheck-list-errors' shows nothing, even though the diagnostics exist.
+  ;; That default targets runaway code linters; LTEX+ on a long prose document
+  ;; (e.g. a sizeable .org/.md file) routinely flags >400 items legitimately,
+  ;; which would otherwise silently suppress every squiggle in the buffer.
+  (setq flycheck-checker-error-threshold nil)
   :config
   ;; Widen the ID column in `flycheck-list-errors' so diagnostic codes are
   ;; readable; the default width of 6 clips everything past a few characters.
