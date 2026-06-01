@@ -1,5 +1,23 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
+;; Default font for GUI frames (TTY frames ignore font face attributes).  Note:
+;; in `nerd-icons-config.el', we call 'set-fontset-font' for Emacs GUI to map
+;; the Private Use Area (#xe000–#xffff) to 'Symbols Nerd Font Mono', preventing
+;; fallback to fonts with wrong glyph metrics, like JetBrainsMonoNL, which
+;; causes horizontal truncation of icons in dired and elsewhere.
+(set-face-attribute 'default nil :family "JetBrainsMonoNL Nerd Font Mono" :height 150 :weight 'light)
+
+;; Make `fixed-pitch' follow the `default' face so packages that distinguish
+;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
+;; mu4e body, `mixed-pitch-mode') render in the same font as the rest of the
+;; editor.  Safe today because `default' above is already monospace.
+;;
+;; IF `default' IS EVER SWITCHED TO A PROPORTIONAL FONT: replace this
+;; `:inherit default' with an explicit `:family' / `:height' / `:weight'
+;; pointing at a monospace font — otherwise org tables, src blocks, and
+;; anything else relying on `fixed-pitch' will lose fixed-width rendering.
+(set-face-attribute 'fixed-pitch nil :inherit 'default)
+
 ;; Pin the emoji font to Apple Color Emoji at a reduced point size so its
 ;; ascent+descent fits inside JetBrains Mono NL's line box.  Without this, a
 ;; line containing an emoji (e.g. 💡) jumps to the emoji font's taller line
@@ -13,7 +31,7 @@
 ;; (where init.el ran without a graphical display) also pick it up.
 (defun emacs-config-setup-emoji-fontset (&optional _frame)
   "Map the `emoji' script to Apple Color Emoji at a reduced size."
-  (set-fontset-font t 'emoji (font-spec :family "Apple Color Emoji" :size 14)))
+  (set-fontset-font t 'emoji (font-spec :family "Apple Color Emoji" :size 12)))
 
 (emacs-config-setup-emoji-fontset)
 (add-hook 'after-make-frame-functions #'emacs-config-setup-emoji-fontset)
