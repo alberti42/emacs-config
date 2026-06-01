@@ -1,11 +1,77 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
-;; Default font for GUI frames (TTY frames ignore font face attributes).  Note:
-;; in `nerd-icons-config.el', we call 'set-fontset-font' for Emacs GUI to map
-;; the Private Use Area (#xe000–#xffff) to 'Symbols Nerd Font Mono', preventing
-;; fallback to fonts with wrong glyph metrics, like JetBrainsMonoNL, which
-;; causes horizontal truncation of icons in dired and elsewhere.
-(set-face-attribute 'default nil :family "JetBrainsMonoNL Nerd Font Mono" :height 150 :weight 'light)
+;; Default font for GUI frames (TTY frames ignore font face attributes).  The
+;; family/weight are global; the :height is chosen *per frame* from
+;; `emacs-config-font-height-by-monitor' so each connected screen can use its
+;; own size (I move one laptop between several external displays of differing
+;; resolution).  Note: in `nerd-icons-config.el', we call 'set-fontset-font'
+;; for Emacs GUI to map the Private Use Area (#xe000–#xffff) to 'Symbols Nerd
+;; Font Mono', preventing fallback to fonts with wrong glyph metrics, like
+;; JetBrainsMonoNL, which causes horizontal truncation of icons in dired and
+;; elsewhere.
+;;
+;; Monitor names come from `(display-monitor-attributes-list)'.  The "Unknown"
+;; entry is the fallback height used for any monitor not listed.
+(defvar emacs-config-font-height-by-monitor
+  '(("Kuycon G32P" . 180)
+    ("Unknown"     . 150))
+  "Alist mapping a monitor name to the `default' face :height (in 1/10 pt).
+The \"Unknown\" entry is the fallback used for any monitor not listed.")
+
+(defun emacs-config-font-height-for-frame (frame)
+  "Return the configured `default' :height for FRAME's monitor.
+Looks the monitor name up in `emacs-config-font-height-by-monitor',
+falling back to the \"Unknown\" entry."
+  (let* ((name (alist-get 'name (frame-monitor-attributes frame)))
+         (entry (or (assoc name emacs-config-font-height-by-monitor)
+                    (assoc "Unknown" emacs-config-font-height-by-monitor))))
+    (cdr entry)))
+
+;; Pick an Apple Color Emoji point size that fits inside a `default' face of
+;; HEIGHT.  Without this, a line containing an emoji (e.g. 💡) jumps to the
+;; emoji font's taller line box and causes vertical jitter as you type; the
+;; size must shrink as the per-monitor height shrinks or the jitter returns on
+;; the smaller screens.  A few coarse buckets are enough — tune to taste.
+(defun emacs-config-emoji-size-for-height (height)
+  "Return the Apple Color Emoji :size that fits a `default' face of HEIGHT."
+  (cond ((>= height 170) 14)
+        ((>= height 150) 12)
+        (t 11)))
+
+;; Map the `emoji' script to Apple Color Emoji, sized for HEIGHT.  Kept on the
+;; default fontset (t) rather than per-frame: a per-frame fontset would fork
+;; from the default and drop the nerd-icons PUA mapping installed in
+;; `nerd-icons-config.el'.  With one frame per screen, this single global entry
+;; tracks whichever frame `emacs-config-apply-frame-font' applied last.
+;;
+;; Must run from init.el rather than early-init.el: the initial GUI frame is
+;; created between the two and wipes the emoji fontset entry.  It is re-applied
+;; for daemon/emacsclient frames via `emacs-config-apply-frame-font' below.
+(defun emacs-config-setup-emoji-fontset (height)
+  "Map the `emoji' script to Apple Color Emoji, sized to fit HEIGHT."
+  (set-fontset-font t 'emoji
+                    (font-spec :family "Apple Color Emoji"
+                               :size (emacs-config-emoji-size-for-height height))))
+
+(defun emacs-config-apply-frame-font (&optional frame)
+  "Set FRAME's `default' :height and emoji size from its monitor.
+No-op on TTY frames, which ignore font face attributes."
+  (let ((frame (or frame (selected-frame))))
+    (when (display-graphic-p frame)
+      (let ((height (emacs-config-font-height-for-frame frame)))
+        (set-face-attribute 'default frame :height height)
+        (emacs-config-setup-emoji-fontset height)))))
+
+;; Global family/weight plus a baseline height (the "Unknown" fallback) so a
+;; frame looks right even before `emacs-config-apply-frame-font' refines it.
+(set-face-attribute 'default nil
+                    :family "JetBrainsMonoNL Nerd Font Mono" :weight 'light
+                    :height (cdr (assoc "Unknown" emacs-config-font-height-by-monitor)))
+
+;; Apply now for the initial (non-daemon) frame; the hook covers daemon /
+;; emacsclient frames and any later frame opened on a different screen.
+(emacs-config-apply-frame-font)
+(add-hook 'after-make-frame-functions #'emacs-config-apply-frame-font)
 
 ;; Make `fixed-pitch' follow the `default' face so packages that distinguish
 ;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
@@ -17,24 +83,6 @@
 ;; pointing at a monospace font — otherwise org tables, src blocks, and
 ;; anything else relying on `fixed-pitch' will lose fixed-width rendering.
 (set-face-attribute 'fixed-pitch nil :inherit 'default)
-
-;; Pin the emoji font to Apple Color Emoji at a reduced point size so its
-;; ascent+descent fits inside JetBrains Mono NL's line box.  Without this, a
-;; line containing an emoji (e.g. 💡) jumps to the emoji font's taller line
-;; box and causes vertical jitter as you type.  14 is the largest size that
-;; still fits at the current `default' :height of 180; raising it brings the
-;; jitter back.
-;;
-;; Must live in init.el rather than early-init.el: the initial GUI frame is
-;; created between the two and wipes the emoji fontset entry.  Hooked on
-;; `after-make-frame-functions' as well so daemon/emacsclient GUI frames
-;; (where init.el ran without a graphical display) also pick it up.
-(defun emacs-config-setup-emoji-fontset (&optional _frame)
-  "Map the `emoji' script to Apple Color Emoji at a reduced size."
-  (set-fontset-font t 'emoji (font-spec :family "Apple Color Emoji" :size 12)))
-
-(emacs-config-setup-emoji-fontset)
-(add-hook 'after-make-frame-functions #'emacs-config-setup-emoji-fontset)
 
 ;; Disable bidirectional text reordering for better performance.
 (setq-default bidi-display-reordering 'left-to-right
