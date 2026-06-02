@@ -13,49 +13,51 @@
   (advice-add 'term-handle-exit :after
               (lambda (&rest _) (quit-window t))))
 
-;; vterm: fast, accurate terminal emulator backed by libvterm.
-;; To open a new session use C-u M-x vterm (or C-u M-x vterm-other-window).
-;; Without the prefix, both commands reuse the existing *vterm* buffer.
-(use-package vterm
-  :straight t
-  :commands (vterm vterm-other-window)
-  :custom
-  ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
-  (vterm-shell shell-file-name)
-  :config
-  ;; Make C-b a prefix in vterm buffers so it falls through to the global
-  ;; tmux-map (windows-config.el).  Cannot use customize-set-variable: its :set
-  ;; handler calls `vterm--exclude-keys`, which unbinds C-c in vterm-mode-map
-  ;; and wipes the C-c X bindings (C-c C-t, C-c C-l, ...) that the defvar added
-  ;; after the exclude pass.  setq avoids the :set handler; we install the
-  ;; exception for C-b ourselves.  Note: simply unbinding (define-key ... nil)
-  ;; is not enough — vterm-mode-map has a [t] catch-all bound to
-  ;; vterm--self-insert that forwards every unbound key to the terminal, so an
-  ;; unbound C-b would still be intercepted.  We must copy the global binding
-  ;; (the tmux-map prefix) into vterm-mode-map, mirroring step 2 of
-  ;; vterm--exclude-keys.
-  (setq vterm-keymap-exceptions (cons "C-b" vterm-keymap-exceptions))
-  (define-key vterm-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
-  
-  :bind (:map vterm-mode-map
-              ;; Map C-c C-c to send a literal C-c (SIGINT) to the terminal.
-              ("C-c C-c"    . vterm-send-C-c)
-              ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
-              ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
-              ;; Emacs resolves it to set-mark-command from global-map before reaching it.
-              ;; Also, vterm-send-key must be avoided: it goes through vterm--update in the
-              ;; C module which re-encodes using the active escape mode, producing CSI-u
-              ;; sequences (^[[64;5u).
-              ;; ("C-@"        . (lambda () (interactive) (vterm-send-string "\C-@")))
-              ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r),
-              ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
-              ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
-              ;; entirely and sends raw bytes, so we send the escape sequence directly.
-              ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))
-              ;; Forward C-g as BEL (\C-g = ASCII 7) so terminal apps (e.g. Claude
-              ;; Code) receive it.  In vterm-mode keyboard-quit has nothing to quit,
-              ;; so yielding this binding is safe.
-              ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g")))))
+;; Disabled vterm in favor of ghostel
+(when nil
+  ;; vterm: fast, accurate terminal emulator backed by libvterm.
+  ;; To open a new session use C-u M-x vterm (or C-u M-x vterm-other-window).
+  ;; Without the prefix, both commands reuse the existing *vterm* buffer.
+  (use-package vterm
+    :straight t
+    :commands (vterm vterm-other-window)
+    :custom
+    ;; like for term, set the default shell to shell-file-name (equivalent to $SHELL)
+    (vterm-shell shell-file-name)
+    :config
+    ;; Make C-b a prefix in vterm buffers so it falls through to the global
+    ;; tmux-map (windows-config.el).  Cannot use customize-set-variable: its :set
+    ;; handler calls `vterm--exclude-keys`, which unbinds C-c in vterm-mode-map
+    ;; and wipes the C-c X bindings (C-c C-t, C-c C-l, ...) that the defvar added
+    ;; after the exclude pass.  setq avoids the :set handler; we install the
+    ;; exception for C-b ourselves.  Note: simply unbinding (define-key ... nil)
+    ;; is not enough — vterm-mode-map has a [t] catch-all bound to
+    ;; vterm--self-insert that forwards every unbound key to the terminal, so an
+    ;; unbound C-b would still be intercepted.  We must copy the global binding
+    ;; (the tmux-map prefix) into vterm-mode-map, mirroring step 2 of
+    ;; vterm--exclude-keys.
+    (setq vterm-keymap-exceptions (cons "C-b" vterm-keymap-exceptions))
+    (define-key vterm-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
+    
+    :bind (:map vterm-mode-map
+                ;; Map C-c C-c to send a literal C-c (SIGINT) to the terminal.
+                ("C-c C-c"    . vterm-send-C-c)
+                ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
+                ;; Must use "C-@" in :bind — "C-SPC" is not intercepted by vterm-mode-map as
+                ;; Emacs resolves it to set-mark-command from global-map before reaching it.
+                ;; Also, vterm-send-key must be avoided: it goes through vterm--update in the
+                ;; C module which re-encodes using the active escape mode, producing CSI-u
+                ;; sequences (^[[64;5u).
+                ;; ("C-@"        . (lambda () (interactive) (vterm-send-string "\C-@")))
+                ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r),
+                ;; the standard terminal encoding for Meta+Enter. Using vterm-send-key with
+                ;; "<return>" does not work because vterm-send-return bypasses vterm-send-key
+                ;; entirely and sends raw bytes, so we send the escape sequence directly.
+                ("C-M-m"      . (lambda () (interactive) (vterm-send-string "\e\r")))
+                ;; Forward C-g as BEL (\C-g = ASCII 7) so terminal apps (e.g. Claude
+                ;; Code) receive it.  In vterm-mode keyboard-quit has nothing to quit,
+                ;; so yielding this binding is safe.
+                ("C-g"        . (lambda () (interactive) (vterm-send-string "\C-g"))))))
 
 ;; ev: blocking "open in Emacs" for use as $EDITOR from vterm.
 ;;
