@@ -59,27 +59,38 @@ falling back to the \"Unknown\" entry."
                     (font-spec :family "Apple Color Emoji"
                                :size (emacs-config-emoji-size-for-height height))))
 
-;; Route the Nerd Font Private Use Area to "Symbols Nerd Font Mono", whose icon
+;; Render icon glyphs at this fraction of the `default' text point size.  Nerd
+;; Font icons fill their em box more than text glyphs, so at full size they look
+;; oversized next to text (e.g. eza output in ghostel).  NOTE: sizing must go
+;; through an explicit `:size' on the fontset's `font-spec' (the mechanism the
+;; emoji mapping uses) — `face-font-rescale-alist' has NO effect on these mac-ct
+;; fontset glyphs.  This sizes only the raw PUA codepoints routed through the
+;; fontset; the nerd-icons-* library glyphs (dired/ibuffer/treemacs) are sized
+;; separately by `nerd-icons-scale-factor'.
+(defvar emacs-config-icon-scale 0.85
+  "Scale of Nerd Font icon glyphs relative to the `default' text size.")
+
+(defun emacs-config-icon-size-for-height (height)
+  "Return the icon `:size' (points) for a `default' face of HEIGHT (1/10 pt)."
+  (* (/ height 10.0) emacs-config-icon-scale))
+
+;; Route the Nerd Font Private Use Areas to "Symbols Nerd Font Mono", whose icon
 ;; glyphs have correct monospace metrics.  Without this, the default text font
 ;; (JetBrainsMonoNL Nerd Font Mono, itself a patched Nerd Font that covers the
 ;; PUA) reclaims part of the range via fallback, so raw icon codepoints render
 ;; in the wrong font at the wrong size.  See the header comment for why this is
 ;; applied here rather than as a standalone `set-fontset-font'.
-(defun emacs-config-setup-pua-fontset ()
-  "Map the Nerd Font Private Use Areas to Symbols Nerd Font Mono.
+(defun emacs-config-setup-pua-fontset (height)
+  "Map the Nerd Font Private Use Areas to Symbols Nerd Font Mono for HEIGHT.
 Covers both the BMP PUA (#xe000–#xffff) and the Supplementary
 PUA-A (#xf0000–#xfffff), where Nerd Fonts v3 placed the Material
-Design Icons (nf-md-*); without the second range those glyphs
-fall back to the default font with wrong metrics."
-  (set-fontset-font t '(#xe000 . #xffff) "Symbols Nerd Font Mono")
-  (set-fontset-font t '(#xf0000 . #xfffff) "Symbols Nerd Font Mono"))
-
-;; Render icon glyphs slightly smaller than the surrounding text.  This is a
-;; proportional multiplier on the Symbols font (not a fixed pixel size), so it
-;; tracks the per-monitor `default' height automatically and applies to every
-;; icon — both raw PUA codepoints (eza output in terminals) and the glyphs the
-;; nerd-icons-* functions insert (dired/ibuffer/treemacs).  Tune to taste.
-(add-to-list 'face-font-rescale-alist '("Symbols Nerd Font Mono" . 0.5))
+Design Icons (nf-md-*); without the second range those glyphs fall
+back to the default font with wrong metrics.  Glyphs are sized to
+`emacs-config-icon-scale' of the text size via the font-spec `:size'."
+  (let ((spec (font-spec :family "Symbols Nerd Font Mono"
+                         :size (emacs-config-icon-size-for-height height))))
+    (set-fontset-font t '(#xe000 . #xffff) spec)
+    (set-fontset-font t '(#xf0000 . #xfffff) spec)))
 
 (defun emacs-config-apply-frame-font (&optional frame)
   "Set FRAME's `default' :height and emoji size from its monitor.
@@ -89,7 +100,7 @@ No-op on TTY frames, which ignore font face attributes."
       (let ((height (emacs-config-font-height-for-frame frame)))
         (set-face-attribute 'default frame :height height)
         (emacs-config-setup-emoji-fontset height)
-        (emacs-config-setup-pua-fontset)))))
+        (emacs-config-setup-pua-fontset height)))))
 
 ;; Global family/weight plus a baseline height (the "Unknown" fallback) so a
 ;; frame looks right even before `emacs-config-apply-frame-font' refines it.
