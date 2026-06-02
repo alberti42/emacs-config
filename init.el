@@ -4,11 +4,17 @@
 ;; family/weight are global; the :height is chosen *per frame* from
 ;; `emacs-config-font-height-by-monitor' so each connected screen can use its
 ;; own size (I move one laptop between several external displays of differing
-;; resolution).  Note: in `nerd-icons-config.el', we call 'set-fontset-font'
-;; for Emacs GUI to map the Private Use Area (#xe000–#xffff) to 'Symbols Nerd
-;; Font Mono', preventing fallback to fonts with wrong glyph metrics, like
-;; JetBrainsMonoNL, which causes horizontal truncation of icons in dired and
-;; elsewhere.
+;; resolution).  Note: `emacs-config-apply-frame-font' also maps the Nerd Font
+;; Private Use Areas (BMP #xe000–#xffff and Supplementary #xf0000–#xfffff) to
+;; 'Symbols Nerd Font Mono', preventing
+;; fallback to fonts with wrong glyph metrics, like JetBrainsMonoNL, which
+;; causes horizontal truncation of icons in dired and oversized/mismatched
+;; icons in terminal buffers (e.g. eza output in ghostel/vterm).  This mapping
+;; MUST be re-applied right after `set-face-attribute 'default' (same as the
+;; emoji mapping below): changing the default font re-derives the fontset and
+;; drops standalone `set-fontset-font' entries, and on macOS a detached
+;; re-mapping does not refresh an already-settled frame without a font cache
+;; flush.  Riding the font application here is what makes it stick.
 ;;
 ;; Monitor names come from `(display-monitor-attributes-list)'.  The "Unknown"
 ;; entry is the fallback height used for any monitor not listed.
@@ -40,9 +46,9 @@ falling back to the \"Unknown\" entry."
 
 ;; Map the `emoji' script to Apple Color Emoji, sized for HEIGHT.  Kept on the
 ;; default fontset (t) rather than per-frame: a per-frame fontset would fork
-;; from the default and drop the nerd-icons PUA mapping installed in
-;; `nerd-icons-config.el'.  With one frame per screen, this single global entry
-;; tracks whichever frame `emacs-config-apply-frame-font' applied last.
+;; from the default and drop the PUA mapping (see `emacs-config-setup-pua-fontset').
+;; With one frame per screen, this single global entry tracks whichever frame
+;; `emacs-config-apply-frame-font' applied last.
 ;;
 ;; Must run from init.el rather than early-init.el: the initial GUI frame is
 ;; created between the two and wipes the emoji fontset entry.  It is re-applied
@@ -53,6 +59,28 @@ falling back to the \"Unknown\" entry."
                     (font-spec :family "Apple Color Emoji"
                                :size (emacs-config-emoji-size-for-height height))))
 
+;; Route the Nerd Font Private Use Area to "Symbols Nerd Font Mono", whose icon
+;; glyphs have correct monospace metrics.  Without this, the default text font
+;; (JetBrainsMonoNL Nerd Font Mono, itself a patched Nerd Font that covers the
+;; PUA) reclaims part of the range via fallback, so raw icon codepoints render
+;; in the wrong font at the wrong size.  See the header comment for why this is
+;; applied here rather than as a standalone `set-fontset-font'.
+(defun emacs-config-setup-pua-fontset ()
+  "Map the Nerd Font Private Use Areas to Symbols Nerd Font Mono.
+Covers both the BMP PUA (#xe000–#xffff) and the Supplementary
+PUA-A (#xf0000–#xfffff), where Nerd Fonts v3 placed the Material
+Design Icons (nf-md-*); without the second range those glyphs
+fall back to the default font with wrong metrics."
+  (set-fontset-font t '(#xe000 . #xffff) "Symbols Nerd Font Mono")
+  (set-fontset-font t '(#xf0000 . #xfffff) "Symbols Nerd Font Mono"))
+
+;; Render icon glyphs slightly smaller than the surrounding text.  This is a
+;; proportional multiplier on the Symbols font (not a fixed pixel size), so it
+;; tracks the per-monitor `default' height automatically and applies to every
+;; icon — both raw PUA codepoints (eza output in terminals) and the glyphs the
+;; nerd-icons-* functions insert (dired/ibuffer/treemacs).  Tune to taste.
+(add-to-list 'face-font-rescale-alist '("Symbols Nerd Font Mono" . 0.5))
+
 (defun emacs-config-apply-frame-font (&optional frame)
   "Set FRAME's `default' :height and emoji size from its monitor.
 No-op on TTY frames, which ignore font face attributes."
@@ -60,7 +88,8 @@ No-op on TTY frames, which ignore font face attributes."
     (when (display-graphic-p frame)
       (let ((height (emacs-config-font-height-for-frame frame)))
         (set-face-attribute 'default frame :height height)
-        (emacs-config-setup-emoji-fontset height)))))
+        (emacs-config-setup-emoji-fontset height)
+        (emacs-config-setup-pua-fontset)))))
 
 ;; Global family/weight plus a baseline height (the "Unknown" fallback) so a
 ;; frame looks right even before `emacs-config-apply-frame-font' refines it.

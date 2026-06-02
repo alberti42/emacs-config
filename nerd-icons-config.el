@@ -12,13 +12,14 @@
   ;; nerd-icons-* functions as a :height property, so it scales relative to the
   ;; text font and tracks text-scale adjustments (dired, ibuffer, treemacs,
   ;; corfu kind-icons).
-  (nerd-icons-scale-factor 1.0)
-  :config
-  ;; Explicitly map the Nerd Font Private Use Area to the icon font so Emacs
-  ;; uses the correct glyph metrics instead of falling back to an unknown font.
-  ;; This fixes horizontal glyph truncation in GUI Emacs (e.g. in dired).
-  (when (display-graphic-p)
-    (set-fontset-font t '(#xe000 . #xffff) "Symbols Nerd Font Mono")))
+  (nerd-icons-scale-factor 1.0))
+
+;; NOTE: the Private Use Area (#xe000–#xffff) → "Symbols Nerd Font Mono"
+;; fontset mapping is intentionally NOT installed here.  It must ride the
+;; `default'-font application in `emacs-config-apply-frame-font' (init.el):
+;; changing the default font re-derives the fontset and drops standalone
+;; `set-fontset-font' entries, and on macOS a detached re-mapping does not
+;; refresh an already-settled frame.  See `emacs-config-setup-pua-fontset'.
 
 (provide 'nerd-icons-config)
 ;;; nerd-icons-config.el ends here
