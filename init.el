@@ -113,6 +113,20 @@ No-op on TTY frames, which ignore font face attributes."
 (emacs-config-apply-frame-font)
 (add-hook 'after-make-frame-functions #'emacs-config-apply-frame-font)
 
+;; Restore per-frame fonts after every theme (re)load.  Enabling a theme
+;; recomputes the `default' face from its specs and discards the imperative
+;; per-frame :height set above, so GUI frames would revert to the global
+;; baseline.  This bites on EVERY new frame because `zac-theme-autodetection'
+;; re-runs `load-theme' from `after-make-frame-functions' — so without this,
+;; merely opening a TTY emacsclient frame shrinks the existing GUI frames.
+;; `emacs-config-apply-frame-font' is a no-op on TTY frames, so this only
+;; touches GUI frames.
+(defun emacs-config-reapply-frame-fonts (&rest _)
+  "Re-apply per-frame font settings to all GUI frames after a theme change."
+  (dolist (frame (frame-list))
+    (emacs-config-apply-frame-font frame)))
+(add-hook 'enable-theme-functions #'emacs-config-reapply-frame-fonts)
+
 ;; Make `fixed-pitch' follow the `default' face so packages that distinguish
 ;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
 ;; mu4e body, `mixed-pitch-mode') render in the same font as the rest of the
