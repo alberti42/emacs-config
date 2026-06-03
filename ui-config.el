@@ -150,22 +150,6 @@ remembered geometry, so fall back to the `emacs-config-frame-width' /
 
 (global-set-key [f11] #'emacs-config-toggle-fullscreen)
 
-;; Ensure GUI Emacs creates/raises a frame.
-;; - Some macOS setups can start Emacs without presenting a visible window.
-;; - `emacsclient -c` can create a frame without activating the app.
-(defun emacs-config--activate-gui-frame (&optional frame)
-  "Raise FRAME and give it focus (best-effort)."
-  (let ((frame (or frame (selected-frame))))
-    (when (display-graphic-p frame)
-      (with-selected-frame frame
-        (run-at-time
-         0 nil
-         (lambda (f)
-           (when (frame-live-p f)
-             (select-frame-set-input-focus f)
-             (raise-frame f)))
-         frame)))))
-
 ;; Per-frame GUI setup: fonts and centering.
 ;; Hooked to both emacs-startup-hook (direct GUI launch) and
 ;; after-make-frame-functions (daemon/emacsclient GUI frame).
@@ -215,12 +199,6 @@ For more infos about frame parameters, visit https://www.gnu.org/software/emacs/
 
 (add-hook 'emacs-startup-hook #'emacs-config-setup-frame)
 (add-hook 'after-make-frame-functions #'emacs-config-setup-frame)
-
-;; When running as a server, prefer focusing frames created by emacsclient.
-;; This is important to ensure that 'emacsclient -a= -n -c' brings emacs in focus.
-(with-eval-after-load 'server
-  (when (boundp 'server-after-make-frame-hook)
-    (add-hook 'server-after-make-frame-hook #'emacs-config--activate-gui-frame)))
 
 ;; Opt in to emoji icons in TTY — terminal renders them natively from the
 ;; Unicode codepoint.  Requires local/icons.el patch (see CLAUDE.md).
