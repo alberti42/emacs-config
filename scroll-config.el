@@ -42,8 +42,10 @@
   (pcase-dolist (`(,key . ,fn)
                  '(("C-v" . scroll-up)      ("<next>"  . scroll-up)
                    ("M-v" . scroll-down)    ("<prior>" . scroll-down)
-                   ("M-<next>" . scroll-other-window)
-                   ("M-<prior>" . scroll-other-window-down)))
+                   ("M-<next>"  . scroll-other-window)
+                   ("M-<prior>" . scroll-other-window-down)
+                   ("C-M-v"   . scroll-other-window)
+                   ("C-M-S-v" . scroll-other-window-down)))
     (global-set-key (kbd key) (lambda () (interactive) (funcall fn num-lines)))))
 
 ;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
