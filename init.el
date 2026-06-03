@@ -1,23 +1,7 @@
 ;;; init.el -*- lexical-binding: t; tab-width: 2; -*-
 
-;; Default font for GUI frames (TTY frames ignore font face attributes).  The
-;; family/weight are global; the :height is chosen *per frame* from
-;; `emacs-config-font-height-by-monitor' so each connected screen can use its
-;; own size (I move one laptop between several external displays of differing
-;; resolution).  Note: `emacs-config-apply-frame-font' also maps the Nerd Font
-;; Private Use Areas (BMP #xe000–#xffff and Supplementary #xf0000–#xfffff) to
-;; 'Symbols Nerd Font Mono', preventing
-;; fallback to fonts with wrong glyph metrics, like JetBrainsMonoNL, which
-;; causes horizontal truncation of icons in dired and oversized/mismatched
-;; icons in terminal buffers (e.g. eza output in ghostel/vterm).  This mapping
-;; MUST be re-applied right after `set-face-attribute 'default' (same as the
-;; emoji mapping below): changing the default font re-derives the fontset and
-;; drops standalone `set-fontset-font' entries, and on macOS a detached
-;; re-mapping does not refresh an already-settled frame without a font cache
-;; flush.  Riding the font application here is what makes it stick.
-;;
-;; Monitor names come from `(display-monitor-attributes-list)'.  The "Unknown"
-;; entry is the fallback height used for any monitor not listed.
+;;; -- Font settings -----------------------------------------------------------
+
 (defvar emacs-config-font-height-by-monitor
   '(("Kuycon G32P" . 180)
     ("Unknown"     . 150))
@@ -26,67 +10,52 @@ The \"Unknown\" entry is the fallback used for any monitor not listed.")
 
 (defun emacs-config-font-height-for-frame (frame)
   "Return the configured `default' :height for FRAME's monitor.
-Looks the monitor name up in `emacs-config-font-height-by-monitor',
+Looks up the monitor name in the alist `emacs-config-font-height-by-monitor',
 falling back to the \"Unknown\" entry."
   (let* ((name (alist-get 'name (frame-monitor-attributes frame)))
          (entry (or (assoc name emacs-config-font-height-by-monitor)
                     (assoc "Unknown" emacs-config-font-height-by-monitor))))
     (cdr entry)))
 
-;; Pick an Apple Color Emoji point size that fits inside a `default' face of
-;; HEIGHT.  Without this, a line containing an emoji (e.g. 💡) jumps to the
-;; emoji font's taller line box and causes vertical jitter as you type; the
-;; size must shrink as the per-monitor height shrinks or the jitter returns on
-;; the smaller screens.  A few coarse buckets are enough — tune to taste.
 (defun emacs-config-emoji-size-for-height (height)
-  "Return the Apple Color Emoji :size that fits a `default' face of HEIGHT."
+  "Return the Apple Color Emoji :size that fits a `default' face of HEIGHT.
+HEIGHT is the `default' face `:height' (1/10 pt).  Without this, a line
+containing an emoji (e.g. 💡) jumps to the emoji font's taller line
+height and causes vertical jitter when typing; the size must fit the
+default face height, which is itself chosen from the monitor.  A few
+coarse buckets track the face height closely enough in practice."
   (cond ((>= height 170) 14)
         ((>= height 150) 12)
         (t 11)))
 
-;; Map the `emoji' script to Apple Color Emoji, sized for HEIGHT.  Kept on the
-;; default fontset (t) rather than per-frame: a per-frame fontset would fork
-;; from the default and drop the PUA mapping (see `emacs-config-setup-pua-fontset').
-;; With one frame per screen, this single global entry tracks whichever frame
-;; `emacs-config-apply-frame-font' applied last.
-;;
-;; Must run from init.el rather than early-init.el: the initial GUI frame is
-;; created between the two and wipes the emoji fontset entry.  It is re-applied
-;; for daemon/emacsclient frames via `emacs-config-apply-frame-font' below.
 (defun emacs-config-setup-emoji-fontset (height)
-  "Map the `emoji' script to Apple Color Emoji, sized to fit HEIGHT."
+  "Render `emoji' glyphs using \"Apple Color Emoji\" for HEIGHT.
+Modify the default fontset to map `emoji' script to Apple Color Emoji,
+sized for HEIGHT."
   (set-fontset-font t 'emoji
                     (font-spec :family "Apple Color Emoji"
                                :size (emacs-config-emoji-size-for-height height))))
 
-;; Render icon glyphs at this fraction of the `default' text point size.  Nerd
-;; Font icons fill their em box more than text glyphs, so at full size they look
-;; oversized next to text (e.g. eza output in ghostel).  NOTE: sizing must go
-;; through an explicit `:size' on the fontset's `font-spec' (the mechanism the
-;; emoji mapping uses) — `face-font-rescale-alist' has NO effect on these mac-ct
-;; fontset glyphs.  This sizes only the raw PUA codepoints routed through the
-;; fontset; the nerd-icons-* library glyphs (dired/ibuffer/treemacs) are sized
-;; separately by `nerd-icons-scale-factor'.
 (defvar emacs-config-icon-scale 0.85
-  "Scale of Nerd Font icon glyphs relative to the `default' text size.")
+  "Scale of Nerd Font icon glyphs relative to the `default' text size.
+  A dedicated icon font like \"Symbols Nerd Font Mono\" may have metrics
+  for its glyphs that differ from the default text font, so its icons can
+  look oversized at full scale; this factor brings them back into
+  proportion.")
 
 (defun emacs-config-icon-size-for-height (height)
   "Return the icon `:size' (points) for a `default' face of HEIGHT (1/10 pt)."
   (* (/ height 10.0) emacs-config-icon-scale))
 
-;; Route the Nerd Font Private Use Areas to "Symbols Nerd Font Mono", whose icon
-;; glyphs have correct monospace metrics.  Without this, the default text font
-;; (JetBrainsMonoNL Nerd Font Mono, itself a patched Nerd Font that covers the
-;; PUA) reclaims part of the range via fallback, so raw icon codepoints render
-;; in the wrong font at the wrong size.  See the header comment for why this is
-;; applied here rather than as a standalone `set-fontset-font'.
 (defun emacs-config-setup-pua-fontset (height)
-  "Map the Nerd Font Private Use Areas to Symbols Nerd Font Mono for HEIGHT.
-Covers both the BMP PUA (#xe000–#xffff) and the Supplementary
-PUA-A (#xf0000–#xfffff), where Nerd Fonts v3 placed the Material
-Design Icons (nf-md-*); without the second range those glyphs fall
-back to the default font with wrong metrics.  Glyphs are sized to
-`emacs-config-icon-scale' of the text size via the font-spec `:size'."
+  "Render Nerd Fonts codepoints using \"Symbols Nerd Font Mono\" for HEIGHT.
+  Map the Private Use Area #xe000-#xffff, which is typically used by Nerd
+  Fonts to display their icons, to \"Symbols Nerd Font Mono\".  It covers
+  both the BMP PUA (#xe000–#xffff) and the Supplementary
+  PUA-A (#xf0000–#xfffff), where Nerd Fonts v3 placed the Material Design
+  Icons (nf-md-*); without the second range those glyphs fall back to the
+  default font with wrong metrics.  Glyphs are sized to
+  `emacs-config-icon-scale' of the text size via the font-spec `:size'."
   (let ((spec (font-spec :family "Symbols Nerd Font Mono"
                          :size (emacs-config-icon-size-for-height height))))
     (set-fontset-font t '(#xe000 . #xffff) spec)
@@ -94,7 +63,7 @@ back to the default font with wrong metrics.  Glyphs are sized to
 
 (defun emacs-config-apply-frame-font (&optional frame)
   "Set FRAME's `default' :height and emoji size from its monitor.
-No-op on TTY frames, which ignore font face attributes."
+  No-op on TTY frames, which ignore font face attributes."
   (let ((frame (or frame (selected-frame))))
     (when (display-graphic-p frame)
       (let ((height (emacs-config-font-height-for-frame frame)))
@@ -102,40 +71,42 @@ No-op on TTY frames, which ignore font face attributes."
         (emacs-config-setup-emoji-fontset height)
         (emacs-config-setup-pua-fontset height)))))
 
-;; Global family/weight plus a baseline height (the "Unknown" fallback) so a
-;; frame looks right even before `emacs-config-apply-frame-font' refines it.
+;; We specify the default font for GUI frames; TTY frames ignore font face
+;; attributes.  We configure the family/weight plus a baseline height (the
+;; "Unknown" fallback) so a frame looks right even before
+;; `emacs-config-apply-frame-font' refines it.
 (set-face-attribute 'default nil
                     :family "JetBrainsMonoNL Nerd Font Mono" :weight 'light
                     :height (cdr (assoc "Unknown" emacs-config-font-height-by-monitor)))
 
-;; Apply now for the initial (non-daemon) frame; the hook covers daemon /
-;; emacsclient frames and any later frame opened on a different screen.
+;; Apply `emacs-config-apply-frame-font' right now for the initial (non-daemon)
+;; frame and configure a hook that covers daemon / emacsclient frames and any
+;; later frame opened on a different screen.  This MUST run after the
+;; `set-face-attribute' above: changing the `default' font re-derives the
+;; frame's fontset and drops the customized emoji/PUA Unicode remapping.
 (emacs-config-apply-frame-font)
 (add-hook 'after-make-frame-functions #'emacs-config-apply-frame-font)
 
-;; Restore per-frame fonts after every theme (re)load.  Enabling a theme
-;; recomputes the `default' face from its specs and discards the imperative
-;; per-frame :height set above, so GUI frames would revert to the global
-;; baseline.  This bites on EVERY new frame because `zac-theme-autodetection'
-;; re-runs `load-theme' from `after-make-frame-functions' — so without this,
-;; merely opening a TTY emacsclient frame shrinks the existing GUI frames.
-;; `emacs-config-apply-frame-font' is a no-op on TTY frames, so this only
-;; touches GUI frames.
 (defun emacs-config-reapply-frame-fonts (&rest _)
-  "Re-apply per-frame font settings to all GUI frames after a theme change."
+  "Re-apply per-frame font settings to all GUI frames after a theme change.
+Enabling a theme recomputes the `default' face from the theme specs and
+discards the per-frame :height that `emacs-config-apply-frame-font'
+sets, so GUI frames would otherwise revert to the global baseline.  That
+function is a no-op on TTY frames, so this only touches GUI frames."
   (dolist (frame (frame-list))
     (emacs-config-apply-frame-font frame)))
 (add-hook 'enable-theme-functions #'emacs-config-reapply-frame-fonts)
 
-;; Make `fixed-pitch' follow the `default' face so packages that distinguish
-;; mono from proportional text (e.g. org's "mixed-fonts" mode in some themes,
-;; mu4e body, `mixed-pitch-mode') render in the same font as the rest of the
-;; editor.  Safe today because `default' above is already monospace.
+;; Make the `fixed-pitch' face follow `default' so packages that deliberately
+;; route code/tables through `fixed-pitch' (mu4e bodies, `mixed-pitch-mode',
+;; some themes' "mixed-fonts" modes) use the SAME mono font as the rest of the
+;; editor, rather than the generic stock `fixed-pitch' family.
 ;;
-;; IF `default' IS EVER SWITCHED TO A PROPORTIONAL FONT: replace this
-;; `:inherit default' with an explicit `:family' / `:height' / `:weight'
-;; pointing at a monospace font — otherwise org tables, src blocks, and
-;; anything else relying on `fixed-pitch' will lose fixed-width rendering.
+;; CAUTION: If `default' is ever switched to a proportional font, this turns
+;; into a trap — `fixed-pitch' would inherit that proportional font and org
+;; tables, src blocks, and anything else relying on `fixed-pitch' would lose
+;; fixed-width rendering.  In that case replace `:inherit default' with an
+;; explicit monospace `:family' / `:height' / `:weight'.
 (set-face-attribute 'fixed-pitch nil :inherit 'default)
 
 ;; Disable bidirectional text reordering for better performance.
@@ -144,10 +115,12 @@ No-op on TTY frames, which ignore font face attributes."
 ;; Inhibit the Bidirectional Parentheses Algorithm.
 (setq bidi-inhibit-bpa t)
 
-;; Defer fontification while typing; highlighting catches up on idle.
-;; In practice, we will never notice the delay, but scrolling and
-;; typing may feel smoother.
+;; Defer fontification while input is pending; highlighting catches up on idle.
+;; In practice we rarely notice the brief delay, and it makes scrolling and
+;; typing feel smoother.
 (setq redisplay-skip-fontification-on-input t)
+
+;;; -- General Emacs settings --------------------------------------------------
 
 ;; Increase subprocess read buffer from 64KB to 4MB.  LSP servers like
 ;; rust-analyzer or clangd routinely send multi-megabyte responses;
