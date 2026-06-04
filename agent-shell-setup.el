@@ -1,4 +1,4 @@
-;;; agent-shell-config.el --- agent-shell AI agent integration -*- lexical-binding: t; -*-
+;;; agent-shell-setup.el --- agent-shell AI agent integration -*- lexical-binding: t; -*-
 
 ;; agent-shell: interact with AI agents (Claude Code, Gemini CLI, etc.)
 ;; via the Agent Client Protocol (ACP) inside an Emacs shell buffer.
@@ -65,5 +65,5 @@
               (setq-local comint-get-old-input
                           #'my/agent-shell-get-old-input))))
 
-(provide 'agent-shell-config)
-;;; agent-shell-config.el ends here
+(provide 'agent-shell-setup)
+;;; agent-shell-setup.el ends here

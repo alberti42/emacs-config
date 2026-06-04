@@ -592,8 +592,8 @@ function is a no-op on TTY frames, so this only touches GUI frames."
 
 ;; AI agent shell (Claude Code, Gemini CLI, etc. via ACP)
 (emacs-config-load-module
- 'agent-shell-config
- "Could not load agent-shell-config.el; agent-shell is disabled.")
+ 'agent-shell-setup
+ "Could not load agent-shell-setup.el; agent-shell is disabled.")
 
 ;; Themes
 ;; Load order within themes-config: theme-harmonize → load-theme → zac-theme-autodetection.
