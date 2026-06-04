@@ -48,22 +48,7 @@
                           (file-in-directory-p shell-cwd project-root))))
                   (agent-shell-buffers))))
   (advice-add 'agent-shell-project-buffers :override
-              #'my/agent-shell-project-buffers)
-
-  ;; History navigation: preserve the full in-progress prompt.  shell-maker sets
-  ;; `comint-get-old-input' to a function that grabs a single `forward-sexp', so
-  ;; multi-word/multi-line prompts are truncated when comint stashes them on the
-  ;; first C-up.  Override to capture the entire input region; comint's built-in
-  ;; `comint-restore-input' then brings the full text back when C-down
-  ;; overshoots the newest history entry.
-  (defun my/agent-shell-get-old-input ()
-    "Return the entire pending input from process-mark to point-max."
-    (when-let ((proc (get-buffer-process (current-buffer))))
-      (buffer-substring-no-properties (process-mark proc) (point-max))))
-  (add-hook 'agent-shell-mode-hook
-            (lambda ()
-              (setq-local comint-get-old-input
-                          #'my/agent-shell-get-old-input))))
+              #'my/agent-shell-project-buffers))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
