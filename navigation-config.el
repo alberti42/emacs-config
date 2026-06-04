@@ -32,6 +32,12 @@ If repeated, cycle to the last non-whitespace character instead."
 (global-set-key [home] #'my/smart-beginning-of-line)
 (global-set-key [end]  #'my/smart-end-of-line)
 
+;; Register reads (`C-x r j', `C-x r SPC', `C-x r s', `C-x r i', ...) pop the
+;; *Register Preview* window immediately, with command-aware filtering and
+;; C-n/C-p navigation.  `insist' shows the preview and lets a second press of
+;; the register name confirm the selection (plain `t' would require RET).
+(setopt register-use-preview 'insist)
+
 ;; `visual-line-mode' remaps C-a/C-e to visual-line boundaries, which are
 ;; determined by screen width rather than buffer content.  Clear the remaps
 ;; so logical-line movement remains in effect regardless of wrap mode.
