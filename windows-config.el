@@ -359,14 +359,7 @@ DIRECTION is one of `left', `right', `above', `below'."
 (global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
 (global-set-key (kbd "C-b z") #'windows-config-toggle-delete-other-windows)
 
-(defun windows-config-switch-to-minibuffer ()
-  "Jump to the active minibuffer, if any."
-  (interactive)
-  (if-let* ((win (active-minibuffer-window)))
-      (select-window win)
-    (user-error "No active minibuffer")))
-
-(global-set-key (kbd "C-x m") #'windows-config-switch-to-minibuffer)
+(global-set-key (kbd "C-x m") #'switch-to-minibuffer)
 
 (provide 'windows-config)
 ;;; windows-config.el ends here
