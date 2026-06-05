@@ -12,6 +12,8 @@
   :bind (
          ;; Replace default switch-to-buffer with consult-buffer.
          ("C-x b" . consult-buffer)
+         ;; Replace default bookmark-jump with consult-bookmark for live preview.
+         ("C-x r b" . consult-bookmark)
          ;; A small, mnemonic prefix for search/navigation.
          ("C-c s b" . consult-buffer)
          ("C-c s l" . consult-line)
