@@ -267,6 +267,14 @@ function is a no-op on TTY frames, so this only touches GUI frames."
 ;; Accept y/n instead of typing yes/no in full.
 (setq use-short-answers t)
 
+;; Per-context auxiliary bookmark files.  The library is mechanism-only; this
+;; config module loads it, enables the mode, and resolves relative
+;; `bookmark-aux-file' values (set per project via .dir-locals.el) against the
+;; project root.
+(emacs-config-load-module
+ 'bookmark-aux-config
+ "Could not load bookmark-aux-config.el; auxiliary bookmark files are disabled.")
+
 ;; Save minibuffer history
 (savehist-mode 1)
 
