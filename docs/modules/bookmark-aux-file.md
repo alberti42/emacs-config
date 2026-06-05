@@ -94,9 +94,13 @@ Record tag: `(baf-file . ABS-PATH)` in the record's PARAM-ALIST, in memory only.
    file is set and readable, re-reads it (low-level, via
    `bookmark-alist-from-buffer` in a temp buffer — **never** `bookmark-load`),
    tags each record, and prepends.
-2. **`:filter-args bookmark-store` → `--tag-args`.** Injects the tag into the
-   record's alist *before* `store` runs, so `store`'s own
-   `bookmark-save-flag`-triggered save routes correctly.
+2. **`:filter-args bookmark-store` → `--tag-args`.** When an aux file is active,
+   (a) injects the tag into the record's alist *before* `store` runs (so the
+   `bookmark-save-flag`-triggered save routes correctly), and (b) confines
+   `store`'s overwrite-by-name to *auxiliary* records: if no aux record of that
+   name exists it forces `NO-OVERWRITE t` so the set creates a fresh aux
+   bookmark instead of clobbering a same-named global one. A set from an aux
+   buffer thus always targets the aux file and never touches global bookmarks.
 3. **`:around bookmark-write-file` → `--partition-write`.** The sole save choke
    point. Groups the list by `baf-file`, then writes each group to its file by
    rebinding `bookmark-alist` and calling the original per group (reusing all of
@@ -120,6 +124,26 @@ file. Tagging via `:filter-args` puts the tag on the record's alist before
 `store` saves it. Also: look up the record by name (`bookmark-get-bookmark`), not
 "the front" — overwrite does `setcdr` in place, leaving the record wherever it
 already was.
+
+### A set from an aux buffer must never overwrite a global bookmark
+`bookmark-store` overwrites the first record matching the name. In the merged
+list that first match could be a *global* record (e.g. setting a name that
+exists globally but not yet in the aux file), so a naive tag-on-store would
+*move* the global bookmark into the aux file and drop it from the global file —
+silent data movement. `--tag-args` prevents this: it scans for an
+auxiliary-tagged record of that name and, when none exists, forces the push
+path (`NO-OVERWRITE t`) so `store` creates a new aux record and leaves the
+global one untouched. Because aux records are prepended, when an aux record
+*does* exist it is the first match and is overwritten as intended (no
+duplicate). Consequence: from an aux buffer a set never edits a global bookmark
+in place. (This is not a regression — before this guard the collision case
+*silently relocated* the global entry into the aux file; the change only makes
+it non-destructive.) To deliberately write to the global file from within a
+project, toggle `bookmark-aux-file-mode' off, set the bookmark, and toggle it
+back on: teardown drops the in-memory aux records (already persisted to disk),
+so stock `bookmark-set' writes to `bookmark-default-file'. This is rare enough
+that no per-command escape hatch is provided. An explicit `C-u` (push) still
+creates duplicates as in stock.
 
 ### `--present` must sync the real list *before* binding the view
 The readers internally call `bookmark-maybe-load-default-file`, whose `:after`

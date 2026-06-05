@@ -19,7 +19,10 @@
 ;;   entries are kept verbatim, never de-duplicated -- two bookmarks that share
 ;;   a name but point elsewhere are distinct, and collapsing them is the user's
 ;;   call, not the library's);
-;; - bookmarks set from such a buffer are routed to the auxiliary file;
+;; - bookmarks set from such a buffer are routed to the auxiliary file, and
+;;   never overwrite a same-named *global* bookmark (a set always targets the
+;;   auxiliary file: it overwrites an auxiliary entry of that name if one
+;;   exists, otherwise it creates a new auxiliary one);
 ;; - saves write each group back to its own file, in plain stock format;
 ;; - a *different* context's auxiliary file is never visible.
 ;;
@@ -189,21 +192,37 @@ set-but-unsaved auxiliary bookmark is never dropped."
           (setq bookmark-aux-file--loaded (and desired (cons desired nil))))))))
 
 (defun bookmark-aux-file--tag-args (args)
-  "Inject the auxiliary tag into ARGS of `bookmark-store' before it saves.
+  "Tag and re-target ARGS of `bookmark-store' before it saves.
 ARGS is (NAME ALIST NO-OVERWRITE).  Using :filter-args (not :after) so the
-tag is present for `bookmark-store's own `bookmark-save-flag' write."
+changes are present for `bookmark-store's own `bookmark-save-flag' write.
+
+When an auxiliary file is active in the originating buffer we (a) stamp the
+record with the auxiliary path, and (b) confine `bookmark-store's
+overwrite-by-name to *auxiliary* records: if no auxiliary record of this name
+exists we force the push path (NO-OVERWRITE t) so a set creates a fresh
+auxiliary bookmark instead of clobbering a same-named global one.  Net effect:
+while the mode is on, a set from an auxiliary buffer always targets the
+auxiliary file and never touches global bookmarks.  Auxiliary records are
+merged at the front, so when one of this name does exist it is the first match
+and gets overwritten as usual."
   (let* ((buf (or bookmark-current-buffer (current-buffer)))
          (path (and (buffer-live-p buf)
                     (with-current-buffer buf (bookmark-aux-file--desired)))))
     (if path
-        (let ((name (nth 0 args))
-              (alist (nth 1 args))
-              (rest (nthcdr 2 args)))
-          (cons name
-                (cons (cons (cons bookmark-aux-file--prop path)
-                            (assq-delete-all bookmark-aux-file--prop
-                                             (copy-sequence alist)))
-                      rest)))
+        (let* ((name (nth 0 args))
+               (alist (nth 1 args))
+               (no-overwrite (nth 2 args))
+               (bare (substring-no-properties name))
+               (aux-exists
+                (seq-find (lambda (r)
+                            (and (equal (car r) bare)
+                                 (equal (bookmark-aux-file--tagged-p r) path)))
+                          bookmark-alist)))
+          (list name
+                (cons (cons bookmark-aux-file--prop path)
+                      (assq-delete-all bookmark-aux-file--prop
+                                       (copy-sequence alist)))
+                (or no-overwrite (not aux-exists))))
       args)))
 
 (defun bookmark-aux-file--partition-write (orig file)
