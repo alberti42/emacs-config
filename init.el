@@ -267,6 +267,10 @@ function is a no-op on TTY frames, so this only touches GUI frames."
 ;; Accept y/n instead of typing yes/no in full.
 (setq use-short-answers t)
 
+;; Write the bookmark file on every set/delete, not just on a clean exit
+;; (the `t' default only saves when Emacs is killed, losing bookmarks on crash).
+(setq bookmark-save-flag 1)
+
 ;; Per-context auxiliary bookmark files.  The library is mechanism-only; this
 ;; config module loads it, enables the mode, and resolves relative
 ;; `bookmark-aux-file' values (set per project via .dir-locals.el) against the
