@@ -271,6 +271,10 @@ function is a no-op on TTY frames, so this only touches GUI frames."
 ;; (the `t' default only saves when Emacs is killed, losing bookmarks on crash).
 (setq bookmark-save-flag 1)
 
+;; Repeat C-u C-SPC (`set-mark-command') with a bare C-SPC to keep popping
+;; the mark ring without re-typing the prefix.
+(setq set-mark-command-repeat-pop t)
+
 ;; Per-context auxiliary bookmark files.  The library is mechanism-only; this
 ;; config module loads it, enables the mode, and resolves relative
 ;; `bookmark-aux-file' values (set per project via .dir-locals.el) against the
