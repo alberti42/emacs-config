@@ -256,6 +256,21 @@ this binding is the real list unchanged; it only differs when
 `bookmark-alist', wiping merged auxiliaries."
   (setq bookmark-aux-file--loaded nil))
 
+(defun bookmark-aux-file--bmenu-inherit (orig &rest args)
+  "Advice :around `bookmark-bmenu-list'; carry the originating buffer's
+auxiliary context into the *Bookmark List* buffer.
+The list is built while the originating (e.g. project) buffer is current, so
+it shows the auxiliary bookmarks; but acting on an entry (RET, delete, …) runs
+in the list buffer, which is not itself in the project.  Stamping the list
+buffer with the originating buffer's resolved auxiliary path (absolute, so it
+is project-independent) keeps those bookmarks loaded for those actions."
+  (let ((aux (bookmark-aux-file--desired)))
+    (prog1 (apply orig args)
+      (let ((buf (get-buffer bookmark-bmenu-buffer)))
+        (when buf
+          (with-current-buffer buf
+            (setq-local bookmark-aux-file aux)))))))
+
 ;;;; Mode
 
 (defconst bookmark-aux-file--advices
@@ -264,6 +279,7 @@ this binding is the real list unchanged; it only differs when
     (bookmark-write-file              :around bookmark-aux-file--partition-write)
     (bookmark-completing-read         :around bookmark-aux-file--present)
     (bookmark-all-names               :around bookmark-aux-file--present)
+    (bookmark-bmenu-list              :around bookmark-aux-file--bmenu-inherit)
     (bookmark-load                    :after  bookmark-aux-file--invalidate))
   "Advice specs installed/removed by `bookmark-aux-file-mode'.")
 
