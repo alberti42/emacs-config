@@ -133,11 +133,12 @@ function is a no-op on TTY frames, so this only touches GUI frames."
 (setq create-lockfiles nil)       ; stop lock files (.#filename)
 (setq vc-follow-symlinks t)       ; do not ask confirmation before following symbolic links
 
-;; Never create a new frame for emacsclient requests — always reuse the existing
-;; one.  If the buffer is already visible in a window, select that window
-;; instead of duplicating it in the current one.  Overrides `-c` so even
-;; external tools that spawn emacsclient cannot accidentally open a second
-;; frame.
+;; Control where emacsclient shows a visited buffer: if it is already visible in
+;; a window, select that window; otherwise switch to it in the current window.
+;; This governs PLACEMENT, not frame creation.  It applies to requests that do
+;; not create a frame (`emacsclient' / `emacsclient -n').  It does NOT suppress
+;; `emacsclient -c': that frame is created in `server-process-filter' before
+;; `server-window' is ever consulted, so a new frame still appears.
 (defun my/server-switch-to-buffer (buffer)
   "Select the window already showing BUFFER, or switch in the current window."
   (let ((win (get-buffer-window buffer)))
