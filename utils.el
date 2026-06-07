@@ -65,6 +65,29 @@ does not visit a file."
         (kill-new name) (message "%s" name))
     (message "Buffer has no file name")))
 
+(defun emacs-uri-for-buffer (&optional buffer)
+  "Return an emacs:// URL for BUFFER (default current) at point.
+Signal a `user-error' if the buffer is not visiting a file."
+  (with-current-buffer (or buffer (current-buffer))
+    (let ((file (buffer-file-name)))
+      (unless file
+        (user-error "Buffer %s is not visiting a file" (buffer-name)))
+      (let* ((path (expand-file-name file))
+             ;; Hexify each path segment but keep "/" as separators.
+             (encoded (mapconcat #'url-hexify-string (split-string path "/") "/")))
+        (format "emacs://file%s+%d:%d"
+                encoded
+                (line-number-at-pos)
+                (1+ (current-column)))))))
+
+;;;###autoload
+(defun emacs-uri-copy ()
+  "Copy an emacs:// URL for the current buffer at point to the kill ring."
+  (interactive)
+  (let ((uri (emacs-uri-for-buffer)))
+    (kill-new uri)
+    (message "Copied: %s" uri)))
+
 ;;; -- Filesystem utilities ----------------------------------------------------
 
 ;;;###autoload
