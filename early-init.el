@@ -16,6 +16,15 @@
 ;; https://emacs-lsp.github.io/lsp-mode/page/performance/
 (setq gc-cons-threshold (* 100 1024 1024))
 
+;; Terminal color capabilities.  When Emacs runs as a launchd-spawned daemon it
+;; inherits a barren environment with no COLORTERM/TERM (WezTerm only injects
+;; COLORTERM=truecolor into interactive shells, and launchd is not one).  Set
+;; them here so the daemon advertises 24-bit color without needing a wrapper
+;; shell script around `emacs --fg-daemon'.  Runs unconditionally: harmless for
+;; GUI frames, and direct TTY launches already inherit these from their shell.
+(setenv "COLORTERM" "truecolor")
+(setenv "TERM" "xterm-256color")
+
 ;; Tell lsp-mode to use plists instead of hash-tables for JSON deserialization.
 ;; Must be set before lsp-mode is byte-compiled or loaded; the flag is read at
 ;; compile time.  Pair with `(setq lsp-use-plists t)' in `lsp-core.el'.  This
