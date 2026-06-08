@@ -325,6 +325,30 @@ is needed."
               ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
               ("C-c C-x <right>" . markdown-ts-table-move-column-right)))
 
+;; The bundled fence fontifier (`markdown-ts--fontify-delimiter') marks only the
+;; delimiter *text* invisible, leaving the line's terminating newline live — so
+;; a hidden ```lang opener and its closing ``` each collapse to a stray blank
+;; row.  Extend the invisibility over the whole physical line, newline included:
+;; an invisible newline is not rendered, so the row disappears and the following
+;; line moves up into its place.  Scoped to `fenced_code_block_delimiter' nodes;
+;; inline code spans, emphasis markers and link brackets share the same
+;; fontifier and must keep their newlines.
+(with-eval-after-load 'markdown-ts-mode
+  (defun markdown-config--collapse-fence-line (node &rest _)
+    "Hide the whole fence line, newline included, when markup is hidden.
+:after advice on `markdown-ts--fontify-delimiter'.  NODE is the
+delimiter node the host already fontified; remaining args are ignored."
+    (when (and markdown-ts-hide-markup
+               (equal (treesit-node-type node) "fenced_code_block_delimiter"))
+      (save-excursion
+        (goto-char (treesit-node-start node))
+        (put-text-property (line-beginning-position)
+                           (min (point-max) (1+ (line-end-position)))
+                           'invisible 'markdown-ts--markup))))
+
+  (advice-add 'markdown-ts--fontify-delimiter :after
+              #'markdown-config--collapse-fence-line))
+
 ;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
 
 (use-package grip-mode
