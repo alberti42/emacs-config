@@ -4,6 +4,7 @@
 
 (defvar emacs-config-font-height-by-monitor
   '(("Kuycon G32P" . 180)
+    ("LS27A80" . 150)
     ("Unknown"     . 150))
   "Alist mapping a monitor name to the `default' face :height (in 1/10 pt).
 The \"Unknown\" entry is the fallback used for any monitor not listed.")
