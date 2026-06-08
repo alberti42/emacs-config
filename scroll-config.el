@@ -2,40 +2,90 @@
 
 ;;; Commentary:
 ;;
-;; Tuned scroll parameters for both GUI and TTY, plus ultra-scroll for
-;; pixel-precise glitch-free scrolling in GUI frames.
+;; Tuned scroll parameters for both GUI and TTY.  The vertical smooth-scroll
+;; backend is selectable via `scroll-config-smooth-scroll' (ultra-scroll /
+;; built-in pixel-scroll / none); see the selection section below.
 ;;
 
 ;;; Code:
 
-;;; -- Setting up pixel-precise scrolling with ultra-scroll --------------------
+;;; -- Smooth-scroll backend selection -----------------------------------------
+;;
+;; Three interchangeable vertical-scroll backends, chosen via
+;; `scroll-config-smooth-scroll'.  The choice also decides whether
+;; `scroll-margin' may be non-zero:
+;;
+;;   `ultra-scroll' — pixel-precise, glitch-free GUI scrolling.  REQUIRES
+;;                    `scroll-margin' = 0; a non-zero margin makes redisplay
+;;                    recenter mid-gesture (see the package README #3), so the
+;;                    margin is pinned to 0 under this backend.
+;;   `pixel'        — built-in `pixel-scroll-precision-mode'.  Smooth, and
+;;                    tolerates `scroll-margin' > 0 (it lets redisplay recenter
+;;                    lazily rather than pinning point at the edge), at the cost
+;;                    of an occasional recenter "hop" near buffer edges.
+;;   nil            — no smooth scrolling; the wheel steps by lines.
+;;
+;; Horizontal wheel scrolling (further below) is independent of this choice.
 
-;; Pixel-precise, glitch-free smooth scrolling.
-;; Replaces pixel-scroll-precision-mode (ultra-scroll activates it internally).
-(use-package ultra-scroll
-  :init
-  ;; ultra-scroll requires scroll-margin 0 and works best with a low
-  ;; scroll-conservatively value; it handles pixel-precise scrolling itself.
-  (setq scroll-margin 0)
-  (setq scroll-conservatively 101)
-  (setq scroll-step 1)
-  (setq scroll-preserve-screen-position t)
+(defvar scroll-config-smooth-scroll 'pixel
+  "Vertical smooth-scroll backend: `ultra-scroll', `pixel', or nil.
+See the commentary above for the trade-offs.  Changing this requires
+restarting Emacs (or re-loading `scroll-config').")
 
-  ;; Smoother horizontal scrolling too
-  (setq hscroll-margin 2)
-  (setq hscroll-step 1)
-  
-  :config
-  ;; Whether to hide the cursor while scrolling and restore it afterwards (default: t).
-  (setq ultra-scroll-hide-cursor t)
-  (setq ultra-scroll-preserve-column nil)
-  (ultra-scroll-mode 1)
+(defvar scroll-config-scroll-margin 4
+  "Lines of context to keep at the window edges.
+Drives both `scroll-margin' (cursor movement, isearch — honoured only when
+the active backend allows a non-zero margin; `ultra-scroll' forces it to 0)
+and the numeric `recenter-positions' stops for `C-l', which honour this
+value independently of `scroll-margin' under every backend.")
 
-  ;; `pixel-scroll-precision-mode' (activated by ultra-scroll) binds
-  ;; <next>/<prior> in its minor-mode map to pixel-scroll-interpolate-*,
-  ;; shadowing the global bindings set below.  Unbind there so the globals win.
+;; Settings shared by all backends.
+(setq scroll-conservatively 101)
+(setq scroll-step 1)
+(setq scroll-preserve-screen-position t)
+(setq hscroll-margin 2)
+(setq hscroll-step 1)
+
+;; `scroll-margin' governs cursor movement and isearch.  ultra-scroll cannot
+;; tolerate a non-zero value, so pin it to 0 under that backend only.
+(setq scroll-margin (if (eq scroll-config-smooth-scroll 'ultra-scroll)
+                        0
+                      scroll-config-scroll-margin))
+
+;; `C-l' (recenter-top-bottom) cycles middle -> N lines from top -> N from
+;; bottom.  Numeric positions leave context at the edges even when
+;; `scroll-margin' is 0, so this gives top/bottom context under ultra-scroll
+;; too.
+(setq recenter-positions
+      (list 'middle
+            scroll-config-scroll-margin
+            (- scroll-config-scroll-margin)))
+
+(defun scroll-config--tame-pixel-scroll-map ()
+  "Stop `pixel-scroll-precision-mode-map' shadowing the PgUp/PgDn globals.
+Both smooth backends enable `pixel-scroll-precision-mode', whose map binds
+<next>/<prior> to pixel-scroll-interpolate-*; unbind them there so the
+line-step globals set below win."
   (define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
   (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
+
+(pcase scroll-config-smooth-scroll
+  ('ultra-scroll
+   ;; Pixel-precise, glitch-free smooth scrolling.  Activates
+   ;; `pixel-scroll-precision-mode' internally.
+   (use-package ultra-scroll
+     :config
+     ;; Hide the cursor while scrolling and restore it afterwards.
+     (setq ultra-scroll-hide-cursor t)
+     (setq ultra-scroll-preserve-column nil)
+     (ultra-scroll-mode 1)
+     (scroll-config--tame-pixel-scroll-map)))
+  ('pixel
+   ;; Built-in smooth scrolling; coexists with scroll-margin > 0.
+   (require 'pixel-scroll)
+   (pixel-scroll-precision-mode 1)
+   (scroll-config--tame-pixel-scroll-map))
+  (_ nil))
 
 ;; Scroll by 5 lines (current and other window).
 (let ((num-lines 10))
