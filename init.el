@@ -93,10 +93,17 @@ sized for HEIGHT."
 Enabling a theme recomputes the `default' face from the theme specs and
 discards the per-frame :height that `emacs-config-apply-frame-font'
 sets, so GUI frames would otherwise revert to the global baseline.  That
-function is a no-op on TTY frames, so this only touches GUI frames."
+function is a no-op on TTY frames, so this only touches GUI frames.
+Also bound to F12 for manual resync after moving frames to a different
+monitor."
+  (interactive)
   (dolist (frame (frame-list))
     (emacs-config-apply-frame-font frame)))
 (add-hook 'enable-theme-functions #'emacs-config-reapply-frame-fonts)
+
+;; Manual resync: re-derive each frame's font size for its current monitor.
+;; Useful after connecting/moving to a different screen.
+(global-set-key (kbd "<f12>") #'emacs-config-reapply-frame-fonts)
 
 ;; Make the `fixed-pitch' face follow `default' so packages that deliberately
 ;; route code/tables through `fixed-pitch' (mu4e bodies, `mixed-pitch-mode',
