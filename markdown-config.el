@@ -277,6 +277,14 @@ is needed."
                treesit-font-lock-feature-list
                '(() () (markdown-config-inline-link-extras))))
   (treesit-font-lock-recompute-features)
+  ;; --- Code-fence collapse + reveal-on-edit -------------------------------
+  ;; `markdown-config--collapse-fence-line' (advice) hides each fence line with
+  ;; a `display' overlay; `reveal-mode' opens the one point is on for editing;
+  ;; the notifier prunes overlays when a fence is deleted.
+  (when treesit-primary-parser
+    (treesit-parser-add-notifier
+     treesit-primary-parser #'markdown-config--prune-fence-overlays))
+  (reveal-mode 1)
   (font-lock-flush))
 
 ;;; -- markdown-ts-mode -------------------------------------------------------
@@ -325,27 +333,125 @@ is needed."
               ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
               ("C-c C-x <right>" . markdown-ts-table-move-column-right)))
 
-;; The bundled fence fontifier (`markdown-ts--fontify-delimiter') marks only the
-;; delimiter *text* invisible, leaving the line's terminating newline live — so
-;; a hidden ```lang opener and its closing ``` each collapse to a stray blank
-;; row.  Extend the invisibility over the whole physical line, newline included:
-;; an invisible newline is not rendered, so the row disappears and the following
-;; line moves up into its place.  Scoped to `fenced_code_block_delimiter' nodes;
-;; inline code spans, emphasis markers and link brackets share the same
-;; fontifier and must keep their newlines.
-(with-eval-after-load 'markdown-ts-mode
-  (defun markdown-config--collapse-fence-line (node &rest _)
-    "Hide the whole fence line, newline included, when markup is hidden.
-:after advice on `markdown-ts--fontify-delimiter'.  NODE is the
-delimiter node the host already fontified; remaining args are ignored."
-    (when (and markdown-ts-hide-markup
-               (equal (treesit-node-type node) "fenced_code_block_delimiter"))
+;; Collapse code-fence lines (```lang opener, closing ```) when markup is
+;; hidden, and let stock `reveal-mode' un-collapse the one point is on so it
+;; can be edited.  The bundled fontifier marks only the delimiter *text*
+;; invisible, leaving the line's newline live, so each hidden fence leaves a
+;; stray blank row.  We hide the whole physical line — newline included — with
+;; an overlay `display' of "", which renders the range as nothing and pulls the
+;; next line up.
+;;
+;; Why an overlay + `display' instead of the `invisible' text property:
+;; `reveal-mode' only reveals OVERLAYS (it scans `overlays-at'), and only those
+;; hidden via ellipsis-`invisible' or a `display' property carrying a
+;; `reveal-toggle-invisible' function (see its `reveal-open-new-overlays').  A
+;; plain `invisible' overlay/property is invisible to it; ellipsis would render
+;; a literal "…" on the row.  `display' "" + a toggle function is the only form
+;; that both fully removes the line and is revealable.
+;;
+;; The host also marks the delimiter/info_string text `invisible'; we drop that
+;; on every fontify pass so that when reveal clears our `display' the fence text
+;; (including the language tag) is actually visible for editing.  Acting on both
+;; `fenced_code_block_delimiter' (open + close) and `info_string' (the language
+;; tag, on the opener's line) keeps one overlay per fence line regardless of
+;; the order font-lock visits the captures.
+;;
+;; Reveal mirrors onto the block's opposite fence so opener and closer reveal
+;; and re-collapse together.  The sibling link is stored on each overlay at
+;; fontify time (where the parse tree is solid) rather than looked up inside
+;; the reveal toggle — a toggle-time treesit query was the earlier approach and
+;; it failed: if the closing fence had not been fontified yet its overlay did
+;; not exist, and any error in the lookup was swallowed by reveal's
+;; `with-demoted-errors', so the opener toggled but the closer silently did not.
+
+(defun markdown-config--fence-overlay-toggle (ov hidep)
+  "Collapse OV's fence line when HIDEP, reveal it otherwise.
+Mirrors the same `display' onto OV's stored sibling overlay (the block's
+other fence line) so opener and closer move together.  Does no treesit
+work — just reads `markdown-config-fence-sibling'.  `reveal-toggle-invisible'
+function: `reveal-mode' calls it with HIDEP nil to reveal and non-nil to
+re-hide.  Collapsing uses a `display' of \"\" so the whole line (newline
+included) renders as nothing."
+  (let ((disp (and hidep ""))
+        (sib (overlay-get ov 'markdown-config-fence-sibling)))
+    (overlay-put ov 'display disp)
+    (when (and sib (overlay-buffer sib))
+      (overlay-put sib 'display disp))))
+
+(defun markdown-config--ensure-fence-overlay (beg end)
+  "Return the fence-collapse overlay spanning BEG..END, creating it collapsed.
+Reuses an existing `markdown-config-fence-collapse' overlay on the line
+\(repositioning it) WITHOUT touching its `display', so a fence currently
+revealed by `reveal-mode' is not re-collapsed mid-edit by a refontify."
+  (let ((ov (seq-find (lambda (o) (overlay-get o 'markdown-config-fence-collapse))
+                      (overlays-at beg))))
+    (if ov
+        (move-overlay ov beg end)
+      (setq ov (make-overlay beg end nil t nil))
+      (overlay-put ov 'markdown-config-fence-collapse t)
+      (overlay-put ov 'reveal-toggle-invisible
+                   #'markdown-config--fence-overlay-toggle)
+      (overlay-put ov 'evaporate t)
+      (overlay-put ov 'display ""))
+    ov))
+
+(defun markdown-config--ensure-block-fence-overlays (block)
+  "Ensure a collapse overlay on each fence line of BLOCK and cross-link them.
+Both overlays are created from parse-tree positions, so the closing
+fence's overlay exists even before that line has been fontified or
+scrolled into view — that is what lets `reveal-mode' mirror the opener
+onto a not-yet-displayed closer.  Links the pair via
+`markdown-config-fence-sibling' so the toggle needs no treesit lookup."
+  (let (ovs)
+    (dolist (child (treesit-node-children block t))
+      (when (equal (treesit-node-type child) "fenced_code_block_delimiter")
+        (save-excursion
+          (goto-char (treesit-node-start child))
+          (push (markdown-config--ensure-fence-overlay
+                 (line-beginning-position)
+                 (min (point-max) (1+ (line-end-position))))
+                ovs))))
+    (when (= (length ovs) 2)
+      (overlay-put (car ovs) 'markdown-config-fence-sibling (cadr ovs))
+      (overlay-put (cadr ovs) 'markdown-config-fence-sibling (car ovs)))))
+
+(defun markdown-config--collapse-fence-line (node &rest _)
+  "Collapse NODE's fence line via an overlay so `reveal-mode' can open it.
+:after advice on `markdown-ts--fontify-delimiter'.  Acts on the fence
+delimiter and the opener's info_string; drops the host's `invisible' text
+property on the node so a revealed fence shows its real text, and ensures
+both of the block's fence overlays (cross-linked) so reveal can mirror."
+  (when (member (treesit-node-type node)
+                '("fenced_code_block_delimiter" "info_string"))
+    (if markdown-ts-hide-markup
+        (let ((block (treesit-parent-until node "\\`fenced_code_block\\'" t)))
+          (remove-text-properties (treesit-node-start node)
+                                  (treesit-node-end node)
+                                  '(invisible nil))
+          (when block
+            (markdown-config--ensure-block-fence-overlays block)))
+      ;; Markup shown: drop any leftover collapse overlay on this line.
       (save-excursion
         (goto-char (treesit-node-start node))
-        (put-text-property (line-beginning-position)
-                           (min (point-max) (1+ (line-end-position)))
-                           'invisible 'markdown-ts--markup))))
+        (dolist (o (overlays-at (line-beginning-position)))
+          (when (overlay-get o 'markdown-config-fence-collapse)
+            (delete-overlay o)))))))
 
+(defun markdown-config--prune-fence-overlays (ranges _parser)
+  "Delete fence-collapse overlays whose `fenced_code_block' is gone.
+`treesit-parser' notifier mirroring `markdown-ts--host-ranges-notifier':
+after a host reparse, drop any `markdown-config-fence-collapse' overlay in
+a changed RANGES region that no longer sits inside a fenced code block."
+  (dolist (range ranges)
+    (dolist (ov (overlays-in (car range) (cdr range)))
+      (when (overlay-get ov 'markdown-config-fence-collapse)
+        (let* ((s (overlay-start ov))
+               (node (and s (treesit-node-at s 'markdown))))
+          (unless (and node
+                       (treesit-parent-until node "\\`fenced_code_block\\'" t))
+            (delete-overlay ov)))))))
+
+(with-eval-after-load 'markdown-ts-mode
   (advice-add 'markdown-ts--fontify-delimiter :after
               #'markdown-config--collapse-fence-line))
 
