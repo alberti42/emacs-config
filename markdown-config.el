@@ -45,15 +45,34 @@ links:
                   (dired-goto-file full-path))))
             t))))))
 
+(defun markdown-config--obsidian-vault-root (dir)
+  "Return the Obsidian vault root at or above DIR, or nil if none.
+The vault root is the nearest ancestor directory containing a
+`.obsidian' subdirectory; nil is returned when no such ancestor
+exists (DIR is not inside an Obsidian vault)."
+  (when-let* ((root (locate-dominating-file
+                     dir
+                     (lambda (d)
+                       (file-directory-p (expand-file-name ".obsidian" d))))))
+    (file-name-as-directory (expand-file-name root))))
+
 (defun markdown-config--follow-wiki-link (name &optional other)
   "Custom wiki-link follower for Obsidian-style notes.
-Resolves NAME relative to the current buffer's directory without
-mangling spaces or blindly appending the buffer's own extension.
+Resolves NAME to a file and opens it.  Spaces are kept verbatim, and
+\".md\" is appended only when NAME has no file extension.
 
-If NAME has no file extension, \".md\" is appended.  Then:
+NAME is resolved against a base directory chosen by its shape:
+- NAME containing a `/' is a vault-relative path: it resolves from the Obsidian
+  vault root, i.e. the nearest ancestor directory of the current file that
+  contains a `.obsidian' subdirectory.  When the current file lives outside any
+  Obsidian vault (no such ancestor), it resolves from the current file's
+  directory instead.
+- A bare NAME (no `/') always resolves from the current file's directory.
+
+Once resolved to FULL-PATH:
 - Markdown targets (.md, .markdown): open with `find-file'.
 - Other file types: open `dired' with the target highlighted.
-- Non-existent targets: signal an error showing the resolved path.
+- Non-existent targets: signal an error showing FULL-PATH.
 - Never creates empty files."
   (unless buffer-file-name
     (user-error "Must be visiting a file"))
@@ -61,7 +80,13 @@ If NAME has no file extension, \".md\" is appended.  Then:
          (filename (if (file-name-extension name)
                        name
                      (concat name ".md")))
-         (full-path (expand-file-name filename wp)))
+         ;; Obsidian paths with a slash are vault-relative; bare names resolve
+         ;; against the current file's directory.  Fall back to the current
+         ;; directory when no vault root is found.
+         (base (or (and (string-search "/" filename)
+                        (markdown-config--obsidian-vault-root wp))
+                   wp))
+         (full-path (expand-file-name filename base)))
     (if (not (file-exists-p full-path))
         (user-error "Wiki link target not found: %s" full-path)
       (let ((ext (downcase (or (file-name-extension full-path) ""))))
