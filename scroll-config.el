@@ -107,8 +107,8 @@ first leaves redisplay nothing to correct.  No-op when `scroll-margin' is 0."
    ;; Built-in smooth scrolling.
    (require 'pixel-scroll)
    (pixel-scroll-precision-mode 1)
-   (scroll-config--tame-pixel-scroll-map)
-   (advice-add 'pixel-scroll-precision :after #'scroll-config--keep-margin))
+   ;; (advice-add 'pixel-scroll-precision :after #'scroll-config--keep-margin)
+   (scroll-config--tame-pixel-scroll-map))
   (_ nil))
 
 ;; Scroll by 5 lines (current and other window).
