@@ -87,6 +87,11 @@
 (when (eq system-type 'darwin)
   (setq ns-use-native-fullscreen nil))
 
+;; macOS: determine activation policy a daemon adopts after losing
+;; its last GUI frame.
+(when (eq system-type 'darwin)
+  (setq ns-frameless-activation-policy 'regular))
+
 ;; Default frame size + fullscreen toggle.
 ;; Frames are born fullscreen (fullboth).  F11 toggles to a windowed frame whose
 ;; size and position are whatever they were before going fullscreen, falling back
