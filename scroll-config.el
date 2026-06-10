@@ -12,32 +12,34 @@
 ;;; -- Smooth-scroll backend selection -----------------------------------------
 ;;
 ;; Three interchangeable vertical-scroll backends, chosen via
-;; `scroll-config-smooth-scroll'.  The choice also decides whether
-;; `scroll-margin' may be non-zero:
+;; `scroll-config-smooth-scroll'.  Both smooth backends drag point to the
+;; window edge while scrolling (to stop redisplay recentering), which by
+;; default fights a non-zero `scroll-margin': redisplay re-imposes the margin
+;; and yanks `window-start' back, reading as the text snapping back on a slow
+;; scroll.  `scroll-config--keep-margin' (below) parks point on the margin
+;; boundary after each scroll event so redisplay leaves `window-start' alone;
+;; with it, every backend honours `scroll-margin' > 0.
 ;;
-;;   `ultra-scroll' — pixel-precise, glitch-free GUI scrolling.  REQUIRES
-;;                    `scroll-margin' = 0; a non-zero margin makes redisplay
-;;                    recenter mid-gesture (see the package README #3), so the
-;;                    margin is pinned to 0 under this backend.
-;;   `pixel'        — built-in `pixel-scroll-precision-mode'.  Smooth, and
-;;                    tolerates `scroll-margin' > 0 (it lets redisplay recenter
-;;                    lazily rather than pinning point at the edge), at the cost
-;;                    of an occasional recenter "hop" near buffer edges.
+;;   `ultra-scroll' — package backend; pixel-precise, and the smoother of the
+;;                    two over images and variable-height lines.  Remaps
+;;                    `pixel-scroll-precision' to `ultra-scroll' (NS) or
+;;                    `ultra-scroll-mac' (emacs-mac).
+;;   `pixel'        — built-in `pixel-scroll-precision-mode'.  Can be jumpy
+;;                    over images taller than the window (per its own FIXME).
 ;;   nil            — no smooth scrolling; the wheel steps by lines.
 ;;
 ;; Horizontal wheel scrolling (further below) is independent of this choice.
 
-(defvar scroll-config-smooth-scroll 'pixel
+(defvar scroll-config-smooth-scroll 'ultra-scroll
   "Vertical smooth-scroll backend: `ultra-scroll', `pixel', or nil.
 See the commentary above for the trade-offs.  Changing this requires
 restarting Emacs (or re-loading `scroll-config').")
 
 (defvar scroll-config-scroll-margin 4
   "Lines of context to keep at the window edges.
-Drives both `scroll-margin' (cursor movement, isearch — honoured only when
-the active backend allows a non-zero margin; `ultra-scroll' forces it to 0)
-and the numeric `recenter-positions' stops for `C-l', which honour this
-value independently of `scroll-margin' under every backend.")
+Drives `scroll-margin' (cursor movement, isearch) and the numeric
+`recenter-positions' stops for `C-l'.  Both smooth backends honour it during
+scrolling via `scroll-config--keep-margin'.")
 
 ;; Settings shared by all backends.
 (setq scroll-conservatively 101)
@@ -46,16 +48,13 @@ value independently of `scroll-margin' under every backend.")
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
-;; `scroll-margin' governs cursor movement and isearch.  ultra-scroll cannot
-;; tolerate a non-zero value, so pin it to 0 under that backend only.
-(setq scroll-margin (if (eq scroll-config-smooth-scroll 'ultra-scroll)
-                        0
-                      scroll-config-scroll-margin))
+;; `scroll-margin' governs cursor movement, isearch, and (via
+;; `scroll-config--keep-margin') the resting position of point during smooth
+;; scrolling under every backend.
+(setq scroll-margin scroll-config-scroll-margin)
 
 ;; `C-l' (recenter-top-bottom) cycles middle -> N lines from top -> N from
-;; bottom.  Numeric positions leave context at the edges even when
-;; `scroll-margin' is 0, so this gives top/bottom context under ultra-scroll
-;; too.
+;; bottom, where N is `scroll-config-scroll-margin'.
 (setq recenter-positions
       (list 'middle
             scroll-config-scroll-margin
@@ -69,22 +68,47 @@ line-step globals set below win."
   (define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
   (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
 
+(defun scroll-config--keep-margin (&rest _)
+  "Park point at the `scroll-margin' boundary after a smooth scroll.
+Both smooth backends drag point to the very window edge using only
+visibility (`pos-visible-in-window-p'), ignoring `scroll-margin'; redisplay
+then re-imposes `scroll-margin' and yanks `window-start' back, which reads as
+the text snapping back on a slow scroll.  Moving point to the margin boundary
+first leaves redisplay nothing to correct.  No-op when `scroll-margin' is 0."
+  (when (> scroll-margin 0)
+    (let* ((win (selected-window))
+           (rc  (posn-col-row (posn-at-point nil win)))
+           (row (and rc (cdr rc))))
+      (when row
+        (let ((top scroll-margin)
+              (bot (- (window-body-height win) 1 scroll-margin)))
+          (cond ((< row top) (vertical-motion (- top row)))
+                ((> row bot) (vertical-motion (- bot row)))))))))
+
 (pcase scroll-config-smooth-scroll
   ('ultra-scroll
-   ;; Pixel-precise, glitch-free smooth scrolling.  Activates
-   ;; `pixel-scroll-precision-mode' internally.
+   ;; Package backend; remaps `pixel-scroll-precision' to
+   ;; `ultra-scroll'/`ultra-scroll-mac'.
    (use-package ultra-scroll
      :config
      ;; Hide the cursor while scrolling and restore it afterwards.
      (setq ultra-scroll-hide-cursor t)
      (setq ultra-scroll-preserve-column nil)
-     (ultra-scroll-mode 1)
-     (scroll-config--tame-pixel-scroll-map)))
+     ;; ultra-scroll `warn's at enable time unless `scroll-margin' is 0.  The
+     ;; keep-margin advice makes a non-zero margin safe, so dodge the warning
+     ;; by enabling under a let-bound 0 (the real value stands afterwards).
+     (let ((scroll-margin 0))
+       (ultra-scroll-mode 1))
+     (scroll-config--tame-pixel-scroll-map)
+     (dolist (cmd '(ultra-scroll ultra-scroll-mac))
+       (when (fboundp cmd)
+         (advice-add cmd :after #'scroll-config--keep-margin)))))
   ('pixel
-   ;; Built-in smooth scrolling; coexists with scroll-margin > 0.
+   ;; Built-in smooth scrolling.
    (require 'pixel-scroll)
    (pixel-scroll-precision-mode 1)
-   (scroll-config--tame-pixel-scroll-map))
+   (scroll-config--tame-pixel-scroll-map)
+   (advice-add 'pixel-scroll-precision :after #'scroll-config--keep-margin))
   (_ nil))
 
 ;; Scroll by 5 lines (current and other window).
