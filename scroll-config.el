@@ -30,7 +30,7 @@
 ;;
 ;; Horizontal wheel scrolling (further below) is independent of this choice.
 
-(defvar scroll-config-smooth-scroll 'ultra-scroll
+(defvar scroll-config-smooth-scroll 'pixel
   "Vertical smooth-scroll backend: `ultra-scroll', `pixel', or nil.
 See the commentary above for the trade-offs.  Changing this requires
 restarting Emacs (or re-loading `scroll-config').")
