@@ -6,9 +6,7 @@ support, link-following, and markup hiding for inline links on top
 of the bundled rules.
 
 External packages: `grip-mode` (MELPA). `markdown-ts-mode` is
-built-in; we carry a patched copy at `local/markdown-ts-mode.el`
-loaded ahead of the bundled file via `:load-path` (see
-"Link rendering" prerequisite below). No `markdown-mode`
+built-in and used as-is (no vendored copy). No `markdown-mode`
 configuration block exists in this file.
 
 > **`markdown-mode` is still installed**, but only as a transitive
@@ -66,23 +64,6 @@ other `.md`).
 `markdown-ts-mode-hook` runs
 `markdown-config--markdown-ts-mode-setup`, which closes two gaps in
 the bundled mode.
-
-> **Prerequisite — patched `markdown-ts-mode.el`.** Both gaps below
-> assume the inline grammar can actually see complete `inline_link`
-> constructs. The upstream Emacs 31 file uses `:range-fn
-> #'treesit-range-fn-exclude-children` for the `markdown-inline`
-> embedding, which fragments the parser's view across anonymous
-> tokens (`[`, `]`, `(`, `)`, `<`, `>`, `.`, `/`, …) emitted by the
-> `markdown` block grammar inside `(inline)`. Without the fix, the
-> bundled `(inline_link (link_text) @link)` rule never matches and
-> inline-link work in this module silently does nothing. We carry a
-> patched copy of `markdown-ts-mode.el` in `local/`, loaded ahead of
-> the bundled file via the `:load-path` directive in the
-> `use-package` block; the patch is one line — drop the `:range-fn`.
-> See `docs/markdown-ts-mode-fragment-link-bug-PR-in-preparation.md`
-> for the upstream report. Once the fix lands in a stable Emacs
-> release we can delete `local/markdown-ts-mode.el` and the
-> `:load-path` line.
 
 ### Wiki links — font-lock keyword
 
@@ -212,43 +193,27 @@ function, our rule has to follow. The risk is low (the symbol has
 been stable since Emacs 30.x); the alternative would be to inline a
 copy of the function, which then drifts from upstream.
 
-### `local/markdown-ts-mode.el` is load-bearing for inline links
+### Inline-link fontification relies on the `markdown-inline` grammar
 
 Inline-link work in this module — bundled `link` face on `[label]`,
 our `markdown-config-inline-link-extras` rule (hiding **and**
 click-to-follow), and the dispatcher's treesit branch — all depend
-on `markdown-inline` seeing complete `inline_link` constructs. The bundled Emacs 31 file does not allow
-this (see "Link rendering" prerequisite above). The local copy in
-`local/markdown-ts-mode.el` carries a one-line patch (drop
-`:range-fn #'treesit-range-fn-exclude-children` from the
-`markdown-inline` embedding) and is preferred at load time via
-`:load-path` in the `markdown-ts-mode` `use-package` block.
+on `markdown-inline` seeing complete `inline_link` constructs. Early
+Emacs 31 builds fragmented that view (the `markdown-inline` embedding
+used `:range-fn #'treesit-range-fn-exclude-children`, so `inline_link`
+never assembled); this was fixed upstream and the bundled mode now
+assembles inline links correctly. If a future regression breaks
+inline-link fontification/hiding/`C-c C-o` while wiki links (regex
+only) keep working, suspect the `markdown-inline` range setup rather
+than this module.
 
-If `local/markdown-ts-mode.el` is deleted or the `:load-path` is
-removed before the upstream fix ships in a release, inline-link
-fontification, hiding, and `C-c C-o` will all silently regress.
-Wiki links keep working — they're regex-only — but you'll see the
-asymmetric breakage and likely chase the wrong layer.
-
-When the upstream fix lands in a stable Emacs release: delete
-`local/markdown-ts-mode.el`, remove `:load-path` from the
-`use-package` block, and update
-`docs/markdown-ts-mode-fragment-link-bug-PR-in-preparation.md`.
-
-### `:bind` and `:load-path` in the `markdown-ts-mode` block
+### `:bind` in the `markdown-ts-mode` block
 
 `markdown-ts-mode` is built-in (`:straight nil`). use-package's
 `:bind` defers loading correctly for built-ins via autoload
 registration. Don't replace it with an `eval-after-load` form
 unless you have a specific reason — `:bind` is the canonical
 pattern in this repo.
-
-`:load-path` is a `lambda` that prepends `<emacs-config-dir>/local/`
-to `load-path`, so the patched `local/markdown-ts-mode.el` is
-loaded ahead of the bundled file (see "Link rendering"
-prerequisite). Don't drop it without first deleting
-`local/markdown-ts-mode.el` and confirming the upstream fix is
-present in the running Emacs.
 
 ## Cross-module touchpoints
 

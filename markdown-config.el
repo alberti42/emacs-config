@@ -329,8 +329,7 @@ is needed."
       (setcdr entry 'markdown-ts-mode))))
 
 (use-package markdown-ts-mode
-  :straight nil  ; bundled with Emacs 31, shadowed by local patched copy
-  ;; :load-path (lambda () (list (expand-file-name "markdown-ts-mode" emacs-config-dir)))
+  :straight nil  ; bundled with Emacs 31
   :mode (("\\.md\\'"       . markdown-ts-mode)
          ("\\.markdown\\'" . markdown-ts-mode))
   :custom
