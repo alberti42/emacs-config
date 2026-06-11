@@ -99,11 +99,16 @@
 ;; via a timer so it runs after startup settles and the NS run loop is up;
 ;; creating an NS frame synchronously mid-init can race with the daemon
 ;; bootstrap.
+;; (when (and (eq system-type 'darwin) (daemonp) (featurep 'ns))
+;;   (run-at-time
+;;    0 nil
+;;    (lambda ()
+;;      (make-frame '((window-system . ns) (visibility . nil))))))
+
 (when (and (eq system-type 'darwin) (daemonp) (featurep 'ns))
-  (run-at-time
-   0 nil
-   (lambda ()
-     (make-frame '((window-system . ns) (visibility . nil))))))
+  (run-at-time 0 nil
+               (lambda ()
+                 (delete-frame (make-frame '((window-system . ns) (visibility . nil)))))))
 
 ;; Default frame size + fullscreen toggle.
 ;; Frames are born fullscreen (fullboth).  F11 toggles to a windowed frame whose
