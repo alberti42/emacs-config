@@ -69,10 +69,11 @@
 (cond
  ((eq system-type 'darwin)
   ;; emacs-plus: frameless window with native macOS rounded corners.
-  (add-to-list 'default-frame-alist '(undecorated-round . t)))
+  ;; (add-to-list 'default-frame-alist '(undecorated-round . t))
+  nil)
  (t
   ;; On other GUI builds, fall back to a frameless (undecorated) window.
-  (add-to-list 'default-frame-alist '(undecorated . t))
+  ;; (add-to-list 'default-frame-alist '(undecorated . t))
   (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
 ;; macOS: free the right Option for system character composition
