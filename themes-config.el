@@ -40,6 +40,19 @@
   ;; modus-operandi (light) or modus-vivendi-tinted (dark) based on OS appearance.
   )
 
+;; modus tints `markdown-ts-html-block' as a prose block.  HTML comments in
+;; Markdown (e.g. `<!-- ltex: ... -->') are prose, not code, so clear that
+;; background and let the default show through.  `load-theme' re-runs on every
+;; new frame (via zac) and would restore the tint, so re-apply on
+;; `enable-theme-functions'; the `with-eval-after-load' covers the case where
+;; markdown-ts-mode is loaded after the theme.
+(defun themes-config--clear-markdown-html-block-bg (&rest _)
+  (when (facep 'markdown-ts-html-block)
+    (set-face-attribute 'markdown-ts-html-block nil :background 'unspecified)))
+(add-hook 'enable-theme-functions #'themes-config--clear-markdown-html-block-bg)
+(with-eval-after-load 'markdown-ts-mode
+  (themes-config--clear-markdown-html-block-bg))
+
 ;; Propagate theme face values to packages that need harmonizing (e.g.
 ;; git-gutter background matching the line-number column).  Defined here so
 ;; it is ready before zac-theme-autodetection calls it.
