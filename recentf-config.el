@@ -29,6 +29,7 @@
               "\\`/tmp/"
               "\\/COMMIT_EDITMSG\\'"
               "\\`/\\(?:private\\)?var/folders/"
+              (concat "\\`" (regexp-quote (expand-file-name "~/Library/Caches/")))
               ))
   :bind
   ("C-x C-r" . recentf-open)
