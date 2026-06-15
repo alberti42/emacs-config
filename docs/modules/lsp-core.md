@@ -14,8 +14,11 @@ uses to expand server-returned placeholders is configured separately in
   diagnostics) are defined before any server can reference them. Without
   this, early diagnostics trigger "Invalid face reference" warnings.
 - `flycheck` — diagnostics frontend (left-fringe indicators).
-- `sideline` — generic inline-annotation framework, hooked to
-  `flycheck-mode` so it activates wherever flycheck does.
+- `sideline` — generic inline-annotation framework. Loaded but **not**
+  auto-enabled: `sideline-mode` stays off by default and is toggled on
+  demand via `M-x sideline-mode`. (Re-add the `(flycheck-mode
+  . sideline-mode)` hook in `lsp-core.el` to activate it wherever
+  flycheck does.)
 - `sideline-flycheck` — sideline backend rendering flycheck diagnostics
   at end of line ("this is wrong").
 - `sideline-lsp` — sideline backend rendering LSP code actions per line

@@ -165,7 +165,10 @@
 (use-package sideline
   ;; :straight nil
   ;; :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
-  :hook (flycheck-mode . sideline-mode)
+  ;; Loaded but NOT auto-enabled: `sideline-mode' is left off by default and
+  ;; toggled on demand via `M-x sideline-mode'.  (Re-add the
+  ;; `(flycheck-mode . sideline-mode)' hook to auto-enable it with flycheck.)
+  :commands (sideline-mode)
   :init
   (setq sideline-backends-right '(sideline-flycheck sideline-lsp)
         ;; Stack right-side labels downward starting at point's line, so the
