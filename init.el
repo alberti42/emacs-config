@@ -577,7 +577,7 @@ monitor."
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
 
-;; Markdown reading/authoring (markdown-ts-mode, markdown-preview-mode, olivetti)
+;; Markdown reading/authoring (markdown-ts-mode, olivetti)
 (emacs-config-load-module
  'markdown-config
  "Could not load markdown-config.el; Markdown enhancements are disabled.")
