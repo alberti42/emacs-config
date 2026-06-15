@@ -2,8 +2,9 @@
 
 Markdown reading and authoring. Configures `markdown-ts-mode`
 (tree-sitter backed, bundled with Emacs 31) and adds wiki-link
-support, link-following, and markup hiding for inline links on top
-of the bundled rules.
+support, link-following, and markup hiding for inline links — including
+inline links inside table cells, which the grammar leaves unparsed — on
+top of the bundled rules.
 
 External packages: `grip-mode` (MELPA). `markdown-ts-mode` is
 built-in and used as-is (no vendored copy). No `markdown-mode`
@@ -47,9 +48,14 @@ other `.md`).
   1. `[[wiki]]` / `[[wiki|label]]` via `thing-at-point-looking-at` and
      `markdown-config--wiki-link-regexp` (the grammar does **not**
      expose wiki links — see invariant below).
-  2. `[label](path)` via the treesit helper above.
-  3. Bare URL at point via `thing-at-point 'url`.
-  4. Otherwise `user-error "No link at point"`.
+  2. `[label](path)` via the treesit helper above (paragraphs).
+  3. `[label](path)` via `thing-at-point-looking-at` and
+     `markdown-config--inline-link-regexp` — a regex fallback for
+     contexts with no `inline_link` node, chiefly **table cells** (see
+     "Inline links inside tables" below). Group 2 is stripped of
+     pointy-brackets before following, so `[label](<url>)` works too.
+  4. Bare URL at point via `thing-at-point 'url`.
+  5. Otherwise `user-error "No link at point"`.
 
 ## Keybindings
 
@@ -130,12 +136,53 @@ the default `treesit-font-lock-level`.
 `treesit-font-lock-recompute-features` is called once after the
 buffer-local settings are extended.
 
+### Inline links inside tables — font-lock keyword
+
+The treesit rule above only fires where the `markdown-inline` parser
+runs. The grammar parses **table-cell** content as raw block-level
+tokens and does **not** route it through `markdown-inline`, so a cell
+like `| [DESCRIPTION](DESCRIPTION) | … |` exposes no `inline_link`
+node — `treesitter-explore` shows `(pipe_table_cell [ . _ . ] ( . _ . ))`,
+where a paragraph shows `(inline … (inline_link …))`. The treesit
+rule therefore renders nothing inside tables.
+
+`markdown-config--table-inline-link-fontify` closes this gap with the
+same parser-agnostic mechanism as wiki links: a `re-search-forward`
+font-lock keyword over `markdown-config--inline-link-regexp`. It scans
+the whole buffer, but **every effect is gated on
+`markdown-config--in-table-cell-p`** (which walks up the `markdown`
+block tree looking for a `pipe_table` ancestor). For each match:
+
+1. The label gets `link` face, `mouse-face`, `keymap`
+   (`markdown-config--link-keymap` — the shared one), and a
+   `help-echo`, so it is clickable via the same dispatcher.
+2. When `markdown-ts-hide-markup` is non-nil, the surrounding `[` and
+   `](url)` are blanked with a **width-preserving** `display`
+   `(space :width N)` — **not** `invisible`.
+
+> **Why `display`-space and not `invisible` here.** Table columns are
+> aligned by raw character count. `invisible` collapses the markup to
+> zero width, which shifts everything after it and misaligns the table.
+> `(space :width N)` (N = the markup's character length) blanks the
+> markup while reserving exactly its original width, so the cell keeps
+> its column count and the table stays aligned. `display` is added to
+> `font-lock-extra-managed-props` so toggling hide-markup off cleanly
+> removes it and reveals the URL.
+
+The paragraph/table split is purely by the `markdown-config--in-table-cell-p`
+gate: paragraph links never reach this matcher's body, so prose keeps
+the bundled `invisible` collapse (no reserved gap — correct for prose),
+and only table links reserve width. No per-link configuration.
+
 ### Performance
 
 - Wiki links: one bounded single-line regex (`\[\[[^]\n]+\]\]`) per
   visible window via `jit-lock`. Not measurable.
-- Inline links: a tree-sitter query reusing nodes the parser already
-  built. No extra parse, no buffer scan.
+- Inline links (paragraphs): a tree-sitter query reusing nodes the
+  parser already built. No extra parse, no buffer scan.
+- Inline links (tables): one bounded single-line regex per visible
+  window via `jit-lock`, plus a cheap `pipe_table` ancestor check per
+  match. Like wiki links, not measurable.
 
 The reasons `markdown-mode` is slow on large files do not apply here:
 
@@ -172,17 +219,27 @@ Don't rewrite either branch as a treesit query — the grammar will
 silently return no nodes. See "Why not extend the tree-sitter grammar
 instead?" above.
 
-### Inline links are detected via treesit, not regex
+### Inline links are detected via treesit, not regex — except in tables
 
-For `[label](path)` we walk up to the `inline_link` ancestor and read
-the `link_destination` child. This handles nested brackets and
-escaped parens correctly; a regex-based detector would mis-match.
-The grammar node names are stable — don't paraphrase them.
+For `[label](path)` **in paragraphs** we walk up to the `inline_link`
+ancestor and read the `link_destination` child. This handles nested
+brackets and escaped parens correctly; a regex-based detector would
+mis-match. The grammar node names are stable — don't paraphrase them.
 
 The pointy-bracket form `[label](<url with spaces>)` returns
 `<url with spaces>` from `treesit-node-text` — angle brackets included.
 `markdown-config--inline-link-destination-at-point` strips one matched
 `<…>` pair before returning, so the follower sees a plain path.
+
+**Tables are the exception.** Inside a `pipe_table` there is no
+`inline_link` node (the grammar keeps cell content out of the
+`markdown-inline` parser), so the treesit detector returns nil and both
+rendering and following fall back to `markdown-config--inline-link-regexp`.
+That regex's group 2 matches either `<url>` (which may contain `)`) or a
+bare URL stopping at the first `)`; `markdown-config--strip-pointy-brackets`
+removes the angle brackets on follow. Don't try to make the table path
+use treesit — there is nothing to query. See "Inline links inside
+tables" above.
 
 ### Inline-link hiding reuses `markdown-ts--fontify-delimiter`
 
