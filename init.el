@@ -577,7 +577,7 @@ monitor."
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
 
-;; Markdown reading/authoring (olivetti, obsidian vault, grip-mode preview)
+;; Markdown reading/authoring (olivetti, obsidian vault, markdown-live-preview-mode)
 (emacs-config-load-module
  'markdown-config
  "Could not load markdown-config.el; Markdown enhancements are disabled.")

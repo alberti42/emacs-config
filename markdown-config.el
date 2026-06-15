@@ -16,6 +16,8 @@
 
 ;;; Code:
 
+(require 'cl-lib)                        ; `cl-letf' (preview major-mode advice)
+
 ;;; -- Link helpers -----------------------------------------------------------
 
 (defun markdown-config--follow-local-link (url)
@@ -409,6 +411,12 @@ is needed."
   ;; takes over and moves the current column.
   :bind (:map markdown-ts-mode-map
               ("C-c C-o"      . markdown-config-follow-link-at-point) ; Same as in classic markdown-mode for `markdown-follow-thing-at-point'
+              ;; NOTE: classic markdown-mode puts preview on `C-c C-c p'/`l',
+              ;; but in markdown-ts-mode `C-c C-c' is `markdown-ts-toggle-checkbox'
+              ;; (a command, not a prefix), so preview can't hang off it.  Keep the
+              ;; p/l mnemonics under the `C-c C-x' extended-command prefix instead.
+              ("C-c C-x p"    . markdown-preview-mode)      ; Browser preview (markdown-preview-mode package)
+              ("C-c C-x l"    . markdown-live-preview-mode) ; In-Emacs eww live preview (ships with markdown-mode)
               ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
               ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
               ("M-<right>"    . nil)
@@ -545,11 +553,93 @@ a changed RANGES region that no longer sits inside a fenced code block."
   (advice-add 'markdown-ts--fontify-delimiter :after
               #'markdown-config--collapse-fence-line))
 
-;;; -- grip-mode: live GitHub Markdown preview in browser --------------------
+;;; -- live preview --------------------------------------------------------
 
-(use-package grip-mode
-  :straight t
+;; Two options, both bound in `markdown-ts-mode-map' (main `use-package'
+;; above) and both exporting through `markdown-command' — pointed at pandoc's
+;; GitHub-Flavored Markdown reader for correct tables and task lists.  Set in a
+;; `with-eval-after-load' since `markdown-mode' (the variable's owner) is loaded
+;; as a transitive dependency of lsp-mode.
+;;
+;; (`C-c C-c' is `markdown-ts-toggle-checkbox' in markdown-ts-mode — a command,
+;; not a prefix — so the preview keys can't use it; they keep the markdown-mode
+;; p/l mnemonics under the `C-c C-x' extended-command prefix instead.)
+;;   C-c C-x l  markdown-live-preview-mode  ships with markdown-mode; renders in
+;;                                          an eww window, no browser/server.
+;;   C-c C-x p  markdown-preview-mode       package; serves over a local
+;;                                          websocket+http server to a browser,
+;;                                          styled with github-markdown-css.
+
+(with-eval-after-load 'markdown-mode
+  (setq markdown-command "pandoc --from=gfm --to=html5"))
+
+;; Place the built-in live-preview output to the right and reuse it instead of
+;; spawning new splits on each re-export.  The preview is an eww buffer, but
+;; markdown-mode stamps it with a buffer-local `markdown-live-preview-source-buffer'
+;; before calling `display-buffer', so we match on that rather than the bare
+;; `*eww*' name — leaving ordinary eww browsing windows alone.  This entry only
+;; takes effect because `markdown-split-window-direction' is left at its default
+;; `any', which routes the preview through `display-buffer'.
+(add-to-list 'display-buffer-alist
+             `(,(lambda (buf &rest _)
+                  (let ((b (get-buffer buf)))
+                    (and b (buffer-local-value
+                            'markdown-live-preview-source-buffer b))))
+               (display-buffer-reuse-window display-buffer-in-direction)
+               (direction . right)
+               (window-width . 0.5)))
+
+;; markdown-preview-mode depends on `web-server' (eschulte/emacs-web-server).
+;; That repo's basename collides with `simple-httpd' (skeeto/emacs-web-server,
+;; pulled in by jupyter-config's emacs-jupyter): straight names local repos by
+;; the shared `emacs-web-server' basename, so whichever is cloned first wins the
+;; directory and the loser silently resolves to the wrong source.  Here
+;; simple-httpd won, leaving no web-server.el and a failing `(require 'web-server)'.
+;; Register web-server under a distinct `:local-repo' so both can coexist; this
+;; must come before the markdown-preview-mode declaration so the custom recipe is
+;; cached before straight resolves it as a transitive dependency.
+(use-package web-server
+  :straight (web-server :host github :repo "eschulte/emacs-web-server"
+                        :local-repo "emacs-web-server-eschulte")
   :defer t)
+
+(use-package markdown-preview-mode
+  :straight t
+  :defer t
+  :custom
+  ;; Pin the LIGHT github-markdown stylesheet (classic black-on-white README
+  ;; look) rather than the auto `github-markdown.css', whose
+  ;; `prefers-color-scheme: dark' block renders GitHub's dark theme — bright
+  ;; accents on near-black — when the OS is in dark mode.  Swap to
+  ;; `github-markdown-dark.css' or back to `github-markdown.css' if preferred.
+  (markdown-preview-stylesheets
+   (list "https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown-light.css"
+         (concat "data:text/css,"
+                 ".markdown-body%7Bbox-sizing:border-box;max-width:830px;"
+                 "margin-left:auto;margin-right:auto;padding:2rem%7D")))
+  (markdown-preview-javascript nil))
+
+;; `markdown-preview-mode's minor-mode body forcibly calls `(markdown-mode)'
+;; whenever the major mode isn't markdown-mode/gfm-mode (markdown-preview-mode.el
+;; ~l421), yanking markdown-ts-mode buffers out of tree-sitter.  Neutralize that
+;; one call by stubbing `markdown-mode' to `ignore' for the dynamic extent of the
+;; toggle (the body runs on both enable and disable, so wrap the whole thing).
+;; The package converts via the `markdown' command and never needs the major mode
+;; itself; its idle-timer + after-save re-export have no major-mode guard, so live
+;; preview still works in markdown-ts-mode.
+;;
+;; NOTE: do NOT guard this with `(derived-mode-p 'markdown-mode)' — markdown-ts-mode
+;; declares markdown-mode as an *extra parent* (Emacs 30 `derived-mode-extra-parents'),
+;; so that predicate is non-nil in markdown-ts-mode buffers and would skip the stub,
+;; reintroducing the switch.  Unconditional stubbing is safe: in a real markdown-mode
+;; buffer the package's own `(equal major-mode 'markdown-mode)' check is true, so it
+;; never reaches the `(markdown-mode)' call anyway.
+(defun markdown-config--mpm-preserve-major-mode (orig &rest args)
+  "Run ORIG (`markdown-preview-mode' toggle) without switching the major mode."
+  (cl-letf (((symbol-function 'markdown-mode) #'ignore))
+    (apply orig args)))
+(advice-add 'markdown-preview-mode :around
+            #'markdown-config--mpm-preserve-major-mode)
 
 ;;; -- debug function ----------------------------------------------------------
 
