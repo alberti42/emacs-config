@@ -9,10 +9,10 @@
 ;; `docs/modules/markdown-config.md' for the design and invariants.
 ;;
 ;; Note: `markdown-mode' the package remains installed as a transitive
-;; dependency of `lsp-mode' (lsp-mode requires it for hover popup
-;; rendering), but it is not configured here — no `:mode' entry, no
-;; hooks, no custom variables.  Our `:mode' below routes `.md' /
-;; `.markdown' directly to `markdown-ts-mode'.
+;; dependency of `markdown-preview-mode' (which requires it), but it is
+;; not configured here — no `:mode' entry, no hooks, no custom
+;; variables.  Our `:mode' below routes `.md' / `.markdown' directly to
+;; `markdown-ts-mode'.
 
 ;;; Code:
 
@@ -383,14 +383,13 @@ is needed."
 ;;; -- markdown-ts-mode -------------------------------------------------------
 
 ;; Emacs 31 ships markdown-ts-mode as the default for `.md' / `.markdown'.
-;; lsp-mode hard-`require's `markdown-mode' at load time (for hover popup
-;; rendering), and that require prepends an `auto-mode-alist' entry whose
+;; When `markdown-mode' loads (as a transitive dependency of
+;; `markdown-preview-mode') it prepends an `auto-mode-alist' entry whose
 ;; broader regex (mkd|mdown|mkdn|mdwn|mdx|md|markdown) shadows the built-in
 ;; markdown-ts-mode association.  Rewrite the entry on `markdown-mode' load
-;; so the same regex routes to markdown-ts-mode.  This relies on lsp-mode
-;; (or some other consumer) actually loading markdown-mode; if nothing ever
-;; does, the hook is a no-op and the built-in `.md'/`.markdown' association
-;; is sufficient.
+;; so the same regex routes to markdown-ts-mode.  This relies on some
+;; consumer actually loading markdown-mode; if nothing ever does, the hook
+;; is a no-op and the built-in `.md'/`.markdown' association is sufficient.
 (with-eval-after-load 'markdown-mode
   (dolist (entry auto-mode-alist)
     (when (eq (cdr entry) 'markdown-mode)
@@ -410,13 +409,11 @@ is needed."
   ;; inside a table the higher-priority `markdown-ts-in-table-mode-map'
   ;; takes over and moves the current column.
   :bind (:map markdown-ts-mode-map
-              ("C-c C-o"      . markdown-config-follow-link-at-point) ; Same as in classic markdown-mode for `markdown-follow-thing-at-point'
-              ;; NOTE: classic markdown-mode puts preview on `C-c C-c p'/`l',
-              ;; but in markdown-ts-mode `C-c C-c' is `markdown-ts-toggle-checkbox'
+              ("C-c C-o"      . markdown-config-follow-link-at-point) ; Follow link at point
+              ;; NOTE: in markdown-ts-mode `C-c C-c' is `markdown-ts-toggle-checkbox'
               ;; (a command, not a prefix), so preview can't hang off it.  Keep the
-              ;; p/l mnemonics under the `C-c C-x' extended-command prefix instead.
+              ;; preview key under the `C-c C-x' extended-command prefix instead.
               ("C-c C-x p"    . markdown-preview-mode)      ; Browser preview (markdown-preview-mode package)
-              ("C-c C-x l"    . markdown-live-preview-mode) ; In-Emacs eww live preview (ships with markdown-mode)
               ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
               ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
               ("M-<right>"    . nil)
@@ -553,41 +550,22 @@ a changed RANGES region that no longer sits inside a fenced code block."
   (advice-add 'markdown-ts--fontify-delimiter :after
               #'markdown-config--collapse-fence-line))
 
-;;; -- live preview --------------------------------------------------------
+;;; -- browser preview -----------------------------------------------------
 
-;; Two options, both bound in `markdown-ts-mode-map' (main `use-package'
-;; above) and both exporting through `markdown-command' — pointed at pandoc's
+;; `markdown-preview-mode' (bound to `C-c C-x p' in `markdown-ts-mode-map'
+;; above) serves the rendered document over a local websocket+http server to a
+;; browser, styled with the light github-markdown-css.  It exports through the
+;; `markdown' command (hence `markdown-command'), pointed at pandoc's
 ;; GitHub-Flavored Markdown reader for correct tables and task lists.  Set in a
 ;; `with-eval-after-load' since `markdown-mode' (the variable's owner) is loaded
-;; as a transitive dependency of lsp-mode.
+;; as a transitive dependency of `markdown-preview-mode'.
 ;;
 ;; (`C-c C-c' is `markdown-ts-toggle-checkbox' in markdown-ts-mode — a command,
-;; not a prefix — so the preview keys can't use it; they keep the markdown-mode
-;; p/l mnemonics under the `C-c C-x' extended-command prefix instead.)
-;;   C-c C-x l  markdown-live-preview-mode  ships with markdown-mode; renders in
-;;                                          an eww window, no browser/server.
-;;   C-c C-x p  markdown-preview-mode       package; serves over a local
-;;                                          websocket+http server to a browser,
-;;                                          styled with github-markdown-css.
+;; not a prefix — so the preview key can't use it; it lives under the
+;; `C-c C-x' extended-command prefix instead.)
 
 (with-eval-after-load 'markdown-mode
   (setq markdown-command "pandoc --from=gfm --to=html5"))
-
-;; Place the built-in live-preview output to the right and reuse it instead of
-;; spawning new splits on each re-export.  The preview is an eww buffer, but
-;; markdown-mode stamps it with a buffer-local `markdown-live-preview-source-buffer'
-;; before calling `display-buffer', so we match on that rather than the bare
-;; `*eww*' name — leaving ordinary eww browsing windows alone.  This entry only
-;; takes effect because `markdown-split-window-direction' is left at its default
-;; `any', which routes the preview through `display-buffer'.
-(add-to-list 'display-buffer-alist
-             `(,(lambda (buf &rest _)
-                  (let ((b (get-buffer buf)))
-                    (and b (buffer-local-value
-                            'markdown-live-preview-source-buffer b))))
-               (display-buffer-reuse-window display-buffer-in-direction)
-               (direction . right)
-               (window-width . 0.5)))
 
 ;; markdown-preview-mode depends on `web-server' (eschulte/emacs-web-server).
 ;; That repo's basename collides with `simple-httpd' (skeeto/emacs-web-server,

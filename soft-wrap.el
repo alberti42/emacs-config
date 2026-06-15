@@ -204,7 +204,7 @@ is preserved as the inner floor, so gutters keep working.
 With no ARG, toggle.  With a positive ARG, enable centring; with a
 non-positive ARG, disable it.  This makes the command usable as both
 an interactive toggle and an explicit setter in mode hooks, e.g.
-  (add-hook \\='markdown-mode-hook
+  (add-hook \\='markdown-ts-mode-hook
             (lambda () (soft-wrap-mode 1) (soft-wrap-centered 1)))"
   (interactive "P")
   (unless soft-wrap-mode

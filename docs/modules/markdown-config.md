@@ -10,60 +10,58 @@ External packages: `markdown-preview-mode` (MELPA). `markdown-ts-mode`
 is built-in and used as-is (no vendored copy). No `markdown-mode`
 configuration block exists in this file.
 
-> **Preview — two options, both bound in `markdown-ts-mode-map` and both
-> exporting through `markdown-command` (pointed at
+> **Preview — `markdown-preview-mode`, bound to `C-c C-x p` in
+> `markdown-ts-mode-map`, exporting through `markdown-command` (pointed at
 > `pandoc --from=gfm --to=html5`; pandoc must be on `PATH`).** Note
 > `C-c C-c` is `markdown-ts-toggle-checkbox` in markdown-ts-mode (a
-> command, not a prefix), so the preview keys can't use it — unlike classic
-> markdown-mode, which puts preview on `C-c C-c p` / `C-c C-c l`. The p/l
-> mnemonics are kept under the `C-c C-x` extended-command prefix instead.
+> command, not a prefix), so the preview key can't use it — unlike classic
+> markdown-mode, which puts preview on `C-c C-c p`. The mnemonic is kept
+> under the `C-c C-x` extended-command prefix instead.
 >
-> - `C-c C-x l` → `markdown-live-preview-mode` (ships with the markdown-mode
->   package): renders in a window via eww, no browser or external server. A
->   `display-buffer-alist` entry pins that output to the right and reuses
->   it on re-export; it matches the preview's buffer-local
->   `markdown-live-preview-source-buffer` (not the bare `*eww*` name) so
->   ordinary eww windows are unaffected, and relies on
->   `markdown-split-window-direction` staying `any` (its default) so the
->   preview routes through `display-buffer`.
-> - `C-c C-x p` → `markdown-preview-mode` (package): serves the rendered
->   HTML over a local websocket + http server to a browser, wraps the body
->   in `<article class="markdown-body">`, and styles it with the light
->   github-markdown-css (classic black-on-white; the auto variant rendered
->   GitHub's dark theme under OS dark mode) plus a small `data:` URI that
->   centers and pads the column. **Caveat patched here:** the package's
->   minor-mode body forcibly runs `(markdown-mode)` unless the major mode is
->   already markdown-mode/gfm-mode, which would yank a markdown-ts-mode
->   buffer out of tree-sitter. An `:around` advice
->   (`markdown-config--mpm-preserve-major-mode`) stubs the `markdown-mode`
->   *function* to `ignore` for the duration of the toggle, so that one call
->   no-ops while the real major mode is untouched. The advice is
->   **unconditional** — it must NOT be guarded by `(derived-mode-p
->   'markdown-mode)`, because markdown-ts-mode declares markdown-mode as an
->   extra parent (Emacs 30 `derived-mode-extra-parents`), making that
->   predicate non-nil in markdown-ts-mode buffers. The package's idle timer +
->   after-save re-export have no major-mode guard, so live preview still
->   works in markdown-ts-mode.
+> `markdown-preview-mode` (package) serves the rendered HTML over a local
+> websocket + http server to a browser, wraps the body in
+> `<article class="markdown-body">`, and styles it with the light
+> github-markdown-css (classic black-on-white; the auto variant rendered
+> GitHub's dark theme under OS dark mode) plus a small `data:` URI that
+> centers and pads the column. **Caveat patched here:** the package's
+> minor-mode body forcibly runs `(markdown-mode)` unless the major mode is
+> already markdown-mode/gfm-mode, which would yank a markdown-ts-mode
+> buffer out of tree-sitter. An `:around` advice
+> (`markdown-config--mpm-preserve-major-mode`) stubs the `markdown-mode`
+> *function* to `ignore` for the duration of the toggle, so that one call
+> no-ops while the real major mode is untouched. The advice is
+> **unconditional** — it must NOT be guarded by `(derived-mode-p
+> 'markdown-mode)`, because markdown-ts-mode declares markdown-mode as an
+> extra parent (Emacs 30 `derived-mode-extra-parents`), making that
+> predicate non-nil in markdown-ts-mode buffers. The package's idle timer +
+> after-save re-export have no major-mode guard, so live preview still
+> works in markdown-ts-mode.
 >
-> Both replaced `grip-mode`, which scrapes GitHub's full page chrome and,
-> being unmaintained since 4.6.2 (Sept 2022), now renders unstyled.
+> It replaced `grip-mode`, which scrapes GitHub's full page chrome and,
+> being unmaintained since 4.6.2 (Sept 2022), now renders unstyled. The
+> classic `markdown-live-preview-mode` (eww-based, part of `markdown-mode`)
+> was also dropped along with direct use of `markdown-mode`.
 
 > **`markdown-mode` is still installed**, but only as a transitive
-> dependency of `lsp-mode` (`lsp-mode.el` does
-> `(require 'markdown-mode)` at the top because it renders LSP hover
-> popups via markdown-mode). It is not configured here, no hooks fire,
-> none of its custom variables are tuned, and `M-x markdown-mode` is
-> not advertised as a workflow. If you want it as a real escape hatch,
-> consult git history for the previous configuration block.
+> dependency of `markdown-preview-mode` (which `(require 'markdown-mode)`s
+> and calls the `markdown` command to convert). It is not configured here,
+> no hooks fire, none of its custom variables are tuned (beyond
+> `markdown-command`, which `markdown-preview-mode` reads), and
+> `M-x markdown-mode` is not advertised as a workflow. If you want it as a
+> real escape hatch, consult git history for the previous configuration
+> block. (`lsp-mode` no longer requires it — hover docs render via
+> `markdown-ts-view-mode`; see `lsp-markdown-render-engine`.)
 
 ## File routing
 
 `.md` and `.markdown` are routed directly to `markdown-ts-mode` via
 `:mode` in this file's `use-package` block. There is no
-`markdown-mode → markdown-ts-mode` entry in
-`major-mode-remap-alist` (since `markdown-mode` is not installed),
-and no `gfm-mode` mapping (README.md is handled the same as any
-other `.md`).
+`markdown-mode → markdown-ts-mode` entry in `major-mode-remap-alist`.
+When `markdown-mode` loads (transitively, via `markdown-preview-mode`)
+it prepends a broad-regex `auto-mode-alist` entry that would shadow the
+built-in association; a `with-eval-after-load 'markdown-mode` hook
+rewrites that entry's target back to `markdown-ts-mode`. No `gfm-mode`
+mapping (README.md is handled the same as any other `.md`).
 
 ## Link helpers
 
@@ -100,7 +98,6 @@ other `.md`).
 | Key         | Command                                  |
 | ----------- | ---------------------------------------- |
 | `C-c C-o`   | `markdown-config-follow-link-at-point`   |
-| `C-c C-x l` | `markdown-live-preview-mode`             |
 | `C-c C-x p` | `markdown-preview-mode`                  |
 | `mouse-1` / `mouse-2` on a wiki link or inline link | `markdown-config-follow-link-at-point` |
 
