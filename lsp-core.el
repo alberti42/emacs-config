@@ -8,12 +8,12 @@
 ;;; Code:
 
 (use-package lsp-mode
-  ;; :straight (lsp-mode
-  ;;            :type git
-  ;;            :host github
-  ;;            :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
-  ;;            :branch "fix/serverInfo"
-  ;;            :repo "alberti42/fork-lsp-mode")
+  :straight (lsp-mode
+             :type git
+             :host github
+             :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
+             :branch "fix/markdown"
+             :repo "alberti42/fork-lsp-mode")
   :commands (lsp lsp-deferred)
   :init
   ;; Use plists for JSON (faster + lower GC pressure than hash-tables).
