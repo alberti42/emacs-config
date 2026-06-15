@@ -515,9 +515,16 @@ onto a not-yet-displayed closer.  Links the pair via
 :after advice on `markdown-ts--fontify-delimiter'.  Acts on the fence
 delimiter and the opener's info_string; drops the host's `invisible' text
 property on the node so a revealed fence shows its real text, and ensures
-both of the block's fence overlays (cross-linked) so reveal can mirror."
-  (when (member (treesit-node-type node)
-                '("fenced_code_block_delimiter" "info_string"))
+both of the block's fence overlays (cross-linked) so reveal can mirror.
+
+Skipped in `markdown-ts-view-mode': that read-only mode already hides whole
+fence lines via the host's `invisible' text property (no stray blank line,
+nothing to reveal), and swapping it for an overlay `display' would break
+off-screen consumers that extract the buffer with `buffer-substring' — e.g.
+lsp-mode's hover/signature rendering, which does not capture overlays."
+  (when (and (not (derived-mode-p 'markdown-ts-view-mode))
+             (member (treesit-node-type node)
+                     '("fenced_code_block_delimiter" "info_string")))
     (if markdown-ts-hide-markup
         (let ((block (treesit-parent-until node "\\`fenced_code_block\\'" t)))
           (remove-text-properties (treesit-node-start node)
