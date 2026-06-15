@@ -10,7 +10,10 @@
 ;;; Code:
 
 (use-package rustic
-  :after lsp-mode
+  ;; No `:after lsp-mode' — `:hook' already keeps rustic lazy (loaded via its
+  ;; own `.rs' auto-mode autoload).  Dropping `:after' installs the
+  ;; `rustic-mode-hook' at startup so `lsp-deferred' fires on the first Rust
+  ;; buffer even if lsp-mode has not been loaded by another session yet.
   :init
   ;; Use lsp-mode (not eglot) as the LSP client.
   (setq rustic-lsp-client 'lsp-mode)
