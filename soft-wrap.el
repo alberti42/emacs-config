@@ -94,6 +94,11 @@ When nil, the current value of `fill-column' is used when enabling.")
 (defvar-local soft-wrap--saved-visual-wrap-prefix-mode nil
   "Whether `visual-wrap-prefix-mode' was active before soft wrap was enabled.")
 
+(defvar-local soft-wrap--refresh-timer nil
+  "Pending idle timer for a debounced margin refresh, or nil if none.
+Set by `soft-wrap--schedule-refresh' and cleared when it fires or when
+`soft-wrap-mode' is disabled.")
+
 (defvar-local soft-wrap--centered nil
   "Non-nil to centre the body horizontally.
 Toggle interactively with `soft-wrap-centered'.
@@ -244,9 +249,11 @@ Not intended for direct use — `soft-wrap-mode' activates this automatically."
   (if soft-wrap--hooks-mode
       (progn
         (add-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-        (advice-add 'split-window :around #'soft-wrap--around-split-window))
+        (advice-add 'split-window :around #'soft-wrap--around-split-window)
+        (add-variable-watcher 'fill-column #'soft-wrap--fill-column-watcher))
     (remove-hook 'window-state-change-functions #'soft-wrap--window-state-change)
-    (advice-remove 'split-window #'soft-wrap--around-split-window)))
+    (advice-remove 'split-window #'soft-wrap--around-split-window)
+    (remove-variable-watcher 'fill-column #'soft-wrap--fill-column-watcher)))
 
 ;;; Width calculation ---------------------------------------------------------
 
@@ -374,6 +381,47 @@ saved (pre-mode) left margin is preserved as the inner floor."
 Called whenever Emacs detects a window state change (resize, split, etc.)."
   (soft-wrap--adjust-window-margins window))
 
+(defun soft-wrap--schedule-refresh (buffer)
+  "Schedule one deferred margin refresh for BUFFER, debouncing repeats.
+The refresh is run from an idle timer rather than synchronously so it
+fires after the triggering assignment has committed; while a timer is
+already pending no second one is queued, so a burst of sets in a single
+command collapses to one refresh."
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (unless soft-wrap--refresh-timer
+        (setq soft-wrap--refresh-timer
+              (run-with-idle-timer 0 nil #'soft-wrap--deferred-refresh buffer))))))
+
+(defun soft-wrap--deferred-refresh (buffer)
+  "Run the deferred margin refresh scheduled for BUFFER."
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (setq soft-wrap--refresh-timer nil)
+      (when soft-wrap-mode
+        (soft-wrap--refresh-buffer-windows)))))
+
+(defun soft-wrap--fill-column-watcher (_symbol newval operation where)
+  "Refresh soft-wrap margins when `fill-column' actually changes.
+Installed as a variable watcher so every path that sets `fill-column'
+\(\\[set-fill-column], `setq-local', `setopt', `.dir-locals.el', ...)
+keeps the wrap width in sync — not just the interactive command.
+
+Runs for real assignments only (OPERATION `set'), so transient `let'
+bindings by fill commands are ignored.  At watcher time the symbol still
+holds the old value, so comparing it against NEWVAL skips no-op
+reassignments.  Acts only in the buffer being changed (WHERE, or the
+current buffer for a global set) when `soft-wrap-mode' is active and the
+width tracks `fill-column' (`soft-wrap--target-width' nil); a width
+pinned via `soft-wrap-set-width'/`soft-wrap-expand' is left alone."
+  (when (eq operation 'set)
+    (let ((buf (or where (current-buffer))))
+      (when (and (buffer-live-p buf)
+                 (buffer-local-value 'soft-wrap-mode buf)
+                 (null (buffer-local-value 'soft-wrap--target-width buf))
+                 (not (eql newval (buffer-local-value 'fill-column buf))))
+        (soft-wrap--schedule-refresh buf)))))
+
 ;;; Buffer state save/restore -------------------------------------------------
 
 (defun soft-wrap--save-state ()
@@ -437,6 +485,10 @@ visual-wrap-prefix-mode, and restores window margins to their original values.
 Called by `soft-wrap-mode' when toggled off."
   (setq-local soft-wrap--target-width nil)
   (setq-local soft-wrap--warned-mismatch nil)
+
+  (when soft-wrap--refresh-timer
+    (cancel-timer soft-wrap--refresh-timer)
+    (setq soft-wrap--refresh-timer nil))
 
   (remove-hook 'window-configuration-change-hook
                #'soft-wrap--refresh-buffer-windows
