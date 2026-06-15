@@ -108,6 +108,16 @@ Once resolved to FULL-PATH:
 The tree-sitter-markdown grammar does not expose wiki links as a node
 type, so detection is text-level even under `markdown-ts-mode'.")
 
+(defconst markdown-config--inline-link-regexp
+  "\\[\\([^]\n]+\\)\\](\\(<[^>\n]*>\\|[^)\n]+\\))"
+  "Match a CommonMark inline link `[label](url)'; group 1 label, 2 url.
+Group 2 matches either the pointy-bracket form `<url>' (which may itself
+contain `)') or a bare `url' that stops at the first `)'.  Callers strip
+the angle brackets via `markdown-config--strip-pointy-brackets'.
+Used where the tree-sitter `inline_link' node is unavailable — notably
+inside table cells, whose content the grammar does not route through the
+`markdown-inline' parser, so no `inline_link' node ever exists there.")
+
 (defun markdown-config--strip-pointy-brackets (text)
   "Strip a matched leading `<' and trailing `>' from TEXT.
 Used to clean CommonMark's pointy-bracket form
@@ -154,6 +164,13 @@ Bound on `markdown-ts-mode-map' and on `markdown-config--link-keymap'
    ((thing-at-point-looking-at markdown-config--wiki-link-regexp)
     (markdown-config--follow-wiki-link (match-string-no-properties 1)))
    ((when-let* ((dest (markdown-config--inline-link-destination-at-point)))
+      (or (markdown-config--follow-local-link dest)
+          (browse-url dest))))
+   ;; Regex fallback for `[label](url)' where there is no `inline_link'
+   ;; node to resolve against — chiefly inside table cells.
+   ((thing-at-point-looking-at markdown-config--inline-link-regexp)
+    (let ((dest (markdown-config--strip-pointy-brackets
+                 (match-string-no-properties 2))))
       (or (markdown-config--follow-local-link dest)
           (browse-url dest))))
    ((when-let* ((url (thing-at-point 'url)))
@@ -260,6 +277,50 @@ form."
            'keymap     markdown-config--link-keymap
            'help-echo  (if target (concat "Link → " target) "Link")))))
 
+(defun markdown-config--in-table-cell-p (pos)
+  "Return non-nil when POS lies inside a `pipe_table'.
+Used to scope regex-based inline-link rendering to table cells, whose
+content the grammar parses as raw block-level tokens rather than routing
+it through the `markdown-inline' parser (so no `inline_link' node exists
+there for the treesit-driven rules to match)."
+  (when-let* ((node (treesit-node-at pos 'markdown)))
+    (treesit-parent-until node "\\`pipe_table\\'" t)))
+
+(defun markdown-config--table-inline-link-fontify (limit)
+  "Font-lock MATCHER for `[label](url)' inside table cells, up to LIMIT.
+The grammar emits no `inline_link' node inside a `pipe_table_cell', so
+the treesit rule that renders inline links in paragraphs never fires
+there.  This regex matcher fills the gap: it applies the `link' face and
+click-to-follow to the label and, when `markdown-ts-hide-markup' is on,
+replaces the surrounding `[' and `](url)' markup with a width-preserving
+`display' space — unlike `invisible', which collapses the text to zero
+width — so the cell keeps the same column count as its raw text and the
+table stays aligned."
+  (let (matched)
+    (while (and (not matched)
+                (re-search-forward markdown-config--inline-link-regexp limit t))
+      (let ((beg       (match-beginning 0))
+            (label-beg (match-beginning 1))
+            (label-end (match-end 1))
+            (end       (match-end 0))
+            (target    (markdown-config--strip-pointy-brackets
+                        (match-string-no-properties 2))))
+        ;; Paragraph links are handled by the treesit path; only take over
+        ;; inside table cells, where no `inline_link' node exists.
+        (when (markdown-config--in-table-cell-p beg)
+          (add-text-properties label-beg label-end
+                               (list 'mouse-face 'highlight
+                                     'keymap markdown-config--link-keymap
+                                     'help-echo (concat "Link → " target)))
+          (when markdown-ts-hide-markup
+            (put-text-property beg label-beg 'display
+                               `(space :width ,(- label-beg beg)))
+            (put-text-property label-end end 'display
+                               `(space :width ,(- end label-end))))
+          (set-match-data (list label-beg label-end))
+          (setq matched t))))
+    matched))
+
 (defun markdown-config--markdown-ts-mode-setup ()
   "Wire wiki-link rendering and inline-link extras.
 
@@ -269,11 +330,16 @@ is needed."
   ;; --- Wiki-link font-lock keyword (regex-based) ---------------------------
   (setq-local font-lock-extra-managed-props
               (append font-lock-extra-managed-props
-                      '(invisible mouse-face keymap help-echo)))
+                      '(invisible display mouse-face keymap help-echo)))
   (font-lock-add-keywords
    nil
    '((markdown-config--wiki-link-fontify
-      (0 'markdown-config-wiki-link-face prepend)))
+      (0 'markdown-config-wiki-link-face prepend))
+     ;; Inline links `[label](url)' inside table cells: the treesit path
+     ;; cannot reach them (no `inline_link' node in a `pipe_table_cell'),
+     ;; so render them via the same parser-agnostic keyword mechanism.
+     (markdown-config--table-inline-link-fontify
+      (0 'link prepend)))
    'append)
   ;; --- Inline-link extras: hiding + click-to-follow (treesit-based) -------
   ;; Reuse the bundled `markdown-ts--fontify-delimiter' on the brackets,
