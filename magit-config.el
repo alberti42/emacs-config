@@ -55,6 +55,16 @@
     (define-key magit-mode-map "E" #'vdiff-magit)))
 
 ;; Forge: GitHub/GitLab integration (PRs, issues, reviews).
+;;
+;; NOTE: forge hard-depends on classic `markdown-mode' (its `Package-Requires'
+;; lists it, and `forge-post-mode' is `define-derived-mode'd from `gfm-mode').
+;; It composes/displays issue, PR, and comment bodies as GitHub-Flavored
+;; Markdown.  So markdown-mode stays installed and shows autoload stubs in M-x
+;; for as long as forge is enabled, even though nothing else here uses it
+;; (lsp-mode renders docs via `markdown-ts-view-mode'; no preview package).
+;; Dropping the dependency would require an upstream/fork change to forge
+;; (re-parent `forge-post-mode' onto `markdown-ts-mode', replace the `gfm-mode'
+;; display call, with a fallback for Emacs < 31) — a major rewrite, parked.
 (use-package forge
   :after magit)
 
