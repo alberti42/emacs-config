@@ -65,5 +65,35 @@ Runs in `kill-buffer-query-functions' before the kill prompt fires."
 
 (add-hook 'kill-buffer-query-functions #'my/maybe-unmark-modified)
 
+;;; -- Quick jump to *scratch* -------------------------------------------------
+
+;; Override the global `set-goal-column' binding: reaching a scratch buffer is
+;; far more useful day to day.  `set-goal-column' is still reachable via M-x.
+;;
+;;   C-x C-n         -> the shared *scratch* buffer (built-in `scratch-buffer')
+;;   C-u C-x C-n     -> a fresh, uniquely-named empty `markdown-ts-mode' scratch buffer
+;;   C-u C-u C-x C-n -> ditto, but in `lisp-interaction-mode'
+
+(defun buffers-config-scratch (&optional arg)
+  "Switch to the shared *scratch* buffer.
+With a single prefix ARG, create and switch to a fresh, uniquely-named
+empty scratch buffer in `markdown-ts-mode'.  With a double prefix ARG,
+use `lisp-interaction-mode' instead."
+  (interactive "P")
+  (if (not arg)
+      (scratch-buffer)
+    (let* ((lisp (equal arg '(16)))
+           (buf (generate-new-buffer "*scratch*")))
+      (with-current-buffer buf
+        (if (not lisp)
+            (markdown-ts-mode)
+          (lisp-interaction-mode)
+          (when (stringp initial-scratch-message)
+            (insert (substitute-command-keys initial-scratch-message))
+            (set-buffer-modified-p nil))))
+      (switch-to-buffer buf))))
+
+(keymap-global-set "C-x C-n" #'buffers-config-scratch)
+
 (provide 'buffers-config)
 ;;; buffers-config.el ends here
