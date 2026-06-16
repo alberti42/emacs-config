@@ -93,23 +93,12 @@
 (when (eq system-type 'darwin)
   (setq ns-frameless-activation-policy 'regular))
 
-;; macOS: register the daemon with the OS at startup by creating ONE invisible
-;; NS frame -- the app gets a Dock tile but no visible window.  A Dock click
-;; then reaches THIS daemon, and the reopen patch
-;; (applicationShouldHandleReopen:) turns the click into a real frame.  Deferred
-;; via a timer so it runs after startup settles and the NS run loop is up;
-;; creating an NS frame synchronously mid-init can race with the daemon
-;; bootstrap.
-;; (when (and (eq system-type 'darwin) (daemonp) (featurep 'ns))
-;;   (run-at-time
-;;    0 nil
-;;    (lambda ()
-;;      (make-frame '((window-system . ns) (visibility . nil))))))
-
-(when (and (eq system-type 'darwin) (daemonp) (featurep 'ns))
-  (run-at-time 0 nil
-               (lambda ()
-                 (delete-frame (make-frame '((window-system . ns) (visibility . nil)))))))
+;; macOS: give the daemon a Dock tile at startup (no visible window) so a Dock
+;; click reaches it and the reopen patch (applicationShouldHandleReopen:) turns
+;; the click into a real frame.  `ns-show-daemon-in-dock' is provided by our
+;; nsterm reopen patch.
+(when (and (eq system-type 'darwin) (fboundp 'ns-show-daemon-in-dock))
+  (ns-show-daemon-in-dock))
 
 ;; Default frame size + fullscreen toggle.
 ;; Frames are born fullscreen (fullboth).  F11 toggles to a windowed frame whose
