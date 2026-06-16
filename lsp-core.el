@@ -12,7 +12,8 @@
              :type git
              :host github
              :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
-             :branch "fix/markdown"
+             :branch "merged"
+             ;; :branch "fix/diagnostics-remap-on-edit"
              :repo "alberti42/fork-lsp-mode")
   :commands (lsp lsp-deferred)
   :init
