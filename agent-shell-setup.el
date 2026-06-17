@@ -18,34 +18,37 @@
               ("M-RET" . newline)
               ("C-c a" . agent-shell-prompt-compose))
   :config
-  ;; When agent-shell is launched from a dired buffer, anchor the agent at that
-  ;; buffer's listed directory instead of letting the package walk up to the
-  ;; project root.  Trust the agent-shell buffer's own `default-directory' for
-  ;; in-session calls too — otherwise the package would re-resolve via
-  ;; project.el on every ACP message and walk back up to the git root.  Other
-  ;; launch contexts (file buffers, etc.) fall through to the package's default
-  ;; projectile/project.el resolution by returning nil.
+  ;; Hand OpenCode the launching buffer's `default-directory' as its working
+  ;; directory, rather than letting the package walk up to the project root.
+  ;; No dired special-casing: dired buffers behave like any other buffer, so
+  ;; agent-shell's stock file-picking workflow works there.  This also covers
+  ;; in-session calls (the agent-shell buffer's own `default-directory'), so the
+  ;; package doesn't re-resolve via project.el on every ACP message.
   (defun my/agent-shell-cwd-function ()
-    "Return dired/agent-shell buffer's `default-directory', else nil."
-    (when (derived-mode-p 'dired-mode 'agent-shell-mode)
-      (expand-file-name default-directory)))
+    "Return the current buffer's `default-directory'."
+    (expand-file-name default-directory))
   (setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
 
-  ;; The package's `agent-shell-project-buffers' matches shells to the current
-  ;; project via strict `equal' on `agent-shell-cwd', which conflates "agent's
-  ;; working directory" with "project identity".  With the dired anchoring
-  ;; above, a shell anchored at /proj/sub/ no longer matches a code buffer in
-  ;; /proj/, so DWIM falls through to "Start new agent:" instead of reusing the
-  ;; existing shell.  Loosen the predicate: a shell counts as belonging to the
-  ;; current project if its cwd lives anywhere within the project root.
+  ;; Session reuse: `agent-shell-project-buffers' decides which existing shells
+  ;; belong to "the current project".  Stock matches on strict `equal' of
+  ;; `agent-shell-cwd' — but since we now feed `agent-shell-cwd' the buffer's
+  ;; `default-directory', a code/dired buffer in /proj/sub/ would never match a
+  ;; shell started at /proj/, so DWIM falls through to "Start new agent:".
+  ;; Match on the real project root instead (project.el), decoupled from cwd, so
+  ;; any buffer within a project reuses that project's shell regardless of which
+  ;; subdirectory it sits in.
+  (defun my/agent-shell--project-root ()
+    "Return the current buffer's project root, else its `default-directory'."
+    (expand-file-name
+     (if-let* ((proj (project-current)))
+         (project-root proj)
+       default-directory)))
   (defun my/agent-shell-project-buffers (&rest _)
-    "Match shells whose cwd is anywhere within the current project root."
-    (let ((project-root (agent-shell-cwd)))
+    "Match agent shells in the same project as the current buffer."
+    (let ((root (my/agent-shell--project-root)))
       (seq-filter (lambda (buffer)
-                    (let ((shell-cwd (with-current-buffer buffer
-                                       (agent-shell-cwd))))
-                      (or (equal project-root shell-cwd)
-                          (file-in-directory-p shell-cwd project-root))))
+                    (equal root (with-current-buffer buffer
+                                  (my/agent-shell--project-root))))
                   (agent-shell-buffers))))
   (advice-add 'agent-shell-project-buffers :override
               #'my/agent-shell-project-buffers))

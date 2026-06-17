@@ -1,10 +1,11 @@
-# agent-shell-config.el
+# agent-shell-setup.el
 
 Configures `agent-shell` (interactive chat with AI coding agents — Claude
 Code, Gemini CLI, OpenCode, etc. — over the Agent Client Protocol). Sets
-the default OpenCode model, scopes the agent's working directory when
-launched from a dired buffer, and points OpenCode at a forked binary
-that supports `opencode acp --attach <url>`.
+the default OpenCode model, feeds the agent the launching buffer's
+`default-directory` as its working directory, matches session reuse on the
+project root, and points OpenCode at a forked binary that supports
+`opencode acp --attach <url>`.
 
 External packages: `agent-shell` (which pulls in `shell-maker` and `acp`).
 
@@ -19,7 +20,8 @@ External packages: `agent-shell` (which pulls in `shell-maker` and `acp`).
 - Keys in `agent-shell-mode-map`:
   - `M-RET` → `newline`
   - `C-c a` → `agent-shell-prompt-compose`
-- Around-advice on `agent-shell-cwd` — see [Dired cwd advice](#dired-cwd-advice).
+- `agent-shell-cwd-function` + an override on `agent-shell-project-buffers`
+  — see [Working directory and session reuse](#working-directory-and-session-reuse).
 
 ## OpenCode fork dependency
 
@@ -81,68 +83,77 @@ otherwise rederive them painfully when tweaking
    first `session/new`. Keep `effectCmd`'s `instance: true` default;
    the SDK still proxies workspace-scoped calls to the remote server.
 
-## Dired cwd advice
+## Working directory and session reuse
 
-`agent-shell-cwd` (defined in `agent-shell-project.el:67`) resolves the
-shell's working directory via projectile → `project.el` → fallback to
-`default-directory`. In a monorepo, this walks all the way up to the
-git root, which is rarely what you want.
+`agent-shell-cwd` (defined in `agent-shell-project.el:67`) serves **two**
+jobs through one value: the `:cwd` sent to the agent (its working
+directory), and project identity for session reuse
+(`agent-shell-project-buffers` matches shells by `equal` on
+`agent-shell-cwd`). Stock resolution walks projectile → `project.el` →
+`default-directory`, so in a project it returns the git root.
 
-The advice short-circuits two cases and lets everything else fall
-through:
+Two pieces of config override this:
+
+### `agent-shell-cwd-function` → `default-directory`
 
 ```elisp
-(defun my/agent-shell-cwd-dired-advice (orig-fn &rest args)
-  (if (derived-mode-p 'dired-mode 'agent-shell-mode)
-      (expand-file-name default-directory)
-    (apply orig-fn args)))
+(defun my/agent-shell-cwd-function ()
+  (expand-file-name default-directory))
+(setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
 ```
 
-- **Launched from a dired buffer** → returns dired's listed dir, so the
-  agent gets scoped to that subdir of the monorepo.
-- **Called from inside a running agent-shell session** → returns the
-  shell buffer's own `default-directory`, which was set correctly at
-  session start.
-- **Everywhere else** (file buffers, `*scratch*`) → delegates to the
-  original, preserving the package's smart project-root resolution.
+The agent's working directory becomes the launching buffer's
+`default-directory` — not the project root. There is **no dired
+special-casing**: a dired buffer behaves like any other buffer, so
+agent-shell's stock file-picking workflow (mark files, send to the
+agent) works there normally. Because the function returns
+`default-directory` unconditionally, in-session calls (which run with the
+agent-shell buffer current, on every outgoing ACP message) return that
+buffer's own `default-directory`, so the session does not drift.
 
-### Why both checks are needed
+### Override on `agent-shell-project-buffers` → match on project root
 
-`agent-shell-cwd` is called **repeatedly** during the session — not
-just at start, but on every outgoing ACP message (`prompt`,
-`update_session_mode`, file-context queries, …). Each in-session call
-happens with the agent-shell buffer current.
+Feeding `agent-shell-cwd` the buffer's `default-directory` breaks stock
+reuse: a buffer in `/proj/sub/` no longer `equal`s a shell started at
+`/proj/`, so DWIM would fall through to "Start new agent:". The override
+matches on the real **project root** (`project.el`), decoupled from cwd,
+so any buffer inside a project reuses that project's shell regardless of
+subdirectory:
 
-Without the `agent-shell-mode` clause, only the first call (from the
-dired buffer) returns the scoped dir; every later call has
-`derived-mode-p 'dired-mode'` → false → falls through to original →
-`project.el` walks back up to the git root. The agent then drifts mid-
-session, with `pwd` and file-tool roots silently snapping to the
-monorepo top.
-
-The agent-shell buffer's `default-directory` is set once at session
-start to whatever `agent-shell-cwd` returned then; trusting it for
-in-session calls is what makes the dired anchor persist.
+```elisp
+(defun my/agent-shell--project-root ()
+  (expand-file-name
+   (if-let* ((proj (project-current)))
+       (project-root proj)
+     default-directory)))
+(defun my/agent-shell-project-buffers (&rest _)
+  (let ((root (my/agent-shell--project-root)))
+    (seq-filter (lambda (buffer)
+                  (equal root (with-current-buffer buffer
+                                (my/agent-shell--project-root))))
+                (agent-shell-buffers))))
+(advice-add 'agent-shell-project-buffers :override
+            #'my/agent-shell-project-buffers)
+```
 
 ## Invariants — do not change without reading
 
-### Don't replace the advice with a hook on `agent-shell-cwd-function`
+### The two overrides go together
 
-`agent-shell-cwd-function` is the package's documented extension point.
-A function set there fires on every call to `agent-shell-cwd` and is a
-valid alternative — but in practice it ends up looking like the same
-advice rewritten as a defcustom-hook function, with no real upside.
-Sticking with `advice-add` keeps the override visible at the
-`agent-shell-cwd` call site (e.g. when stepping through `agent-shell`
-with edebug) and makes removal explicit: `(advice-remove
-'agent-shell-cwd #'my/agent-shell-cwd-dired-advice)`.
+Overriding the cwd (so the agent gets `default-directory`) **requires**
+the `agent-shell-project-buffers` override. Without it, launching from any
+subdirectory other than the one the shell was started in fails to match
+the existing shell and spawns a duplicate session. Conversely the
+project-root match exists *because* cwd no longer doubles as project
+identity. Remove one and the pair is broken.
 
-### Don't drop the `agent-shell-mode` short-circuit
+### Match reuse on the project root, not on cwd
 
-It looks like defensive scaffolding but it isn't — without it the
-dired-anchored session drifts back to the monorepo root after the
-first ACP message. See [Why both checks are needed](#why-both-checks-are-needed)
-above.
+An earlier version matched on whether a shell's cwd lived *within* the
+current buffer's cwd (`file-in-directory-p`). That is directional and
+wrong: a shell at `/proj/` is a **parent** of a dired buffer at
+`/proj/sub/`, not a child, so it never matched and a new session spawned.
+Comparing `project.el` roots is symmetric and subdirectory-agnostic.
 
 ### The OpenCode binary on `$PATH` must be the forked build
 
