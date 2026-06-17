@@ -20,7 +20,11 @@
              :host github
              :local-repo "/Users/andrea/Documents/Programming/Emacs/straight-overview"
              :repo "alberti42/straight-overview")
-  :commands (straight-overview))
+  :commands (straight-overview)
+  :custom
+  ;; Rebuild pulled/restored packages immediately, so updates take effect in
+  ;; the running session rather than on the next restart.
+  (straight-overview-build-on-pull t))
 
 (provide 'straight-overview-config)
 ;;; straight-overview-config.el ends here
