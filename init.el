@@ -677,3 +677,8 @@ monitor."
   :config
   (tmux-tandem-enable))
 
+;; straight-overview: selective-upgrade UI for straight.el packages.
+(emacs-config-load-module
+ 'straight-overview-config
+ "Could not load straight-overview-config.el; the straight-overview UI is disabled.")
+
