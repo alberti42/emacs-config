@@ -359,7 +359,7 @@ DIRECTION is one of `left', `right', `above', `below'."
 (global-set-key (kbd "C-x 1") #'windows-config-toggle-delete-other-windows)
 (global-set-key (kbd "C-b z") #'windows-config-toggle-delete-other-windows)
 
-(global-set-key (kbd "C-x m") #'switch-to-minibuffer)
+(global-set-key (kbd "C-`") #'switch-to-minibuffer)
 
 (provide 'windows-config)
 ;;; windows-config.el ends here
