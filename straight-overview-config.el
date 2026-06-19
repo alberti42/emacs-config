@@ -21,6 +21,12 @@
              :local-repo "/Users/andrea/Documents/Programming/Emacs/straight-overview"
              :repo "alberti42/straight-overview")
   :commands (straight-overview)
+  :init
+  (let* ((cache-home (or (getenv "XDG_CACHE_HOME")
+                         (expand-file-name "~/.cache")))
+         (dir (expand-file-name "emacs" cache-home)))
+    (make-directory dir t)
+    (setq straight-overview-pinned-file (expand-file-name "straight-overview.eld" dir)))
   :custom
   ;; Rebuild pulled/restored packages immediately, so updates take effect in
   ;; the running session rather than on the next restart.
