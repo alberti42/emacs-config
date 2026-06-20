@@ -453,6 +453,13 @@ monitor."
   :bind (("C->" . mc/mark-next-like-this)
          ("C-<" . mc/mark-previous-like-this)))
 
+;; auth-source-1password: serve the GitHub/Forge token from 1Password (`op')
+;; instead of a plaintext ~/.authinfo.  Loaded before magit so the backend is
+;; registered before Forge first resolves a token.
+(emacs-config-load-module
+ 'auth-source-1password-config
+ "Could not load auth-source-1password-config.el; 1Password auth-source is disabled.")
+
 ;; magit: Git porcelain, forge (GitHub/GitLab), and nerd-icons integration.
 (emacs-config-load-module
  'magit-config
