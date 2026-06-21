@@ -479,11 +479,11 @@ monitor."
 ;; Precedence note.  Some target buffers (notably agent-shell, which calls
 ;; `hack-dir-local-variables-non-file-buffer' on its own buffer right after
 ;; creation) re-apply dir-locals AFTER inheritenv has already snapshotted
-;; the caller env.  Because the dir-local hook (`pyenv--apply-dir-local')
+;; the caller env.  Because the dir-local hook (`uv--apply-dir-local')
 ;; sets buffer-local `process-environment'/`exec-path' explicitly, its
 ;; values OVERRIDE whatever was inherited.  Net result: if the project has
-;; a `.dir-locals.el' with `pyenv-version', it wins over an interactive
-;; `pyenv-activate-buffer' done in the caller buffer.  Everything else on
+;; a `.dir-locals.el' with `uv-venv', it wins over an interactive
+;; `uv-activate-buffer' done in the caller buffer.  Everything else on
 ;; this list (shells, terminals, generic project.el spawners) does NOT
 ;; re-apply dir-locals, so the inherited env is what spawns see.
 (use-package inheritenv
@@ -509,10 +509,14 @@ monitor."
  'apheleia-config
  "Could not load apheleia-config.el; formatters are disabled.")
 
-;; Buffer-local pyenv activation (PYENV_VERSION per buffer).
+;; Buffer-local uv virtualenv activation (VIRTUAL_ENV per buffer).
 (emacs-config-load-module
- 'pyenv-config
- "Could not load pyenv-config.el; per-buffer pyenv activation is disabled.")
+ 'uv-config
+ "Could not load uv-config.el; per-buffer uv activation is disabled.")
+
+;; (emacs-config-load-module
+;;  'pyenv-config
+;;  "Could not load pyenv-config.el; per-buffer pyenv activation is disabled.")
 
 ;;; VCS gutter
 

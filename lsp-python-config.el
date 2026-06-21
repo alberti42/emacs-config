@@ -2,19 +2,26 @@
 
 ;;; Code:
 
+(require 'uv-config)
+
+(defvar lsp-python-basedpyright-venv
+  (expand-file-name "py313" uv-virtualenvs-dir)
+  "uv virtualenv whose bin/ provides basedpyright-langserver and python.")
+
 (use-package lsp-pyright
   :straight t
   :init
-  ;; basedpyright-langserver lives in the pyenv version bin, which is not
-  ;; in the PATH that env-config.el imports from the shell env cache file.
-  (add-to-list 'exec-path (expand-file-name "~/.pyenv/versions/py313/bin"))
+  ;; basedpyright-langserver lives in the py313 uv virtualenv's bin, which is
+  ;; not on the PATH that env-config.el imports from the shell env cache file.
+  (add-to-list 'exec-path (expand-file-name "bin" lsp-python-basedpyright-venv))
   (setq lsp-pyright-langserver-command "basedpyright")
   :config
   (add-to-list 'lsp-disabled-clients 'ruff-lsp)
   (add-to-list 'lsp-disabled-clients 'ruff)
 
   ;; Python Interpreter and Analysis Settings
-  (setq lsp-pyright-python-executable-cmd (expand-file-name "~/.pyenv/versions/py313/bin/python"))
+  (setq lsp-pyright-python-executable-cmd
+        (expand-file-name "bin/python" lsp-python-basedpyright-venv))
   (setq lsp-pyright-type-checking-mode "basic")
   ;; (setq lsp-pyright-diagnostic-severity-overrides
   ;;       '(("reportOptionalSubscript" . "error")))
