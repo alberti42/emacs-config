@@ -70,7 +70,7 @@
         '(:light (:added "#01e002" :modified "#ffb500" :deleted "#cf222e")
                  :dark  (:added "#3fb950" :modified "#d29922" :deleted "#f85149")))
   ;; ANSI 16-color palette (Catppuccin Latte / Frappe — same as WezTerm) so
-  ;; vterm, ghostel, eshell, term, and compilation buffers render colors
+  ;; ghostel, eshell, term, and compilation buffers render colors
   ;; identically to the host terminal in TTY mode.  Order: 0–7 normal
   ;; (black, red, green, yellow, blue, magenta, cyan, white) then 8–15 bright.
   ;; Black/white slots follow WezTerm's Catppuccin plugin: ansi[0]=surface1,

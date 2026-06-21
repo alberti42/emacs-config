@@ -357,14 +357,14 @@ monitor."
 ;; Disable line numbers and suppress horizontal wheel scroll in terminal/shell
 ;; buffers.  Hscroll is suppressed via a buffer-local flag rather than by
 ;; setting `truncate-lines' to nil: the latter would cause Emacs to reserve the
-;; last column for the continuation glyph, making vterm's prompt overflow by one
+;; last column for the continuation glyph, making ghostel's prompt overflow by one
 ;; character because it reports the full window width to the child process.
-(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook vterm-mode-hook ghostel-mode-hook treemacs-mode-hook))
+(dolist (hook '(shell-mode-hook eshell-mode-hook term-mode-hook ghostel-mode-hook treemacs-mode-hook))
   (add-hook hook (lambda ()
                    (display-line-numbers-mode -1)
                    (setq-local scroll-config-suppress-hscroll t))))
 
-;; Terminal emulators (term, eshell, vterm)
+;; Terminal emulators (term, eshell, ghostel)
 (emacs-config-load-module
  'terminal-config
  "Could not load terminal-config.el; terminal settings are disabled.")
@@ -491,7 +491,6 @@ monitor."
   (dolist (cmd '(shell
                  eshell
                  term
-                 vterm
                  ghostel
                  async-shell-command
                  compile

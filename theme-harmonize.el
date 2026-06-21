@@ -24,9 +24,9 @@ ANSI order: black, red, green, yellow, blue, magenta, cyan, white,
 followed by the eight bright variants.
 
 Applied to the 16 `ansi-color-*' faces, which are the foundation that
-`term-color-*', `vterm-color-*', and `ghostel-color-*' all inherit
+`term-color-*' and `ghostel-color-*' all inherit
 from — so a single override here propagates to compilation buffers,
-eshell, term, vterm, and ghostel.")
+eshell, term, and ghostel.")
 
 (defconst theme-harmonize--ansi-color-faces
   [ansi-color-black          ansi-color-red
@@ -111,8 +111,8 @@ Add face propagation here as new packages need harmonizing."
           (set-face-foreground face bg)))))
 
   ;; ANSI 16-color palette: override `ansi-color-*'.  Both `term-color-*'
-  ;; (used by vterm) and `ghostel-color-*' inherit from these, so a single
-  ;; set of overrides recolors compilation, eshell, term, vterm, and ghostel
+  ;; and `ghostel-color-*' inherit from these, so a single
+  ;; set of overrides recolors compilation, eshell, term, and ghostel
   ;; together.  Both `:foreground' and `:background' are set: stock
   ;; `ansi-color-*' faces have both attributes (e.g. green3 / green3), so
   ;; leaving either one in place lets the original color name leak through

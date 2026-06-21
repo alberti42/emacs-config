@@ -16,7 +16,7 @@ wrapped buffers.
   `pixel-scroll-precision-mode` — that minor-mode is the one ultra-scroll
   activates here.
 - **`init.el`** sets `scroll-config-suppress-hscroll` (buffer-local) in
-  terminal/shell mode hooks (vterm, ghostel, term, eshell, shell). See
+  terminal/shell mode hooks (ghostel, term, eshell, shell). See
   the invariant on truncate-lines below.
 
 ## Public API
@@ -109,7 +109,7 @@ half-window steps and the 10-line setting silently fails.
 
 ### `scroll-config-suppress-hscroll` is decoupled from `truncate-lines`
 
-Terminal emulators (vterm, ghostel, term, eshell, shell) **require
+Terminal emulators (ghostel, term, eshell, shell) **require
 `truncate-lines t`** so the full window width is reported to the child
 process. Flipping `truncate-lines nil` in those buffers would steal a
 column for the continuation glyph and shell prompts would overflow by one

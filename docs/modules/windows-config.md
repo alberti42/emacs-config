@@ -8,8 +8,8 @@ External packages: none — all built on `windmove`, `winner-mode`, and
 
 ## Cross-module touchpoints
 
-- **`terminal-config.el`** exposes `C-b` inside `vterm-mode-map` and
-  `ghostel-mode-map` so the prefix and `C-b <arrow>` navigation work inside
+- **`terminal-config.el`** exposes `C-b` inside `ghostel-mode-map` and
+  `ghostel-semi-char-mode-map` so the prefix and `C-b <arrow>` navigation work inside
   terminal buffers. Adding new `C-b` bindings here is automatically picked
   up there.
 - `tmux-map` is added to `which-key-inhibit-regexps` so the popup does not
