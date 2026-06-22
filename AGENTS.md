@@ -138,6 +138,7 @@ Packages configured directly in `init.el` (not extracted into modules):
 - `mouse` (built-in, TTY only): `xterm-mouse-mode` + mouse wheel bindings for terminal frames.
 - `lua-mode`: major mode for Lua.
 - `ssh-config-mode`: major mode for `~/.ssh/config`.
+- `applescript-mode`: major mode for AppleScript (font-locking + indentation); auto-registers `.applescript`.
 
 Per-major-mode settings (`syntaxes/`):
 

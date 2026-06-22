@@ -622,6 +622,14 @@ monitor."
 ;; ssh-config-mode: major mode for ~/.ssh/config.
 (use-package ssh-config-mode)
 
+;; applescript-mode: major mode for AppleScript (font-locking, indentation).
+;; The mode is old-style: it sets `font-lock-defaults' but ends with
+;; `run-hooks' instead of `run-mode-hooks', so `after-change-major-mode-hook'
+;; never fires and `global-font-lock-mode' never turns fontification on. Enable
+;; `font-lock-mode' from its own hook (which it does run) to fix highlighting.
+(use-package applescript-mode
+  :hook (applescript-mode . font-lock-mode))
+
 ;; swift-mode: major mode for Swift.
 (use-package swift-mode)
 
