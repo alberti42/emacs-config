@@ -46,24 +46,14 @@ migration places named envs (the pyenv-virtualenv replacement)."
 (defvar-local uv-active-venv nil
   "uv virtualenv activated in the current buffer, or nil.")
 
-(defvar uv-venv nil
+(defcustom uv-venv nil
   "uv virtualenv to activate via dir-locals.
 Set in `.dir-locals.el' to auto-activate a named environment on a
 per-project basis.  Either a bare name under `uv-virtualenvs-dir' or an
-absolute path to a virtualenv root.  Becomes buffer-local when applied.")
-
-;;;###autoload (put 'uv-venv 'safe-local-variable #'stringp)
-(put 'uv-venv 'safe-local-variable #'stringp)
-
-(defun uv--virtualenvs ()
-  "Return the names of virtualenvs under `uv-virtualenvs-dir'.
-Only subdirectories that actually contain a `bin/python' are listed."
-  (when (file-directory-p uv-virtualenvs-dir)
-    (seq-filter
-     (lambda (name)
-       (file-exists-p
-        (expand-file-name (concat name "/bin/python") uv-virtualenvs-dir)))
-     (directory-files uv-virtualenvs-dir nil "\\`[^.]"))))
+absolute path to a virtualenv root.  Becomes buffer-local when applied."
+  :type '(choice (const :tag "None" nil)
+                 (string :tag "Virtualenv name or absolute path"))
+  :safe #'stringp)
 
 (defun uv--prefix (venv)
   "Return the filesystem prefix of VENV.
@@ -72,6 +62,18 @@ absolute path to a virtualenv root."
   (if (file-name-absolute-p venv)
       (expand-file-name venv)
     (expand-file-name venv uv-virtualenvs-dir)))
+
+(defun uv--venv-p (prefix)
+  "Return non-nil if PREFIX is a usable virtualenv root (has a bin/python)."
+  (file-exists-p (expand-file-name "bin/python" prefix)))
+
+(defun uv--virtualenvs ()
+  "Return the names of virtualenvs under `uv-virtualenvs-dir'.
+Only subdirectories that actually contain a `bin/python' are listed."
+  (when (file-directory-p uv-virtualenvs-dir)
+    (seq-filter
+     (lambda (name) (uv--venv-p (expand-file-name name uv-virtualenvs-dir)))
+     (directory-files uv-virtualenvs-dir nil "\\`[^.]"))))
 
 (defun uv--set (venv)
   "Activate uv VENV buffer-locally.
@@ -82,7 +84,7 @@ Subprocesses spawned from the buffer -- including long-running ones like
 coding agents -- inherit the full activated environment."
   (let* ((prefix (uv--prefix venv))
          (bin (expand-file-name "bin" prefix)))
-    (unless (file-directory-p bin)
+    (unless (uv--venv-p prefix)
       (error "No uv virtualenv at %s" prefix))
     (make-local-variable 'process-environment)
     (make-local-variable 'exec-path)
@@ -116,9 +118,17 @@ dropping the buffer-local copies set up by `uv--set'."
   (message "uv deactivated in %s" (buffer-name)))
 
 (defun uv--apply-dir-local ()
-  "Activate `uv-venv' if set via dir-locals."
+  "Activate `uv-venv' if set via dir-locals.
+A missing environment is reported with `display-warning' rather than an
+error, so a stale `.dir-locals.el' entry never blocks opening the file."
   (when (and uv-venv (stringp uv-venv))
-    (uv--set uv-venv)))
+    (if (uv--venv-p (uv--prefix uv-venv))
+        (uv--set uv-venv)
+      (display-warning
+       'uv-config
+       (format "uv-venv %S set via dir-locals, but no virtualenv at %s"
+               uv-venv (uv--prefix uv-venv))
+       :warning))))
 
 (add-hook 'hack-local-variables-hook #'uv--apply-dir-local)
 

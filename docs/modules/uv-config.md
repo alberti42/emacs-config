@@ -50,7 +50,19 @@ Both call `uv--set`, which performs the equivalent of a shell
   `process-environment`).
 - Prepends the env's `bin/` to `PATH` (same buffer-local copy) and to a
   buffer-local `exec-path`.
-- Signals an error if the resolved venv has no `bin/`.
+
+A venv is considered usable when its `bin/python` exists (`uv--venv-p`,
+shared with the picker's lister). Missing-env handling differs by entry
+point:
+
+- **Dir-local path** (`uv--apply-dir-local`, runs on every file open via
+  `hack-local-variables-hook`): a missing env is reported with
+  `display-warning` and **skipped** — a stale `.dir-locals.el` entry must
+  never block opening the file. The warning surfaces via `warning-toast`.
+- **`uv--set`** (the low-level activator): **errors** on a missing env.
+  This is a defensive guard; the interactive picker can't trigger it
+  (`completing-read` requires a match), and the dir-local path checks
+  first, so it only fires on a genuine programming error.
 
 `uv-deactivate-buffer` reverts everything in one go by killing the
 buffer-local `process-environment` and `exec-path` copies.
