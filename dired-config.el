@@ -54,6 +54,8 @@ or reveal in the system file manager."
 
 (defun dired-sort-by-name ()            (interactive) (dired-sort-other "-l"))
 (defun dired-sort-by-name-r ()          (interactive) (dired-sort-other "-lr"))
+(defun dired-sort-by-size ()            (interactive) (dired-sort-other "-lS"))
+(defun dired-sort-by-size-r ()          (interactive) (dired-sort-other "-lSr"))
 (defun dired-sort-by-mtime ()           (interactive) (dired-sort-other "-lt"))
 (defun dired-sort-by-mtime-r ()         (interactive) (dired-sort-other "-ltr"))
 (defun dired-sort-by-btime ()
@@ -89,6 +91,8 @@ or reveal in the system file manager."
   (define-key dired-mode-map (kbd ", M") #'dired-sort-by-mtime-r)
   (define-key dired-mode-map (kbd ", b") #'dired-sort-by-btime)
   (define-key dired-mode-map (kbd ", B") #'dired-sort-by-btime-r)
+  (define-key dired-mode-map (kbd ", s") #'dired-sort-by-size)
+  (define-key dired-mode-map (kbd ", S") #'dired-sort-by-size-r)  
   (define-key dired-mode-map (kbd ", e") #'dired-sort-by-ext)
   (define-key dired-mode-map (kbd ", E") #'dired-sort-by-ext-r))
 
