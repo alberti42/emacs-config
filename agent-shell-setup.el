@@ -76,7 +76,13 @@
   ;; buffer) so equations aren't permanently lost to whichever frame
   ;; happened to be current at render time.
   (when (boundp 'agent-shell-markdown-math-render-on-non-graphic)
-    (setq agent-shell-markdown-math-render-on-non-graphic t)))
+    (setq agent-shell-markdown-math-render-on-non-graphic t))
+  ;; Equation size relative to the buffer font: 1.0 matches the surrounding
+  ;; text, >1 enlarges, <1 shrinks.  Equations auto-track the font size, so
+  ;; tune this only if they look a touch big or small (after changing it,
+  ;; `M-x agent-shell-markdown-math-refresh' re-sizes existing equations).
+  (when (boundp 'agent-shell-markdown-math-font-scale)
+    (setq agent-shell-markdown-math-font-scale 1.0)))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
