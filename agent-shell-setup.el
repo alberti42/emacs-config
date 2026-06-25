@@ -15,6 +15,7 @@
              :repo "alberti42/fork-agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
+  ;; (agent-shell-anthropic-default-model-id "claude-opus-4-6")
   (agent-shell-opencode-default-model-id "openai/gpt-5.5")
   (agent-shell-opencode-acp-command
    ;; The --attach option relies on a custom modification
