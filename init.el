@@ -429,7 +429,7 @@ monitor."
 ;;     (setq select-enable-primary t)
 ;;     (xclip-mode 1)))
 
-;; General-purpose interactive utilities (insert-uuid, copy-buffer-file-name, …)
+;; General-purpose interactive utilities (copy-buffer-file-name, …)
 (emacs-config-load-module
  'utils
  "Could not load utils.el; utility commands are disabled.")

@@ -2,17 +2,15 @@
 
 ;;; -- Utilities to produce UUID -----------------------------------------------
 
-;; Generate and insert a UUID v4 at point.
-(defun insert-uuid ()
-  "Generate a random UUID v4 and insert it at point."
-  (interactive)
-  (insert
-   (format "%08x-%04x-4%03x-%04x-%012x"
-           (random (expt 16 8))
-           (random (expt 16 4))
-           (random (expt 16 3))
-           (logior #x8000 (logand #xbfff (random (expt 16 4))))
-           (random (expt 16 12)))))
+;; Stock `uuid.el' (Emacs 31+) ships without autoload cookies, so its symbols
+;; are unknown until something requires it.  Register autoloads for the public
+;; API here so any `uuid-*' call lazily pulls in the library.
+(use-package uuid
+  :straight nil
+  :commands (uuid-v4 uuid-v5 uuid-v7
+             uuid-to-string uuid-from-string
+             uuid-to-bytes uuid-from-bytes
+             uuid-to-number uuid-p))
 
 ;;; -- Utilities to interact with current buffer -------------------------------
 
