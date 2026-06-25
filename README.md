@@ -90,7 +90,7 @@ magit-config.el          # Magit + Forge
 treemacs-config.el       # File tree
 soft-wrap.el             # Soft-wrap helpers (margin-based, no external deps)
 goodies/                 # Non-Elisp companion files
-  ev                     #   Script: open files in Emacs from vterm (use as $EDITOR)
+  eb                     #   Script: blocking open-in-Emacs from ghostel (use as $EDITOR)
   xterm-emacs.terminfo   #   Custom terminfo for 24-bit color in terminals
 …
 ```

@@ -1,0 +1,41 @@
+#!/bin/zsh
+# eb — "emacs blocking": open FILE in the running Emacs (ghostel) session and
+# block until C-c C-q in Emacs.  Intended as $EDITOR (git commits, Claude
+# Code's Ctrl-g, …) so the edit happens in the session you're already in,
+# never a nested Emacs.
+#
+# Usage: eb FILE
+#
+# Mechanism: emit ghostel's OSC 52;e escape — the same sequence `ghostel_cmd'
+# sends — to dispatch `eb-open-file FILE SEMAPHORE' (whitelisted in
+# `ghostel-eval-cmds'; see terminal-config.el), then poll until SEMAPHORE
+# appears.  `eb-open-file' opens FILE and binds C-c C-q to `eb-done', which
+# saves the buffer, writes SEMAPHORE, and buries it — unblocking this process
+# without any Emacs server / daemon.  Inlining the escape (rather than calling
+# the `ghostel_cmd' shell function) keeps `eb' usable as $EDITOR no matter how
+# the launching program spawns it.
+#
+# For a NON-blocking "just open it" (no $EDITOR contract), use ghostel's own
+# `ghostel_cmd find-file FILE' instead.
+
+# Emit an Elisp call to the running ghostel session via OSC 52;e.
+_eb_ghostel_cmd() {
+    local payload="" arg
+    for arg in "$@"; do
+        arg="${arg//\\/\\\\}"   # backslash -> double backslash
+        arg="${arg//\"/\\\"}"   # "         -> \"
+        payload="$payload\"$arg\" "
+    done
+    printf '\e]52;e;%s\e\\' "$payload" > /dev/tty
+}
+
+# Absolute, symlink-resolved path (zsh :A modifier; default to cwd).
+file="${${1:-.}:A}"
+
+semaphore="$(mktemp)"
+rm -f "$semaphore"
+_eb_ghostel_cmd eb-open-file "$file" "$semaphore"
+until [[ -e "$semaphore" ]]; do
+    sleep 0.1
+done
+rm -f "$semaphore"

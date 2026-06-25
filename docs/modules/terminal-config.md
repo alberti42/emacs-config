@@ -1,6 +1,6 @@
 # terminal-config.el
 
-Terminal emulator setup: `term`, `eshell`, `ghostel`, plus the `ev`
+Terminal emulator setup: `term`, `eshell`, `ghostel`, plus the `eb`
 "open in Emacs" `$EDITOR` integration.
 
 ## External packages
@@ -72,15 +72,41 @@ mode map is consulted. `C-@` is the canonical terminal encoding for C-SPC
 `C-@` (C-SPC) bindings are present-but-commented in the source — uncomment
 when needed.
 
-## `ev` editor integration
+## `eb` editor integration
 
-Blocking "open in Emacs" for use as `$EDITOR` from a ghostel shell. Flow:
+`eb` ("emacs blocking") opens a file in the running ghostel session and blocks
+until you finish — exactly the `$EDITOR` contract. It is **single-purpose and
+always blocking**; for a non-blocking "just open it" use ghostel's own
+`ghostel_cmd find-file FILE`. Flow:
 
-1. Shell `ev` function runs `ghostel_cmd ev-open-file FILE SEMAPHORE`, then
-   polls until `SEMAPHORE` exists.
-2. `ev-open-file` opens `FILE` and binds `C-c C-q` to `ev-done`.
-3. `ev-done` writes the semaphore file and buries the buffer, unblocking
-   the shell process **without involving the Emacs server** (no
-   `emacsclient`, no daemon required).
+1. The `eb` script (`etc/goodies/eb`, symlinked into `~/.local/bin`) emits
+   ghostel's `OSC 52;e` escape to dispatch `eb-open-file FILE SEMAPHORE`,
+   then polls until `SEMAPHORE` exists. The escape is inlined (not via the
+   `ghostel_cmd` shell helper) so `eb` works as `$EDITOR` regardless of how
+   the launching program spawns it.
+2. `eb-open-file` opens `FILE`, binds `C-c C-q` to `eb-done`, and adds a
+   buffer-local `kill-buffer-hook`.
+3. `eb-done` saves the buffer then kills it. The shell is released by
+   `eb--release` (writes the semaphore file), which runs from **both**
+   `eb-done` and the `kill-buffer-hook` — so killing the buffer (`C-x k`)
+   instead of `C-c C-q` still unblocks the caller rather than hanging it
+   forever. All **without involving the Emacs server** (no `emacsclient`, no
+   daemon required).
 
-`ev-open-file` is registered in `ghostel-eval-cmds`.
+`eb-open-file` is registered in `ghostel-eval-cmds`. `eb--release` is
+idempotent, so the two release paths never double-fire.
+
+The semaphore is **not** legacy cruft: ghostel ships no blocking-editor helper
+(`ghostel_cmd` is fire-and-forget), and the design deliberately avoids a
+daemon, so a polled semaphore is the minimal way to make a foreign process
+block on an in-session edit.
+
+### Wiring it up as `$EDITOR`
+
+- `zsh/.zshrc` sets `EDITOR="$HOME/.local/bin/eb"` whenever `$INSIDE_EMACS`
+  is set, so git commits and other `$EDITOR`-spawning CLIs open in the running
+  session.
+- The `claude` launcher (`.local/bin/claude`) does the same guard, because it
+  runs with `zsh -fd` (no rc files) and so does not inherit the `.zshrc`
+  branch's logic — only the already-exported `EDITOR` value. Routing Claude's
+  Ctrl-g through `eb` prevents a stray Ctrl-g from spawning a nested Emacs.

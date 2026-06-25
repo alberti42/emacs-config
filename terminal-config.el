@@ -1,5 +1,7 @@
 ;;; terminal-config.el --- Terminal emulator configuration -*- lexical-binding: t; -*-
 
+;;;; -- Generic settings -------------------------------------------------------
+
 ;; Use xterm-256color instead of default 8-color-based `eterm-color`
 ;; terminfo for better terminal UX
 (setq term-term-name "xterm-256color")
@@ -13,29 +15,48 @@
   (advice-add 'term-handle-exit :after
               (lambda (&rest _) (quit-window t))))
 
-;; ev: blocking "open in Emacs" for use as $EDITOR from ghostel.
+;;;; -- Blocking editor from Emacs ---------------------------------------------
+
+;; eb ("emacs blocking"): blocking "open in Emacs" for use as $EDITOR from ghostel.
 ;;
-;; The shell `ev` function calls `ghostel_cmd ev-open-file FILE SEMAPHORE`, then
-;; polls until SEMAPHORE exists.  `ev-open-file` opens the file and binds
-;; C-c C-q to `ev-done`, which creates SEMAPHORE and buries the buffer —
-;; unblocking the shell process without involving the Emacs server at all.
-(defvar-local ev--semaphore nil
-  "Semaphore path used by `ev-done' to signal editing is complete.")
+;; The `eb` script (etc/goodies/eb, symlinked onto PATH) emits ghostel's
+;; OSC 52;e escape to dispatch `eb-open-file FILE SEMAPHORE`, then polls until
+;; SEMAPHORE exists.  `eb-open-file` opens the file and binds C-c C-q to
+;; `eb-done`, which saves and closes the buffer.  The shell is released by
+;; `eb--release` (writes SEMAPHORE) — run from BOTH `eb-done` and a buffer-local
+;; `kill-buffer-hook`, so killing the buffer (C-x k) instead of C-c C-q still
+;; unblocks the caller rather than hanging it forever.  No Emacs server is
+;; involved.  `eb-open-file` is whitelisted in `ghostel-eval-cmds` at the bottom
+;; of this file.  For a non-blocking "just open it", use `ghostel_cmd find-file'.
+(defvar-local eb--semaphore nil
+  "Semaphore path used by `eb--release' to signal editing is complete.")
 
-(defun ev-open-file (file semaphore)
-  "Open FILE for editing; C-c C-q creates SEMAPHORE to unblock the shell."
+(defun eb--release ()
+  "Signal the waiting shell (write the `eb' semaphore) if still pending.
+Idempotent: safe to call from both `eb-done' and `kill-buffer-hook'."
+  (when eb--semaphore
+    (write-region "" nil eb--semaphore nil 'no-message)
+    (setq eb--semaphore nil)))
+
+(defun eb-open-file (file semaphore)
+  "Open FILE as a blocking $EDITOR buffer; SEMAPHORE unblocks the waiting shell.
+C-c C-q saves and finishes; killing the buffer also unblocks the shell."
   (find-file file)
-  (setq ev--semaphore semaphore)
-  (local-set-key (kbd "C-c C-q") #'ev-done)
-  (message "ev: edit buffer, then C-c C-q when done"))
+  (setq eb--semaphore semaphore)
+  (local-set-key (kbd "C-c C-q") #'eb-done)
+  ;; Safety net: any buffer death releases the shell, not just C-c C-q.
+  (add-hook 'kill-buffer-hook #'eb--release nil t)
+  (message "eb: edit, then C-c C-q (or kill the buffer) when done"))
 
-(defun ev-done ()
-  "Signal editing complete (ev EDITOR integration); bury the buffer."
+(defun eb-done ()
+  "Finish editing (eb $EDITOR integration): save, then kill the buffer.
+Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
   (interactive)
-  (when ev--semaphore
-    (write-region "" nil ev--semaphore)
-    (setq ev--semaphore nil))
-  (bury-buffer))
+  (when (and buffer-file-name (buffer-modified-p))
+    (save-buffer))
+  (kill-buffer))
+
+;;;; -- Ghostel setup ----------------------------------------------------------
 
 ;; ghostel: fast terminal emulator backed by libghostty-vt (the Ghostty VT engine).
 ;; Adds Kitty keyboard protocol, mouse
@@ -43,24 +64,16 @@
 ;; The native module is downloaded automatically on first use.
 ;; To open a new session use M-x ghostel.
 (use-package ghostel
-  :straight (ghostel
-             :type git
-             :host github
-             :repo "dakra/ghostel"
-             ;; Include the bundled `etc/terminfo/' tree in the straight build
-             ;; dir.  Straight's default :files spec keeps only `.el' and doc
-             ;; files; without this, ghostel's probe via
-             ;; (expand-file-name "etc/terminfo" <resource-root>) fails and it
-             ;; falls back to TERM=xterm-256color with a warning.  Preserving
-             ;; the hashed subdirs is required: ghostel checks both the macOS
-             ;; layout (78/xterm-ghostty) and the Linux layout
-             ;; (x/xterm-ghostty).
-             :files (:defaults
-                     ("etc/terminfo"    "etc/terminfo/xterm-ghostty.terminfo")
-                     ("etc/terminfo/67" "etc/terminfo/67/ghostty")
-                     ("etc/terminfo/78" "etc/terminfo/78/xterm-ghostty")
-                     ("etc/terminfo/g"  "etc/terminfo/g/ghostty")
-                     ("etc/terminfo/x"  "etc/terminfo/x/xterm-ghostty")))
+  ;; Use ghostel's canonical MELPA recipe — do NOT hand-roll a :straight recipe
+  ;; with a custom :files.  The MELPA recipe is `(:defaults "etc" "src"
+  ;; "vendor" ...)', which ships the bundled `etc/' tree ghostel needs at
+  ;; runtime: `etc/terminfo/' (else TERM falls back to xterm-256color) and
+  ;; `etc/shell/' (the auto shell integration; without it ghostel never sets
+  ;; ZDOTDIR, so `ghostel_cmd', directory tracking, and OSC 133 prompt
+  ;; navigation silently no-op).  A hand-written :files that omits any of these
+  ;; re-breaks them.  `straight-use-package-by-default' resolves this to the
+  ;; recipe repositories (MELPA), so just `:straight t'.
+  :straight t
   :commands (ghostel)
   :custom
   (ghostel-shell shell-file-name)
@@ -95,7 +108,7 @@
               ("C-g"   . (lambda () (interactive) (ghostel-send-string "\C-g")))))
 
 (with-eval-after-load 'ghostel
-  (add-to-list 'ghostel-eval-cmds '("ev-open-file" ev-open-file)))
+  (add-to-list 'ghostel-eval-cmds '("eb-open-file" eb-open-file)))
 
 (provide 'terminal-config)
 ;;; terminal-config.el ends here
