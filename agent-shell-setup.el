@@ -5,10 +5,17 @@
 ;; Requires shell-maker and acp as dependencies.
 
 (use-package agent-shell
-  :straight t
+  ;; Tell straight to use your local folder instead of downloading from GitHub.
+  ;; This is the "canonical" way to do local development with straight.
+  :straight (agent-shell
+             :type git
+             :host github
+             :local-repo "/Users/andrea/Documents/Programming/Others/fork-agent-shell"
+             :branch "display-math"
+             :repo "alberti42/fork-agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
-  (agent-shell-opencode-default-model-id "openai/gpt-5.4")
+  (agent-shell-opencode-default-model-id "openai/gpt-5.5")
   (agent-shell-opencode-acp-command
    ;; The --attach option relies on a custom modification
    ;; in the branch acp-attach of opencode personal fork:
@@ -51,7 +58,25 @@
                                   (my/agent-shell--project-root))))
                   (agent-shell-buffers))))
   (advice-add 'agent-shell-project-buffers :override
-              #'my/agent-shell-project-buffers))
+              #'my/agent-shell-project-buffers)
+
+  ;; Render LaTeX display-math equations in agent responses as images
+  ;; (compiled via latex + dvisvgm).  `agent-shell-markdown-render-math'
+  ;; is the master switch and defaults to nil, so enable it here.  Once
+  ;; on, block-level `\[...\]', `$$...$$', and ```math / ```latex fences
+  ;; all render by default.  To drop `$$' (e.g. if it collides with
+  ;; prose), set `agent-shell-markdown-math-delimiters' to '(bracket).
+  ;; The `boundp' guard keeps this a no-op on an agent-shell build that
+  ;; predates the feature, and avoids a free-variable warning.
+  (when (boundp 'agent-shell-markdown-render-math)
+    (setq agent-shell-markdown-render-math t))
+  ;; Daemon: a chat may be rendered while a TTY (emacsclient -t) frame is
+  ;; selected, but viewed later in a GUI frame.  Compile the SVGs anyway
+  ;; (ignored on the terminal, shown once a graphical frame opens the
+  ;; buffer) so equations aren't permanently lost to whichever frame
+  ;; happened to be current at render time.
+  (when (boundp 'agent-shell-markdown-math-render-on-non-graphic)
+    (setq agent-shell-markdown-math-render-on-non-graphic t)))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
