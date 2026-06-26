@@ -129,6 +129,18 @@ Used to clean CommonMark's pointy-bracket form
       (substring text 1 -1)
     text))
 
+(defun markdown-config--normalize-link-path (path)
+  "Strip a `<...>' wrapper from PATH and percent-decode it when encoded.
+Turns CommonMark's pointy-bracket form `<path with spaces>' and a
+percent-encoded `path%20with%20spaces' into a plain filesystem path.
+Percent-decoding runs only when PATH actually contains a `%XX' escape, so
+a plain path (or an already-decoded one) is returned unchanged and a
+literal `%' in a filename is left alone."
+  (let ((p (markdown-config--strip-pointy-brackets path)))
+    (if (string-match-p "%[0-9A-Fa-f][0-9A-Fa-f]" p)
+        (url-unhex-string p)
+      p)))
+
 (defun markdown-config--inline-link-destination-node (link-node)
   "Return the `link_destination' child of LINK-NODE (an `inline_link'), or nil."
   (when link-node
@@ -179,7 +191,77 @@ Bound on `markdown-ts-mode-map' and on `markdown-config--link-keymap'
       (browse-url url)))
    (t (user-error "No link at point"))))
 
-;;; -- markdown-ts-mode link rendering ---------------------------------------
+;;; -- bundled link/image handling fixes -------------------------------------
+;;
+;; Two corrections to the bundled `markdown-ts-mode' that share
+;; `markdown-config--normalize-link-path':
+;;
+;;   1. `markdown-ts--fontify-image' resolves an image's `link_destination'
+;;      with a bare `expand-file-name' on the raw node text, so the
+;;      pointy-bracket form `![a](<path with spaces>)' keeps its literal
+;;      `<>' and a `%20'-encoded path keeps its escapes — both then fail the
+;;      `file-exists-p' guard and the image silently never renders.  We
+;;      normalize the destination by hooking the one `treesit-node-text'
+;;      call the fontifier makes (guarded to `link_destination' nodes) for
+;;      the dynamic extent of ORIG.  Hooking `expand-file-name' here would
+;;      be wrong: it is a C primitive, and redefining it forces native-comp
+;;      trampoline rebuilds on every fontify pass.  `treesit-node-text' is a
+;;      native-compiled Lisp function (`subr-native-elisp-p'), so rebinding
+;;      it needs no trampoline.
+;;
+;;   2. `markdown-ts--make-link-button' gives every schemeless destination a
+;;      stock `find-file' action, so clicking an image/link button opens the
+;;      target in a buffer (e.g. a JPEG in image-mode) regardless of type.
+;;      We reroute schemeless (local-file) buttons through
+;;      `markdown-config--follow-local-link' so they obey the same policy as
+;;      `C-c C-o': markdown opens with `find-file', anything else lands in
+;;      `dired' with point on the file.  URLs, `mailto:' and `#fragment'
+;;      targets keep the stock action.
+
+(defun markdown-config--fontify-image-normalize-dest (orig &rest args)
+  "Around advice on `markdown-ts--fontify-image': accept bracketed/encoded paths.
+Rebinds `treesit-node-text' for the duration of ORIG so that the text of a
+`link_destination' node passes through `markdown-config--normalize-link-path'
+before path resolution, letting `![a](<path with spaces>)' and `%20'-encoded
+local images render.  Only `link_destination' results are rewritten; every
+other node's text is returned verbatim.  `treesit-node-text' is a Lisp
+function, so this rebind triggers no native-comp trampoline (unlike rebinding
+the C primitive `expand-file-name')."
+  (cl-letf* ((orig-fn (symbol-function 'treesit-node-text))
+             ((symbol-function 'treesit-node-text)
+              (lambda (node &optional no-property)
+                (let ((text (funcall orig-fn node no-property)))
+                  (if (and node
+                           (string= (treesit-node-type node) "link_destination"))
+                      (markdown-config--normalize-link-path text)
+                    text)))))
+    (apply orig args)))
+
+(defun markdown-config--reroute-link-button (orig beg end url)
+  "Around advice on `markdown-ts--make-link-button': route local files via dired.
+Builds the stock button (ORIG over BEG, END, URL), then for a schemeless
+URL (a local file path) replaces the stock `find-file' action with
+`markdown-config--follow-local-link', so clicking obeys the same
+type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
+`mailto:' and other `scheme:' URLs keep the stock action."
+  (funcall orig beg end url)
+  (unless (or (string-prefix-p "#" url)
+              (let ((case-fold-search nil))
+                (string-match-p "\\`[a-z]+:" url)))
+    (put-text-property
+     beg end 'action
+     (lambda (_button)
+       (let ((dest (markdown-config--normalize-link-path url)))
+         (or (markdown-config--follow-local-link dest)
+             (find-file dest)))))))
+
+(with-eval-after-load 'markdown-ts-mode
+  (advice-add 'markdown-ts--fontify-image :around
+              #'markdown-config--fontify-image-normalize-dest)
+  (advice-add 'markdown-ts--make-link-button :around
+              #'markdown-config--reroute-link-button))
+
+;;; -- markdown-ts-mode link rendering -----------------------------------------
 ;;
 ;; Two gaps in the bundled `markdown-ts-mode' to close:
 ;;
