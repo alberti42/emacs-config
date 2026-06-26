@@ -104,6 +104,20 @@ Once resolved to FULL-PATH:
               (dired dir))
             (dired-goto-file full-path)))))))
 
+(defun markdown-config--resolve-wiki-path (name)
+  "Resolve a wiki/embed NAME to an absolute path; nil with no visiting file.
+Uses the same base-directory rule as `markdown-config--follow-wiki-link' (a
+NAME containing `/' is vault-relative — the Obsidian vault root, else the
+current file's directory; a bare NAME is relative to the current file's
+directory) but appends no `.md': an embed names its target as written, image
+extension included."
+  (when buffer-file-name
+    (let* ((wp (file-name-directory buffer-file-name))
+           (base (or (and (string-search "/" name)
+                          (markdown-config--obsidian-vault-root wp))
+                     wp)))
+      (expand-file-name name base))))
+
 (defconst markdown-config--wiki-link-regexp
   "\\[\\[\\([^]|\n]+?\\)\\(?:|[^]\n]*?\\)?\\]\\]"
   "Match `[[name]]' or `[[name|label]]'; group 1 is the resolvable name.
@@ -305,14 +319,61 @@ fontifier).  The keymap is parser-agnostic — the bound command,
 `markdown-config-follow-link-at-point', dispatches based on what's
 actually at point.")
 
+(defun markdown-config--render-wiki-embed-image (embed-beg end target)
+  "Render an inline image for an `![[TARGET]]' embed spanning EMBED-BEG..END.
+EMBED-BEG is the position of the leading `!'.  Any prior embed-image overlay
+in range is cleared first so a refontify does not stack duplicates; then,
+when `markdown-ts-inline-images' is on (the flag `markdown-ts-toggle-inline-images'
+flips) and TARGET resolves to a displayable local image, an `after-string'
+overlay carrying the image is added — below the embed when it is alone on its
+line, otherwise right after it, mirroring `markdown-ts--fontify-image'.  The
+overlay is tagged `markdown-ts-image' so the toggle's
+`markdown-ts--remove-image-overlays' clears embed images together with the
+grammar-node ones."
+  (dolist (ov (overlays-in embed-beg (min (1+ end) (point-max))))
+    (when (overlay-get ov 'markdown-config-wiki-embed-image)
+      (delete-overlay ov)))
+  (when (and markdown-ts-inline-images (display-images-p))
+    (when-let* ((path (markdown-config--resolve-wiki-path target))
+                ((not (file-remote-p path)))
+                ((file-exists-p path))
+                ((image-supported-file-p path))
+                (max-w (if (eq markdown-ts-image-max-width 'window)
+                           (window-body-width nil t)
+                         markdown-ts-image-max-width))
+                (img (create-image path nil nil :max-width max-w :scale 1)))
+      (let* ((alone (save-excursion
+                      (and (string-match-p
+                            "\\`[[:space:]]*\\'"
+                            (buffer-substring-no-properties
+                             (progn (goto-char embed-beg)
+                                    (line-beginning-position))
+                             embed-beg))
+                           (string-match-p
+                            "\\`[[:space:]]*\\'"
+                            (buffer-substring-no-properties
+                             end (line-end-position))))))
+             (str (if alone
+                      (concat "\n" (propertize " " 'display img))
+                    (propertize " " 'display img)))
+             (ov (make-overlay (1- end) end nil t nil)))
+        (overlay-put ov 'markdown-config-wiki-embed-image t)
+        (overlay-put ov 'markdown-ts-image t)
+        (overlay-put ov 'after-string str)
+        (overlay-put ov 'evaporate t)))))
+
 (defun markdown-config--wiki-link-fontify (limit)
-  "Font-lock MATCHER for `[[name]]' and `[[name|alias]]'.
+  "Font-lock MATCHER for `[[name]]', `[[name|alias]]' and `![[name|alias]]'.
 Restricts match data to the visible label so the keyword's face applies
 to that region only.  Adds clickability (`keymap', `mouse-face',
 `help-echo') to the label and, when `markdown-ts-hide-markup' is on,
 sets `invisible' on the surrounding markup using the bundled
 `markdown-ts--markup' spec — `markdown-ts-toggle-hide-markup' calls
-`font-lock-flush' which re-runs this matcher with the new value."
+`font-lock-flush' which re-runs this matcher with the new value.
+
+A leading `!' marks an Obsidian embed: the `!' joins the hidden markup,
+and when `markdown-ts-inline-images' is on the target image is rendered
+below the label via `markdown-config--render-wiki-embed-image'."
   (when (re-search-forward "\\[\\[\\([^]\n]+\\)\\]\\]" limit t)
     (let* ((beg       (match-beginning 0))
            (end       (match-end 0))
@@ -322,14 +383,19 @@ sets `invisible' on the surrounding markup using the bundled
            (pipe      (string-match-p "|" inner))
            (label-beg (if pipe (+ inner-beg pipe 1) inner-beg))
            (label-end inner-end)
-           (target    (if pipe (substring inner 0 pipe) inner)))
+           (target    (if pipe (substring inner 0 pipe) inner))
+           (embedp    (and (> beg (point-min)) (eq (char-before beg) ?!)))
+           (markup-beg (if embedp (1- beg) beg)))
       (add-text-properties label-beg label-end
                            (list 'mouse-face 'highlight
                                  'keymap markdown-config--link-keymap
-                                 'help-echo (concat "Wiki link → " target)))
+                                 'help-echo (concat (if embedp "Embed → " "Wiki link → ")
+                                                    target)))
       (when markdown-ts-hide-markup
-        (put-text-property beg label-beg 'invisible 'markdown-ts--markup)
-        (put-text-property label-end end  'invisible 'markdown-ts--markup))
+        (put-text-property markup-beg label-beg 'invisible 'markdown-ts--markup)
+        (put-text-property label-end end       'invisible 'markdown-ts--markup))
+      (when embedp
+        (markdown-config--render-wiki-embed-image markup-beg end target))
       (set-match-data (list label-beg label-end))
       t)))
 
