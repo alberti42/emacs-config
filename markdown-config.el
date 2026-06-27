@@ -319,17 +319,34 @@ fontifier).  The keymap is parser-agnostic — the bound command,
 `markdown-config-follow-link-at-point', dispatches based on what's
 actually at point.")
 
-(defun markdown-config--render-wiki-embed-image (embed-beg end target)
+(defun markdown-config--render-wiki-embed-image (embed-beg end target caption)
   "Render an inline image for an `![[TARGET]]' embed spanning EMBED-BEG..END.
-EMBED-BEG is the position of the leading `!'.  Any prior embed-image overlay
-in range is cleared first so a refontify does not stack duplicates; then,
-when `markdown-ts-inline-images' is on (the flag `markdown-ts-toggle-inline-images'
-flips) and TARGET resolves to a displayable local image, an `after-string'
-overlay carrying the image is added — below the embed when it is alone on its
-line, otherwise right after it, mirroring `markdown-ts--fontify-image'.  The
-overlay is tagged `markdown-ts-image' so the toggle's
+EMBED-BEG is the position of the leading `!'.  CAPTION is the embed's explicit
+alias (the `|alias' part) or nil for a bare `![[file]]'; when non-blank it is
+surfaced as the image's `help-echo' so hovering or pointing at the image shows
+it.  A bare embed with no alias gets no hover label.
+
+Any prior embed-image overlay in range is cleared first so a refontify does
+not stack duplicates; then, when `markdown-ts-inline-images' is on (the flag
+`markdown-ts-toggle-inline-images' flips) and TARGET resolves to a displayable
+local image, an overlay carrying the image as a `display' property is placed
+over the whole embed markup, so the image renders in place of the `![[...]]'
+text on the embed's own line.
+
+The image is a `display' overlay rather than an `after-string': an
+after-string has no buffer position, and prefixing it with a newline (the
+\"image on its own line\" idiom that `markdown-ts--fontify-image' uses) puts
+the image on a phantom display line.  `pixel-scroll-precision-mode' can only
+anchor `window-start' to real buffer positions, so scrolling across such a
+line jumps by a whole image height (Emacs bug#64252).  A `display' overlay
+keeps the image on the markup's real line and scrolls smoothly.  This is why
+the label is not rendered as a separate caption line — it would need a phantom
+line too; the caption is shown on hover instead.
+
+The overlay is tagged `markdown-ts-image' so the toggle's
 `markdown-ts--remove-image-overlays' clears embed images together with the
-grammar-node ones."
+grammar-node ones, and carries the shared link keymap so clicking the image
+follows the embed exactly like clicking its label."
   (dolist (ov (overlays-in embed-beg (min (1+ end) (point-max))))
     (when (overlay-get ov 'markdown-config-wiki-embed-image)
       (delete-overlay ov)))
@@ -342,24 +359,14 @@ grammar-node ones."
                            (window-body-width nil t)
                          markdown-ts-image-max-width))
                 (img (create-image path nil nil :max-width max-w :scale 1)))
-      (let* ((alone (save-excursion
-                      (and (string-match-p
-                            "\\`[[:space:]]*\\'"
-                            (buffer-substring-no-properties
-                             (progn (goto-char embed-beg)
-                                    (line-beginning-position))
-                             embed-beg))
-                           (string-match-p
-                            "\\`[[:space:]]*\\'"
-                            (buffer-substring-no-properties
-                             end (line-end-position))))))
-             (str (if alone
-                      (concat "\n" (propertize " " 'display img))
-                    (propertize " " 'display img)))
-             (ov (make-overlay (1- end) end nil t nil)))
+      (let ((ov (make-overlay embed-beg end nil t nil)))
         (overlay-put ov 'markdown-config-wiki-embed-image t)
         (overlay-put ov 'markdown-ts-image t)
-        (overlay-put ov 'after-string str)
+        (overlay-put ov 'display img)
+        (overlay-put ov 'keymap markdown-config--link-keymap)
+        (overlay-put ov 'mouse-face 'highlight)
+        (when (and caption (string-match-p "[^[:space:]]" caption))
+          (overlay-put ov 'help-echo caption))
         (overlay-put ov 'evaporate t)))))
 
 (defun markdown-config--wiki-link-fontify (limit)
@@ -373,7 +380,7 @@ sets `invisible' on the surrounding markup using the bundled
 
 A leading `!' marks an Obsidian embed: the `!' joins the hidden markup,
 and when `markdown-ts-inline-images' is on the target image is rendered
-below the label via `markdown-config--render-wiki-embed-image'."
+in place of the markup via `markdown-config--render-wiki-embed-image'."
   (when (re-search-forward "\\[\\[\\([^]\n]+\\)\\]\\]" limit t)
     (let* ((beg       (match-beginning 0))
            (end       (match-end 0))
@@ -395,7 +402,11 @@ below the label via `markdown-config--render-wiki-embed-image'."
         (put-text-property markup-beg label-beg 'invisible 'markdown-ts--markup)
         (put-text-property label-end end       'invisible 'markdown-ts--markup))
       (when embedp
-        (markdown-config--render-wiki-embed-image markup-beg end target))
+        (markdown-config--render-wiki-embed-image
+         markup-beg end target
+         ;; Only an explicit alias (the `|alias' part) is a real caption;
+         ;; a bare `![[file]]' has no caption, so pass nil (no hover label).
+         (and pipe (buffer-substring-no-properties label-beg label-end))))
       (set-match-data (list label-beg label-end))
       t)))
 
