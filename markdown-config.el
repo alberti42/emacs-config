@@ -329,24 +329,29 @@ it.  A bare embed with no alias gets no hover label.
 Any prior embed-image overlay in range is cleared first so a refontify does
 not stack duplicates; then, when `markdown-ts-inline-images' is on (the flag
 `markdown-ts-toggle-inline-images' flips) and TARGET resolves to a displayable
-local image, an overlay carrying the image as a `display' property is placed
-over the whole embed markup, so the image renders in place of the `![[...]]'
-text on the embed's own line.
+local image, the image is shown via a `display' overlay on the embed's first
+character, and the remainder of the `![[...]]' markup is hidden with a second
+`invisible' overlay — so only the image shows, in place of the markup, on the
+embed's own line.
 
+Two overlays rather than one wide `display' overlay, for smooth scrolling.
 The image is a `display' overlay rather than an `after-string': an
 after-string has no buffer position, and prefixing it with a newline (the
 \"image on its own line\" idiom that `markdown-ts--fontify-image' uses) puts
-the image on a phantom display line.  `pixel-scroll-precision-mode' can only
-anchor `window-start' to real buffer positions, so scrolling across such a
-line jumps by a whole image height (Emacs bug#64252).  A `display' overlay
-keeps the image on the markup's real line and scrolls smoothly.  This is why
-the label is not rendered as a separate caption line — it would need a phantom
-line too; the caption is shown on hover instead.
+the image on a phantom display line that `pixel-scroll-precision-mode' cannot
+anchor `window-start' to, so scrolling jumps by a whole image height (Emacs
+bug#64252).  But a `display' overlay spanning the *whole* markup is nearly as
+bad: these embed paths are ~180 chars, and a wide display span lets
+`window-start' park deep inside the image region, reviving the same one-image
+jump on scroll-up.  Confining the image to a single buffer position (with the
+rest hidden) leaves `window-start' nowhere to park, so scrolling stays smooth.
+This is also why the label is not rendered as a separate caption line — it
+would need a phantom line too; the caption is shown on hover instead.
 
-The overlay is tagged `markdown-ts-image' so the toggle's
+Both overlays are tagged `markdown-ts-image' so the toggle's
 `markdown-ts--remove-image-overlays' clears embed images together with the
-grammar-node ones, and carries the shared link keymap so clicking the image
-follows the embed exactly like clicking its label."
+grammar-node ones, and the image overlay carries the shared link keymap so
+clicking the image follows the embed exactly like clicking its label."
   (dolist (ov (overlays-in embed-beg (min (1+ end) (point-max))))
     (when (overlay-get ov 'markdown-config-wiki-embed-image)
       (delete-overlay ov)))
@@ -359,15 +364,28 @@ follows the embed exactly like clicking its label."
                            (window-body-width nil t)
                          markdown-ts-image-max-width))
                 (img (create-image path nil nil :max-width max-w :scale 1)))
-      (let ((ov (make-overlay embed-beg end nil t nil)))
-        (overlay-put ov 'markdown-config-wiki-embed-image t)
-        (overlay-put ov 'markdown-ts-image t)
-        (overlay-put ov 'display img)
-        (overlay-put ov 'keymap markdown-config--link-keymap)
-        (overlay-put ov 'mouse-face 'highlight)
+      ;; Put the image on a SINGLE buffer position and hide the rest of the
+      ;; markup, rather than spreading `display' over the whole `![[...]]' span.
+      ;; A wide display overlay lets `window-start' park deep inside the image
+      ;; region, which reintroduces the bug#64252 one-image scroll-up jump (the
+      ;; embed paths here are ~180 chars).  A one-char image plus an invisible
+      ;; tail keeps the same "image in place of the markup" look while leaving
+      ;; `window-start' nowhere to park, so scrolling stays smooth.
+      (let ((img-ov (make-overlay embed-beg (1+ embed-beg) nil t nil)))
+        (overlay-put img-ov 'markdown-config-wiki-embed-image t)
+        (overlay-put img-ov 'markdown-ts-image t)
+        (overlay-put img-ov 'display img)
+        (overlay-put img-ov 'keymap markdown-config--link-keymap)
+        (overlay-put img-ov 'mouse-face 'highlight)
         (when (and caption (string-match-p "[^[:space:]]" caption))
-          (overlay-put ov 'help-echo caption))
-        (overlay-put ov 'evaporate t)))))
+          (overlay-put img-ov 'help-echo caption))
+        (overlay-put img-ov 'evaporate t)
+        (when (> end (1+ embed-beg))
+          (let ((hide-ov (make-overlay (1+ embed-beg) end nil t nil)))
+            (overlay-put hide-ov 'markdown-config-wiki-embed-image t)
+            (overlay-put hide-ov 'markdown-ts-image t)
+            (overlay-put hide-ov 'invisible t)
+            (overlay-put hide-ov 'evaporate t)))))))
 
 (defun markdown-config--wiki-link-fontify (limit)
   "Font-lock MATCHER for `[[name]]', `[[name|alias]]' and `![[name|alias]]'.
