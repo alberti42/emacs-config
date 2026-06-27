@@ -16,9 +16,12 @@
 ;; window edge while scrolling (to stop redisplay recentering), which by
 ;; default fights a non-zero `scroll-margin': redisplay re-imposes the margin
 ;; and yanks `window-start' back, reading as the text snapping back on a slow
-;; scroll.  `scroll-config--keep-margin' (below) parks point on the margin
-;; boundary after each scroll event so redisplay leaves `window-start' alone;
-;; with it, every backend honours `scroll-margin' > 0.
+;; scroll — worst near the buffer edges and across inline images taller than
+;; the margin can fit, where the margin simply cannot be honoured and the view
+;; oscillates.  `scroll-config--suppress-margin' (below) sidesteps this by
+;; setting `scroll-margin' to 0 *while the wheel is moving* and restoring it on
+;; a short idle, so scrolling is smooth everywhere while cursor movement (what
+;; `scroll-margin' is really for) keeps its context.
 ;;
 ;;   `ultra-scroll' — package backend; pixel-precise, and the smoother of the
 ;;                    two over images and variable-height lines.  Remaps
@@ -38,8 +41,8 @@ restarting Emacs (or re-loading `scroll-config').")
 (defvar scroll-config-scroll-margin 4
   "Lines of context to keep at the window edges.
 Drives `scroll-margin' (cursor movement, isearch) and the numeric
-`recenter-positions' stops for `C-l'.  Both smooth backends honour it during
-scrolling via `scroll-config--keep-margin'.")
+`recenter-positions' stops for `C-l'.  It is suspended during active smooth
+scrolling and restored afterwards by `scroll-config--suppress-margin'.")
 
 ;; Settings shared by all backends.
 (setq scroll-conservatively 101)
@@ -48,9 +51,8 @@ scrolling via `scroll-config--keep-margin'.")
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
 
-;; `scroll-margin' governs cursor movement, isearch, and (via
-;; `scroll-config--keep-margin') the resting position of point during smooth
-;; scrolling under every backend.
+;; `scroll-margin' governs cursor movement and isearch.  During active smooth
+;; scrolling it is temporarily suspended (see `scroll-config--suppress-margin').
 (setq scroll-margin scroll-config-scroll-margin)
 
 ;; `C-l' (recenter-top-bottom) cycles middle -> N lines from top -> N from
@@ -68,22 +70,38 @@ line-step globals set below win."
   (define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
   (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
 
-(defun scroll-config--keep-margin (&rest _)
-  "Park point at the `scroll-margin' boundary after a smooth scroll.
-Both smooth backends drag point to the very window edge using only
-visibility (`pos-visible-in-window-p'), ignoring `scroll-margin'; redisplay
-then re-imposes `scroll-margin' and yanks `window-start' back, which reads as
-the text snapping back on a slow scroll.  Moving point to the margin boundary
-first leaves redisplay nothing to correct.  No-op when `scroll-margin' is 0."
-  (when (> scroll-margin 0)
-    (let* ((win (selected-window))
-           (rc  (posn-col-row (posn-at-point nil win)))
-           (row (and rc (cdr rc))))
-      (when row
-        (let ((top scroll-margin)
-              (bot (- (window-body-height win) 1 scroll-margin)))
-          (cond ((< row top) (vertical-motion (- top row)))
-                ((> row bot) (vertical-motion (- bot row)))))))))
+(defvar-local scroll-config--margin-restore-timer nil
+  "Idle timer that restores `scroll-margin' after smooth scrolling stops.")
+
+(defun scroll-config--suppress-margin (&rest _)
+  "Suspend `scroll-margin' for the duration of an active smooth scroll.
+Both smooth backends drag point to the window edge while scrolling; with a
+non-zero `scroll-margin', redisplay then recenters to restore the margin —
+read as the view snapping back, and near the buffer edges or across inline
+images taller than the margin can fit, as an outright oscillation that makes
+the top/bottom hard to reach.  Set `scroll-margin' to 0 while the wheel is
+moving and restore `scroll-config-scroll-margin' after a short idle, so cursor
+movement (what the margin is really for) still keeps its context.  The value
+is set buffer-locally and the timer is re-armed on every scroll event, so it
+cannot get stuck at 0 in normal use."
+  (setq-local scroll-margin 0)
+  (when (timerp scroll-config--margin-restore-timer)
+    (cancel-timer scroll-config--margin-restore-timer))
+  (setq scroll-config--margin-restore-timer
+        (run-with-idle-timer
+         0.18 nil
+         (lambda (buf)
+           (when (buffer-live-p buf)
+             (with-current-buffer buf
+               (setq-local scroll-margin scroll-config-scroll-margin))))
+         (current-buffer))))
+
+(defun scroll-config--suppress-margin-on (commands)
+  "Install `scroll-config--suppress-margin' as `:before' advice on COMMANDS.
+Each existing symbol in COMMANDS gets the advice; missing ones are skipped."
+  (dolist (cmd commands)
+    (when (fboundp cmd)
+      (advice-add cmd :before #'scroll-config--suppress-margin))))
 
 (pcase scroll-config-smooth-scroll
   ('ultra-scroll
@@ -95,19 +113,22 @@ first leaves redisplay nothing to correct.  No-op when `scroll-margin' is 0."
      (setq ultra-scroll-hide-cursor t)
      (setq ultra-scroll-preserve-column nil)
      ;; ultra-scroll `warn's at enable time unless `scroll-margin' is 0.  The
-     ;; keep-margin advice makes a non-zero margin safe, so dodge the warning
-     ;; by enabling under a let-bound 0 (the real value stands afterwards).
+     ;; suppress-margin advice makes a non-zero margin safe, so dodge the
+     ;; warning by enabling under a let-bound 0 (the real value stands after).
      (let ((scroll-margin 0))
        (ultra-scroll-mode 1))
      (scroll-config--tame-pixel-scroll-map)
-     (dolist (cmd '(ultra-scroll ultra-scroll-mac))
-       (when (fboundp cmd)
-         (advice-add cmd :after #'scroll-config--keep-margin)))))
+     (scroll-config--suppress-margin-on
+      '(ultra-scroll ultra-scroll-mac
+        pixel-scroll-interpolate-down pixel-scroll-interpolate-up))))
   ('pixel
    ;; Built-in smooth scrolling.
    (require 'pixel-scroll)
    (pixel-scroll-precision-mode 1)
-   ;; (advice-add 'pixel-scroll-precision :after #'scroll-config--keep-margin)
+   (scroll-config--suppress-margin-on
+    '(pixel-scroll-precision
+      pixel-scroll-interpolate-down pixel-scroll-interpolate-up
+      pixel-scroll-start-momentum))
    (scroll-config--tame-pixel-scroll-map))
   (_ nil))
 
