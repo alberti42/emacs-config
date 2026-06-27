@@ -405,7 +405,12 @@ clicking the image follows the embed exactly like clicking its label."
   "Font-lock MATCHER for `[[name]]', `[[name|alias]]' and `![[name|alias]]'.
 Restricts match data to the visible label so the keyword's face applies
 to that region only.  Adds clickability (`keymap', `mouse-face',
-`help-echo') to the label and, when `markdown-ts-hide-markup' is on,
+`help-echo') to the WHOLE link span — brackets and the embed `!'
+included — so the link is followable by click regardless of whether
+`markdown-ts-hide-markup' is on (with markup shown the brackets are
+visible and must be clickable too; with markup hidden the hidden
+brackets simply carry harmless, undisplayed properties).  When
+`markdown-ts-hide-markup' is on, also
 sets `invisible' on the surrounding markup using the bundled
 `markdown-ts--markup' spec — `markdown-ts-toggle-hide-markup' calls
 `font-lock-flush' which re-runs this matcher with the new value.
@@ -425,7 +430,10 @@ in place of the markup via `markdown-config--render-wiki-embed-image'."
            (target    (if pipe (substring inner 0 pipe) inner))
            (embedp    (and (> beg (point-min)) (eq (char-before beg) ?!)))
            (markup-beg (if embedp (1- beg) beg)))
-      (add-text-properties label-beg label-end
+      ;; Clickability covers the entire link span (markup-beg..end), not just
+      ;; the label, so a click anywhere on `[[name]]' / `![[name]]' follows it
+      ;; whether or not `markdown-ts-hide-markup' has hidden the brackets.
+      (add-text-properties markup-beg end
                            (list 'mouse-face 'highlight
                                  'keymap markdown-config--link-keymap
                                  'help-echo (concat (if embedp "Embed → " "Wiki link → ")

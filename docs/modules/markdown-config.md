@@ -99,10 +99,16 @@ all three:
 2. Restricts match data to the label range so
    `markdown-config-wiki-link-face` (inherits from the built-in
    `link` face) applies to that range only.
-3. Adds `mouse-face`, `keymap`, and `help-echo` text properties so
-   `mouse-1` / `mouse-2` follow the link via the existing dispatcher
-   (the keymap binds `[follow-link]` to `mouse-face` so
-   `mouse-1-click-follows-link` activates).
+3. Adds `mouse-face`, `keymap`, and `help-echo` text properties over the
+   **whole link span** — the `[[` `]]` brackets and an embed's leading
+   `!` included, not just the label — so `mouse-1` / `mouse-2` follow
+   the link via the existing dispatcher (the keymap binds
+   `[follow-link]` to `mouse-face` so `mouse-1-click-follows-link`
+   activates). Spanning the brackets is what makes a click land
+   regardless of `markdown-ts-hide-markup`: with markup shown the
+   brackets are visible and must be clickable; with markup hidden they
+   carry harmless, undisplayed properties. (The face from step 2 still
+   covers only the label, since it is driven by the match data.)
 4. When `markdown-ts-hide-markup` is non-nil, marks the surrounding
    markup (`[[name|` prefix and `]]` suffix) `invisible` against the
    `markdown-ts--markup` invisibility spec — the same spec used by
