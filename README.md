@@ -27,7 +27,7 @@ both GUI and terminal (TTY) Emacs.
 - [Treemacs](https://github.com/Alexander-Miller/treemacs) file tree (TTY-friendly)
 - [Nerd Fonts](https://www.nerdfonts.com/) icons via `nerd-icons`
 - Relative line numbers with absolute current line
-- Pixel-precise scrolling in GUI (`ultra-scroll`)
+- Pixel-precise smooth scrolling in GUI (built-in `pixel-scroll-precision-mode`)
 - Frameless window style on macOS GUI
 
 **Editor**

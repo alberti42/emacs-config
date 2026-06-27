@@ -24,14 +24,14 @@
   :magic ("%PDF" . pdf-view-mode)
   :hook ((pdf-view-mode . pdf-view-roll-minor-mode)
          (pdf-view-mode . (lambda () (display-line-numbers-mode -1))))
-  ;; ultra-scroll (in `scroll-config.el') is a global mode that binds
-  ;; wheel events via its own minor-mode keymap.  Its consume-and-do-nothing
-  ;; behavior in image buffers leaves PDFs unscrollable by trackpad, and
-  ;; binding into `pdf-view-mode-map' loses (major-mode map < minor-mode
-  ;; map in keymap precedence).  `minor-mode-overriding-map-alist' wins
-  ;; over any minor-mode map, so use that to redirect wheel events to
-  ;; the default `mwheel-scroll' inside PDF buffers only.
-  :hook (pdf-view-mode . pdf-tools-config--bypass-ultra-scroll)
+  ;; `pixel-scroll-precision-mode' (enabled globally in `scroll-config.el')
+  ;; binds the wheel via its own minor-mode keymap, and pixel-scrolling an
+  ;; image buffer leaves PDFs awkward to scroll by trackpad.  Binding into
+  ;; `pdf-view-mode-map' loses (major-mode map < minor-mode map in keymap
+  ;; precedence).  `minor-mode-overriding-map-alist' wins over any minor-mode
+  ;; map, so use that to redirect wheel events to the default `mwheel-scroll'
+  ;; inside PDF buffers only, letting pdf-view handle them.
+  :hook (pdf-view-mode . pdf-tools-config--bypass-pixel-scroll)
   :bind (:map pdf-view-mode-map
               ([next]  . pdf-tools-config-scroll-up-lines)
               ([prior] . pdf-tools-config-scroll-down-lines))
@@ -54,14 +54,17 @@ Use `n'/`p' for whole-page jumps."
     (dotimes (_ pdf-tools-config-page-key-step)
       (pdf-view-previous-line-or-previous-page 1)))
 
-  (defun pdf-tools-config--bypass-ultra-scroll ()
-    "Override ultra-scroll's wheel bindings in this buffer."
+  (defun pdf-tools-config--bypass-pixel-scroll ()
+    "Redirect wheel events to `mwheel-scroll' in this buffer.
+`pixel-scroll-precision-mode' is a global minor mode; override its wheel
+bindings (and, via the same high-precedence alist, the global horizontal
+wheel binding) here so PDFs scroll with the plain handler pdf-view expects."
     (let ((map (make-sparse-keymap)))
       (define-key map [wheel-up]    #'mwheel-scroll)
       (define-key map [wheel-down]  #'mwheel-scroll)
       (define-key map [wheel-left]  #'mwheel-scroll)
       (define-key map [wheel-right] #'mwheel-scroll)
-      (push (cons 'ultra-scroll-mode map) minor-mode-overriding-map-alist)))
+      (push (cons 'pixel-scroll-precision-mode map) minor-mode-overriding-map-alist)))
   :custom
   ;; `pdf-annot-latex-header' defaults via an initializer that reads
   ;; `org-format-latex-header'.  tecosaur's org-latex-preview fork

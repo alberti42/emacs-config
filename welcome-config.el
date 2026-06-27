@@ -62,8 +62,8 @@ leave the frame itself unchanged.")
               #'welcome-config--on-size-change)
     ;; Swallow wheel events so the splash stays put.  `local-set-key' is not
     ;; sufficient for <wheel-up>/<wheel-down>: `pixel-scroll-precision-mode-map'
-    ;; (which carries `ultra-scroll') is a minor-mode map, and those win over
-    ;; the buffer-local map.  Install via `minor-mode-overriding-map-alist',
+    ;; is a minor-mode map, and those win over the buffer-local map.  Install
+    ;; via `minor-mode-overriding-map-alist',
     ;; which is consulted before `minor-mode-map-alist' and shadows per-buffer.
     (let ((override (make-sparse-keymap)))
       (dolist (ev '([wheel-up] [wheel-down] [wheel-left] [wheel-right]

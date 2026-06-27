@@ -22,9 +22,10 @@
 ;; clears them outright.
 (setq lazy-highlight-cleanup nil)
 
-;; Keep at default nil: ultra-scroll's pixel-scrolling bypasses the scroll-command path, so isearch
-;; stays active during wheel scrolling without this. Setting it to t fights ultra-scroll because
-;; isearch then tries to keep the current match in view, snapping the window back on every event.
+;; Keep nil so a wheel/scroll command issued during isearch does not make isearch keep the current
+;; match in view, which would snap the window back on every scroll event. (This rationale predates
+;; the switch to the built-in `pixel-scroll-precision-mode'; re-verify the isearch + wheel
+;; interaction if it ever feels off.)
 (setq isearch-allow-scroll nil)
 
 ;; Let M-< / M-> / C-v / M-v move within isearch instead of exiting it.

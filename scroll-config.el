@@ -2,57 +2,37 @@
 
 ;;; Commentary:
 ;;
-;; Tuned scroll parameters for both GUI and TTY.  The vertical smooth-scroll
-;; backend is selectable via `scroll-config-smooth-scroll' (ultra-scroll /
-;; built-in pixel-scroll / none); see the selection section below.
+;; Tuned scroll parameters for GUI and TTY, the built-in
+;; `pixel-scroll-precision-mode' for vertical smooth scrolling, and a
+;; pixel-precise horizontal wheel handler.
 ;;
+;; Vertical smooth scrolling runs on a locally patched Emacs whose
+;; `pixel-scroll-precision-mode' suspends `scroll-margin' for the duration of a
+;; gesture and restores it -- repositioning point to honor it -- on a short
+;; idle, so a non-zero `scroll-margin' no longer fights smooth scrolling; the
+;; same patches fix the tall-inline-image scroll jumps (bug#64252).
+;;
+;; `ultra-scroll' was previously installed as an alternative backend purely to
+;; work around those image jumps.  With the upstream fixes in place it is no
+;; longer needed and has been removed; the built-in backend is the only one.
+;;
+;; Horizontal wheel scrolling (further below) is independent.
 
 ;;; Code:
-
-;;; -- Smooth-scroll backend selection -----------------------------------------
-;;
-;; Three interchangeable vertical-scroll backends, chosen via
-;; `scroll-config-smooth-scroll'.  Both smooth backends drag point to the
-;; window edge while scrolling (to stop redisplay recentering), which by
-;; default fights a non-zero `scroll-margin': redisplay re-imposes the margin
-;; and yanks `window-start' back, reading as the text snapping back on a slow
-;; scroll — worst near the buffer edges and across inline images taller than
-;; the margin can fit, where the margin simply cannot be honoured and the view
-;; oscillates.  `scroll-config--suppress-margin' (below) sidesteps this by
-;; setting `scroll-margin' to 0 *while the wheel is moving* and restoring it on
-;; a short idle, so scrolling is smooth everywhere while cursor movement (what
-;; `scroll-margin' is really for) keeps its context.
-;;
-;;   `ultra-scroll' — package backend; pixel-precise, and the smoother of the
-;;                    two over images and variable-height lines.  Remaps
-;;                    `pixel-scroll-precision' to `ultra-scroll' (NS) or
-;;                    `ultra-scroll-mac' (emacs-mac).
-;;   `pixel'        — built-in `pixel-scroll-precision-mode'.  Can be jumpy
-;;                    over images taller than the window (per its own FIXME).
-;;   nil            — no smooth scrolling; the wheel steps by lines.
-;;
-;; Horizontal wheel scrolling (further below) is independent of this choice.
-
-(defvar scroll-config-smooth-scroll 'pixel
-  "Vertical smooth-scroll backend: `ultra-scroll', `pixel', or nil.
-See the commentary above for the trade-offs.  Changing this requires
-restarting Emacs (or re-loading `scroll-config').")
 
 (defvar scroll-config-scroll-margin 4
   "Lines of context to keep at the window edges.
 Drives `scroll-margin' (cursor movement, isearch) and the numeric
-`recenter-positions' stops for `C-l'.  It is suspended during active smooth
-scrolling and restored afterwards by `scroll-config--suppress-margin'.")
+`recenter-positions' stops for `C-l'.  `pixel-scroll-precision-mode' suspends
+it during an active scroll and restores it afterwards (see
+`pixel-scroll-precision-settle-delay').")
 
-;; Settings shared by all backends.
+;; Settings shared by cursor movement and scrolling.
 (setq scroll-conservatively 101)
 (setq scroll-step 1)
 (setq scroll-preserve-screen-position t)
 (setq hscroll-margin 2)
 (setq hscroll-step 1)
-
-;; `scroll-margin' governs cursor movement and isearch.  During active smooth
-;; scrolling it is temporarily suspended (see `scroll-config--suppress-margin').
 (setq scroll-margin scroll-config-scroll-margin)
 
 ;; `C-l' (recenter-top-bottom) cycles middle -> N lines from top -> N from
@@ -62,77 +42,28 @@ scrolling and restored afterwards by `scroll-config--suppress-margin'.")
             scroll-config-scroll-margin
             (- scroll-config-scroll-margin)))
 
-(defun scroll-config--tame-pixel-scroll-map ()
-  "Stop `pixel-scroll-precision-mode-map' shadowing the PgUp/PgDn globals.
-Both smooth backends enable `pixel-scroll-precision-mode', whose map binds
-<next>/<prior> to pixel-scroll-interpolate-*; unbind them there so the
-line-step globals set below win."
-  (define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
-  (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil))
+;;; -- Vertical smooth scrolling (built-in pixel-scroll) -----------------------
 
-(defvar-local scroll-config--margin-restore-timer nil
-  "Idle timer that restores `scroll-margin' after smooth scrolling stops.")
+(require 'pixel-scroll)
 
-(defun scroll-config--suppress-margin (&rest _)
-  "Suspend `scroll-margin' for the duration of an active smooth scroll.
-Both smooth backends drag point to the window edge while scrolling; with a
-non-zero `scroll-margin', redisplay then recenters to restore the margin —
-read as the view snapping back, and near the buffer edges or across inline
-images taller than the margin can fit, as an outright oscillation that makes
-the top/bottom hard to reach.  Set `scroll-margin' to 0 while the wheel is
-moving and restore `scroll-config-scroll-margin' after a short idle, so cursor
-movement (what the margin is really for) still keeps its context.  The value
-is set buffer-locally and the timer is re-armed on every scroll event, so it
-cannot get stuck at 0 in normal use."
-  (setq-local scroll-margin 0)
-  (when (timerp scroll-config--margin-restore-timer)
-    (cancel-timer scroll-config--margin-restore-timer))
-  (setq scroll-config--margin-restore-timer
-        (run-with-idle-timer
-         0.18 nil
-         (lambda (buf)
-           (when (buffer-live-p buf)
-             (with-current-buffer buf
-               (setq-local scroll-margin scroll-config-scroll-margin))))
-         (current-buffer))))
+;; The patched mode suspends `scroll-margin' during a gesture and, once
+;; scrolling (including any momentum tail) stops, restores it and -- when
+;; `pixel-scroll-precision-reposition-point' is non-nil -- repositions point to
+;; honor the margin.  `pixel-scroll-precision-settle-delay' is how long after
+;; the last scroll event that settling happens.
+(setopt pixel-scroll-precision-reposition-point t)
+(setopt pixel-scroll-precision-settle-delay 0.18)
+(setopt pixel-scroll-precision-hide-cursor-while-scrolling nil)
 
-(defun scroll-config--suppress-margin-on (commands)
-  "Install `scroll-config--suppress-margin' as `:before' advice on COMMANDS.
-Each existing symbol in COMMANDS gets the advice; missing ones are skipped."
-  (dolist (cmd commands)
-    (when (fboundp cmd)
-      (advice-add cmd :before #'scroll-config--suppress-margin))))
+(pixel-scroll-precision-mode 1)
 
-(pcase scroll-config-smooth-scroll
-  ('ultra-scroll
-   ;; Package backend; remaps `pixel-scroll-precision' to
-   ;; `ultra-scroll'/`ultra-scroll-mac'.
-   (use-package ultra-scroll
-     :config
-     ;; Hide the cursor while scrolling and restore it afterwards.
-     (setq ultra-scroll-hide-cursor t)
-     (setq ultra-scroll-preserve-column nil)
-     ;; ultra-scroll `warn's at enable time unless `scroll-margin' is 0.  The
-     ;; suppress-margin advice makes a non-zero margin safe, so dodge the
-     ;; warning by enabling under a let-bound 0 (the real value stands after).
-     (let ((scroll-margin 0))
-       (ultra-scroll-mode 1))
-     (scroll-config--tame-pixel-scroll-map)
-     (scroll-config--suppress-margin-on
-      '(ultra-scroll ultra-scroll-mac
-        pixel-scroll-interpolate-down pixel-scroll-interpolate-up))))
-  ('pixel
-   ;; Built-in smooth scrolling.
-   (require 'pixel-scroll)
-   (pixel-scroll-precision-mode 1)
-   (scroll-config--suppress-margin-on
-    '(pixel-scroll-precision
-      pixel-scroll-interpolate-down pixel-scroll-interpolate-up
-      pixel-scroll-start-momentum))
-   (scroll-config--tame-pixel-scroll-map))
-  (_ nil))
+;; `pixel-scroll-precision-mode-map' binds <next>/<prior> to
+;; pixel-scroll-interpolate-*; unbind them so the line-step PgUp/PgDn globals
+;; set below win.
+(define-key pixel-scroll-precision-mode-map (kbd "<next>")  nil)
+(define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil)
 
-;; Scroll by 5 lines (current and other window).
+;; Scroll by a fixed number of lines (current and other window).
 (let ((num-lines 10))
   (pcase-dolist (`(,key . ,fn)
                  '(("C-v" . scroll-up)      ("<next>"  . scroll-up)
@@ -144,7 +75,7 @@ Each existing symbol in COMMANDS gets the advice; missing ones are skipped."
     (global-set-key (kbd key) (lambda () (interactive) (funcall fn num-lines)))))
 
 ;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
-;; ultra-scroll only covers vertical; we replicate its pixel-delta approach here.
+;; pixel-scroll only covers vertical; we replicate its pixel-delta approach here.
 ;; The NS port encodes pixel amounts in (nth 4 event) as (COLS . PIXELS), same as
 ;; vertical events.  We accumulate fractional column remainders so sub-character-width
 ;; movements are not silently dropped.

@@ -59,9 +59,8 @@ in the y axis. It's derived from the pixel height:
 ### Wheel events: `minor-mode-overriding-map-alist`, not `local-set-key`
 
 `local-set-key` does **not** suppress `<wheel-up>` / `<wheel-down>` in
-this buffer. `pixel-scroll-precision-mode-map` (which carries
-`ultra-scroll`) is a *minor-mode* map and its bindings win over the
-buffer-local map at lookup time.
+this buffer. `pixel-scroll-precision-mode-map` is a *minor-mode* map and
+its bindings win over the buffer-local map at lookup time.
 
 The fix is to install an override map keyed on `pixel-scroll-precision-mode`
 in `minor-mode-overriding-map-alist`, which is consulted *before*

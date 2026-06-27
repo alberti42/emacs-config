@@ -319,6 +319,19 @@ fontifier).  The keymap is parser-agnostic — the bound command,
 `markdown-config-follow-link-at-point', dispatches based on what's
 actually at point.")
 
+(defcustom markdown-config-inline-embed-images t
+  "When non-nil, render Obsidian-style `![[file]]' embeds as inline images.
+The image is shown in place of the markup and the embed's alias (if any) is
+surfaced on hover (`help-echo'), not as buffer text.  When nil, an embed is
+left as its literal `![[file|alias]]' markup -- still faced, clickable, and
+with the target on hover, but neither rendered as an image nor markup-hidden --
+so the vanilla, un-rendered behavior can be inspected and compared.
+
+Image rendering also requires `markdown-ts-inline-images' (the bundled image
+toggle, flipped by `markdown-ts-toggle-inline-images') to be on."
+  :type 'boolean
+  :group 'markdown-ts)
+
 (defun markdown-config--render-wiki-embed-image (embed-beg end target caption)
   "Render an inline image for an `![[TARGET]]' embed spanning EMBED-BEG..END.
 EMBED-BEG is the position of the leading `!'.  CAPTION is the embed's explicit
@@ -355,7 +368,8 @@ clicking the image follows the embed exactly like clicking its label."
   (dolist (ov (overlays-in embed-beg (min (1+ end) (point-max))))
     (when (overlay-get ov 'markdown-config-wiki-embed-image)
       (delete-overlay ov)))
-  (when (and markdown-ts-inline-images (display-images-p))
+  (when (and markdown-config-inline-embed-images
+             markdown-ts-inline-images (display-images-p))
     (when-let* ((path (markdown-config--resolve-wiki-path target))
                 ((not (file-remote-p path)))
                 ((file-exists-p path))
@@ -416,9 +430,17 @@ in place of the markup via `markdown-config--render-wiki-embed-image'."
                                  'keymap markdown-config--link-keymap
                                  'help-echo (concat (if embedp "Embed → " "Wiki link → ")
                                                     target)))
-      (when markdown-ts-hide-markup
+      ;; Hide the surrounding markup when `markdown-ts-hide-markup' is on.  An
+      ;; embed only hides its markup when it is actually rendered as an image
+      ;; (`markdown-config-inline-embed-images'); otherwise its literal
+      ;; `![[...]]' markup is left visible for inspection.
+      (when (and markdown-ts-hide-markup
+                 (or (not embedp) markdown-config-inline-embed-images))
         (put-text-property markup-beg label-beg 'invisible 'markdown-ts--markup)
         (put-text-property label-end end       'invisible 'markdown-ts--markup))
+      ;; Always call the renderer for embeds: it clears any prior embed-image
+      ;; overlays (so toggling the option off removes a previously shown image)
+      ;; and only draws a new one when `markdown-config-inline-embed-images' is on.
       (when embedp
         (markdown-config--render-wiki-embed-image
          markup-beg end target
