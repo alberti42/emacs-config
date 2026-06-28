@@ -183,11 +183,12 @@ if (!NILP (ignore_line_at_end))
 The `move_it_to` to `END` and its overshoot back-off now run **only** when
 `IGNORE_LINE_AT_END` is nil (the forward path), which is otherwise stock
 upstream. The stepping runs on the live iterator (no `SAVE_IT`/`RESTORE_IT` copy
-and no second pass), so the lines are traversed once instead of twice. The sole
-caller of the
-backward `IGNORE_LINE_AT_END` form (pixel-scroll) uses only the height and the
-start position, so the returned width is just the x reached at `END`'s line
-rather than a separate max-width walk.
+and no second pass), so the lines are traversed once instead of twice. No width
+is computed for this form — that would need a second walk of the span — so the
+returned width is forced to a defined `0`. (This is sound because a meaningful
+`IGNORE_LINE_AT_END` request has FROM on a line *above* `END`'s, so there is no
+single-line case to measure a width for; and a true maximum-width walk is what
+the single-walk design exists to avoid.)
 
 > An intermediate version of this fix kept the stock `move_it_to (&it, end, …)`
 > for the width and stepped through the lines *in addition*, on a `SAVE_IT` copy — correct,
