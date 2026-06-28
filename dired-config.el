@@ -33,8 +33,8 @@
 ;; dired-clipboard: copy / cut / paste files within Dired (M-w / C-w / C-y),
 ;; with optional integration into the native macOS Finder clipboard.
 (use-package dired-clipboard
-  :straight (dired-clipboard :type git :host github
-                             :local-repo "~/Documents/Programming/Others/forked-dired-clipboard.el"
+  :straight (dired-clipboard :type git
+                             :host github
                              :repo "kn66/dired-clipboard.el")
   :hook (dired-mode . dired-clipboard-mode))
 
