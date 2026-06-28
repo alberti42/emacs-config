@@ -24,8 +24,8 @@ The commits live in the local Emacs fork
 |3|[Exclude a display string anchored at window-start from backward|`src/xdisp.c` + `test/`|general primitive (fix)|
 | |span](03-exclude-boundary-display-string.md)                    |                       |                       |
 
-SHAs drift on rebase; at time of writing: `44e8ce0` (1), `0db7970` (2),
-`06eca78` (3).
+SHAs drift on rebase; at time of writing: `9844c15` (1), `3560b4f` (2),
+`64f36ad` (3).
 
 ## What the symptoms looked like
 
@@ -90,6 +90,26 @@ make -j8                       # ~10s incremental for one TU
   --eval '(ert-run-tests-batch-and-exit "backward-boundary-string")'
 ```
 
-For the interactive behaviours, run a throwaway GUI daemon and drive it with
-the scratch harness `psd.el` used during development (buffers + probe +
-deterministic driver + per-redisplay recorder).
+### Self-standing reproducer
+
+[`../debug-pixel-scroll-tall-line.el`](../debug-pixel-scroll-tall-line.el) is a
+load-and-run reproducer in the same style as the other `docs/debug-*.el`. Each
+test opens a buffer that documents itself.
+
+```sh
+EMACS=~/Documents/Programming/Others/fork-emacs/src/emacs   # or any build
+$EMACS -Q --load docs/debug-pixel-scroll-tall-line.el \
+       --eval '(pixel-scroll-tall-line-test-001)'
+```
+
+- `pixel-scroll-tall-line-test-001` — measures the defect live and prints a
+  **PATCHED / UNPATCHED** verdict with the numbers (works even in `-nw`). On an
+  unpatched build it reports the tall boundary string leaking in
+  (`plain=1, before=5, after=5`); on a patched build all three are equal.
+- `pixel-scroll-tall-line-test-002` — the visible scrolling symptom (tall
+  after-string image; GUI).
+- `pixel-scroll-tall-line-test-003` — the control (same image as a `display`
+  property; smooth on both builds, isolating what the patch changes).
+
+(The throwaway development harness `psd.el` lived in the session scratchpad and
+is not committed; the reproducer above supersedes it for sharing.)

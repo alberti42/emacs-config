@@ -8,75 +8,122 @@ yourself on a stock Emacs.*
 
 ## The one-sentence version
 
-When you smooth-scroll toward a line that is much taller than a normal line —
-an inline image, or an image glued on with an overlay "before/after string" —
-the view jumps and snaps back instead of gliding, because a low-level
-measurement routine **counts the tall thing twice**: once as the line you're
-arriving at, and again as if it were sitting in the space *above* that line.
+When you smooth-scroll up past a line that carries a tall image, the view
+glides *through* the image fine — but the moment it should reveal the ordinary
+line just above the image, it lurches back down onto the image instead. The
+cause: a routine asked for the height of that ordinary line accidentally adds
+the image's height to it, so pixel-scroll over-corrects.
 
 ## How smooth scrolling positions the page
 
-To show a buffer, Emacs needs two numbers:
+To show a buffer, Emacs uses two numbers:
 
-- **`window-start`** — the buffer position of the first character drawn at the
-  top of the window.
-- **`vscroll`** — a fine pixel offset: "having chosen `window-start`, then nudge
-  everything up by this many pixels." It's what lets a wheel gesture move the
-  text by 7 pixels instead of a whole line at a time.
+- **`window-start`** — the buffer position of the first character at the top of
+  the window.
+- **`vscroll`** — a pixel offset applied on top: "having placed `window-start`
+  at the top, hide this many pixels off the top." It's what lets a wheel gesture
+  move by 7 pixels instead of a whole line.
 
-`pixel-scroll-precision-mode` is built on these. When you scroll up by, say, 14
-pixels, it doesn't just bump `vscroll`; it figures out the *new* `window-start`
-a line or two up and sets a small `vscroll` for the leftover pixels. The result
-is a smooth glide where the numbers underneath are doing discrete jumps.
+`pixel-scroll-precision-mode` deliberately keeps **`vscroll` as small as
+possible**: it puts `window-start` at the buffer position *closest to* the top
+of what's visible and uses `vscroll` only for the leftover pixels. Hold onto
+this — it's why the bug appears exactly where it does.
 
-## The measurement it leans on
+So one wheel-up event does one of two things:
 
-To find that new `window-start`, the mode asks one question: **"starting from
-the current top of the window, how many pixels of content are in the 14 pixels
-just above it, and where does that span begin?"** It asks with the built-in
-function `window-text-pixel-size`, in its *backward* form:
+- **a vscroll nudge** — `window-start` stays put, `vscroll` just drops by a few
+  pixels (cheap, nothing is measured); or
+- **a line change** — `vscroll` has run out, so `window-start` has to move up to
+  an earlier buffer position. *This* is the only case that measures, and the
+  only case that can go wrong.
+
+## The measurement (only on a line change)
+
+When `window-start` must move up, the mode asks: **"how tall is the line
+immediately above the current top?"** — so it knows how far to move and how much
+`vscroll` to set. It asks `window-text-pixel-size` in its *backward* form:
 
 ```elisp
-;; "measure the span ending at START, going back DELTA pixels"
+;; height of the span ending at the current top (START), going back DELTA px
 (window-text-pixel-size nil (cons start (- delta)) start nil nil nil t)
 ```
 
-Think of it as measuring the slice of text immediately **above** the current
-top line. For ordinary text the answer is boring and correct: 14 pixels back is
-about one line up.
+Under the hood that height is just a **difference between two buffer
+positions**: find where the previous line starts, and measure the pixels from
+there up to `START`. For ordinary lines it's exactly one line's height.
 
-## What goes wrong
+## What goes wrong — a worked example
 
-Now put a tall thing right at the top of the window — concretely, the way
-markdown-ts shows an inline image: an overlay whose *after-string* is
-`"\n " + image`, sitting on a line. That image is **part of that line's
-display** — it belongs to the line you're looking at, not to the empty space
-above it.
+Take a line that carries a markdown-style inline image: the image is an overlay
+**after-string** (`"\n " + image`), so it renders *below* the line's own text.
+With a 14px text line and a 300px image, the display reads top-to-bottom:
 
-But when the mode measures "the slice above," the buggy routine includes the
-image's full height in the answer. So instead of reporting "about 14 pixels (a
-normal line) above us," it reports "about 214 pixels above us." The mode
-believes there's a wall of content overhead, sets a large `vscroll` to
-compensate, and the view **lunges** — and because the very next measurement
-makes the same mistake, it **snaps back and re-traverses the same image**. That
-back-and-forth is the user-visible bug#64252: the scroll won't glide past a
-tall line and, near the buffer edge, can't settle at the top.
+```
+line 19 text          14px
+[ image ]            300px      ← after-string, anchored at E19 (end of line 19)
+line 20 text
+```
 
-The crucial word is *boundary*: the image is exactly **at** the edge of the
-measured span (at the line the span ends on). It should count as part of that
-line, but the old code folded it into the span above.
+Scroll up toward this from below. Because the mode keeps `vscroll` small, once
+the image reaches the top it parks **`window-start` at the image's anchor
+`E19`** and slides `vscroll` *through* the image:
+
+```
+window-start = E19,  vscroll = 300 … 200 … 100 … 0     ← pure vscroll nudges, smooth
+```
+
+Every one of those is a vscroll nudge — nothing measured, no problem. When
+`vscroll` reaches **0**, the image's top sits exactly at the window top, and the
+only thing still above the window is line 19's 14px of **text**.
+
+Now one more wheel-up (say 5px). `vscroll` is already 0 — nothing left to nudge
+— so `window-start` **must move up**, from `E19` to the start of line 19
+(`S19`). That's the line-change path, so it measures "the line above `E19`":
+
+- it should be just **line 19's text = 14px**;
+- but the image is anchored *exactly at `E19`*, the boundary the measurement
+  walks up to, so the routine paints the image too and returns **14 + 300 =
+  314px**.
+
+Feed each into the scroll arithmetic (`vscroll = height − scrolled`):
+
+| | height | new `window-start` | `vscroll` | what shows at the top |
+|---|---|---|---|---|
+| correct | 14 | S19 | 14 − 5 = **9** | bottom 5px of line-19 text ✓ |
+| buggy | 314 | S19 | 314 − 5 = **309** | 14 + 295 → back *inside* the image ✗ |
+
+So instead of revealing 5px of line-19 text, the oversized `vscroll = 309` drops
+you 295px back down into the image — the **lurch**. The next wheel-up repeats it,
+so you can never climb past the image.
+
+The essence in one line: **a line's start position normally marks the top pixel
+of that line — but once an image is anchored at that boundary, the
+"previous-line height" measurement swallows the image, even though the image
+belongs to the line you're sitting on, not to the line above.**
+
+Two things worth keeping straight:
+
+- **Only the step that *leaves* the anchored boundary misbehaves.** `S19 → S18`,
+  `S18 → S17`, … each measure up to a plain line start with nothing anchored on
+  it, and are perfectly correct. The single poisoned moment is `E19 → S19`.
+- **A `before`-string is the same bug, simpler.** There the image hangs *above*
+  its line's text, so its anchor *is* a normal line start; `window-start` sits
+  right on it and the first scroll-up off it over-counts. (That's why the fix
+  checks both: a before-string whose overlay *starts* at the boundary, or an
+  after-string whose overlay *ends* at it.)
 
 ## Why the old code got it wrong (one paragraph)
 
-`window-text-pixel-size` already knew about one kind of tall thing at the
-boundary: an image attached as a `display` property on a real character. Walking
-up to that character "overshoots" it, and there's existing code that notices the
-overshoot and backs off, correctly leaving the image out. A *before/after
-string*, though, doesn't overshoot — the walk stops exactly on the boundary
-position with the string's height already added in. So it slipped past that
-existing guard and got counted. The fix teaches the routine to recognise a
-before/after string sitting on the boundary and back off the same way it
-already did for display-property images.
+The old code got the height by walking *to* the boundary and reading off how far
+down it had travelled — then patching up the one case it knew about: an image
+attached as a `display` property on a real character makes the walk "overshoot,"
+and existing code notices and backs off, correctly leaving that image out. A
+*before/after string*, though, doesn't overshoot — the walk stops exactly on the
+boundary with the string's rows already counted — so it slipped past that guard.
+The deeper problem is that the code was measuring *into* the boundary line and
+then subtracting afterwards at all. The display engine already records where
+each line begins, so the height wanted is just the top of the boundary line,
+recalled rather than recomputed.
 
 ## Can you reproduce it on a stock Emacs? Yes.
 
@@ -114,8 +161,8 @@ emacs -Q --batch --eval "$(cat that-file.el)"     # or -l that-file.el
 | **patched**   | `plain=1  with-tall-string=1` | the boundary string is excluded — **fixed** |
 
 (The numbers are in character-cell units in batch; in a real GUI frame they're
-the pixel equivalents — during development the same measurement read **214 px**
-where **14 px** was correct.)
+the pixel equivalents — e.g. with the 300px image of the worked example above, a
+slice that should measure **14 px** comes back as **314 px**.)
 
 The project's regression test is exactly this comparison. On the unpatched
 binary it fails, naming the wrong value outright:
@@ -148,10 +195,11 @@ commits 1–2 address; the snap/re-traversal over the image is this commit's bug
 
 ## The fix in a nutshell
 
-In `window_text_pixel_size`, after walking up to the boundary, check whether a
-before-string (overlay starting there) or after-string (overlay ending there)
-is anchored **on** that boundary; if so, exclude its height — exactly the
-back-off already used for a display-property image. One extra detail: reset the
-iterator's running ascent/descent first, so the "previous line height" it adds
-back isn't itself inflated by the tall string. Full details and the diff are in
-the [technical companion](03-exclude-boundary-display-string.md).
+The height the code wants — "everything above END's line" — is something the
+display engine already computes as it walks the buffer: the top position of each
+display line. So instead of measuring *into* END's line and then subtracting the
+boundary string back out, `window_text_pixel_size` now steps down toward END one
+display line at a time and stops at the **top of END's own line**. A string
+shown at END belongs to END's line, so stopping at that line's top leaves it out
+automatically — no scanning for overlays, no special-casing. Full details and
+the diff are in the [technical companion](03-exclude-boundary-display-string.md).
