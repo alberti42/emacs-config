@@ -1,72 +1,57 @@
-Subject: window-text-pixel-size: IGNORE-LINE-AT-END over-counts when TO's line carries an overlay string
+Subject: [PATCH] window-text-pixel-size: exclude an overlay string anchored at TO
 
-To: bug-gnu-emacs@gnu.org
+To: 64252@debbugs.gnu.org
 
-I would like to report a bug in the C function `window_text_pixel_size'
-(src/xdisp.c). I also attach a proposed patch and a regression test.
+I have been looking for a while for a solution to this bug that in 
+pixel-scroll-precision-mode, it causes jumps when scrolling over large images.
 
-This is a bug that affects users of `pixel-scroll-precision-mode'.  Many users
-have discussed it on Reddit and emacs-devel (e.g., bug#64252; more on this
-later).  Community packages such as ultra-scroll ship workarounds for these
-scrolling problems alongside their other features, but a workaround at the
-package level cannot fix a defect that lives in a C primitive -- only a change
-in stock Emacs can.
-  
-== How I found it ==
+I started from the Lisp side, added some instrumentation to
+pixel-scroll-precision-mode, and traced the symptom to the C layer, precisely to
+`window_text_pixel_size' (src/xdisp.c).  I believe I now understand the origin
+of the problem and I may have a solution to it, which is contained in the attached
+patch.
 
-I was investigating bug#64252 -- the pixel-scroll-precision "lurch": when
-you scroll up and a tall line (typically one carrying an image) rises
-toward the top of the window, the view jumps onto it and snaps back
-instead of gliding past.
+== Where the bug is ==
 
-The author and maintainer of precision-scroll, Po Lu, commented in bug#64252:
+The bug is in how `window_text_pixel_size' handles the boundary at TO.
+After moving the iterator to TO it has an existing back-off for a `display'
+property at TO (which makes the move overshoot); an overlay before/after-
+string anchored at TO slips past that back-off because it does not
+overshoot, so its height is wrongly folded into the result.
 
-     If an image is larger than the window, pixel-scroll-precision-mode is
-     unable to determine a position of point that will not cause redisplay to
-     recenter the window after scrolling takes place.
-
-     There is definitely a solution to this problem, but I haven't found it
-     yet.  Patches welcome.
-
-So, the bug remained open until today. I decided to look closer at it and
-started from the Lisp side. I added some instrumentation to
-pixel-scroll-precision-mode, and traced one of the
-symptoms below the Lisp layer into `window_text_pixel_size'.
-
-While doing this I also found a couple of separate problems that really
-are on the Lisp side of pixel-scroll-precision; I will report those under
-bug#64252 in due course.  This report is only the C-level bug.  It is
-independent of the Lisp issues and affects the stock function for any
-caller, so I think it is best tracked on its own.
-
-== Where it lives ==
-
-The bug is in the IGNORE-LINE-AT-END branch of `window_text_pixel_size'.
-This branch, and the cons-FROM "pixels around a position" form it supports,
-were added by Po Lu in 2021 while he was developing
+It surfaces through the cons-FROM "pixels around a position" form with
+IGNORE-LINE-AT-END, which was added in 2021 when developing
 pixel-scroll-precision (commits 43c4cc2ea29 and d54d8a88e9a).
-
 `pixel-scroll-precision-scroll-up-page' is still the only caller in stock
-Emacs of that branch. It is likely that other community-contributed packages
-like ultra-scroll also make use of the same function `window_text_pixel_size'.
+Emacs of that form.
 
-== Reproducing it ==
+== Reproducing it, and seeing the patch work ==
 
 The attached patch adds a regression test,
 `xdisp-tests--window-text-pixel-size-backward-boundary-string', which is
 itself a minimal reproducer: on an unpatched build it fails, naming the
-wrong value outright (e.g. `:form (equal 4 1)'), and it passes once the
-patch is applied.  I also have a small self-contained reproducer and am
-happy to share it if useful.
+wrong value outright, and it passes once the patch is applied.
 
-One caveat on the user-visible symptom.  This C fix corrects the
-*measurement*; on its own it does not remove the scrolling "lurch".  That
-also needs a companion Lisp-side patch for pixel-scroll-precision (much
-more scoped and self-contained), which I will submit under bug#64252.
-Until both are in place the smooth result is not yet visible, so I have
-deliberately limited this report to the C-level measurement bug, which
-stands on its own. This is also the reason why I did not yet submit a full
-visual reproducer to demonstrate complete smooth scrolling.
+For the visible behavior I also attach a small interactive reproducer
+(debug-pixel-scroll-tall-line.el).  Its `pixel-scroll-tall-line-test-002'
+puts a tall image on a line partway down a buffer (the markdown-ts
+"\n " + image idiom) and turns on pixel-scroll-precision-mode; on a stock
+"emacs -Q" the image lurches at the top, and with this patch installed it
+scrolls nearly perfectly smoothly.
+
+== Known limitations ==
+
+One small glitch remains: scrolling across the same tall line (this time
+regardless of the direction), the image can jump by about one text line
+(~14px) for a single frame before redisplay corrects it.  I believe this is a
+separate, Lisp-side vscroll issue in pixel-scroll-precision rather than in
+this C function, and I plan to investigate it separately.  It does not affect
+what this patch fixes.
+
+The second limitation is scrolling through images that are larger than
+the window. For this, I believe I have an Elisp fix that goes into
+pixel-scroll.el; I prefer to post that other fix separately from the patch
+to xdisp.c, since they are two different bugs. 
 
 == Explanation of the bug and the fix ==
 
@@ -74,100 +59,61 @@ What follows is **nearly a verbatim copy of the commit message** of the
 attached patch, so there is no need to read two separate texts.
 
 ----------------------------------------------------------------------
-window-text-pixel-size: stop IGNORE-LINE-AT-END at the top of TO's line
+window-text-pixel-size: exclude an overlay string anchored at TO
 
 With IGNORE-LINE-AT-END non-nil, `window-text-pixel-size' is documented
 to "not add the height of the screen line that includes TO to the
-returned height": the measurement is meant to stop at the top of TO's
-display line and count only the lines above it.
+returned height": the measurement stops at the top of TO's display line
+and counts only the lines above it.
 
-This patch fixes a bug where the IGNORE-LINE-AT-END contract was not
-honored when TO's line contained overlay strings.  It did not stop at
-the top of TO's display line; it stopped at TO itself, i.e., at the top
-of TO's buffer text, and took that y as the top of TO's line.  So
-anything drawn above that text but still on TO's display line was not
+That was not honored when TO's line carried an overlay string.  Anything
+drawn above TO's buffer text but still on TO's display line was not
 excluded -- a before-string whose overlay starts at TO, or an
 after-string whose overlay ends at TO.  The two are symmetric: a
 before-string is drawn at its overlay's start and an after-string at its
 overlay's end, so when either anchor is TO the string is drawn at TO,
-just before TO's own character.  The range the overlay spans is
-irrelevant to where its string lands.  Such an overlay string belongs to
-TO's display line, which this option is supposed to drop whole; by not
-accounting for it, the code let its height leak into the y it took for
-the top of TO's line, inflating the returned height by the vertical
-space the string occupies on TO's line.  The error grows with the
-string's height and matters once the string is taller than an ordinary
-line -- whether because it carries an image, is enlarged by a face
-:height, or simply spans several rows (the regression test uses a plain
-three-line string).  An image is just the dramatic case, inflating the
-height by a whole image.
+just before TO's own character; the range the overlay spans is irrelevant
+to where its string lands.  Such an overlay string belongs to TO's display 
+line, which this option drops whole, so its height must not leak into the
+result.  The error grows with the string's height and matters once the
+string is taller than an ordinary line -- whether it carries an image, is
+enlarged by a face :height, or simply spans several rows.  An image is
+the dramatic case, inflating the height by a whole image.
 
-The cause is how the height was obtained.  The old code moved the
-iterator forward to TO with move_it_to and read it.current_y.  On a
-plain line TO is at the top of its screen line, so current_y is that
-top -- correct.  A `display' property at TO makes move_it_to overshoot
-(it stops past TO), and an existing block detects that and backs off so
-the property is excluded.  But a before/after-string at TO does not
-overshoot: move_it_to stops exactly at TO, below the string, with the
-string's rows already folded into current_y, so it slipped past that
-guard and was included in the height.
+Why only overlay strings?  To measure up to TO the code moves the
+iterator there with move_it_to.  A `display' property at TO makes
+move_it_to stop past TO -- an overshoot the code already detects and
+undoes.  An overlay string at TO causes no overshoot: move_it_to stops
+exactly at TO.  But on its way there it has already passed over the
+string, so the string's height is already in the total; and since nothing
+overshot, the existing check never fires to take it back out.
 
-Stop at the top of TO's screen line directly, reading the running y the
-iterator keeps as it walks there, instead of measuring to TO and
-correcting afterwards.  Correcting afterwards would mean detecting what
-sits at TO -- a before-string, an after-string, possibly a zero-length
-overlay, or a display property, each its own case -- and subtracting a
-height the iterator had already passed; that is the brittle overlay
-scan an earlier version of this fix used and this one drops.  Instead,
-step down toward TO one screen line at a time and take the y at the top
-of TO's own line.  TO's line is the first line that starts at TO -- a
-string anchored there opens a fresh line, which is left below the stop
--- or, when no line starts exactly at TO (TO is interior to a line,
-e.g. a bare newline), the line that contains TO, so the height matches
-an ordinary measurement.  Whatever is drawn on TO's line is left out by
-construction, and the result with no such content is byte-identical to
-before.
-
-IGNORE-LINE-AT-END was added in commit 43c4cc2ea29 (2021-12-18), and
-the cons-FROM "pixels around a position" form in d54d8a88e9a
-(2021-12-23), both to serve pixel-scroll-precision-scroll-up-page, which
-remains the only in-tree caller of that form.  The option was
-implemented by withholding the last line's ascent and descent from the
-returned height -- correct only when the measurement already stops at
-the top of TO's line, which a plain line satisfies but a line with a
-string drawn above TO does not.
-
-The change is confined to the IGNORE-LINE-AT-END branch; every other
-caller takes the unchanged path.  In pixel-scroll-precision-mode this
-over-count is one cause of the visible scrolling glitches tracked in
-bug#64252.  Correcting the measurement is necessary for scrolling
-smoothly onto a tall line, but not sufficient by itself: more contained
-Lisp-side fixes (to be submitted under bug#64252) are also required.
+Detect an overlay string anchored at TO and back off the same way:
+re-measure stopping before TO and account for the last position's width
+by hand.  The overlay is found by scanning those touching TO for a
+before-string whose overlay starts at TO or an after-string whose overlay
+ends at TO.
 
 ----------------------------------------------------------------------
 
-== A note on an alternative I considered ==
+== A side note: an approach that did not work ==
 
-I left this out of the commit message to keep it focused.  An alternative
-route is to keep the old "measure all the way down to TO's line"
-and then correct: look at the overlay strings that land on TO's line,
-work out how much vertical space they add, and subtract that line's
-height back out.  I tried that first and dropped it.  It forces the code
-to find and classify whatever sits at TO -- a before-string, an
-after-string, a zero-length overlay (which the ordinary char-property
-lookups cannot even see), or a display property, each its own case -- and
-then subtract a height the iterator had already folded in.  The walk-down
-sidesteps all of that: it stops at the top of TO's line, so the string is
-never reached and there is nothing to detect or subtract, and it measures
-the span only once.
+Before settling on the overlay scan, I tried to avoid scanning over all
+overlays around END.  Instead of measuring to TO and backing off, I walked
+down from FROM one screen line at a time and stopped at the top of TO's
+display line: content on TO's line is then excluded by construction, with no
+overlay lookup and a single pass over the span.
 
-== The patch ==
-
-The patch applies to current master.  It changes only the
-IGNORE-LINE-AT-END branch, so every other caller follows the unchanged
-path: the three existing `window-text-pixel-size' tests introduced with
-bug#45748 still pass, and the patch adds one new regression test
-(the comparison shown in the reproducer above).
+It is clean for content drawn *above* the anchor's text (a before-string
+opens a fresh line, left below the stop).  But it fails for an after-string
+with a leading newline -- the markdown "\n " + image idiom -- where the
+image hangs *below* the anchor's text, in rows that still carry the
+anchor's own buffer position.  The walk decides where to stop by comparing
+buffer position to TO, and those rows are indistinguishable by position
+from TO itself, so it stops one row too low and folds the image back in.
+Recovering the correct height there needs precisely the overlay-boundary
+information the scan provides. So, I eventually kept the scan, although
+it is not a particularly elegant solution.
 
 I am looking forward to hearing your feedback.
 
