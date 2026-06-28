@@ -25,6 +25,26 @@ argument (`IGNORE_LINE_AT_END`) non-nil it returns the height of the lines
 new `window-start` and `vscroll`. It is the **only** in-tree caller that passes
 `IGNORE_LINE_AT_END` non-nil.
 
+### Where this form came from (and why the bug hid for years)
+
+Both the option and the backward form were added to Emacs by Po Lu in December
+2021, **expressly for this one caller** — these are upstream commits, so their
+SHAs are stable history (unlike this series' own rebased commits):
+
+- `43c4cc2ea29` (2021-12-18, *"Add new argument `ignore-line-at-end' to
+  `window-text-pixel-size'"*) introduced the option. Its log describes the
+  mechanism exactly: *"Allow controlling if the iterator's ascent and descent
+  will be appended to the pixel height returned."*
+- `d54d8a88e9a` (2021-12-23, *"Allow window-text-pixel-size to measure pixels
+  around a position"*) added the cons-`FROM` form, and its **only** Lisp change
+  was to make `pixel-scroll-precision-scroll-up-page` use it.
+
+So the option and its sole caller were co-designed, five days apart, for exactly
+this purpose — and `pixel-scroll` is still the only in-tree user of the
+combination. That is why the bug stayed hidden: one caller, one usage pattern,
+and the pattern only misbehaves when a tall string happens to sit on the
+`window-start` line.
+
 ## Bug
 
 `IGNORE_LINE_AT_END` is documented to *"not add the height of the screen line
@@ -46,17 +66,35 @@ markdown-ts `"\n " + image` *after*-string is the worst case.
 
 ## Root cause
 
+As introduced (`43c4cc2ea29`), the option's whole implementation was to
+**withhold the final line's ascent and descent** from the height — `y =
+it.current_y` rather than `y = it.current_y + max_ascent + max_descent`. That is
+exact only when `it.current_y` after the walk is already the **top** of `END`'s
+line, which a plain line satisfies but a line with a string drawn above `END`
+does not. The fix below makes the stop point match that assumption instead of
+relying on it.
+
 How did the old code get the height? It moved the iterator forward to `END` and
 read `it.current_y` (the y at the line `END` lands on), with a correction block
-for one awkward case: a **display property** at `END` is one atomic element, so
-`move_it_to` *overshoots* (`IT_CHARPOS (it) > end`); an existing block notices
-that, backs off to `end - 1`, and re-measures — so the display property is
-correctly excluded.
+for one awkward case, added by Eli Zaretskii in 2018 (`f1f12d8be3d` /
+`50e2c0fb518`, *"Fix 'window-text-pixel-size' when display properties are
+around"*; the same trick was extended to the START side in `78e1640ad52`, 2022 —
+upstream SHAs, stable history). A **`display` property replaces a range of buffer
+text** with one indivisible glyph: to *reach* a position the walker has to *draw*
+what is there, but the positions hidden under the glyph have no spot of their own
+to stop on, so reaching `END` makes the walker draw the whole glyph and land
+*past* it (`IT_CHARPOS (it) > end`). The 2018 block notices that overshoot, backs
+off to `end - 1`, and re-measures — so the replacement is correctly excluded.
 
-A **before/after-string** anchored at `END` does **not** overshoot:
-`move_it_to` stops *exactly* at `END` (`IT_CHARPOS (it) == end`) having already
-folded the string's rows into `it.current_y`. So it slips past the overshoot
-guard and is counted. This was confirmed with instrumentation:
+An overlay **before/after-string** is different *in kind*: it **adds** content at
+the boundary and replaces nothing, so it swallows no buffer positions. `END`
+still has its own spot, and `move_it_to` lands *exactly* on it (`IT_CHARPOS (it)
+== end`) — having already drawn the string's rows into `it.current_y`. **No
+overshoot.** And the 2018 correction is guarded precisely on overshoot
+(`IT_CHARPOS > end`), the only signal a range-**replacing** property produces; an
+**interposed** string never trips it, so its height is silently kept. That single
+asymmetry — *replace* (overshoots, caught) vs *add* (doesn't, missed) — is the
+whole bug. It was confirmed with instrumentation:
 
 ```
 display property at END:  end=1751 charpos=1752  (overshoot → handled)   height 14  ✓
@@ -71,6 +109,27 @@ line's top as it walks; the height we want is just *the top of `END`'s own
 line*, recalled rather than recomputed. A string displayed at `END` belongs to
 `END`'s line, so stopping at that line's top excludes it automatically — no
 detection, no subtraction.
+
+## Why it stayed hidden, and what the fix completes
+
+Two facts kept this latent for years:
+
+- **The 2018 exclusion is keyed on overshoot**, which only range-replacing
+  `display` properties produce. An interposed overlay string never overshoots,
+  so it was never in that block's scope — not by oversight, but because
+  overshoot was the only signal the block had to act on.
+- **No caller could expose the gap.** The backward `IGNORE_LINE_AT_END` form
+  (Po Lu, 2021) is the only in-tree code that measures a span *ending at* a
+  `window-start` — and `window-start` is the one boundary that routinely carries
+  an anchored before/after-string. Until that caller existed, nothing ever asked
+  the function to measure up to a line with an interposed string on it.
+
+So the change is best read not as new behavior but as **completing Eli's 2018
+boundary-exclusion for the one anchoring kind it never covered** — overlay
+strings — exposed now that Po Lu's 2021 backward form finally reaches it. The
+2018 code excludes what the boundary line *replaces*; this excludes what the
+boundary line *adds*; together they exclude the boundary line, which is all
+`IGNORE_LINE_AT_END` ever promised.
 
 ## Fix
 

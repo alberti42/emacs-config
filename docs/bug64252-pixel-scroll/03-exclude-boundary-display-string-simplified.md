@@ -87,6 +87,12 @@ Under the hood that height is just a **difference between two buffer
 positions**: find where the previous line starts, and measure the pixels from
 there up to `START`. For ordinary lines it's exactly one line's height.
 
+(Historical aside: this backward form and its `ignore-line-at-end` flag were
+both added to Emacs in December 2021 *solely* to power this one pixel-scroll
+function — and it's still their only user. That's why a bug in them could sit
+unnoticed for years: only one place ever exercises this path, and only when a
+tall image happens to land on the top line.)
+
 ## That call, argument by argument
 
 `window-text-pixel-size` is a general function with several modes depending on
@@ -190,20 +196,44 @@ Two things worth keeping straight:
   checks both: a before-string whose overlay *starts* at the boundary, or an
   after-string whose overlay *ends* at it.)
 
+## Why "overshoot" is the heart of it
+
+The old code already handles a *display-property* image correctly, and seeing
+**why** pinpoints exactly what it misses.
+
+To reach a buffer position, the display walker has to actually *draw* whatever is
+there. A `display` property **replaces** a stretch of characters with one
+indivisible image, so the positions hidden under that image have no spot of their
+own to stop on. Ask the walker to reach one of them and it has to draw the whole
+image and land *past* it — on the next line. (You can watch the same thing with
+the cursor: press the right-arrow through an image and it jumps from just-before
+to just-after; it can never sit *inside*.) "Landed past where I asked" is the
+tell, and the old code — Eli Zaretskii's 2018 fix — watches for it: when it sees
+the overshoot, it steps back to just before the image and leaves it out.
+
+An overlay before/after-string is the **opposite kind** of thing. It *adds* an
+extra string at the boundary and replaces nothing, so the boundary position still
+has its own spot. The walker stops *exactly* there — no landing past, no tell —
+even though it has already drawn the tall string on the way down. So the old
+"did we land too far?" check never fires, and the string's height rides along
+uncaught.
+
+That single asymmetry is the entire bug: **replace** (the walk overshoots, the
+2018 code catches it) versus **add** (the walk doesn't overshoot, so nothing
+catches it). The 2018 code excludes what the boundary line *replaces*; this fix
+excludes what it *adds*; together they drop the whole boundary line — which is
+all `ignore-line-at-end` ever promised.
+
 ## Why the old code got it wrong (one paragraph)
 
 Remember the promise: with `ignore-line-at-end` on, the measurement must stop at
 the **top** of END's line and leave that whole line out. The old code instead
 got the height by walking *to* the boundary and reading off how far
-down it had travelled — then patching up the one case it knew about: an image
-attached as a `display` property on a real character makes the walk "overshoot,"
-and existing code notices and backs off, correctly leaving that image out. A
-*before/after string*, though, doesn't overshoot — the walk stops exactly on the
-boundary with the string's rows already counted — so it slipped past that guard.
-The deeper problem is that the code was measuring *into* the boundary line and
-then subtracting afterwards at all. The display engine already records where
-each line begins, so the height wanted is just the top of the boundary line,
-recalled rather than recomputed.
+down it had travelled — then patching up the one case it knew about (the
+overshoot above). The deeper problem is that the code was measuring *into* the
+boundary line and then subtracting afterwards at all. The display engine already
+records where each line begins, so the height wanted is just the top of the
+boundary line, recalled rather than recomputed.
 
 ## Can you reproduce it on a stock Emacs? Yes.
 
