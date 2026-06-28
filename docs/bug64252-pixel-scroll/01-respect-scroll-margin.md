@@ -1,7 +1,7 @@
 # Commit 1 — Respect `scroll-margin` in `pixel-scroll-precision-mode`
 
-> `lisp/pixel-scroll.el` · +137 lines · mode-only feature
-> (SHA at time of writing: `44e8ce0`)
+> `lisp/pixel-scroll.el` · mode-only feature
+> Commit: *Respect scroll-margin in pixel-scroll-precision-mode*
 
 ## Problem
 

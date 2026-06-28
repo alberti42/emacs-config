@@ -24,8 +24,8 @@ The commits live in the local Emacs fork
 |3|[Exclude a display string anchored at window-start from backward|`src/xdisp.c` + `test/`|general primitive (fix)|
 | |span](03-exclude-boundary-display-string.md)                    |                       |                       |
 
-SHAs drift on rebase; at time of writing: `9844c15` (1), `3560b4f` (2),
-`64f36ad` (3).
+Commits are identified by their title (first line) above, not by SHA — the
+branch is rebased and amended often, so any SHA goes stale almost immediately.
 
 ## What the symptoms looked like
 

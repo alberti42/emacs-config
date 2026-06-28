@@ -1,7 +1,7 @@
 # Commit 2 — Force the window start in pixel-scroll-precision page scrolling
 
-> `lisp/pixel-scroll.el` · +23 / −9 · mode-only fix
-> (SHA at time of writing: `0db7970`)
+> `lisp/pixel-scroll.el` · mode-only fix
+> Commit: *Force the window start in pixel-scroll-precision page scrolling*
 
 ## Problem
 

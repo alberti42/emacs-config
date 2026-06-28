@@ -14,6 +14,38 @@ line just above the image, it lurches back down onto the image instead. The
 cause: a routine asked for the height of that ordinary line accidentally adds
 the image's height to it, so pixel-scroll over-corrects.
 
+## Vocabulary — the words that actually trip you up
+
+The arithmetic in all of this is trivial. *All* the difficulty is knowing **what
+kind of thing** each name refers to. There are only three kinds:
+
+- **Buffer position** — a character offset ("character #1500"). Says *which
+  character*; nothing about pixels.
+- **Horizontal pixels (x)** — distance *across* a line.
+- **Vertical pixels (y)** — distance *down* the window. y grows **downward**;
+  y = 0 is the top of the window.
+
+Tag every name below with one of those three and the code reads itself:
+
+- **`window-start`** — a *buffer position*: the first character painted at the
+  **top of the window**. It names where the visible region begins. `(window-start)`
+  returns it; scrolling changes it.
+- **`vscroll`** — *vertical pixels*: a fine offset layered on top of
+  `window-start` — "having put `window-start` at the top, now hide this many
+  pixels off the top." It's what lets a wheel gesture move 7 px instead of a
+  whole line.
+- **a line's top / bottom / height** — every displayed line occupies a vertical
+  band: its **top** is the upper y, its **bottom** the lower y, its **height** the
+  difference. "`window-start`'s line top" = the upper edge of the line that
+  `window-start` sits in (≈ the top edge of the window).
+- **END** — **not** "end of buffer." It's the bottom position of *this one
+  measurement* — the buffer position the measurement stops at. In our case
+  **END = `window-start`**. (In the C code it's the variable `end`; same thing.)
+- **`ignore-line-at-end`** — a flag on the measurement. When on, it stops at the
+  **top** of END's line instead of its bottom — i.e. it counts only the lines
+  *strictly above* END's line, not END's own line. We turn it on because we want
+  the height of what sits *above* the current top line, not the top line itself.
+
 ## How smooth scrolling positions the page
 
 To show a buffer, Emacs uses two numbers:
@@ -51,6 +83,49 @@ immediately above the current top?"** — so it knows how far to move and how mu
 Under the hood that height is just a **difference between two buffer
 positions**: find where the previous line starts, and measure the pixels from
 there up to `START`. For ordinary lines it's exactly one line's height.
+
+## That call, argument by argument
+
+`window-text-pixel-size` is a general function with several modes depending on
+how you *shape* its arguments — its elisp docstring covers all of them. Only one
+shape concerns us, so here is just that one, decoded. The signature is:
+
+```elisp
+(window-text-pixel-size WINDOW FROM TO X-LIMIT Y-LIMIT MODE-LINES IGNORE-LINE-AT-END)
+;; our call:
+(window-text-pixel-size nil    (cons start (- delta))
+                                     start  nil     nil     nil        t)
+```
+
+- **WINDOW = `nil`** — use the selected window.
+- **FROM = `(cons start (- delta))`** — *this cons shape is the crux.* A plain
+  position would mean "start measuring exactly there." The cons `(POS . OFFSET)`
+  instead means "go to POS, then shift `OFFSET` pixels *first*, and measure from
+  there." Our `OFFSET` is `(- delta)` — negative, so **move up `delta` pixels**
+  before measuring. FROM is therefore "the point `delta` pixels above `start`."
+- **TO = `start`** (= `window-start`) — measure *up to* the current top. This is
+  the **END** from the vocabulary. So the span runs from "`delta` px above the
+  top" down to "the top."
+- **X-LIMIT = `nil`** — don't cap (or compute toward) a width limit.
+- **Y-LIMIT = `nil`** — don't cap the height.
+- **MODE-LINES = `nil`** — don't add mode-line / header-line / tab-line heights.
+- **IGNORE-LINE-AT-END = `t`** — stop at the **top** of END's line; count only
+  what's strictly above it (see vocabulary). This is the argument the whole bug
+  hinges on.
+
+What it returns, *for this cons-FROM shape*, is a three-element list
+`(WIDTH HEIGHT POSITION)`:
+
+- **WIDTH** — *horizontal pixels*; we ignore it.
+- **HEIGHT** — *vertical pixels*: the span we asked for (how far the top will
+  rise). **This is the number the bug corrupts.**
+- **POSITION** — a *buffer position*: the character the "up `delta` pixels" walk
+  landed on. pixel-scroll uses it directly as the new `window-start`.
+
+(That third value, POSITION, only exists *because* FROM was a cons. With a plain
+FROM the function returns just `(WIDTH . HEIGHT)` — a two-element cons, no
+position. The cons-FROM is what both shifts the start *and* reports where it
+landed.)
 
 ## What goes wrong — a worked example
 

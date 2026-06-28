@@ -1,7 +1,7 @@
 # Commit 3 — Exclude a display string anchored at window-start from backward span
 
-> `src/xdisp.c` (+76/−43) and `test/src/xdisp-tests.el` (+30) · general primitive fix
-> (SHA at time of writing: `64f36ad`)
+> `src/xdisp.c` and `test/src/xdisp-tests.el` · general primitive fix
+> Commit: *Exclude a display string anchored at window-start from backward span*
 
 This is the one genuine bug in a **shared C primitive**, and the commit worth
 upstreaming on its own merits. It ships with an ERT regression test.
