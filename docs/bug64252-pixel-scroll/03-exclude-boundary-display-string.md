@@ -1,7 +1,7 @@
-# Commit 3 — Exclude a display string anchored at window-start from backward span
+# Commit 3 — Make IGNORE-LINE-AT-END stop at the top of TO's line
 
 > `src/xdisp.c` and `test/src/xdisp-tests.el` · general primitive fix
-> Commit: *Exclude a display string anchored at window-start from backward span*
+> Commit: *window-text-pixel-size: stop IGNORE-LINE-AT-END at the top of TO's line*
 
 This is the one genuine bug in a **shared C primitive**, and the commit worth
 upstreaming on its own merits. It ships with an ERT regression test.
@@ -27,10 +27,14 @@ new `window-start` and `vscroll`. It is the **only** in-tree caller that passes
 
 ## Bug
 
-When `start` (= `TO`) sits on a line whose **boundary display string** is tall,
-the backward measurement counts that string's height as part of the span
-*above* `TO`, even though the string is displayed **at** `TO` (inside the
-window), not above it. Concretely, with `window-start` on a before-string
+`IGNORE_LINE_AT_END` is documented to *"not add the height of the screen line
+that includes TO to the returned height"* — the measurement is meant to stop at
+the **top of `TO`'s display line** and report only the lines above it. It did
+not stop there: it stopped at `TO` itself, so anything drawn *above* `TO`
+**within that same screen line** was still counted — an overlay before-string
+that starts at `TO`, or an after-string that ends at `TO`. Such a string belongs
+to `TO`'s screen line, which the option is supposed to drop whole, so counting
+it made the height too large. Concretely, with `window-start` on a before-string
 image, a backward measurement that should be ~14 px returned ~214 px (the whole
 image line).
 

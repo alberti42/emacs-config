@@ -43,8 +43,11 @@ Tag every name below with one of those three and the code reads itself:
   **END = `window-start`**. (In the C code it's the variable `end`; same thing.)
 - **`ignore-line-at-end`** — a flag on the measurement. When on, it stops at the
   **top** of END's line instead of its bottom — i.e. it counts only the lines
-  *strictly above* END's line, not END's own line. We turn it on because we want
-  the height of what sits *above* the current top line, not the top line itself.
+  *strictly above* END's line, not END's own line. (Its docstring promises
+  exactly this: *"do not add the height of the screen line that includes
+  END."*) We turn it on because we want the height of what sits *above* the
+  current top line, not the top line itself. The bug below is simply that the
+  old code did not keep that promise.
 
 ## How smooth scrolling positions the page
 
@@ -189,7 +192,9 @@ Two things worth keeping straight:
 
 ## Why the old code got it wrong (one paragraph)
 
-The old code got the height by walking *to* the boundary and reading off how far
+Remember the promise: with `ignore-line-at-end` on, the measurement must stop at
+the **top** of END's line and leave that whole line out. The old code instead
+got the height by walking *to* the boundary and reading off how far
 down it had travelled — then patching up the one case it knew about: an image
 attached as a `display` property on a real character makes the walk "overshoot,"
 and existing code notices and backs off, correctly leaving that image out. A
@@ -278,3 +283,27 @@ display line at a time and stops at the **top of END's own line**. A string
 shown at END belongs to END's line, so stopping at that line's top leaves it out
 automatically — no scanning for overlays, no special-casing. Full details and
 the diff are in the [technical companion](03-exclude-boundary-display-string.md).
+
+## Why not just measure to END and subtract the string?
+
+The obvious quick fix is to keep the old "walk all the way to END" measurement —
+which gives the inflated 314 px — and then subtract the 300 px the string added.
+It works, but it's the wrong shape, for two reasons:
+
+- **You'd have to hunt for the string first.** To subtract its height you must
+  first recognise that there *is* something at END, and exactly which kind: a
+  before-string whose overlay *starts* at END, an after-string whose overlay
+  *ends* at END, or a zero-length overlay (which the ordinary
+  `get-char-property` lookups can't even see) — and a `display` *property* is
+  yet another case again. Each needs its own handling. That is the brittle
+  "scan every overlay at END" code we deliberately threw out.
+- **You'd be recomputing a number Emacs already had.** On its way down, the
+  display engine passes the top of END's line — at that instant it already knows
+  the height of everything above END's line, which is the exact number we want.
+  The subtract route throws that away, deliberately overshoots into END's line,
+  and then reconstructs the part it overshot. Stopping at the top of END's line
+  instead just *reads back* the number that was already there.
+
+So the fix isn't "measure, then correct" — it's "stop before there is anything
+to correct." No string detection, no height recomputation, and nothing for an
+unforeseen overlay shape to slip through.

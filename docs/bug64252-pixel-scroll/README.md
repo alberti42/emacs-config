@@ -21,8 +21,8 @@ The commits live in the local Emacs fork
 | |pixel-scroll-precision-mode](01-respect-scroll-margin.md)       |                       |                       |
 |2|[Force the window start in pixel-scroll-precision page          |`lisp/pixel-scroll.el` |mode-only (fix)        |
 | |scrolling](02-force-window-start.md)                            |                       |                       |
-|3|[Exclude a display string anchored at window-start from backward|`src/xdisp.c` + `test/`|general primitive (fix)|
-| |span](03-exclude-boundary-display-string.md)                    |                       |                       |
+|3|[Make IGNORE-LINE-AT-END stop at the top of TO's                |`src/xdisp.c` + `test/`|general primitive (fix)|
+| |line](03-exclude-boundary-display-string.md)                    |                       |                       |
 
 Commits are identified by their title (first line) above, not by SHA — the
 branch is rebased and amended often, so any SHA goes stale almost immediately.
@@ -37,7 +37,8 @@ Three distinct misbehaviours, all triggered by a tall line:
 2. **Re-snap / double-traversal.** Scrolling up, `window-start` would land on
    the tall line, the view would crawl through it via `vscroll`, then *snap
    back* and traverse the same image again. → fixed by commit **3** (the
-   backward measurement was over-counting a boundary string).
+   backward measurement over-counted an overlay string on the `window-start`
+   line instead of stopping at the top of that line).
 3. **Margin fighting smooth scroll.** A non-zero `scroll-margin` made
    redisplay re-impose the margin mid-gesture, reading as the text snapping
    back near edges. → fixed by commit **1** (suspend `scroll-margin` during a
@@ -46,12 +47,13 @@ Three distinct misbehaviours, all triggered by a tall line:
 ## Two independent root causes
 
 - **A redisplay/measurement bug in the C primitive `window_text_pixel_size`**
-  (commit 3): its *backward* form (`FROM` = a cons with a negative offset)
-  wrongly counted a before/after-string anchored at the `TO` boundary as part
-  of the span *above* `TO`. This is a general bug in shared API, not specific
-  to pixel-scroll — though pixel-scroll is effectively its only in-tree caller
-  of the backward form. **This is the commit worth upstreaming on its own
-  merits**, and it ships with an ERT regression test.
+  (commit 3): with `IGNORE-LINE-AT-END` it is documented to drop the whole
+  screen line that `TO` sits on, but it stopped *at* `TO` and still counted an
+  overlay before/after-string drawn *above* `TO` on that same line. This is a
+  general bug in shared API, not specific to pixel-scroll — though pixel-scroll
+  is effectively its only in-tree caller of that form. **This is the commit
+  worth upstreaming on its own merits**, and it ships with an ERT regression
+  test.
 
 - **`pixel-scroll-precision`'s own page-scroll logic** (commits 1 & 2): it used
   `set-window-start` with `NOFORCE` non-nil, which lets redisplay *disregard*
