@@ -34,27 +34,45 @@
 ;; Treat any whitespace in the query as a run of whitespace (matches across line breaks).
 (setq search-whitespace-regexp "[ \t\r\n]+")
 
+;; Show 2 lines of context around each `occur' / `list-matching-lines' hit, and
+;; open `*Occur*' on the entry nearest point in the source buffer.
+(setq list-matching-lines-default-context-lines 2)
+(setq list-matching-lines-jump-to-current-line t)
+
 (defvar search-recenter-edge-threshold 5
-  "Trigger scrolling when the isearch match is within this many lines of the window edge.")
+  "Trigger scrolling when point is within this many lines of the window edge.")
 
 (defvar search-recenter-context-lines 10
-  "Number of lines to expose beyond the isearch match after scrolling.")
+  "Number of lines to expose beyond point after scrolling.")
+
+(defun search-recenter-point ()
+  "Scroll the selected window so point is not jammed against an edge.
+Scrolls only when point is within `search-recenter-edge-threshold' lines of an
+edge, exposing `search-recenter-context-lines' lines beyond it; a target already
+comfortably in view is left where it is.  Shared by the isearch and `next-error'
+recentering hooks."
+  (let* ((window-height (window-body-height))
+         (lines-from-top (count-screen-lines (window-start) (point)))
+         (lines-from-bottom (- window-height lines-from-top)))
+    (cond
+     ((< lines-from-bottom search-recenter-edge-threshold)
+      (recenter (- search-recenter-context-lines)))
+     ((< lines-from-top search-recenter-edge-threshold)
+      (recenter search-recenter-context-lines)))))
 
 (defun search-recenter-isearch-match ()
-  "Scroll the window so the isearch match is not jammed against an edge.
-Uses `search-recenter-edge-threshold' to decide when to scroll, and
-`search-recenter-context-lines' to choose how much context to expose."
+  "Edge-aware recenter for the current isearch match (see `search-recenter-point')."
   (when (and isearch-success (not (input-pending-p)))
-    (let* ((window-height (window-body-height))
-           (lines-from-top (count-screen-lines (window-start) (point)))
-           (lines-from-bottom (- window-height lines-from-top)))
-      (cond
-       ((< lines-from-bottom search-recenter-edge-threshold)
-        (recenter (- search-recenter-context-lines)))
-       ((< lines-from-top search-recenter-edge-threshold)
-        (recenter search-recenter-context-lines))))))
+    (search-recenter-point)))
 
 (add-hook 'isearch-update-post-hook #'search-recenter-isearch-match)
+
+;; Give `next-error' jumps (occur, grep, compilation, xref, flymake/flycheck) the
+;; same edge-aware recentering as isearch: a match already on screen stays put,
+;; and only an edge-crowding match scrolls to expose context.  `next-error-recenter'
+;; is left at its nil default on purpose -- a non-nil value would force an
+;; unconditional `recenter' before this hook runs.
+(add-hook 'next-error-hook #'search-recenter-point)
 
 ;; ;; DEL deletes one character from the search string instead of undoing the
 ;; ;; last input action (which would remove an entire yank in one keystroke).
