@@ -532,6 +532,8 @@ kill ring (and thus the system clipboard)."
      (list (line-beginning-position) (line-end-position))))
   (let ((snip (my/agent-snippet-format start end)))
     (kill-new (plist-get snip :text))
+    ;; Clear the selection like `kill-ring-save' does.
+    (deactivate-mark)
     (message "Copied %s:%s (%d line%s)"
              (plist-get snip :path) (plist-get snip :range)
              (plist-get snip :lines) (if (= 1 (plist-get snip :lines)) "" "s"))))
