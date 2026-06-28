@@ -50,8 +50,9 @@ and the pattern only misbehaves when a tall string happens to sit on the
 `IGNORE_LINE_AT_END` is documented to *"not add the height of the screen line
 that includes TO to the returned height"* — the measurement is meant to stop at
 the **top of `TO`'s display line** and report only the lines above it. It did
-not stop there: it stopped at `TO` itself, so anything drawn *above* `TO`
-**within that same screen line** was still counted — an overlay before-string
+not stop there: it stopped at `TO` itself (the top of `TO`'s *text*) and took
+that y as the top of `TO`'s line, so anything drawn *above* `TO`'s text but
+still on that screen line was never excluded — an overlay before-string
 that starts at `TO`, or an after-string that ends at `TO`. The two are
 symmetric: a before-string is drawn at its overlay's *start* and an after-string
 at its overlay's *end*, so whenever either anchor is `TO` the string is drawn
@@ -59,9 +60,17 @@ at its overlay's *end*, so whenever either anchor is `TO` the string is drawn
 spans. (The markdown-ts `"\n " + image` after-string only *looks* like it
 belongs to the line above because its leading newline pushes the image visually
 downward; its anchor is still `TO`.) Such a string belongs to `TO`'s screen
-line, which the option is supposed to drop whole, so counting it made the height
-too large. Concretely, with `window-start` on a before-string image, a backward
-measurement that should be ~14 px returned ~214 px (the whole image line).
+line, which the option is supposed to drop whole; by never accounting for it, the
+code let its height leak into the y it took for the top of `TO`'s line, making
+the height too large.
+
+What makes the string tall does not matter — an image, a face with a large
+`:height`, or simply several rows of text all do it. The regression test uses a
+plain three-line string (`"X\nY\nZ\n"`) precisely to show the bug is **not**
+image-specific; the over-count equals the string's own height, whatever produced
+it. An image is just the most dramatic case: with `window-start` on a
+before-string image, a backward measurement that should be ~14 px returned
+~214 px (the whole image line).
 
 Consequence: `scroll-up-page` set `vscroll` to ~the image height in one step,
 parking the view deep inside the image; the next step re-measured the same way
@@ -103,7 +112,7 @@ whole bug. It was confirmed with instrumentation:
 
 ```
 display property at END:  end=1751 charpos=1752  (overshoot → handled)   height 14  ✓
-before-string at END:     end=1726 charpos=1726  (no overshoot → counted) height 214 ✗
+before-string at END:     end=1726 charpos=1726  (no overshoot → kept)    height 214 ✗
 ```
 
 The deeper observation: the function was **measuring into `END`'s line and then
@@ -138,10 +147,10 @@ boundary line *adds*; together they exclude the boundary line, which is all
 
 ## Fix
 
-Split the measurement on `IGNORE_LINE_AT_END`. The `IGNORE_LINE_AT_END` path
-becomes a **single** line-by-line descent of the span that stops at the top of
-`END`'s display line and reads the height from there — it *is* the measurement,
-so the span is walked only once:
+Split the measurement on `IGNORE_LINE_AT_END`. When it is set, step the iterator
+down one screen line at a time and stop at the top of `END`'s display line,
+reading the height from there — this stepping *is* the measurement, so the lines
+are walked only once:
 
 ```c
 int top_of_end_line_y = 0;
@@ -171,16 +180,17 @@ if (!NILP (ignore_line_at_end))
   y = top_of_end_line_y - WINDOW_TAB_LINE_HEIGHT (w) - WINDOW_HEADER_LINE_HEIGHT (w);
 ```
 
-The `move_it_to` to `END` and its overshoot back-off now run **only** on the
-non-`IGNORE_LINE_AT_END` (forward) path, which is otherwise stock upstream. The
-descent runs on the live iterator (no `SAVE_IT`/`RESTORE_IT` copy and no second
-pass), so the span is traversed once instead of twice. The sole caller of the
+The `move_it_to` to `END` and its overshoot back-off now run **only** when
+`IGNORE_LINE_AT_END` is nil (the forward path), which is otherwise stock
+upstream. The stepping runs on the live iterator (no `SAVE_IT`/`RESTORE_IT` copy
+and no second pass), so the lines are traversed once instead of twice. The sole
+caller of the
 backward `IGNORE_LINE_AT_END` form (pixel-scroll) uses only the height and the
 start position, so the returned width is just the x reached at `END`'s line
 rather than a separate max-width walk.
 
 > An intermediate version of this fix kept the stock `move_it_to (&it, end, …)`
-> for the width and ran the descent *in addition*, on a `SAVE_IT` copy — correct,
+> for the width and stepped through the lines *in addition*, on a `SAVE_IT` copy — correct,
 > and behaviorally identical, but it walked the span twice (measurably slower:
 > ~52 vs ~43 µs/call in a tight benchmark). Folding the height into the one walk
 > removes the redundancy.

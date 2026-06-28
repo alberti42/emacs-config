@@ -198,6 +198,12 @@ Two things worth keeping straight:
   the anchor is still the boundary. That's why the fix treats them alike: a
   before-string whose overlay *starts* at the boundary, or an after-string whose
   overlay *ends* at it.
+- **It isn't really about images.** Any overlay string taller than a normal line
+  over-counts — several rows of text, or text enlarged with a face `:height`,
+  not just an image. We use an image here because it's the most vivid case (and
+  the one that actually bit us); the regression test below deliberately uses a
+  plain three-line string to prove the bug is general. What's over-counted is
+  simply the string's own height, whatever made it tall.
 
 ## Why "overshoot" is the heart of it
 
