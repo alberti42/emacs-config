@@ -435,13 +435,16 @@ Consults `my/markdown-language-alist' first; otherwise strips the
 Defaults to a tab, matching the `cat -n' format coding agents use for file
 contents.  Set to e.g. \" │ \" for a human-legible vertical bar.")
 
-(defun my/agent-snippet--path ()
+(defun my/agent-snippet--path (&optional base-dir)
   "Return the path for the snippet header.
-Project-relative when the file is inside a project, otherwise the
-abbreviated absolute path; the buffer name for non-file buffers."
+Relative to BASE-DIR when given and the file lives under it; otherwise
+project-relative when inside a project; otherwise the abbreviated absolute
+path.  The buffer name for non-file buffers."
   (let ((file (buffer-file-name)))
     (cond
      ((null file) (buffer-name))
+     ((and base-dir (file-in-directory-p file base-dir))
+      (file-relative-name file base-dir))
      ((when-let* ((proj (project-current))
                   (root (project-root proj))
                   ((file-in-directory-p file root)))
@@ -456,25 +459,28 @@ abbreviated absolute path; the buffer name for non-file buffers."
             start (match-end 0)))
     max))
 
-;;;###autoload
-(defun my/copy-as-agent-snippet (start end)
-  "Copy the region (or current line) as a fenced, line-numbered snippet.
-Formatted for pasting to a coding agent:
+(defun my/agent-snippet-format (start end &optional path)
+  "Return a plist describing a fenced, line-numbered snippet of the current buffer.
+The snippet covers the whole lines spanning START..END:
 
     ```<lang> <path>:<first>-<last>
     <n><sep>line content
     ...
     ```
 
-LANG comes from the major mode, PATH is project-relative when possible,
-SEP is `my/agent-snippet-separator', and the fence grows past any run of
-backticks in the content.  Whole lines are always included even when the
-region starts or ends mid-line.  The result is pushed to the kill ring
-\(and thus the system clipboard)."
-  (interactive
-   (if (use-region-p)
-       (list (region-beginning) (region-end))
-     (list (line-beginning-position) (line-end-position))))
+LANG comes from `my/markdown-language-for-mode', PATH (the header path)
+defaults to `my/agent-snippet--path' but may be supplied by the caller (e.g.
+relative to an agent's working directory), SEP is `my/agent-snippet-separator',
+and the fence grows past any run of backticks in the content.
+
+The returned plist has keys:
+ :text       the full snippet string
+ :header     the opening fence line (fence + lang + \"path:range\")
+ :fence      the fence delimiter string
+ :body       the numbered lines joined by newlines
+ :body-lines the numbered lines as a list (for capped previews)
+ :path :range :lines  as above (range is a \"N\" or \"N-M\" string)
+Pure: it neither moves point nor touches the kill ring."
   (save-excursion
     ;; Snap to whole lines; drop a trailing line the region only touches at col 0.
     (goto-char start) (setq start (line-beginning-position))
@@ -483,7 +489,7 @@ region starts or ends mid-line.  The result is pushed to the kill ring
     (setq end (line-end-position)))
   (let* ((first   (line-number-at-pos start))
          (last    (line-number-at-pos end))
-         (path    (my/agent-snippet--path))
+         (path    (or path (my/agent-snippet--path)))
          (lang    (my/markdown-language-for-mode))
          (num-fmt (format "%%%dd" (length (number-to-string last))))
          (sep     my/agent-snippet-separator)
@@ -496,19 +502,39 @@ region starts or ends mid-line.  The result is pushed to the kill ring
                        (line-beginning-position) (line-end-position)))
               lines)
         (forward-line 1)))
-    (let* ((body  (mapconcat #'identity (nreverse lines) "\n"))
-           (range (if (= first last)
-                      (number-to-string first)
-                    (format "%d-%d" first last)))
-           (fence (make-string (max 3 (1+ (my/agent-snippet--max-backtick-run body))) ?`))
-           (text  (format "%s%s%s:%s\n%s\n%s"
-                          fence
-                          (if (string-empty-p lang) "" (concat lang " "))
-                          path range body fence)))
-      (kill-new text)
-      (message "Copied %s:%s (%d line%s)"
-               path range
-               (1+ (- last first)) (if (= first last) "" "s")))))
+    (let* ((body-lines (nreverse lines))
+           (body   (mapconcat #'identity body-lines "\n"))
+           (range  (if (= first last)
+                       (number-to-string first)
+                     (format "%d-%d" first last)))
+           (fence  (make-string (max 3 (1+ (my/agent-snippet--max-backtick-run body))) ?`))
+           (header (format "%s%s%s:%s"
+                           fence
+                           (if (string-empty-p lang) "" (concat lang " "))
+                           path range)))
+      (list :text       (concat header "\n" body "\n" fence)
+            :header     header
+            :fence      fence
+            :body       body
+            :body-lines body-lines
+            :path       path
+            :range      range
+            :lines      (1+ (- last first))))))
+
+;;;###autoload
+(defun my/copy-as-agent-snippet (start end)
+  "Copy the region (or current line) as a fenced, line-numbered snippet.
+See `my/agent-snippet-format' for the format.  The result is pushed to the
+kill ring (and thus the system clipboard)."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (line-beginning-position) (line-end-position))))
+  (let ((snip (my/agent-snippet-format start end)))
+    (kill-new (plist-get snip :text))
+    (message "Copied %s:%s (%d line%s)"
+             (plist-get snip :path) (plist-get snip :range)
+             (plist-get snip :lines) (if (= 1 (plist-get snip :lines)) "" "s"))))
 
 ;; Make `C-u M-w' copy as an agent snippet while plain `M-w' stays
 ;; `kill-ring-save'.  `C-u' is the `universal-argument' prefix, so the dispatch

@@ -61,6 +61,75 @@
   (advice-add 'agent-shell-project-buffers :override
               #'my/agent-shell-project-buffers)
 
+  ;; Region/line context formatting: replace agent-shell's `path:start-end' +
+  ;; "   N: line" preview with our fenced, lang-tagged, `cat -n'-style snippet
+  ;; from `my/agent-snippet-format' (utils.el).  `agent-shell--get-region-context'
+  ;; is the single chokepoint feeding both the `region' and `line' context
+  ;; sources (`agent-shell-send-region', `agent-shell-send-dwim', ...); it runs
+  ;; in the source buffer with the region active.  Paths are made relative to the
+  ;; agent's cwd (its keyword arg), matching how the agent sees them.
+  ;;
+  ;; We keep agent-shell's nice >N-line cap + Expand button: the visible preview
+  ;; shows the first `my/agent-shell-region-preview-cap' lines plus a button,
+  ;; carrying the `agent-shell-region-id'/`agent-shell-region-text' properties so
+  ;; both the button and `agent-shell--expand-truncated-regions' (on send) swap
+  ;; in the full body.  The fence sits outside the truncated span, so expansion
+  ;; yields a well-formed block.  The button machinery is reused via `fboundp'
+  ;; guards, degrading to the full snippet if those internals ever change.  (We
+  ;; do drop the clickable jump-to-region file link.)
+  (defvar my/agent-shell-region-preview-cap 5
+    "Lines shown before a region context preview is truncated with an Expand button.")
+  (defun my/agent-shell--region-context (&rest args)
+    "Format region/line context via `my/agent-snippet-format'.
+Override for `agent-shell--get-region-context'; honors its DEACTIVATE,
+NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
+    (let ((deactivate (plist-get args :deactivate))
+          (no-error   (plist-get args :no-error))
+          (agent-cwd  (plist-get args :agent-cwd))
+          (cap        my/agent-shell-region-preview-cap))
+      (if-let* ((region (agent-shell--get-region :deactivate deactivate)))
+          (let* ((snip  (my/agent-snippet-format
+                         (alist-get :char-start region)
+                         (alist-get :char-end region)
+                         (my/agent-snippet--path agent-cwd)))
+                 (lines (plist-get snip :body-lines)))
+            (if (or (<= (length lines) cap)
+                    (not (and (fboundp 'agent-shell--make-button)
+                              (fboundp 'agent-shell--add-text-properties))))
+                (plist-get snip :text)
+              ;; Truncated preview: first CAP lines + Expand button, with the
+              ;; full body stashed on the region-id/region-text properties.
+              (let* ((id        (gensym "agent-shell-region-"))
+                     (full-body (plist-get snip :body))
+                     (button
+                      (agent-shell--make-button
+                       :text "Expand..."
+                       :help "RET to expand"
+                       :action
+                       (lambda ()
+                         (interactive)
+                         (save-excursion
+                           (goto-char (point-min))
+                           (when-let* ((m (text-property-search-forward
+                                           'agent-shell-region-id id t))
+                                       (inhibit-read-only t))
+                             (delete-region (prop-match-beginning m)
+                                            (prop-match-end m))
+                             (goto-char (prop-match-beginning m))
+                             (insert full-body))))))
+                     (preview
+                      (agent-shell--add-text-properties
+                       (concat (string-join (seq-take lines cap) "\n")
+                               "\n\n" button)
+                       'agent-shell-region-id id
+                       'agent-shell-region-text full-body)))
+                (concat (plist-get snip :header) "\n"
+                        preview "\n"
+                        (plist-get snip :fence)))))
+        (unless no-error (user-error "No region selected")))))
+  (advice-add 'agent-shell--get-region-context :override
+              #'my/agent-shell--region-context)
+
   ;; Render LaTeX display-math equations in agent responses as images
   ;; (compiled via latex + dvisvgm).  `agent-shell-markdown-render-math'
   ;; is the master switch and defaults to nil, so enable it here.  Once
