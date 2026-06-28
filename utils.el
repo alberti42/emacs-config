@@ -356,5 +356,172 @@ Falls through to the original command in all other cases."
 
 (advice-add 'comment-dwim :around #'my/comment-dwim-section-header)
 
+;;; -- Markdown fenced-code language identifiers -------------------------------
+;;
+;; Map an Emacs major mode to the language identifier used in a Markdown fenced
+;; code block -- the leading token of the fence "info string" (e.g. the
+;; `python' in "```python").  Generally useful wherever code is emitted as
+;; Markdown, not just by the agent-snippet command below.
+
+(defvar my/markdown-language-alist
+  '(;; Lisps
+    (emacs-lisp-mode        . "elisp")
+    (lisp-interaction-mode  . "elisp")
+    (lisp-mode              . "commonlisp")
+    (clojure-mode           . "clojure")
+    (scheme-mode            . "scheme")
+    ;; C family
+    (c-mode                 . "c")
+    (c-ts-mode              . "c")
+    (c++-mode               . "cpp")
+    (c++-ts-mode            . "cpp")
+    (objc-mode              . "objc")
+    (csharp-mode            . "csharp")
+    (csharp-ts-mode         . "csharp")
+    ;; Systems / compiled
+    (rust-mode              . "rust")
+    (rustic-mode            . "rust")
+    (rust-ts-mode           . "rust")
+    ;; Web / scripting
+    (js2-mode               . "js")
+    (rjsx-mode              . "jsx")
+    (js-json-mode           . "json")
+    (cperl-mode             . "perl")
+    (perl-mode              . "perl")
+    ;; Shell
+    (sh-mode                . "bash")
+    (bash-ts-mode           . "bash")
+    ;; Markup / config
+    (nxml-mode              . "xml")
+    (mhtml-mode             . "html")
+    (html-mode              . "html")
+    (conf-toml-mode         . "toml")
+    (makefile-gmake-mode    . "makefile")
+    (makefile-bsdmake-mode  . "makefile")
+    ;; Docs / markup / prose
+    (markdown-mode          . "markdown")
+    (markdown-ts-mode       . "markdown")
+    (org-mode               . "org")
+    (latex-mode             . "latex")
+    (LaTeX-mode             . "latex")
+    (text-mode              . "text"))
+  "Major-mode -> Markdown fenced-code language identifier overrides.
+An entry takes precedence over the strip heuristic in
+`my/markdown-language-for-mode'.  List a mode when its conventional
+identifier differs from the stripped name (e.g. `c++-mode' -> \"cpp\"), or
+simply to make a commonly used mode explicit; modes absent here fall through
+to the heuristic (e.g. `python-ts-mode' -> \"python\").")
+
+(defun my/markdown-language-for-mode (&optional mode)
+  "Return the Markdown fenced-code language identifier for MODE.
+MODE defaults to the current `major-mode'.  The identifier is the leading
+token of a fence info string (e.g. \"python\" in a \"```python\" block).
+Consults `my/markdown-language-alist' first; otherwise strips the
+`-ts-mode'/`-mode' suffix (so `python-ts-mode' -> \"python\")."
+  (let ((mode (or mode major-mode)))
+    (or (cdr (assq mode my/markdown-language-alist))
+        (replace-regexp-in-string "\\(-ts\\)?-mode\\'" "" (symbol-name mode)))))
+
+;;; -- Copy buffer/region as an agent-ready snippet ----------------------------
+;;
+;; Format a region (or current line) as a fenced, line-numbered block for
+;; pasting to a coding agent.  The fence header carries the project-relative
+;; path and line range so the agent can locate and edit the exact lines; the
+;; line-number + separator prefix mirrors the `cat -n' shape such agents emit
+;; for file contents.
+
+(defvar my/agent-snippet-separator "\t"
+  "String between the line number and the line content in `my/copy-as-agent-snippet'.
+Defaults to a tab, matching the `cat -n' format coding agents use for file
+contents.  Set to e.g. \" │ \" for a human-legible vertical bar.")
+
+(defun my/agent-snippet--path ()
+  "Return the path for the snippet header.
+Project-relative when the file is inside a project, otherwise the
+abbreviated absolute path; the buffer name for non-file buffers."
+  (let ((file (buffer-file-name)))
+    (cond
+     ((null file) (buffer-name))
+     ((when-let* ((proj (project-current))
+                  (root (project-root proj))
+                  ((file-in-directory-p file root)))
+        (file-relative-name file root)))
+     (t (abbreviate-file-name file)))))
+
+(defun my/agent-snippet--max-backtick-run (s)
+  "Return the length of the longest run of backticks in string S."
+  (let ((max 0) (start 0))
+    (while (string-match "`+" s start)
+      (setq max   (max max (- (match-end 0) (match-beginning 0)))
+            start (match-end 0)))
+    max))
+
+;;;###autoload
+(defun my/copy-as-agent-snippet (start end)
+  "Copy the region (or current line) as a fenced, line-numbered snippet.
+Formatted for pasting to a coding agent:
+
+    ```<lang> <path>:<first>-<last>
+    <n><sep>line content
+    ...
+    ```
+
+LANG comes from the major mode, PATH is project-relative when possible,
+SEP is `my/agent-snippet-separator', and the fence grows past any run of
+backticks in the content.  Whole lines are always included even when the
+region starts or ends mid-line.  The result is pushed to the kill ring
+\(and thus the system clipboard)."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list (line-beginning-position) (line-end-position))))
+  (save-excursion
+    ;; Snap to whole lines; drop a trailing line the region only touches at col 0.
+    (goto-char start) (setq start (line-beginning-position))
+    (goto-char end)
+    (when (and (bolp) (> end start)) (forward-line -1))
+    (setq end (line-end-position)))
+  (let* ((first   (line-number-at-pos start))
+         (last    (line-number-at-pos end))
+         (path    (my/agent-snippet--path))
+         (lang    (my/markdown-language-for-mode))
+         (num-fmt (format "%%%dd" (length (number-to-string last))))
+         (sep     my/agent-snippet-separator)
+         lines)
+    (save-excursion
+      (goto-char start)
+      (dotimes (i (1+ (- last first)))
+        (push (concat (format num-fmt (+ first i)) sep
+                      (buffer-substring-no-properties
+                       (line-beginning-position) (line-end-position)))
+              lines)
+        (forward-line 1)))
+    (let* ((body  (mapconcat #'identity (nreverse lines) "\n"))
+           (range (if (= first last)
+                      (number-to-string first)
+                    (format "%d-%d" first last)))
+           (fence (make-string (max 3 (1+ (my/agent-snippet--max-backtick-run body))) ?`))
+           (text  (format "%s%s%s:%s\n%s\n%s"
+                          fence
+                          (if (string-empty-p lang) "" (concat lang " "))
+                          path range body fence)))
+      (kill-new text)
+      (message "Copied %s:%s (%d line%s)"
+               path range
+               (1+ (- last first)) (if (= first last) "" "s")))))
+
+;; Make `C-u M-w' copy as an agent snippet while plain `M-w' stays
+;; `kill-ring-save'.  `C-u' is the `universal-argument' prefix, so the dispatch
+;; must live in the command bound to `M-w', not in a separate key binding.
+(defun my/kill-ring-save-dwim (&optional arg)
+  "Save the region to the kill ring; with prefix ARG, copy as an agent snippet.
+See `my/copy-as-agent-snippet' for the snippet format."
+  (interactive "P")
+  (if arg
+      (call-interactively #'my/copy-as-agent-snippet)
+    (call-interactively #'kill-ring-save)))
+
+(global-set-key (kbd "M-w") #'my/kill-ring-save-dwim)
+
 (provide 'utils)
 ;;; utils.el ends here
