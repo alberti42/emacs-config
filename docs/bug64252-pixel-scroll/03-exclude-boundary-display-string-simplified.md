@@ -190,11 +190,14 @@ Two things worth keeping straight:
 - **Only the step that *leaves* the anchored boundary misbehaves.** `S19 → S18`,
   `S18 → S17`, … each measure up to a plain line start with nothing anchored on
   it, and are perfectly correct. The single poisoned moment is `E19 → S19`.
-- **A `before`-string is the same bug, simpler.** There the image hangs *above*
-  its line's text, so its anchor *is* a normal line start; `window-start` sits
-  right on it and the first scroll-up off it over-counts. (That's why the fix
-  checks both: a before-string whose overlay *starts* at the boundary, or an
-  after-string whose overlay *ends* at it.)
+- **Before-string and after-string are the same bug, symmetric.** A before-string
+  is drawn at its overlay's *start*, an after-string at its overlay's *end* — so
+  whenever either anchor is the boundary, the string is drawn *at* the boundary,
+  regardless of the range the overlay spans. The markdown-ts case only *looks*
+  lopsided because its leading `"\n "` pushes the image visually below the text;
+  the anchor is still the boundary. That's why the fix treats them alike: a
+  before-string whose overlay *starts* at the boundary, or an after-string whose
+  overlay *ends* at it.
 
 ## Why "overshoot" is the heart of it
 

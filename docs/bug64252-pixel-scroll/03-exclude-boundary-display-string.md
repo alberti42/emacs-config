@@ -52,11 +52,16 @@ that includes TO to the returned height"* — the measurement is meant to stop a
 the **top of `TO`'s display line** and report only the lines above it. It did
 not stop there: it stopped at `TO` itself, so anything drawn *above* `TO`
 **within that same screen line** was still counted — an overlay before-string
-that starts at `TO`, or an after-string that ends at `TO`. Such a string belongs
-to `TO`'s screen line, which the option is supposed to drop whole, so counting
-it made the height too large. Concretely, with `window-start` on a before-string
-image, a backward measurement that should be ~14 px returned ~214 px (the whole
-image line).
+that starts at `TO`, or an after-string that ends at `TO`. The two are
+symmetric: a before-string is drawn at its overlay's *start* and an after-string
+at its overlay's *end*, so whenever either anchor is `TO` the string is drawn
+*at* `TO`, just before `TO`'s own character — no matter what range the overlay
+spans. (The markdown-ts `"\n " + image` after-string only *looks* like it
+belongs to the line above because its leading newline pushes the image visually
+downward; its anchor is still `TO`.) Such a string belongs to `TO`'s screen
+line, which the option is supposed to drop whole, so counting it made the height
+too large. Concretely, with `window-start` on a before-string image, a backward
+measurement that should be ~14 px returned ~214 px (the whole image line).
 
 Consequence: `scroll-up-page` set `vscroll` to ~the image height in one step,
 parking the view deep inside the image; the next step re-measured the same way
