@@ -27,6 +27,7 @@
         recentf-exclude
         (list (concat "\\`" (regexp-quote (file-truename temporary-file-directory)))
               "\\`/tmp/"
+              "\\`/private/tmp/"              
               "\\/COMMIT_EDITMSG\\'"
               "\\`/\\(?:private\\)?var/folders/"
               (concat "\\`" (regexp-quote (expand-file-name "~/Library/Caches/")))
