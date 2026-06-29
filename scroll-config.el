@@ -51,7 +51,7 @@ it during an active scroll and restores it afterwards (see
 ;; `pixel-scroll-precision-reposition-point' is non-nil -- repositions point to
 ;; honor the margin.  `pixel-scroll-precision-settle-delay' is how long after
 ;; the last scroll event that settling happens.
-(setopt pixel-scroll-precision-reposition-point nil)
+(setopt pixel-scroll-precision-reposition-point t)
 (setopt pixel-scroll-precision-settle-delay 0.18)
 (setopt pixel-scroll-precision-hide-cursor-while-scrolling nil)
 
