@@ -21,7 +21,8 @@
    ;; The --attach option relies on a custom modification
    ;; in the branch acp-attach of opencode personal fork:
    ;; https://github.com/alberti42/fork-opencode
-   '("opencode" "acp" "--attach" "http://localhost:4096"))
+   ;; '("opencode" "acp" "--attach" "http://localhost:4096"))
+   '("opencode" "acp"))
   :bind (:map agent-shell-mode-map
               ("M-RET" . newline)
               ("C-c a" . agent-shell-prompt-compose))
@@ -152,7 +153,10 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
   ;; tune this only if they look a touch big or small (after changing it,
   ;; `M-x agent-shell-markdown-math-refresh' re-sizes existing equations).
   (when (boundp 'agent-shell-markdown-math-font-scale)
-    (setq agent-shell-markdown-math-font-scale 1.0)))
+    (setq agent-shell-markdown-math-font-scale 1.0))
+  ;; Configure the LaTeX preamble
+  (when (boundp 'agent-shell-markdown-math-appended-preamble)
+    (setq agent-shell-markdown-math-appended-preamble "\\usepackage{braket}")))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
