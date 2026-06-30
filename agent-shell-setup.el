@@ -156,7 +156,8 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
     (setq agent-shell-markdown-math-font-scale 1.0))
   ;; Configure the LaTeX preamble
   (when (boundp 'agent-shell-markdown-math-appended-preamble)
-    (setq agent-shell-markdown-math-appended-preamble "\\usepackage{braket}")))
+    (setq agent-shell-markdown-math-appended-preamble
+          "\\usepackage{physics}")))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
