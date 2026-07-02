@@ -9,7 +9,8 @@
 ;;; Code:
 
 ;; Baseline styles; Orderless (if loaded) will override `completion-styles'.
-(setq completion-styles '(basic partial-completion)
+(setq completion-ignore-case t
+      completion-styles '(basic partial-completion)
       completion-category-defaults nil
       completion-category-overrides
       '((file (styles basic partial-completion))))
