@@ -10,9 +10,7 @@
   :straight (agent-shell
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Others/fork-agent-shell"
-             :branch "display-math"
-             :repo "alberti42/fork-agent-shell")
+             :repo "xenodium/agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
   ;; (agent-shell-anthropic-default-model-id "claude-opus-4-6")
@@ -131,33 +129,19 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
   (advice-add 'agent-shell--get-region-context :override
               #'my/agent-shell--region-context)
 
-  ;; Render LaTeX display-math equations in agent responses as images
-  ;; (compiled via latex + dvisvgm).  `agent-shell-markdown-render-math'
-  ;; is the master switch and defaults to nil, so enable it here.  Once
-  ;; on, block-level `\[...\]', `$$...$$', and ```math / ```latex fences
-  ;; all render by default.  To drop `$$' (e.g. if it collides with
-  ;; prose), set `agent-shell-markdown-math-delimiters' to '(bracket).
-  ;; The `boundp' guard keeps this a no-op on an agent-shell build that
-  ;; predates the feature, and avoids a free-variable warning.
-  (when (boundp 'agent-shell-markdown-render-math)
-    (setq agent-shell-markdown-render-math t))
-  ;; Daemon: a chat may be rendered while a TTY (emacsclient -t) frame is
-  ;; selected, but viewed later in a GUI frame.  Compile the SVGs anyway
-  ;; (ignored on the terminal, shown once a graphical frame opens the
-  ;; buffer) so equations aren't permanently lost to whichever frame
-  ;; happened to be current at render time.
-  (when (boundp 'agent-shell-markdown-math-render-on-non-graphic)
-    (setq agent-shell-markdown-math-render-on-non-graphic t))
-  ;; Equation size relative to the buffer font: 1.0 matches the surrounding
-  ;; text, >1 enlarges, <1 shrinks.  Equations auto-track the font size, so
-  ;; tune this only if they look a touch big or small (after changing it,
-  ;; `M-x agent-shell-markdown-math-refresh' re-sizes existing equations).
-  (when (boundp 'agent-shell-markdown-math-font-scale)
-    (setq agent-shell-markdown-math-font-scale 1.0))
-  ;; Configure the LaTeX preamble
-  (when (boundp 'agent-shell-markdown-math-appended-preamble)
-    (setq agent-shell-markdown-math-appended-preamble
-          "\\usepackage{physics}")))
+  )
+
+(use-package agent-shell-math-renderer
+  :straight (agent-shell-math-renderer
+             :type git
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
+  :after agent-shell
+  :config
+  (setq agent-shell-math-renderer-enabled t)
+  (setq agent-shell-math-renderer-render-on-non-graphic t)
+  (setq agent-shell-math-renderer-font-scale 1.0)
+  (setq agent-shell-math-renderer-appended-preamble
+        "\\usepackage{physics}"))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
