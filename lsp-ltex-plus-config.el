@@ -25,7 +25,7 @@
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-ltex-ls-log-level "warning")
   (lsp-ltex-plus-trace-server "message")
-  (lsp-ltex-plus-show-latency t)
+  (lsp-ltex-plus-show-latency nil)
   (lsp-ltex-plus-multi-root t)
   (lsp-ltex-plus-max-request-size 60000)
   (lsp-ltex-plus-fragmentCacheTtlMinutes 30)
