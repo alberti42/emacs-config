@@ -32,13 +32,13 @@
 ;;                                         Runs the backward measurement with
 ;;                                         and without a tall boundary string,
 ;;                                         prints the numbers, and tells you
-;;                                         whether THIS build is patched.  No
-;;                                         scrolling, no image support needed.
+;;                                         whether THIS build measures right.
+;;                                         No scrolling, no image support needed.
 ;;
 ;;   - `pixel-scroll-tall-line-test-002'  The visible symptom: scroll a tall
 ;;                                         after-string image up toward the top
-;;                                         and watch it lurch (unpatched) or
-;;                                         glide (patched).  Needs a GUI frame
+;;                                         and watch it lurch (UNFIXED) or
+;;                                         glide (FIXED).  Needs a GUI frame
 ;;                                         with image support.
 ;;
 ;;   - `pixel-scroll-tall-line-test-003'  Control: the SAME image attached as a
@@ -47,6 +47,13 @@
 ;;                                         measured correctly, so it scrolls
 ;;                                         smoothly with or without the patch --
 ;;                                         it isolates what the patch changes.
+;;
+;;   - `pixel-scroll-tall-line-test-004'  Mirror of 002: the image as an overlay
+;;                                         before-string, stacking ABOVE the line
+;;                                         instead of below.  Its anchor is a line
+;;                                         START (a clean window start), unlike
+;;                                         002's line-end anchor, so it exposes the
+;;                                         geometric asymmetry between the two.
 ;;
 ;; Run from "emacs -Q" with the build you want to check:
 ;;
@@ -94,7 +101,7 @@ characters (still a tall display element, just less pretty)."
 ;;; Test 001 -- the measurement, with a live verdict ------------------------
 
 (defun pixel-scroll-tall-line-test-001 ()
-  "Measure the defect directly and report whether THIS build is patched.
+  "Measure the defect directly and report whether THIS build is FIXED.
 
 Builds a small buffer, then measures the backward span ending on one of
 its lines three ways: with nothing special there, with a tall
@@ -102,8 +109,8 @@ before-string anchored there, and with a tall after-string anchored
 there.  A boundary string is displayed AT that line, so it must not
 change the measured span above it.
 
-Without the patch the before/after numbers are larger than the plain
-one (the tall string leaked in).  With the patch all three are equal."
+When UNFIXED the before/after numbers are larger than the plain
+one (the tall string leaked in).  When FIXED all three are equal."
   (interactive)
   (let ((buf (get-buffer-create "*pixel-scroll-tall-line-test-001*")))
     (with-current-buffer buf
@@ -128,7 +135,7 @@ one (the tall string leaked in).  With the patch all three are equal."
                 (redisplay t)
                 (setq h (pixel-scroll-tall-line-test--backward-height to))
                 (delete-overlay ov) h))
-             (patched (and (= h-before h-plain) (= h-after h-plain)))
+             (fixed (and (= h-before h-plain) (= h-after h-plain)))
              (unit (if (display-graphic-p) "px" "cell-units")))
         (erase-buffer)
         (insert (format "\
@@ -156,25 +163,28 @@ Results (in %s)
     with tall before-string     : %d   %s
     with tall after-string      : %d   %s
 
+FIXED/UNFIXED describes how THIS build MEASURES, not whether xdisp.c
+was edited: a modified build is still UNFIXED if the numbers disagree.
+
 How to read it
 --------------
-  * WITHOUT the patch the before/after numbers are LARGER than plain --
+  * When UNFIXED the before/after numbers are LARGER than plain --
     the tall boundary string was wrongly folded into the slice above
     the line.  That over-measurement is what makes pixel-scroll set a
     big `vscroll' and lurch, then snap back and re-traverse the image.
 
-  * WITH the patch all three numbers are EQUAL: the boundary string is
+  * When FIXED all three numbers are EQUAL: the boundary string is
     excluded, just like a display-property image already was.
 
 This is exactly the assertion in the regression test
 `xdisp-tests--window-text-pixel-size-backward-boundary-string'
-(test/src/xdisp-tests.el): on an unpatched build it fails with, e.g.,
+(test/src/xdisp-tests.el): on an UNFIXED build it fails with, e.g.,
 `:form (equal 4 1)'.
 
 Re-run with `M-x pixel-scroll-tall-line-test-001'.
 See `pixel-scroll-tall-line-test-002' for the visible scrolling symptom."
-                        (if patched "PATCHED (boundary string excluded)"
-                          "UNPATCHED (boundary string counted)")
+                        (if fixed "FIXED (boundary string excluded)"
+                          "UNFIXED (boundary string counted)")
                         unit
                         h-plain
                         h-before (if (= h-before h-plain) "(equal -> good)"
@@ -280,7 +290,7 @@ pixel-scroll-tall-line-test-003 -- the control (display property)
 Here the tall image is a `display' property on a real character (not an
 overlay before/after-string).  Scroll up across it as in test 002.
 
-Expected: smooth on BOTH patched and unpatched builds.  This is the
+Expected: smooth on BOTH FIXED and UNFIXED builds.  This is the
 case the old code already handled, so it isolates the difference: only
 the before/after-string path (test 002) misbehaves without the patch.
 
@@ -298,6 +308,50 @@ the before/after-string path (test 002) misbehaves without the patch.
 <text x='12' y='28' font-size='20' fill='white'>display prop (200px)</text></svg>"
                             'svg t)
                          "DISPLAY-PROP-IMAGE"))))
+      (dotimes (i 30) (insert (format "filler line %02d -- scroll me\n" (+ i 30))))
+      (pixel-scroll-precision-mode 1)
+      (goto-char (point-max)))
+    (switch-to-buffer buf)))
+
+;;; Test 004 -- the mirror geometry: a tall BEFORE-string, stacking ABOVE ---
+
+(defun pixel-scroll-tall-line-test-004 ()
+  "Mirror of test 002: a tall image as an overlay BEFORE-string.
+
+A `before-string' is drawn at its overlay's start, just before that
+position's character, so a tall before-string stacks its rows ABOVE the
+anchor line's text -- where test 002's `after-string' stacks them BELOW.
+
+The geometries are not symmetric for scrolling, which is the point of
+having both: the before-string is anchored at a line START, so the
+window start that shows it (the line's beginning) is a clean position;
+test 002's after-string is anchored at a line's terminating newline, an
+interior position, which is the degenerate window start that provoked the
+lurch.  Scroll up across this image and compare the feel with test 002."
+  (interactive)
+  (let ((buf (get-buffer-create "*pixel-scroll-tall-line-test-004*")))
+    (with-current-buffer buf
+      (read-only-mode -1)
+      (erase-buffer)
+      (unless (display-graphic-p)
+        (insert "NOTE: run in a GUI frame for image display.\n\n"))
+      (insert "\
+pixel-scroll-tall-line-test-004 -- the mirror case (before-string ABOVE)
+========================================================================
+
+A tall image is attached below as an overlay BEFORE-string anchored at
+the start of a line, so it renders on its own row(s) ABOVE that line's
+text -- the mirror of test 002's after-string, which renders below.
+Scroll up across it and compare the feel with test 002.
+
+----------------------------------------------------------------------
+")
+      (dotimes (i 30) (insert (format "filler line %02d -- scroll me\n" i)))
+      (let ((p (point)))
+        (insert "=== the tall image is a before-string ABOVE this line ===\n")
+        (let ((ov (make-overlay p p)))
+          (overlay-put ov 'before-string
+                       (concat (pixel-scroll-tall-line-test--tall-image 200) "\n"))))
       (dotimes (i 30) (insert (format "filler line %02d -- scroll me\n" (+ i 30))))
       (pixel-scroll-precision-mode 1)
       (goto-char (point-max)))
