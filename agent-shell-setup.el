@@ -148,52 +148,18 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
   (setq agent-shell-math-renderer-appended-preamble
         "\\usepackage{physics}")
 
-  ;; Temporary workarounds for two upstream API gaps.  Remove once
-  ;; xenodium (1) checks `agent-shell-markdown-frozen' inside
-  ;; `--style-source-blocks' and (2) exposes inline-code ranges in
-  ;; the render-hook context.
-
-  ;; Workaround 1: `--style-source-blocks' does its own regex scan and
-  ;; doesn't check `agent-shell-markdown-frozen' — it clobbers fenced
-  ;; math blocks our hook already rendered.  Fix: strip the fence lines
-  ;; in our hook so the regex can't match them.
-  (define-advice agent-shell-math-renderer--render-hook
-      (:around (orig-fn context) strip-math-fences)
-    "Delete math-language fence lines before `--style-source-blocks' sees them."
-    (when agent-shell-math-renderer-enabled
-      (let ((source-blocks (map-elt context :source-blocks)))
-        (dolist (sb source-blocks)
-          (when-let* ((lang (map-elt sb :language))
-                      ((agent-shell-math-renderer--fence-language-p lang))
-                      ((map-elt sb :complete))
-                      (block-start (map-nested-elt sb '(:block :start)))
-                      (block-end (map-nested-elt sb '(:block :end)))
-                      ((not (get-text-property block-start
-                                               'agent-shell-markdown-frozen)))
-                      (body (map-elt sb :body))
-                      (latex (string-trim body))
-                      ((not (string-empty-p latex))))
-            (let ((body-beg (copy-marker
-                             (save-excursion
-                               (goto-char block-start)
-                               (forward-line 1) (point))))
-                  (body-end (copy-marker
-                             (save-excursion
-                               (goto-char block-end)
-                               (beginning-of-line) (point)))))
-              (delete-region body-end block-end)
-              (delete-region block-start body-beg)
-              (agent-shell-math-renderer--apply-region
-               (current-buffer)
-               (marker-position body-beg) (marker-position body-end)
-               latex)
-              (set-marker body-beg nil)
-              (set-marker body-end nil))))))
-    (funcall orig-fn context))
-
-  ;; Workaround 2: the render-hook runs before inline-code detection,
-  ;; so our inline-math pass can render \(...\) inside backtick code.
-  ;; Fix: detect backtick pairs ourselves and add them to avoid-ranges.
+  ;; Temporary workaround for one remaining upstream API gap: the
+  ;; render-hook runs before inline-code detection
+  ;; (`--style-inline-code'), so our inline-math pass can render
+  ;; \(...\) inside backtick code.  Fix: detect backtick pairs
+  ;; ourselves and add them to avoid-ranges.  Remove once xenodium
+  ;; exposes inline-code ranges in the render-hook context.
+  ;;
+  ;; (The earlier fenced-math workaround is gone: xenodium made
+  ;; `--style-source-blocks' honor `agent-shell-markdown-frozen'
+  ;; (commit ba0918f), so the package's native fenced path — freeze
+  ;; the whole block, overlay the image, keep the fences intact — is
+  ;; no longer clobbered.)
   (define-advice agent-shell-math-renderer--style-inline
       (:around (orig-fn &rest args) skip-backticked)
     "Include backtick-pair ranges in AVOID-RANGES."
