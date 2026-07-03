@@ -146,7 +146,8 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
   (setq agent-shell-math-renderer-render-on-non-graphic t)
   (setq agent-shell-math-renderer-font-scale 1.0)
   (setq agent-shell-math-renderer-appended-preamble
-        "\\usepackage{physics}"))
+        "\\usepackage{physics}
+\\usepackage[only,llbracket,rrbracket]{stmaryrd}"))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
