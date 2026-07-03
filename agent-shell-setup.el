@@ -146,37 +146,7 @@ NO-ERROR and AGENT-CWD keyword arguments (received in ARGS)."
   (setq agent-shell-math-renderer-render-on-non-graphic t)
   (setq agent-shell-math-renderer-font-scale 1.0)
   (setq agent-shell-math-renderer-appended-preamble
-        "\\usepackage{physics}")
-
-  ;; Temporary workaround for one remaining upstream API gap: the
-  ;; render-hook runs before inline-code detection
-  ;; (`--style-inline-code'), so our inline-math pass can render
-  ;; \(...\) inside backtick code.  Fix: detect backtick pairs
-  ;; ourselves and add them to avoid-ranges.  Remove once xenodium
-  ;; exposes inline-code ranges in the render-hook context.
-  ;;
-  ;; (The earlier fenced-math workaround is gone: xenodium made
-  ;; `--style-source-blocks' honor `agent-shell-markdown-frozen'
-  ;; (commit ba0918f), so the package's native fenced path — freeze
-  ;; the whole block, overlay the image, keep the fences intact — is
-  ;; no longer clobbered.)
-  (define-advice agent-shell-math-renderer--style-inline
-      (:around (orig-fn &rest args) skip-backticked)
-    "Include backtick-pair ranges in AVOID-RANGES."
-    (let* ((existing (plist-get args :avoid-ranges))
-           (backtick-ranges
-            (save-excursion
-              (goto-char (point-min))
-              (let (ranges)
-                (while (re-search-forward "`[^`\n]+`" nil t)
-                  (unless (agent-shell-markdown--in-avoid-range-p
-                           (match-beginning 0) (match-end 0) existing)
-                    (push (cons (match-beginning 0) (match-end 0)) ranges)))
-                (nreverse ranges))))
-           (merged (if backtick-ranges
-                       (agent-shell-markdown--sort-ranges existing backtick-ranges)
-                     existing)))
-      (funcall orig-fn :avoid-ranges merged))))
+        "\\usepackage{physics}"))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
