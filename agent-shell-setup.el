@@ -69,6 +69,19 @@
   ;; snippet) is now upstream: `agent-shell-region-context-style' defaults to
   ;; `code-block' and `agent-shell--get-numbered-region' emits the `cat -n'
   ;; shape.  The former `agent-shell--get-region-context' override lived here.
+
+  ;; Don't let the `agent-shell' launcher paste the active region/context into
+  ;; a new shell's first prompt -- opening a shell should just open it.  The
+  ;; launcher routes context through `agent-shell--dwim', so bind the sources
+  ;; to nil for that function's dynamic extent.  `agent-shell-send-dwim' (and
+  ;; the other `agent-shell-send-*' commands) gather context *outside* that
+  ;; extent, so they keep the full `agent-shell-context-sources' behavior.
+  (defun my/agent-shell--dwim-without-context (orig-fn &rest args)
+    "Run ORIG-FN (`agent-shell--dwim') without carrying automatic context."
+    (let ((agent-shell-context-sources nil))
+      (apply orig-fn args)))
+  (advice-add 'agent-shell--dwim :around
+              #'my/agent-shell--dwim-without-context)
   )
 
 (use-package agent-shell-math-renderer
