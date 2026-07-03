@@ -28,21 +28,41 @@
 ;; unblocks the caller rather than hanging it forever.  No Emacs server is
 ;; involved.  `eb-open-file` is whitelisted in `ghostel-eval-cmds` at the bottom
 ;; of this file.  For a non-blocking "just open it", use `ghostel_cmd find-file'.
+;;
+;; `eb-open-file` also records the buffer that triggered the edit (the terminal
+;; the $EDITOR call came from, current when the OSC handler runs), and on release
+;; re-points the windows showing the editing buffer back to it — so finishing
+;; returns you to the triggering terminal instead of whatever `kill-buffer' would
+;; otherwise surface via its default previous-buffer pick.
 (defvar-local eb--semaphore nil
   "Semaphore path used by `eb--release' to signal editing is complete.")
 
+(defvar-local eb--origin-buffer nil
+  "Buffer that triggered this `eb' edit; restored to the fore by `eb--release'.")
+
 (defun eb--release ()
   "Signal the waiting shell (write the `eb' semaphore) if still pending.
-Idempotent: safe to call from both `eb-done' and `kill-buffer-hook'."
+Also restore `eb--origin-buffer' in any window showing the editing buffer, so
+finishing returns to the triggering terminal.  Idempotent: safe to call from
+both `eb-done' and `kill-buffer-hook'."
   (when eb--semaphore
     (write-region "" nil eb--semaphore nil 'no-message)
-    (setq eb--semaphore nil)))
+    (setq eb--semaphore nil))
+  ;; Runs from `kill-buffer-hook' before `kill-buffer' reassigns the windows, so
+  ;; re-pointing them here wins: `kill-buffer' then sees no window on the dying
+  ;; buffer and leaves the origin in place.
+  (when (buffer-live-p eb--origin-buffer)
+    (dolist (win (get-buffer-window-list (current-buffer) nil t))
+      (set-window-buffer win eb--origin-buffer))
+    (setq eb--origin-buffer nil)))
 
 (defun eb-open-file (file semaphore)
   "Open FILE as a blocking $EDITOR buffer; SEMAPHORE unblocks the waiting shell.
 C-c C-q saves and finishes; killing the buffer also unblocks the shell."
-  (find-file file)
-  (setq eb--semaphore semaphore)
+  (let ((origin (current-buffer)))
+    (find-file file)
+    (setq eb--semaphore semaphore)
+    (setq eb--origin-buffer origin))
   (local-set-key (kbd "C-c C-q") #'eb-done)
   ;; Safety net: any buffer death releases the shell, not just C-c C-q.
   (add-hook 'kill-buffer-hook #'eb--release nil t)
