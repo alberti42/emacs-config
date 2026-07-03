@@ -33,12 +33,18 @@
 ;; the $EDITOR call came from, current when the OSC handler runs), and on release
 ;; re-points the windows showing the editing buffer back to it — so finishing
 ;; returns you to the triggering terminal instead of whatever `kill-buffer' would
-;; otherwise surface via its default previous-buffer pick.
+;; otherwise surface via its default previous-buffer pick.  While the edit is in
+;; flight the triggering buffer is a blocked, near-empty terminal, so it also
+;; carries a display-only overlay banner (never touching the process buffer's
+;; text) with a button back to the editing buffer; `eb--release' removes it.
 (defvar-local eb--semaphore nil
   "Semaphore path used by `eb--release' to signal editing is complete.")
 
 (defvar-local eb--origin-buffer nil
   "Buffer that triggered this `eb' edit; restored to the fore by `eb--release'.")
+
+(defvar-local eb--banner-overlay nil
+  "Overlay in the origin buffer showing the `eb' waiting banner.")
 
 (defun eb--release ()
   "Signal the waiting shell (write the `eb' semaphore) if still pending.
@@ -52,9 +58,36 @@ both `eb-done' and `kill-buffer-hook'."
   ;; re-pointing them here wins: `kill-buffer' then sees no window on the dying
   ;; buffer and leaves the origin in place.
   (when (buffer-live-p eb--origin-buffer)
+    (with-current-buffer eb--origin-buffer
+      (when (overlayp eb--banner-overlay)
+        (delete-overlay eb--banner-overlay)
+        (setq eb--banner-overlay nil)))
     (dolist (win (get-buffer-window-list (current-buffer) nil t))
       (set-window-buffer win eb--origin-buffer))
     (setq eb--origin-buffer nil)))
+
+(defun eb--waiting-banner (composer)
+  "Return the banner string shown in a blocked origin buffer.
+The button switches to COMPOSER, the buffer being edited."
+  (concat
+   "\n"
+   (propertize " Waiting for the editor to finish… " 'face 'warning)
+   "\n "
+   (buttonize (format "[ Switch to %s ]" (buffer-name composer))
+              #'pop-to-buffer composer)
+   "\n"))
+
+(defun eb--add-banner (origin composer)
+  "Overlay ORIGIN with a banner linking to COMPOSER while the edit blocks.
+The overlay only affects display, never the buffer's text, so it is safe on a
+live terminal buffer; `eb--release' deletes it when editing finishes."
+  (when (buffer-live-p origin)
+    (with-current-buffer origin
+      (when (overlayp eb--banner-overlay)
+        (delete-overlay eb--banner-overlay))
+      (let ((ov (make-overlay (point-max) (point-max))))
+        (overlay-put ov 'after-string (eb--waiting-banner composer))
+        (setq eb--banner-overlay ov)))))
 
 (defun eb-open-file (file semaphore)
   "Open FILE as a blocking $EDITOR buffer; SEMAPHORE unblocks the waiting shell.
@@ -62,7 +95,8 @@ C-c C-q saves and finishes; killing the buffer also unblocks the shell."
   (let ((origin (current-buffer)))
     (find-file file)
     (setq eb--semaphore semaphore)
-    (setq eb--origin-buffer origin))
+    (setq eb--origin-buffer origin)
+    (eb--add-banner origin (current-buffer)))
   (local-set-key (kbd "C-c C-q") #'eb-done)
   ;; Safety net: any buffer death releases the shell, not just C-c C-q.
   (add-hook 'kill-buffer-hook #'eb--release nil t)
