@@ -424,16 +424,18 @@ Consults `my/markdown-language-alist' first; otherwise strips the
 
 ;;; -- Copy buffer/region as an agent-ready snippet ----------------------------
 ;;
-;; Format a region (or current line) as a fenced, line-numbered block for
-;; pasting to a coding agent.  The fence header carries the project-relative
-;; path and line range so the agent can locate and edit the exact lines; the
-;; line-number + separator prefix mirrors the `cat -n' shape such agents emit
-;; for file contents.
-
-(defvar my/agent-snippet-separator "\t"
-  "String between the line number and the line content in `my/copy-as-agent-snippet'.
-Defaults to a tab, matching the `cat -n' format coding agents use for file
-contents.  Set to e.g. \" │ \" for a human-legible vertical bar.")
+;; Two shapes for pasting to a coding agent, chosen by prefix arg on `M-w'
+;; (see `my/kill-ring-save-dwim'):
+;;
+;;   `C-u M-w'      a bare "path:range" locator.  The agent reads the file
+;;                  itself, so this is the token-lean pointer for edit tasks --
+;;                  a cautious agent re-reads for an exact-match string
+;;                  regardless of what we paste, so the body would be redundant.
+;;   `C-u C-u M-w'  a real fenced, language-tagged code block with the verbatim
+;;                  lines (no line-number gutter, so a Markdown renderer can
+;;                  syntax-highlight it).  For content the agent cannot fetch
+;;                  and trust -- unsaved edits, non-file buffers -- or when you
+;;                  simply want the code inline.
 
 (defun my/agent-snippet--path (&optional base-dir)
   "Return the path for the snippet header.
@@ -460,26 +462,33 @@ path.  The buffer name for non-file buffers."
     max))
 
 (defun my/agent-snippet-format (start end &optional path)
-  "Return a plist describing a fenced, line-numbered snippet of the current buffer.
-The snippet covers the whole lines spanning START..END:
+  "Return a plist describing an agent-ready snippet of the current buffer.
+The snippet covers the whole lines spanning START..END and is offered in two
+shapes (the caller picks one):
 
-    ```<lang> <path>:<first>-<last>
-    <n><sep>line content
-    ...
-    ```
+ - a bare \"path:range\" locator, e.g. \"utils.el:462-522\", pointing a coding
+   agent at the file so it reads the exact lines itself; and
+ - a real fenced, language-tagged code block a Markdown renderer can
+   syntax-highlight:
 
-LANG comes from `my/markdown-language-for-mode', PATH (the header path)
+       ```<lang> <path>:<range>
+       line content
+       ...
+       ```
+
+LANG comes from `my/markdown-language-for-mode'; PATH (the locator path)
 defaults to `my/agent-snippet--path' but may be supplied by the caller (e.g.
-relative to an agent's working directory), SEP is `my/agent-snippet-separator',
-and the fence grows past any run of backticks in the content.
+relative to an agent's working directory); the fence grows past any run of
+backticks in the content.  The body is the verbatim lines -- no line-number
+gutter, so highlighting is not disrupted.
 
 The returned plist has keys:
- :text       the full snippet string
- :header     the opening fence line (fence + lang + \"path:range\")
- :fence      the fence delimiter string
- :body       the numbered lines joined by newlines
- :body-lines the numbered lines as a list (for capped previews)
- :path :range :lines  as above (range is a \"N\" or \"N-M\" string)
+ :pointer  the bare \"path:range\" locator
+ :fenced   the full fenced code block (opening fence + info string, body,
+           closing fence)
+ :body     the verbatim lines joined by newlines (no fence, no numbers)
+ :fence    the fence delimiter string
+ :path :range :lang :lines  as above (range is a \"N\" or \"N-M\" string)
 Pure: it neither moves point nor touches the kill ring."
   (save-excursion
     ;; Snap to whole lines; drop a trailing line the region only touches at col 0.
@@ -491,62 +500,67 @@ Pure: it neither moves point nor touches the kill ring."
          (last    (line-number-at-pos end))
          (path    (or path (my/agent-snippet--path)))
          (lang    (my/markdown-language-for-mode))
-         (num-fmt (format "%%%dd" (length (number-to-string last))))
-         (sep     my/agent-snippet-separator)
-         lines)
-    (save-excursion
-      (goto-char start)
-      (dotimes (i (1+ (- last first)))
-        (push (concat (format num-fmt (+ first i)) sep
-                      (buffer-substring-no-properties
-                       (line-beginning-position) (line-end-position)))
-              lines)
-        (forward-line 1)))
-    (let* ((body-lines (nreverse lines))
-           (body   (mapconcat #'identity body-lines "\n"))
-           (range  (if (= first last)
-                       (number-to-string first)
-                     (format "%d-%d" first last)))
-           (fence  (make-string (max 3 (1+ (my/agent-snippet--max-backtick-run body))) ?`))
-           (header (format "%s%s%s:%s"
-                           fence
-                           (if (string-empty-p lang) "" (concat lang " "))
-                           path range)))
-      (list :text       (concat header "\n" body "\n" fence)
-            :header     header
-            :fence      fence
-            :body       body
-            :body-lines body-lines
-            :path       path
-            :range      range
-            :lines      (1+ (- last first))))))
+         (body    (buffer-substring-no-properties start end))
+         (range   (if (= first last)
+                      (number-to-string first)
+                    (format "%d-%d" first last)))
+         (pointer (format "%s:%s" path range))
+         (fence   (make-string (max 3 (1+ (my/agent-snippet--max-backtick-run body))) ?`))
+         ;; A fenced info string is "<lang> <rest>": renderers highlight by the
+         ;; first token (LANG) and ignore the trailing POINTER, so we keep both.
+         (info    (concat (if (string-empty-p lang) "" (concat lang " ")) pointer)))
+    (list :pointer pointer
+          :fenced  (concat fence info "\n" body "\n" fence)
+          :body    body
+          :fence   fence
+          :path    path
+          :range   range
+          :lang    lang
+          :lines   (1+ (- last first)))))
 
 ;;;###autoload
-(defun my/copy-as-agent-snippet (start end)
-  "Copy the region (or current line) as a fenced, line-numbered snippet.
-See `my/agent-snippet-format' for the format.  The result is pushed to the
-kill ring (and thus the system clipboard)."
+(defun my/copy-as-agent-snippet (start end &optional fenced)
+  "Copy the region (or current line) as an agent-ready snippet.
+Without a prefix argument, copy a bare \"path:range\" locator -- the agent
+reads the file itself, so this is the token-lean pointer for edit tasks.
+With a double prefix argument (`C-u C-u'), copy a real fenced,
+language-tagged code block with the verbatim lines (no line-number gutter,
+so Markdown syntax highlighting works); use it for content the agent cannot
+fetch and trust -- unsaved edits, non-file buffers -- or to show code inline.
+See `my/agent-snippet-format' for the exact shapes.  The result is pushed to
+the kill ring (and thus the system clipboard)."
   (interactive
-   (if (use-region-p)
-       (list (region-beginning) (region-end))
-     (list (line-beginning-position) (line-end-position))))
-  (let ((snip (my/agent-snippet-format start end)))
-    (kill-new (plist-get snip :text))
+   (append
+    (if (use-region-p)
+        (list (region-beginning) (region-end))
+      (list (line-beginning-position) (line-end-position)))
+    (list (equal current-prefix-arg '(16)))))
+  (let* ((snip (my/agent-snippet-format start end))
+         (text (plist-get snip (if fenced :fenced :pointer))))
+    (kill-new text)
     ;; Clear the selection like `kill-ring-save' does.
     (deactivate-mark)
-    (message "Copied %s:%s (%d line%s)"
-             (plist-get snip :path) (plist-get snip :range)
-             (plist-get snip :lines) (if (= 1 (plist-get snip :lines)) "" "s"))))
+    (message "Copied %s%s (%d line%s)"
+             (if fenced "fenced " "")
+             (plist-get snip :pointer)
+             (plist-get snip :lines)
+             (if (= 1 (plist-get snip :lines)) "" "s"))))
 
-;; Make `C-u M-w' copy as an agent snippet while plain `M-w' stays
-;; `kill-ring-save'.  `C-u' is the `universal-argument' prefix, so the dispatch
-;; must live in the command bound to `M-w', not in a separate key binding.
+;; `M-w' stays `kill-ring-save'; a prefix copies an agent snippet instead.
+;; `C-u M-w' copies the bare "path:range" locator, `C-u C-u M-w' the fenced
+;; block.  `C-u' is the `universal-argument' prefix, so the dispatch must live
+;; in the command bound to `M-w', not in a separate key binding.
 (defun my/kill-ring-save-dwim (&optional arg)
-  "Save the region to the kill ring; with prefix ARG, copy as an agent snippet.
-See `my/copy-as-agent-snippet' for the snippet format."
+  "Save the region to the kill ring, or copy an agent snippet with a prefix.
+Plain `M-w' runs `kill-ring-save'.  `C-u M-w' copies a bare \"path:range\"
+locator; `C-u C-u M-w' copies a real fenced code block.  See
+`my/copy-as-agent-snippet' for the snippet shapes."
   (interactive "P")
   (if arg
-      (call-interactively #'my/copy-as-agent-snippet)
+      (let ((bounds (if (use-region-p)
+                        (cons (region-beginning) (region-end))
+                      (cons (line-beginning-position) (line-end-position)))))
+        (my/copy-as-agent-snippet (car bounds) (cdr bounds) (equal arg '(16))))
     (call-interactively #'kill-ring-save)))
 
 (global-set-key (kbd "M-w") #'my/kill-ring-save-dwim)
