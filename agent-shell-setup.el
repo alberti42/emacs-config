@@ -12,7 +12,13 @@
              :branch "fork/angle-bracket-link-destinations"
              :repo "xenodium/agent-shell")
   :custom
-  (agent-shell-markdown-render-function #'agent-shell--markdown-overlays-put)
+  ;; Overlay renderer keeps the buffer text = raw markdown (needed for verbatim
+  ;; copy).  Point at our OWN copy of the wrapper (defined in :config below), not
+  ;; agent-shell's `agent-shell--markdown-overlays-put': upstream marks that
+  ;; wrapper deprecated and "will be removed once the in-place renderer settles".
+  ;; Inlining it now avoids a breakage the day it disappears -- the engine it
+  ;; drives, `markdown-overlays-put', lives in shell-maker and is not going away.
+  (agent-shell-markdown-render-function #'my/agent-shell-markdown-overlays-put)
   (agent-shell-show-context-usage-indicator 'detailed)
   ;; Agent advertises `loadSession', so a resume can replay the whole
   ;; conversation back into the buffer from the ACP server (equations
@@ -32,6 +38,22 @@
               ("C-c a" . agent-shell-prompt-compose)
               ("C-c w" . my/agent-shell-copy-code-block-at-point))
   :config
+  ;; Preemptive local copy of agent-shell's deprecated overlay-renderer wrapper
+  ;; `agent-shell--markdown-overlays-put' (verbatim from agent-shell.el).  Keeping
+  ;; our own means the day upstream removes theirs, the
+  ;; `agent-shell-markdown-render-function' set above still resolves.  It only
+  ;; leans on `markdown-overlays-put' (shell-maker), which is not deprecated.
+  (require 'cl-lib)
+  (require 'markdown-overlays)
+  (cl-defun my/agent-shell-markdown-overlays-put (&key render-images highlight-blocks
+                                                       &allow-other-keys)
+    "Overlay-based markdown renderer.
+Bind agent-shell's renderer-agnostic RENDER-IMAGES / HIGHLIGHT-BLOCKS to the
+`markdown-overlays-*' variables and call `markdown-overlays-put'."
+    (let ((markdown-overlays-render-images render-images)
+          (markdown-overlays-highlight-blocks highlight-blocks))
+      (markdown-overlays-put)))
+
   ;; Copy should yield the LLM's raw markdown with NO Emacs cruft.  agent-shell
   ;; tags rendered lines with `line-prefix'/`wrap-prefix' "  " for visual indent;
   ;; those aren't in `yank-excluded-properties', so the stock filter leaks them
