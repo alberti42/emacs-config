@@ -4,14 +4,15 @@
 ;; via the Agent Client Protocol (ACP) inside an Emacs shell buffer.
 ;; Requires shell-maker and acp as dependencies.
 
-(use-package agent-shell
-  ;; Tell straight to use your local folder instead of downloading from GitHub.
-  ;; This is the "canonical" way to do local development with straight.
+(use-package agent-shell  
   :straight (agent-shell
              :type git
-             :host github
+             ;;:host github
+             :local-repo "~/Documents/Programming/Others/fork-agent-shell"
+             :branch "fork/angle-bracket-link-destinations"
              :repo "xenodium/agent-shell")
   :custom
+  (agent-shell-markdown-render-function #'agent-shell--markdown-overlays-put)
   (agent-shell-show-context-usage-indicator 'detailed)
   ;; Agent advertises `loadSession', so a resume can replay the whole
   ;; conversation back into the buffer from the ACP server (equations
@@ -30,6 +31,17 @@
               ("M-RET" . newline)
               ("C-c a" . agent-shell-prompt-compose))
   :config
+  ;; With the overlay renderer the buffer text stays as the LLM's original
+  ;; markdown (overlays only restyle it, nothing is deleted).  agent-shell's
+  ;; own filter would strip that markup on copy (fences, `**`, `#', ...), so
+  ;; restore the stock filter, which returns raw buffer text verbatim.  NB:
+  ;; `nil' is invalid here -- `filter-buffer-substring' funcalls this value,
+  ;; so it must be a function; `buffer-substring--filter' is the Emacs default.
+  (add-hook 'agent-shell-mode-hook
+            (lambda ()
+              (setq-local filter-buffer-substring-function
+                          #'buffer-substring--filter)))
+
   ;; Hand OpenCode the launching buffer's `default-directory' as its working
   ;; directory, rather than letting the package walk up to the project root.
   ;; No dired special-casing: dired buffers behave like any other buffer, so
