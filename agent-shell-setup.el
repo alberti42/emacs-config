@@ -29,18 +29,44 @@
    '("opencode" "acp"))
   :bind (:map agent-shell-mode-map
               ("M-RET" . newline)
-              ("C-c a" . agent-shell-prompt-compose))
+              ("C-c a" . agent-shell-prompt-compose)
+              ("C-c w" . my/agent-shell-copy-code-block-at-point))
   :config
-  ;; With the overlay renderer the buffer text stays as the LLM's original
-  ;; markdown (overlays only restyle it, nothing is deleted).  agent-shell's
-  ;; own filter would strip that markup on copy (fences, `**`, `#', ...), so
-  ;; restore the stock filter, which returns raw buffer text verbatim.  NB:
-  ;; `nil' is invalid here -- `filter-buffer-substring' funcalls this value,
-  ;; so it must be a function; `buffer-substring--filter' is the Emacs default.
+  ;; Copy should yield the LLM's raw markdown with NO Emacs cruft.  agent-shell
+  ;; tags rendered lines with `line-prefix'/`wrap-prefix' "  " for visual indent;
+  ;; those aren't in `yank-excluded-properties', so the stock filter leaks them
+  ;; as a phantom, non-editable 2-space left margin on paste.  Return characters
+  ;; only (no properties): drops the phantom margin, faces, keymaps.  Paired with
+  ;; the overlay renderer above, region + M-w yields verbatim markdown.
   (add-hook 'agent-shell-mode-hook
             (lambda ()
               (setq-local filter-buffer-substring-function
-                          #'buffer-substring--filter)))
+                          (lambda (beg end &optional delete)
+                            (prog1 (buffer-substring-no-properties beg end)
+                              (when delete (delete-region beg end)))))))
+
+  ;; The overlay renderer's `📋' snippet button copies a wrong/truncated range
+  ;; (it bakes raw integer positions into its closure, which misalign under
+  ;; agent-shell's incremental rendering) AND only the body, no fences.  This
+  ;; command copies the whole fenced block at point verbatim (fences included)
+  ;; by locating the fences via text search -- reliable, and it pastes straight
+  ;; into a .md file.  Bound to `C-c w' above.
+  (defun my/agent-shell-copy-code-block-at-point ()
+    "Copy the fenced code block surrounding point (fences included) as plain text."
+    (interactive)
+    (save-excursion
+      (beginning-of-line)
+      (let ((open (if (looking-at "[ \t]*```")
+                      (point)
+                    (when (re-search-backward "^[ \t]*```" nil t) (point)))))
+        (unless open (user-error "Not inside a fenced code block"))
+        (goto-char open)
+        (end-of-line)
+        (let ((close (when (re-search-forward "^[ \t]*```" nil t)
+                       (line-end-position))))
+          (unless close (user-error "No closing fence found"))
+          (kill-new (buffer-substring-no-properties open close))
+          (message "Copied fenced block (%d chars)" (- close open))))))
 
   ;; Hand OpenCode the launching buffer's `default-directory' as its working
   ;; directory, rather than letting the package walk up to the project root.
