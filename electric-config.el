@@ -71,11 +71,16 @@ second delimiter on every keypress that no inhibit predicate can stop."
       (setq my/wrap--state nil)
       (self-insert-command n char)))))
 
-(setq electric-pair-inhibit-predicate
-      (lambda (char)
-        (if (memq char '(?\" ?\' ?\`))
-            t
-          (electric-pair-default-inhibit char))))
+;; `electric-pair-mode' invokes this function before inserting the matching
+;; closer. If the predicate returns non-nil, the closer is suppressed. It can
+;; used to disable the automatic pairing for certain characters. It is currently
+;; disabled.
+(when nil
+  (setq electric-pair-inhibit-predicate
+        (lambda (char)
+          (if (memq char '(?\" ?\' ?\`))
+              t
+            (electric-pair-default-inhibit char)))))
 
 (electric-pair-mode 1)
 
