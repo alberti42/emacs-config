@@ -132,8 +132,8 @@
   ;; directly (not agent-shell's deprecated `agent-shell--markdown-overlays-put'),
   ;; then renders LaTeX on its output -- the overlay path runs no
   ;; `agent-shell-markdown-render-functions' hook, so this is how math gets in.
-  (setq agent-shell-markdown-render-function
-        #'agent-shell-math-renderer-markdown-overlays-put)
+  ;; (setq agent-shell-markdown-render-function
+  ;;       #'agent-shell-math-renderer-markdown-overlays-put)
   (setq agent-shell-math-renderer-enabled t)
   (setq agent-shell-math-renderer-render-on-non-graphic t)
   (setq agent-shell-math-renderer-font-scale 1.0)
