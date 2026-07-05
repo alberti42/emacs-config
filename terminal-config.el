@@ -97,7 +97,14 @@ C-c C-q saves and finishes; killing the buffer also unblocks the shell."
     (setq eb--semaphore semaphore)
     (setq eb--origin-buffer origin)
     (eb--add-banner origin (current-buffer)))
-  (local-set-key (kbd "C-c C-q") #'eb-done)
+  ;; A private, buffer-local keymap inheriting the major mode's map.  NOT
+  ;; `local-set-key', which mutates the *shared* major-mode keymap (e.g.
+  ;; `markdown-ts-mode-map') and would leak C-c C-q into every buffer of that
+  ;; mode.
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map (current-local-map))
+    (define-key map (kbd "C-c C-q") #'eb-done)
+    (use-local-map map))
   ;; Safety net: any buffer death releases the shell, not just C-c C-q.
   (add-hook 'kill-buffer-hook #'eb--release nil t)
   (message "eb: edit, then C-c C-q (or kill the buffer) when done"))
