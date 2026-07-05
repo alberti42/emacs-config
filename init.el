@@ -270,8 +270,10 @@ monitor."
 ;;   'mac-pseudo-daemon-config
 ;;   "Could not load mac-pseudo-daemon-config.el; macOS pseudo-daemon behavior is disabled.")
 
-;; electric-pair-mode: auto-close brackets, parens, and quotes.
-(electric-pair-mode 1)
+;; electric-pair-mode policy + region wrapping.
+(emacs-config-load-module
+ 'electric-config
+ "Could not load electric-config.el; electric-pair customization is disabled.")
 
 ;; Accept y/n instead of typing yes/no in full.
 (setq use-short-answers t)
