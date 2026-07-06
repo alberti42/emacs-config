@@ -19,7 +19,7 @@
   (agent-shell-opencode-acp-command '("opencode" "acp"))
   :bind (:map agent-shell-mode-map
               ("M-RET" . newline)
-              ("C-c a" . agent-shell-prompt-compose))
+              ("C-c e" . agent-shell-prompt-compose))
   :config
   ;; Hand the coding agent the launching buffer's `default-directory' as its
   ;; working directory, rather than letting the package walk up to the project
