@@ -37,12 +37,11 @@
   ;; (lsp-ltex-plus-completion-min-prefix-length 3)
 
   :init
-  ;; Install hooks for all supported major modes. The full package load
-  ;; lazily — only when a relevant mode is first enabled
-  (lsp-ltex-plus-install-hooks
+  ;; Install hooks for all supported major modes. The full package loads lazily
+  ;; — only when a relevant mode is first enabled.
+  (lsp-ltex-plus-enable-for-modes
    ;; :exclude '(org-mode)
-   ;; :extend-to '((emacs-lisp-mode     "lisp"             t))
-   )
+   :extend-to '((agent-shell-viewport-edit-mode "markdown" nil)))
 
   :config
   ;; Use credentials from the environment if they are not already set.
