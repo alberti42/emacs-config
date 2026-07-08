@@ -26,10 +26,16 @@
 
 MODULE is a symbol or string (e.g. 'zac-theme-autodetection).
 If loading fails, emit WARNING via `display-warning` and return nil.
-On success, return non-nil." 
+On success, return non-nil.
+
+Always loads the `.el' source and never a `.elc'.  Passing the explicit
+`.el' path plus NOSUFFIX makes `load' open exactly that file, so a stray
+byte-compiled `.elc' left in `emacs-config-dir' can never shadow the
+source (which it would otherwise do when their mtimes tie, defeating
+`load-prefer-newer')."
   (let* ((name (if (symbolp module) (symbol-name module) module))
-         (path (expand-file-name name emacs-config-dir)))
-    (if (load path t 'nomessage)
+         (path (concat (expand-file-name name emacs-config-dir) ".el")))
+    (if (load path t 'nomessage 'nosuffix)
         t
       (display-warning 'init warning :warning)
       nil)))
