@@ -32,9 +32,21 @@ Always loads the `.el' source and never a `.elc'.  Passing the explicit
 `.el' path plus NOSUFFIX makes `load' open exactly that file, so a stray
 byte-compiled `.elc' left in `emacs-config-dir' can never shadow the
 source (which it would otherwise do when their mtimes tie, defeating
-`load-prefer-newer')."
+`load-prefer-newer').
+
+This config never byte-compiles its own modules, so a sibling `.elc' is
+always a stray artifact (e.g. an accidental `byte-compile-file').  When
+one is found it is warned about and deleted, since it can only cause the
+shadowing bug above."
   (let* ((name (if (symbolp module) (symbol-name module) module))
-         (path (concat (expand-file-name name emacs-config-dir) ".el")))
+         (path (concat (expand-file-name name emacs-config-dir) ".el"))
+         (elc (concat path "c")))
+    (when (file-exists-p elc)
+      (display-warning 'init
+                       (format "Deleting stray %s (this config never compiles modules)"
+                               (file-name-nondirectory elc))
+                       :warning)
+      (ignore-errors (delete-file elc)))
     (if (load path t 'nomessage 'nosuffix)
         t
       (display-warning 'init warning :warning)
