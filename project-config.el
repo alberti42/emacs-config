@@ -12,7 +12,15 @@
 (use-package project
   :straight nil
   :custom
-  (project-vc-merge-submodules nil))
+  (project-vc-merge-submodules nil)
+  ;; Let a `pyrightconfig.json' mark the project root: `project-try-vc'
+  ;; picks the nearest ancestor holding it over the outer `.git'.  lsp-mode
+  ;; derives its root from project.el, and basedpyright reads
+  ;; `pyrightconfig.json' only at that root — so this puts the pyright root
+  ;; wherever the config file lives (e.g. a course dir), rather than the
+  ;; whole repo.  (The file-watcher tree-walk that this once had to avoid is
+  ;; now moot: `lsp-enable-file-watchers' is nil in lsp-core.el.)
+  (project-vc-extra-root-markers '("pyrightconfig.json")))
 
 ;; Recognize directories containing `.dir-locals.el' as projects.
 ;;
