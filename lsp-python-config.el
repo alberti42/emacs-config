@@ -96,63 +96,64 @@
                              (marker-buffer org-src--beg-marker))
                         (buffer-base-buffer)
                         (current-buffer)))
-           ;; Directory where we'll place the phantom .py file.  Prefer
-           ;; the org file's directory so basedpyright can walk up and
-           ;; discover `pyproject.toml' / `pyrightconfig.json' in the
-           ;; project root.  Fall back to `temporary-file-directory' if
-           ;; the org buffer isn't file-backed (scratch / capture).
-           (org-dir (or (and (buffer-file-name org-buf)
-                             (file-name-directory (buffer-file-name org-buf)))
-                        temporary-file-directory))
-           ;; Keep phantom .py files out of the top-level directory by
-           ;; tucking them under `._aux/'.  The leading dot hides the
-           ;; directory from `ls'; `make-directory' with RECURSIVE=t is
-           ;; idempotent and creates missing parents.
-           (aux-dir (expand-file-name "._aux" org-dir))
-           (_mkdir  (make-directory aux-dir t))
-           ;; Derive the phantom name from the org file's basename, which
-           ;; is guaranteed filesystem-safe (it already exists on disk),
-           ;; so we skip character sanitisation and get a readable path
-           ;; in the breadcrumb: `org-src-<orgbase>.py'.  `my/unique-file-path'
-           ;; appends `_1', `_2', ... when needed — covers simultaneous
-           ;; edits of multiple blocks from the same org file and leftover
-           ;; files from a crashed prior session.
-           (org-name (or (and (buffer-file-name org-buf)
-                              (file-name-base (buffer-file-name org-buf)))
-                         "scratch"))
-           (tmp-path (my/unique-file-path
-                      (expand-file-name
-                       (format "org-src-%s.py" org-name)
-                       aux-dir))))
-      ;; Associate the edit buffer with the phantom path.  lsp-mode
-      ;; checks `buffer-file-name' when deciding whether to start.
-      ;; `buffer-file-truename' must be kept in sync, since lsp-mode
-      ;; uses the truename for workspace bookkeeping.
-      (setq-local buffer-file-name tmp-path)
-      (setq-local buffer-file-truename (file-truename tmp-path))
-      ;; Pre-write the buffer to disk, silently.  Without this, lsp-mode
-      ;; logs "Saving file ... because it is not present on the disk"
-      ;; and apheleia's diff-based formatter fails (nothing to diff
-      ;; against).  `write-region' with a nil MSG arg of `no-message'
-      ;; suppresses the "Wrote ..." echo-area noise.
-      (write-region (point-min) (point-max) tmp-path nil 'no-message)
-      (set-buffer-modified-p nil)
-      ;; Delete the phantom file when the edit buffer is killed
-      ;; (usually on `C-c '' exit), so artefacts do not pile up in
-      ;; `._aux/'.  `tmp-path' is captured in the closure so the path
-      ;; is reliable even if lsp-mode's own teardown clears
-      ;; `buffer-file-name' first.
-      (let ((path tmp-path))
-        (add-hook 'kill-buffer-hook
-                  (lambda ()
-                    (when (and path (file-exists-p path))
-                      (delete-file path)))
-                  nil t))
-      ;; Skip file watchers for this transient buffer.  Without this,
-      ;; lsp-mode would try to watch every directory under
-      ;; `temporary-file-directory' (or the project root) and ask for
-      ;; permission above `lsp-file-watch-threshold'.
-      (setq-local lsp-enable-file-watchers nil))))
+           (org-file (buffer-file-name org-buf)))
+      ;; Only wire LSP when the source org buffer is file-backed.  A
+      ;; non-file-backed buffer (org *scratch* / capture) has no project,
+      ;; and with `lsp-auto-guess-root' + project.el there is no root to
+      ;; guess for it.  The old `temporary-file-directory' fallback only
+      ;; ever started LSP because that shared macOS temp dir happened to
+      ;; already be an lsp session folder — which made basedpyright adopt
+      ;; the whole /var/folders/.../T tree (other apps' bundles included)
+      ;; as the workspace and recursively scan it.  Skipping leaves such
+      ;; blocks LSP-less instead of triggering that scan.
+      (when org-file
+        (let* ((org-dir (file-name-directory org-file))
+               ;; Keep phantom .py files out of the top-level directory by
+               ;; tucking them under `._aux/'.  The leading dot hides the
+               ;; directory from `ls'; `make-directory' with RECURSIVE=t is
+               ;; idempotent and creates missing parents.
+               (aux-dir (expand-file-name "._aux" org-dir))
+               (_mkdir  (make-directory aux-dir t))
+               ;; Derive the phantom name from the org file's basename,
+               ;; which is guaranteed filesystem-safe (it already exists on
+               ;; disk), so we skip character sanitisation and get a
+               ;; readable breadcrumb: `org-src-<orgbase>.py'.
+               ;; `my/unique-file-path' appends `_1', `_2', ... when needed
+               ;; — covers simultaneous edits of multiple blocks from the
+               ;; same org file and leftover files from a crashed session.
+               (org-name (file-name-base org-file))
+               (tmp-path (my/unique-file-path
+                          (expand-file-name
+                           (format "org-src-%s.py" org-name)
+                           aux-dir))))
+          ;; Associate the edit buffer with the phantom path.  lsp-mode
+          ;; checks `buffer-file-name' when deciding whether to start.
+          ;; `buffer-file-truename' must be kept in sync, since lsp-mode
+          ;; uses the truename for workspace bookkeeping.
+          (setq-local buffer-file-name tmp-path)
+          (setq-local buffer-file-truename (file-truename tmp-path))
+          ;; Pre-write the buffer to disk, silently.  Without this,
+          ;; lsp-mode logs "Saving file ... because it is not present on
+          ;; the disk" and apheleia's diff-based formatter fails (nothing
+          ;; to diff against).  `write-region' with a nil MSG arg of
+          ;; `no-message' suppresses the "Wrote ..." echo-area noise.
+          (write-region (point-min) (point-max) tmp-path nil 'no-message)
+          (set-buffer-modified-p nil)
+          ;; Delete the phantom file when the edit buffer is killed
+          ;; (usually on `C-c '' exit), so artefacts do not pile up in
+          ;; `._aux/'.  `tmp-path' is captured in the closure so the path
+          ;; is reliable even if lsp-mode's own teardown clears
+          ;; `buffer-file-name' first.
+          (let ((path tmp-path))
+            (add-hook 'kill-buffer-hook
+                      (lambda ()
+                        (when (and path (file-exists-p path))
+                          (delete-file path)))
+                      nil t))
+          ;; Skip file watchers for this transient buffer.  Without this,
+          ;; lsp-mode would try to watch every directory under the project
+          ;; root and ask for permission above `lsp-file-watch-threshold'.
+          (setq-local lsp-enable-file-watchers nil))))))
 
 (add-hook 'org-src-mode-hook #'my/org-src-python-lsp-enable)
 
