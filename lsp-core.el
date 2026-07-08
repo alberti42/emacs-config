@@ -30,8 +30,13 @@
   ;; download or auto-install them via lsp-mode.  This also prevents lsp-mode
   ;; from creating empty store directories that confuse server-present? checks.
   (setq lsp-enable-suggest-server-download nil)
-  ;; Whether to use file watchers
-  (setq lsp-enable-file-watchers t)
+  ;; File watchers off: on a `client/registerCapability' for
+  ;; `workspace/didChangeWatchedFiles', lsp-mode synchronously walks the
+  ;; whole workspace tree (`lsp--all-watchable-directories') on the main
+  ;; thread — a 2 GB repo froze Emacs ~60s per activation.  Language
+  ;; servers (basedpyright et al.) watch their own files, so this is
+  ;; largely redundant.
+  (setq lsp-enable-file-watchers nil)
   ;; Enable lsp integration with completion-at-point
   (setq lsp-completion-enable t)
   ;; Completion is handled by corfu+cape, not company-mode.  The command below
