@@ -46,13 +46,11 @@ end of the line."
 (setopt register-use-preview 'insist)
 
 ;; `visual-line-mode' remaps C-a/C-e to the visual-line boundaries, which are
-;; determined by screen width rather than buffer content.  The two are NOT
-;; symmetric: the end of a wrapped row is a useful stop (the wrap point), so C-e
-;; cascades last-non-whitespace -> visual end -> physical end.  But the
-;; beginning of a wrapped row sits after the display-only wrap prefix (which
-;; point cannot move before), so it is not a useful target -- C-a wants the
-;; physical line, which `my/smart-beginning-of-line' already does.  Hence only
-;; the end command needs a visual-aware variant; C-a is left unremapped below.
+;; determined by screen width rather than buffer content.  A wrapped row's start
+;; and end are both useful stops (the wrap points), so provide smart visual
+;; variants of both -- e.g. when navigating long wrapped LaTeX lines.  C-e
+;; cascades last-non-whitespace -> visual end -> physical end; C-a mirrors it
+;; with first-non-whitespace -> visual beginning -> physical beginning.
 
 (defun my/smart-end-of-visual-line ()
   "Move to the last non-whitespace character of the visual line.
@@ -70,13 +68,32 @@ logical line."
      ((< (point) veol) (goto-char veol))
      (t (end-of-line)))))
 
+(defun my/smart-beginning-of-visual-line ()
+  "Move to the first non-whitespace character of the visual line.
+On repeats, move to the beginning of the visual line, then to the
+beginning of the logical line."
+  (interactive "^")
+  (let* ((vbol (save-excursion (beginning-of-visual-line) (point)))
+         (veol (save-excursion (end-of-visual-line) (point)))
+         (first (save-excursion
+                  (goto-char vbol)
+                  (skip-syntax-forward " " veol)
+                  (point))))
+    (cond
+     ((> (point) first) (goto-char first))
+     ((> (point) vbol) (goto-char vbol))
+     (t (beginning-of-line)))))
+
 ;; `visual-line-mode-map' lives in the always-dumped `simple.el', so it is
-;; present at startup and needs no `with-eval-after-load' guard.  C-e is
-;; globally bound to `my/smart-end-of-line', so the visual variant is reached by
-;; remapping THAT command -- not `move-end-of-line', which C-e no longer runs,
-;; leaving the stock visual-line remap dead for C-e.
+;; present at startup and needs no `with-eval-after-load' guard.  C-a/C-e are
+;; globally bound to `my/smart-beginning-of-line'/`my/smart-end-of-line', so the
+;; visual variants are reached by remapping THOSE commands -- not
+;; `move-beginning-of-line'/`move-end-of-line', which C-a/C-e no longer run,
+;; leaving the stock visual-line remaps dead.
 (define-key visual-line-mode-map [remap my/smart-end-of-line]
             #'my/smart-end-of-visual-line)
+(define-key visual-line-mode-map [remap my/smart-beginning-of-line]
+            #'my/smart-beginning-of-visual-line)
 
 (provide 'navigation-config)
 
