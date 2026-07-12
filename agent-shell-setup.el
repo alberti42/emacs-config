@@ -74,7 +74,7 @@
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
-             :branch "pr-1"
+             :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
   :after agent-shell
   :config
