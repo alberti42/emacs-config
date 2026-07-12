@@ -9,7 +9,10 @@
              :type git
              ;;:host github
              :local-repo "~/Documents/Programming/Others/fork-agent-shell"
-             :branch "fork/angle-bracket-link-destinations"
+             ;; :branch "fork/angle-bracket-link-destinations"
+             ;; :branch "fork/angle-bracket-link-destinations"
+             :branch "merged"
+             ;; :branch "main"
              :repo "xenodium/agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
@@ -71,10 +74,12 @@
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
+             :branch "pr-1"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
   :after agent-shell
   :config
   (setq agent-shell-math-renderer-enabled t)
+  (setq agent-shell-math-renderer-render-submitted-prompts t)
   (setq agent-shell-math-renderer-render-on-non-graphic t)
   (setq agent-shell-math-renderer-font-scale 1.0)
   (setq agent-shell-math-renderer-appended-preamble
