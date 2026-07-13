@@ -84,7 +84,15 @@
   (setq agent-shell-math-renderer-font-scale 1.0)
   (setq agent-shell-math-renderer-appended-preamble
         "\\usepackage{physics}
-\\usepackage[only,llbracket,rrbracket]{stmaryrd}"))
+\\usepackage[only,llbracket,rrbracket]{stmaryrd}
+\\usepackage{siunitx}
+\\usepackage{mathtools}
+\\sisetup{
+detect-weight=true,
+exponent-product={\\times},
+output-decimal-marker={.},
+print-unity-mantissa=false,
+}"))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
