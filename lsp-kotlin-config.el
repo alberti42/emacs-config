@@ -11,15 +11,17 @@
 ;; `kotlin-language-server', whose latest release (1.3.13) bundles the Kotlin
 ;; 2.1.0 compiler and therefore rejects metadata from projects built with Kotlin
 ;; 2.2+ (INCOMPATIBLE_CLASS on stdlib, cascading UNRESOLVED_REFERENCE).  We
-;; register a higher-priority client that launches `kotlin-lsp --stdio' instead;
-;; the built-in client stays registered at priority -1 as a fallback for
-;; machines where only fwcd is available.
+;; register a client that launches `kotlin-lsp --stdio' instead, and disable the
+;; built-in `kotlin-ls' client outright so lsp-mode never falls back to fwcd.
 
 ;;; Code:
 
 (use-package kotlin-ts-mode
   :mode ("\\.kts?\\'" . kotlin-ts-mode)
   :hook (kotlin-ts-mode . lsp-deferred))
+
+(with-eval-after-load 'lsp-mode
+  (add-to-list 'lsp-disabled-clients 'kotlin-ls))
 
 (with-eval-after-load 'lsp-kotlin
   (lsp-register-client
