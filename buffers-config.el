@@ -29,6 +29,11 @@
   :custom
   (ibuffer-project-use-cache t)
   :hook (ibuffer . buffers-config--apply-project-groups)
+  ;; `ibuffer-project' defines the `project-root' filter but binds no key.
+  ;; Put it on `/ p' (mnemonic: project).  This shadows `ibuffer-pop-filter',
+  ;; which stays reachable on `/ <up>'.
+  :bind (:map ibuffer--filter-map
+              ("p" . ibuffer-filter-by-project-root))
   :preface
   (defun buffers-config--apply-project-groups ()
     (setq ibuffer-filter-groups (ibuffer-project-generate-filter-groups))
@@ -94,6 +99,17 @@ use `lisp-interaction-mode' instead."
       (switch-to-buffer buf))))
 
 (keymap-global-set "C-x C-n" #'buffers-config-scratch)
+
+;;; -- Project buffer list via ibuffer -----------------------------------------
+
+;; `C-x p C-b' (`project-list-buffers') defaults to the
+;; `project-list-buffers-buffer-menu' viewer (a `Buffer-menu-mode' listing).
+;; Switch the viewer to `project-list-buffers-ibuffer' so the project buffer
+;; list gets the same grouping, filtering, and nerd-icons decoration as the
+;; global buffer list.  No rebinding needed: `C-x p C-b' already runs
+;; `project-list-buffers', which dispatches through `project-buffers-viewer'.
+(with-eval-after-load 'project
+  (setopt project-buffers-viewer 'project-list-buffers-ibuffer))
 
 (provide 'buffers-config)
 ;;; buffers-config.el ends here
