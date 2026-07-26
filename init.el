@@ -519,6 +519,12 @@ monitor."
 ;;  'pyenv-config
 ;;  "Could not load pyenv-config.el; per-buffer pyenv activation is disabled.")
 
+;;; Build / compile
+
+(emacs-config-load-module
+ 'compile-config
+ "Could not load compile-config.el; the compile keybinding is disabled.")
+
 ;;; VCS gutter
 
 (emacs-config-load-module
