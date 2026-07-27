@@ -84,6 +84,14 @@
   (setq ns-alternate-modifier 'meta
         ns-right-alternate-modifier 'none))
 
+;; macOS: disable the dangerous system-style shortcuts ⌘-w (delete-frame)
+;; and ⌘-q (save-buffers-kill-emacs).  A single stray keypress otherwise
+;; tears down a frame or the whole session.  Kill Emacs deliberately via
+;; `C-x C-c' and close windows/frames via the usual `C-x' bindings.
+(when (eq system-type 'darwin)
+  (global-unset-key (kbd "s-w"))
+  (global-unset-key (kbd "s-q")))
+
 ;; macOS: avoid using native full screen in separate macOS space
 (when (eq system-type 'darwin)
   (setq ns-use-native-fullscreen nil))
