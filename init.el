@@ -708,3 +708,8 @@ monitor."
  'straight-overview-config
  "Could not load straight-overview-config.el; the straight-overview UI is disabled.")
 
+;; Tetris: built-in game with tunable fall speed.
+(emacs-config-load-module
+ 'tetris-config
+ "Could not load tetris-config.el; Tetris speed tuning is disabled.")
+
