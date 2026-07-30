@@ -25,44 +25,26 @@
               ("M-RET" . newline)
               ("C-c e" . agent-shell-prompt-compose))
   :config
-  ;; Hand the coding agent the launching buffer's `default-directory' as its
-  ;; working directory, rather than letting the package walk up to the project
-  ;; root.  This also covers in-session calls (the agent-shell buffer's own
-  ;; `default-directory'), so the package doesn't re-resolve via project.el on
-  ;; every ACP message.
+  ;; Use the project root as the agent's working directory (monorepo
+  ;; subprojects are pinned via `project-vc-extra-root-markers', so project.el
+  ;; already resolves a marked subdirectory to its own root).  With a
+  ;; project-root cwd shared by every buffer in the project, stock session
+  ;; reuse (which matches on `equal' of `agent-shell-cwd') already groups them,
+  ;; so no `agent-shell-project-buffers' override is needed.
+  ;;
+  ;; `directory-file-name' is the only remaining custom bit: it strips the
+  ;; trailing slash that `project-root' returns, because `pi-acp' matches
+  ;; sessions by exact cwd string and Pi stores them without it (e.g. "/proj").
+  ;; Once pi-acp normalizes its cwd match, this whole function can be dropped
+  ;; and `agent-shell-cwd-function' left nil.
   (defun my/agent-shell-cwd-function ()
-    "Return `default-directory' without its trailing slash.
-
-`pi-acp' matches sessions by exact cwd string, and Pi stores them with no
-trailing slash (e.g. \"/proj\").  Since `default-directory' ends in \"/\",
-passing it as-is finds zero prior sessions; `directory-file-name' strips
-the slash to match.  (`expand-file-name' is a defensive no-op here.)"
-    (directory-file-name (expand-file-name default-directory)))
+    "Return the project root (else `default-directory'), without trailing slash."
+    (directory-file-name
+     (expand-file-name
+      (if-let* ((proj (project-current)))
+          (project-root proj)
+        default-directory))))
   (setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
-
-  ;; Session reuse: `agent-shell-project-buffers' decides which existing shells
-  ;; belong to "the current project".  Stock matches on strict `equal' of
-  ;; `agent-shell-cwd' — but since we now feed `agent-shell-cwd' the buffer's
-  ;; `default-directory', a code/dired buffer in /proj/sub/ would never match a
-  ;; shell started at /proj/, so DWIM falls through to "Start new agent:".
-  ;; Match on the real project root instead (project.el), decoupled from cwd, so
-  ;; any buffer within a project reuses that project's shell regardless of which
-  ;; subdirectory it sits in.
-  (defun my/agent-shell--project-root ()
-    "Return the current buffer's project root, else its `default-directory'."
-    (expand-file-name
-     (if-let* ((proj (project-current)))
-         (project-root proj)
-       default-directory)))
-  (defun my/agent-shell-project-buffers (&rest _)
-    "Match agent shells in the same project as the current buffer."
-    (let ((root (my/agent-shell--project-root)))
-      (seq-filter (lambda (buffer)
-                    (equal root (with-current-buffer buffer
-                                  (my/agent-shell--project-root))))
-                  (agent-shell-buffers))))
-  (advice-add 'agent-shell-project-buffers :override
-              #'my/agent-shell-project-buffers)
 
   ;; Don't let the `agent-shell' launcher paste the active region/context into
   ;; a new shell's first prompt -- opening a shell should just open it.  The
