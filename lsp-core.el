@@ -80,7 +80,7 @@
 
 ;;; -- flycheck integration for diagnostic -------------------------------------
 ;;
-;; - Diagnostics flow: LSP server → lsp-mode → flycheck → sideline-flycheck
+;; - Diagnostics flow: LSP server → lsp-mode → flycheck → flycheck-annotate-mode
 ;;
 ;; - Code actions flow: LSP server → lsp-mode → sideline-lsp (queried directly
 ;;                      per line, bypassing flycheck)
@@ -141,42 +141,46 @@
   ;; longer diagnostic regions (e.g. misspelled words flagged by LTEX+) are
   ;; visible alongside the short-region wave underline.
   (setq flycheck-highlighting-style
-        '(conditional 4 level-face (delimiters "»" "«"))))
+        '(conditional 4 level-face (delimiters "»" "«")))
 
-;;; -- Sideline setup ----------------------------------------------------------
-;;
-;; Replacement for lsp-ui-sideline.  Two backends, each handling a distinct
-;; LSP concept:
-;;
-;; - `sideline-flycheck': shows diagnostics → errors/warnings the LSP server
-;;                        or linter already found
-;;
-;; - `sideline-lsp': shows code actions → these are the fixes the LSP server
-;;                   offers ("do this to fix it"), queried per line directly
-;;                   from lsp-mode.
+  ;; -- Inline diagnostics (native, Flycheck 38+) -----------------------------
+  ;; `flycheck-annotate-mode' renders diagnostics inline, replacing the old
+  ;; `sideline-flycheck' backend.  The error ID is shown by default — its
+  ;; `flycheck-annotate-format-function' is `flycheck-error-format-message-and-id',
+  ;; exactly what the retired `fork-sideline-flycheck' patch added.
+  ;;
+  ;;   - current line -> `below': full message(s) stacked under the line, so a
+  ;;     long LTEX+/prose diagnostic is fully readable.
+  ;;   - other lines  -> `sideline': compact "most-severe (+N)" flushed to the
+  ;;     window's right edge (lsp-ui-sideline style).  In a prose buffer whose
+  ;;     text fills the width it just trails the text; set
+  ;;     `flycheck-annotate-other-lines-style' buffer-locally to `below' or nil
+  ;;     there if that reads as too noisy.
+  (setq flycheck-annotate-current-line-style 'below
+        flycheck-annotate-other-lines-style nil)
+  ;; Enable inline diagnostics wherever flycheck runs.  For on-demand use
+  ;; instead, drop this hook and toggle `M-x flycheck-annotate-mode' per buffer
+  ;; (or `global-flycheck-annotate-mode' for everywhere).
+  (add-hook 'flycheck-mode-hook #'flycheck-annotate-mode))
 
-;; We also have local copy (`local/sideline.el') carrying an experimental patch
-;; adding `sideline-display-area', which can route labels into the dedicated
-;; `right-margin' column instead of the text area -- usable in prose buffers
-;; where the text area has no horizontal slack.  Code buffers use the default
-;; text-area display; prose modes (e.g. LaTeX) override `sideline-display-area'
-;; buffer-locally.  The experimental patch is not stable yet, there it is
-;; disabled for the moment.
+;;; -- Sideline setup (code actions only) --------------------------------------
 ;;
-;; ;; `sideline-lsp' and `sideline-flycheck' declare `(sideline ...)' in their
-;; ;; Package-Requires; without this entry straight would resolve that dep by
-;; ;; pulling the upstream package from MELPA, masking our `local/' patch.
-;; (add-to-list 'straight-built-in-pseudo-packages 'sideline)
+;; `sideline-lsp' shows LSP code actions ("do this to fix it") inline at the
+;; right, queried per line directly from lsp-mode.  Diagnostics are no longer
+;; shown here — they moved to native `flycheck-annotate-mode' (see the flycheck
+;; block above).  `sideline-mode' is loaded but not auto-enabled; toggle it with
+;; `M-x sideline-mode' when you want to see code actions.
+;;
+;; (The former `local/sideline.el' right-margin experiment — an unstable patch
+;; adding `sideline-display-area' to route prose labels into the margin — has
+;; been dropped; `flycheck-annotate-mode's `below' style covers that need.)
 
 (use-package sideline
-  ;; :straight nil
-  ;; :load-path (lambda () (list (expand-file-name "local" emacs-config-dir)))
   ;; Loaded but NOT auto-enabled: `sideline-mode' is left off by default and
-  ;; toggled on demand via `M-x sideline-mode'.  (Re-add the
-  ;; `(flycheck-mode . sideline-mode)' hook to auto-enable it with flycheck.)
+  ;; toggled on demand via `M-x sideline-mode'.
   :commands (sideline-mode)
   :init
-  (setq sideline-backends-right '(sideline-flycheck sideline-lsp)
+  (setq sideline-backends-right '(sideline-lsp)
         ;; Stack right-side labels downward starting at point's line, so the
         ;; first label aligns with the paragraph the diagnostic refers to
         ;; rather than ending one row above it.
@@ -188,14 +192,11 @@
   :init
   (setq sideline-lsp-code-actions-prefix "💡"))
 
-(use-package sideline-flycheck
-  :init
-  (setq sideline-flycheck-show-error-id t
-        ;; `line' shows every diagnostic on its own line, matching the
-        ;; `lsp-ui-sideline' workflow.  Default `point' only renders the
-        ;; diagnostic at the current cursor line.
-        sideline-flycheck-display-mode 'line)
-  :hook (flycheck-mode . sideline-flycheck-setup))
+;; `sideline-flycheck': diagnostics are now rendered by native
+;; `flycheck-annotate-mode' (configured in the `flycheck' block above).  To
+;; restore the sideline backend, reinstate a `use-package sideline-flycheck'
+;; block, add `sideline-flycheck' back to `sideline-backends-right', and drop
+;; the `flycheck-annotate-mode' hook.
 
 ;;; -- yasnippet setup ---------------------------------------------------------
 

@@ -13,21 +13,29 @@ uses to expand server-returned placeholders is configured separately in
   `require` so its faces (e.g. `lsp-flycheck-info-unnecessary` for "unused"
   diagnostics) are defined before any server can reference them. Without
   this, early diagnostics trigger "Invalid face reference" warnings.
-- `flycheck` — diagnostics frontend (left-fringe indicators).
-- `sideline` — generic inline-annotation framework. Loaded but **not**
-  auto-enabled: `sideline-mode` stays off by default and is toggled on
-  demand via `M-x sideline-mode`. (Re-add the `(flycheck-mode
-  . sideline-mode)` hook in `lsp-core.el` to activate it wherever
-  flycheck does.)
-- `sideline-flycheck` — sideline backend rendering flycheck diagnostics
-  at end of line ("this is wrong").
+- `flycheck` — diagnostics frontend (left-fringe indicators). Its native
+  `flycheck-annotate-mode` (Flycheck 38+) renders diagnostics inline and is
+  enabled via a `flycheck-mode-hook`: `current-line-style 'below` (full
+  message(s) stacked under the line), `other-lines-style 'sideline` (compact
+  "most-severe (+N)" flushed to the window's right edge). Error IDs show by
+  default (`flycheck-annotate-format-function` is
+  `flycheck-error-format-message-and-id`). This replaced the third-party
+  `sideline-flycheck` backend.
+- `sideline` — generic inline-annotation framework, now carrying **only**
+  code actions (`sideline-backends-right` is `'(sideline-lsp)`). Loaded but
+  **not** auto-enabled: `sideline-mode` stays off by default and is toggled
+  on demand via `M-x sideline-mode`.
 - `sideline-lsp` — sideline backend rendering LSP code actions per line
   ("do this to fix it"), queried directly from `lsp-mode`.
 
-`lsp-ui` is no longer used. Sideline replaces `lsp-ui-sideline`; the
-on-demand hover popup `lsp-ui-doc-glance` was removed because ElDoc
-(echo area) plus `C-c l h h` (`lsp-describe-thing-at-point`) covered
-the same workflow.
+`lsp-ui` is no longer used. `flycheck-annotate-mode` + `sideline-lsp` replace
+`lsp-ui-sideline`; the on-demand hover popup `lsp-ui-doc-glance` was removed
+because ElDoc (echo area) plus `C-c l h h` (`lsp-describe-thing-at-point`)
+covered the same workflow. The former `sideline-flycheck` fork
+(`alberti42/fork-sideline-flycheck`, adding `show-error-id`) is retired — the
+patch is upstream (PR #17) and its role is now filled by `flycheck-annotate-mode`
+— along with the never-working `local/sideline.el` right-margin experiment
+(`flycheck-annotate-mode`'s `below` style covers prose buffers natively).
 
 ## Cross-module touchpoints
 
@@ -89,16 +97,17 @@ inserted on demand via `C-c y` (`yas-insert-snippet`) — see
 | System              | What it shows                                  | When it shows                      |
 | ------------------- | ---------------------------------------------- | ---------------------------------- |
 | ElDoc (echo area)   | symbol signature only (`lsp-eldoc-render-all nil`) | always, on cursor move         |
-| sideline-flycheck   | diagnostics from flycheck                      | inline, right of each diagnostic line |
+| flycheck-annotate   | diagnostics from flycheck, inline              | `below` at point, `sideline` (right edge) elsewhere |
 | sideline-lsp        | code actions offered by the LSP server         | inline, right of current line      |
 | full hover docs     | full hover documentation buffer                | **on demand** via `C-c l h h` (`lsp-describe-thing-at-point`) |
 
-Diagnostics flow: LSP server → lsp-mode → flycheck → `sideline-flycheck`.
-Code actions flow: LSP server → lsp-mode → `sideline-lsp` directly (per
-line), bypassing flycheck — flycheck has no concept of "fixes", only
-errors. The two are separate packages because the `sideline` ecosystem
-treats them as distinct backends; `lsp-ui-sideline` previously bundled
-both into one package.
+Diagnostics flow: LSP server → lsp-mode → flycheck → `flycheck-annotate-mode`
+(native inline rendering). Code actions flow: LSP server → lsp-mode →
+`sideline-lsp` directly (per line), bypassing flycheck — flycheck has no
+concept of "fixes", only errors. They use different display machinery because
+diagnostics are a flycheck concept (rendered natively) while code actions are
+LSP-only (rendered via a `sideline` backend); `lsp-ui-sideline` previously
+bundled both into one package.
 
 ## Key bindings
 
@@ -159,18 +168,22 @@ exclusively. The session file is never read or written, so it stops
 growing. Don't re-enable it — there's no benefit and the cache becomes
 stale across `project.el` root changes.
 
-### Commented-out fork `alberti42/fork-lsp-mode` is no longer needed
+### `lsp-mode` is pinned to the personal fork `alberti42/fork-lsp-mode`
 
-The `:straight (... :branch "integrated" ... )` recipe at lines 11–16
-references a personal fork that carried several patches. All of them
-have since been merged upstream:
+The `:straight` recipe points `lsp-mode` at a personal fork
+(`:branch "merged"`, mirrored locally at
+`~/Documents/Programming/Others/fork-lsp-mode`) rather than upstream MELPA.
+The fork exists to carry a patch from an **upstream PR still under review**,
+not yet in a released lsp-mode. Do **not** switch this to the stock recipe
+until that PR lands upstream, or the patch is lost.
 
-- Kind-First JSON-RPC routing (prevents protocol deadlocks when
-  server-initiated requests collide with client IDs).
-- Diagnostic codes exposed via `flycheck-error-id` — upstream lsp-mode
-  now passes `:id code?` to `flycheck-error-new` inside
-  `lsp-diagnostics--flycheck-start`.
-- Two further critical patches in the same series.
-
-Safe to delete the commented `:straight` recipe.
+Several earlier patches the fork once carried *have* since merged upstream
+and are no longer the reason it exists — e.g. Kind-First JSON-RPC routing
+(prevents protocol deadlocks when server-initiated requests collide with
+client IDs) and diagnostic codes via `flycheck-error-id` (upstream now
+passes `:id code?` to `flycheck-error-new` in
+`lsp-diagnostics--flycheck-start`, which is why no override is needed here).
+The fork is kept solely for the not-yet-merged work on the `merged` branch;
+the commented `:branch "fix/diagnostics-remap-on-edit"` line is an alternate
+work branch.
 
