@@ -31,8 +31,13 @@
   ;; `default-directory'), so the package doesn't re-resolve via project.el on
   ;; every ACP message.
   (defun my/agent-shell-cwd-function ()
-    "Return the current buffer's `default-directory'."
-    (expand-file-name default-directory))
+    "Return `default-directory' without its trailing slash.
+
+`pi-acp' matches sessions by exact cwd string, and Pi stores them with no
+trailing slash (e.g. \"/proj\").  Since `default-directory' ends in \"/\",
+passing it as-is finds zero prior sessions; `directory-file-name' strips
+the slash to match.  (`expand-file-name' is a defensive no-op here.)"
+    (directory-file-name (expand-file-name default-directory)))
   (setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
 
   ;; Session reuse: `agent-shell-project-buffers' decides which existing shells
