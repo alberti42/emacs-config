@@ -32,15 +32,20 @@
   ;; reuse (which matches on `equal' of `agent-shell-cwd') already groups them,
   ;; so no `agent-shell-project-buffers' override is needed.
   ;;
-  ;; `directory-file-name' is the only remaining custom bit: it strips the
-  ;; trailing slash that `project-root' returns, because `pi-acp' matches
-  ;; sessions by exact cwd string and Pi stores them without it (e.g. "/proj").
+  ;; The custom bits both exist to match the exact cwd string `pi-acp' filters
+  ;; on.  Pi runs via Node `process.cwd()', which resolves symlinks, so it
+  ;; records sessions under the *physical* path; `file-truename' canonicalizes
+  ;; here so a symlinked `default-directory' (e.g. through ~/.config/dotfiles)
+  ;; still matches.  `directory-file-name' strips the trailing slash Pi omits.
   ;; Once pi-acp normalizes its cwd match, this whole function can be dropped
   ;; and `agent-shell-cwd-function' left nil.
   (defun my/agent-shell-cwd-function ()
-    "Return the project root (else `default-directory'), without trailing slash."
+    "Return the project root (else `default-directory') canonicalized.
+
+Resolves symlinks and drops the trailing slash so the path matches what
+Pi records for its sessions."
     (directory-file-name
-     (expand-file-name
+     (file-truename
       (if-let* ((proj (project-current)))
           (project-root proj)
         default-directory))))
