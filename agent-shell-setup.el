@@ -62,7 +62,47 @@ Pi records for its sessions."
     (let ((agent-shell-context-sources nil))
       (apply orig-fn args)))
   (advice-add 'agent-shell--dwim :around
-              #'my/agent-shell--dwim-without-context))
+              #'my/agent-shell--dwim-without-context)
+
+  ;; Run our forked pi-acp instead of the npm-global one.  The fork adds a
+  ;; `session_info_changed' -> ACP `session_info_update' bridge: when the
+  ;; agent renames its own session (the `set_session_name' extension tool
+  ;; calling `pi.setSessionName'), pi emits `session_info_changed' on its RPC
+  ;; event stream, which upstream pi-acp drops.  The fork forwards it as a
+  ;; `session_info_update' carrying the new title, so agent-shell can react.
+  ;; Invoked via `node <dist>' (rather than the `pi-acp' bin on PATH) so the
+  ;; switch is explicit, self-contained, and trivially reversible; the fork's
+  ;; bundle externalizes `@agentclientprotocol/sdk', resolved from the fork's
+  ;; own node_modules.  Rebuild after editing the fork: `npm run build'.
+  (setq agent-shell-pi-acp-command
+        (list "node"
+              (expand-file-name
+               "~/Documents/Programming/Others/fork-pi-acp/dist/index.js")))
+
+  ;; Reflect the ACP session title in the shell buffer name, e.g.
+  ;; "Pi Agent @ <session title>" instead of "Pi Agent @ <project>".
+  ;; agent-shell already stores the title (from the ACP `session_info_update')
+  ;; into session state and emits `session-title-changed'; we subscribe to it
+  ;; per shell and rename the buffer to <prefix><title>.  Until the agent sets
+  ;; an explicit name, agent-shell seeds the title from the first user prompt,
+  ;; so the buffer name tracks that first, then updates when the tool fires.
+  (defun my/agent-shell-sync-buffer-name (event)
+    "Rename the shell buffer to \"<Agent> Agent @ <session title>\".
+EVENT is the `session-title-changed' payload; its `(:data :title)' holds
+the new title.  Runs with the shell buffer current (see
+`agent-shell--emit-event'), so `agent-shell--state' is in scope."
+    (when-let* ((title (map-nested-elt event '(:data :title)))
+                (agent (map-nested-elt agent-shell--state
+                                       '(:agent-config :buffer-name)))
+                (prefix (agent-shell--buffer-name-prefix agent)))
+      (shell-maker-set-buffer-name (current-buffer) (concat prefix title))))
+
+  (add-hook 'agent-shell-mode-hook
+            (lambda ()
+              (agent-shell-subscribe-to
+               :shell-buffer (current-buffer)
+               :event 'session-title-changed
+               :on-event #'my/agent-shell-sync-buffer-name))))
 
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
