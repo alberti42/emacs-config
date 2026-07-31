@@ -1,14 +1,49 @@
 # org-config.el
 
-Org mode plus inline LaTeX previewing and Python babel.
+Org mode plus inline LaTeX previewing and Python babel, on **built-in Org**.
+
+## Migration note (tecosaur fork → built-in Org)
+
+This module used to pull Org from **tecosaur's fork**
+(`https://git.tecosaur.net/tec/org-mode.git`, branch `dev`) to get karthink's
+live `org-latex-preview` (auto-preview, real-time updates while editing a
+fragment, dvisvgm SVG). That work never landed upstream and the fork is now
+effectively unmaintained, so the config was moved back to the Org that ships
+with Emacs (`:straight (org :type built-in)`).
+
+The old fork-based configuration is preserved verbatim but **unloaded** in
+`org-karthink-config.el` (renamed from the previous `org-config.el`; its
+`provide`/header updated, no `init.el` entry). Keep it as a reference or as a
+basis for a homegrown math-rendering package.
+
+Consequences of using built-in Org:
+
+- **No live preview minor mode.** Mainline Org has no `org-latex-preview-mode`
+  (the fork-only live mode). Math rendering is the classic on-demand
+  `org-latex-preview` command (`C-c C-x C-l`), still using the dvisvgm backend.
+- The following fork-only settings were **dropped** (no mainline analogue):
+  `org-latex-preview-numbered`, `org-latex-preview-mode-display-live`,
+  `org-latex-preview-mode-update-delay`, `org-latex-preview-mode-ignored-commands`,
+  and `org-latex-preview-appearance-options :page-width`.
+- The fork-only `org-latex-preview-process-default` is replaced by the classic
+  `org-preview-latex-default-process`.
+- The `:pre-build` `org-version.el` synthesis and the stale `.fmt` purge (both
+  specific to the fork's straight recipe / `org-persist` `.fmt` caching) are
+  gone. Classic preview caches rendered images under `ltximg/`, not precompiled
+  `.fmt` preambles, so the purge is unnecessary.
 
 ## External packages
 
-- **`org`** — installed from **tecosaur's fork** (`https://git.tecosaur.net/tec/org-mode.git`,
-  branch `dev`), not mainline. The fork carries karthink's `org-latex-preview`
-  with auto-preview, live updates, and dvisvgm SVG rendering. These features
-  are not yet upstream. The custom straight recipe must appear before any
-  package that depends on Org.
+- **`org`** — the Emacs-bundled Org, registered with
+  `:straight (org :type built-in)`. No custom recipe, no fork, no pre-build
+  step. **Not** a bare `:straight nil`: `org-appear` declares `(org "9.3")` in
+  its `Package-Requires`, so straight resolves `org` as a dependency and would
+  otherwise rebuild the leftover tecosaur checkout in `straight/repos/org` and
+  put it on `load-path`, shadowing the bundled Org. `:type built-in` makes the
+  org-appear dependency resolve to built-in too. (The stale fork checkout under
+  `straight/repos/org` / `straight/build/org` is harmless once org isn't
+  activated by straight; it's left in place so re-enabling
+  `org-karthink-config.el` doesn't require a re-clone.)
 - **`org-appear`** — auto-toggles visibility of emphasis markers, links,
   sub/superscripts based on cursor position.
 
@@ -25,21 +60,23 @@ Org mode plus inline LaTeX previewing and Python babel.
 - **`yasnippets/org-mode/`** holds matplotlib setup blocks — the Python
   babel defaults here are deliberately minimal so per-file/snippet setup
   isn't fighting global config.
+- **`pdf-tools-config.el`** sets a literal `pdf-annot-latex-header` to bypass
+  an initializer that read `org-format-latex-header`. With built-in Org that
+  variable exists again, so the workaround is now belt-and-suspenders rather
+  than load-bearing; harmless to keep.
 
-## LaTeX preview pipeline
+## LaTeX preview pipeline (classic)
 
-| Setting                                       | Value          | Note |
-| --------------------------------------------- | -------------- | ---- |
-| `org-startup-with-latex-preview`              | `t`            | render all previews on file open |
-| `org-startup-with-link-previews`              | `t`            | display inline images on file open |
-| `org-latex-preview-numbered`                  | `t`            | consistent equation numbering |
-| `org-latex-preview-mode-display-live`         | `t`            | live update while editing fragments |
-| `org-latex-preview-process-default`           | `'dvisvgm`     | SVG output |
-| `org-latex-preview-mode-update-delay`         | `0.25`         | down from default 1s |
-| `org-latex-preview-appearance-options :page-width` | `0.8`     | avoids chopped formulas |
-| `org-latex-preview-mode-ignored-commands`     | next/prev-line, mwheel-scroll, scroll-up/down | keep navigation responsive |
+| Setting                             | Value        | Note |
+| ----------------------------------- | ------------ | ---- |
+| `org-startup-with-latex-preview`    | `t`          | render all previews on file open |
+| `org-startup-with-link-previews`    | `t`          | display inline images on file open |
+| `org-preview-latex-default-process` | `'dvisvgm`   | SVG output |
+| `org-format-latex-options :scale`   | `1.5`        | on-screen size of fragment previews |
 
-`org-latex-preview-mode` is enabled via `org-mode-hook`.
+Preview is on-demand via `org-latex-preview` (`C-c C-x C-l`) — there is no
+per-keystroke live mode in mainline Org. `org-startup-with-latex-preview t`
+still renders everything on file open.
 
 ## Babel (Python)
 
@@ -77,47 +114,10 @@ for individual images. Bare `800` or `t` would disable that fallback.
 - `org-appear-autoemphasis t` — show `*foo*` markers when cursor is inside.
 - `org-appear-autolinks t` — same for links.
 - `org-appear-autosubmarkers t` — same for sub/superscripts.
-- `org-hide-emphasis-markers t` — markers hidden by default; `org-appear`
-  reveals them on cursor proximity.
+- `org-hide-emphasis-markers nil` — markers shown by default; toggle with
+  `C-c t e` (`my/org-toggle-emphasis-markers`).
 
 ## Invariants — do not change without reading
-
-### Tecosaur fork is required for live LaTeX preview
-
-The recipe forks from `https://git.tecosaur.net/tec/org-mode.git` (branch
-`dev`) specifically for karthink's preview features
-(`org-startup-with-latex-preview`, `org-latex-preview-mode-display-live`,
-dvisvgm rendering). Mainline Org doesn't have these. Reverting to mainline
-means losing the preview pipeline.
-
-### Pre-build hook synthesizes `org-version.el`
-
-The fork doesn't ship `org-version.el`. Straight runs the `:pre-build`
-form, which extracts the version string from `lisp/org.el`'s
-`Version:` Lisp header (via `lisp-mnt`'s `lm-header`) and the short git
-hash, then writes a stub providing `org-release` and `org-git-version`.
-Without this, byte-compilation fails because `org-version` is `require`d
-elsewhere.
-
-### Stale `.fmt` purge runs in `:config`, before previews start
-
-After a TeX Live upgrade, pdfTeX refuses precompiled preamble `.fmt`
-files cached under `$XDG_CACHE_HOME/org-persist/` because their binary
-fingerprint no longer matches. Org's cache key is the **preamble hash**,
-not the engine, so the cache looks valid and the first preview fails
-with exit 252 ("format file ... made by different executable version").
-
-The `:config` block does a cheap mtime check: if `pdftex` is newer than
-a `.fmt`, it was built against an older engine — delete it. Also deletes
-the sibling metadata file (same stem minus the `-<preamble-hash>.fmt`
-suffix). The next preview rebuilds via `pdftex -ini`.
-
-This **must** run in `:config` (before `org-mode-hook` fires
-`org-latex-preview-mode`); moving it to `:config` after `org-mode-hook`
-or to `org-mode-hook` itself races with the first startup preview.
-
-(Memory entry `project_org_latex_preview_stale_fmt` documents the
-underlying bug; this code is the automatic cleanup.)
 
 ### `org-tempo` needs explicit `(require ...)`
 
@@ -133,28 +133,18 @@ override fallback. Bare integer or `t` disables it.
 
 `:results output :exports both` and nothing else. Matplotlib (Agg backend,
 SVG savefig, imports, rcParams) lives in per-file setup blocks or
-yasnippets. Resist adding global header args here — different files have
-different plotting/data needs and a global default makes per-file blocks
-fight the config.
+yasnippets. Resist adding global header args here.
 
 ### `:results output` not `:results value`
 
 Captures the entire stdout from a Python REPL, including print() calls.
-`value` would only return the last expression's value. The `output` choice
-is what makes typical research-notebook flows (print intermediate state,
-show plots after) work without per-block overrides.
+`value` would only return the last expression's value.
 
-## Commented-out: `org-babel-eval-error-notify` advice
+### Live math preview is a future homegrown-package concern
 
-Lines 91–100 contain a commented-out `:around` advice that would suppress
-the `*Org-Babel Error Output*` popup when the subprocess exited cleanly
-(exit 0). `ob-eval.el` always pops that buffer whenever stderr is
-non-empty, which is noisy for tools like matplotlib that print benign
-warnings to stderr.
-
-The advice writes to the buffer but doesn't pop it on success; non-zero
-exits still pop. Inspectable via `M-x switch-to-buffer
-*Org-Babel Error Output*`.
-
-Currently disabled — uncomment if matplotlib/sklearn warnings start
-spamming the popup.
+If per-keystroke live LaTeX preview is wanted again, do NOT resurrect the
+tecosaur fork dependency. Either revive `org-karthink-config.el` deliberately
+(understanding it is unmaintained) or build a small dedicated package. Built-in
+Org intentionally stays fork-free here.
+</content>
+</invoke>

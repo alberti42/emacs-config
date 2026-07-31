@@ -1,4 +1,11 @@
-;;; org-config.el --- Org mode with LaTeX preview and Python babel -*- lexical-binding: t; -*-
+;;; org-karthink-config.el --- Org mode with karthink live LaTeX preview -*- lexical-binding: t; -*-
+
+;; PRESERVED FOR REFERENCE — NOT LOADED.  This is the previous org-config.el
+;; that pulls Org from tecosaur's (now largely unmaintained) fork to get
+;; karthink's live `org-latex-preview'.  It was renamed and unhooked from
+;; init.el on the migration back to built-in Org (see org-config.el).  Kept
+;; in case the live-preview pipeline is needed again or as a basis for a
+;; homegrown math-rendering package.
 
 ;; Install Org from tecosaur's fork to get karthink's org-latex-preview
 ;; (auto-preview, live updates, dvisvgm SVG rendering).  We follow the
@@ -210,5 +217,5 @@
 ;;   ;; JetBrainsMonoNL, breaking column alignment.
 ;;   (org-modern-table nil))
 
-(provide 'org-config)
-;;; org-config.el ends here
+(provide 'org-karthink-config)
+;;; org-karthink-config.el ends here
