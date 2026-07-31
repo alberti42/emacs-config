@@ -5,15 +5,15 @@
 ;; Requires shell-maker and acp as dependencies.
 
 (use-package agent-shell
-  ;; :straight (agent-shell
-  ;;            :type git
-  ;;            ;;:host github
-  ;;            :local-repo "~/Documents/Programming/Others/fork-agent-shell"
-  ;;            ;; :branch "fork/angle-bracket-link-destinations"
-  ;;            ;; :branch "fork/angle-bracket-link-destinations"
-  ;;            :branch "merged"
-  ;;            ;; :branch "main"
-  ;;            :repo "xenodium/agent-shell")
+  :straight (agent-shell
+             :type git
+             ;;:host github
+             :local-repo "~/Documents/Programming/Others/fork-agent-shell"
+             ;; :branch "fork/angle-bracket-link-destinations"
+             ;; :branch "fork/angle-bracket-link-destinations"
+             :branch "protect-frozen-regions-in-emphasis"
+             ;; :branch "main"
+             :repo "xenodium/agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
   (agent-shell-session-restore-verbosity 'full)
