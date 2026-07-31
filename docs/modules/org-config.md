@@ -67,16 +67,56 @@ Consequences of using built-in Org:
 
 ## LaTeX preview pipeline (classic)
 
-| Setting                             | Value        | Note |
-| ----------------------------------- | ------------ | ---- |
-| `org-startup-with-latex-preview`    | `t`          | render all previews on file open |
-| `org-startup-with-link-previews`    | `t`          | display inline images on file open |
-| `org-preview-latex-default-process` | `'dvisvgm`   | SVG output |
-| `org-format-latex-options :scale`   | `1.5`        | on-screen size of fragment previews |
+| Setting                                | Value        | Note |
+| -------------------------------------- | ------------ | ---- |
+| `org-startup-with-latex-preview`       | `t`          | render all previews on file open |
+| `org-startup-with-link-previews`       | `t`          | display inline images on file open |
+| `org-preview-latex-default-process`    | `'dvisvgm`   | SVG output |
+| `org-format-latex-options :scale`      | `org-config-latex-preview-base-scale` (1.5) | on-screen size of fragment previews |
+| `org-format-latex-options :foreground` | `'default`   | theme foreground at generation time |
+| `org-format-latex-options :background` | `'default`   | theme background at generation time |
 
 Preview is on-demand via `org-latex-preview` (`C-c C-x C-l`) — there is no
 per-keystroke live mode in mainline Org. `org-startup-with-latex-preview t`
 still renders everything on file open.
+
+### Fork-parity: recolour on theme change, rescale on text zoom
+
+Classic preview bakes colour and size into the cached SVG **at generation
+time** — it has no live tracking, which is what the fork provided. Two hooks
+restore that behaviour:
+
+- **Recolour on theme switch.** `org-config--latex-preview-refresh-all-buffers`
+  runs on `enable-theme-functions` (the same hook `theme-harmonize` uses), so
+  when `zac-theme-autodetection` flips light↔dark every Org buffer's previews
+  are cleared and regenerated in the new default-face colours. Without this,
+  cached SVGs keep the colour they had when first rendered.
+- **Rescale on text zoom.** `org-config--latex-preview-zoom` runs on
+  `text-scale-mode-hook`. Previews are **SVG (vector)**, so it does *not*
+  re-run LaTeX: it walks the `org-latex-overlay` overlays and sets each
+  display image's `:scale` to `text-scale-mode-step^amount` (then
+  `image-flush` + `force-window-update`). `C-x C-+` / `C-x C--` scale the math
+  with the text instantly.
+
+  This is deliberately **not** done by changing `org-format-latex-options
+  :scale` and regenerating: `:scale` feeds the dvisvgm DPI and is part of the
+  fragment cache-key hash, so bumping it invalidates every fragment and
+  re-renders the whole buffer through LaTeX synchronously — a multi-second hang
+  on each zoom step. Adjusting the vector image's display `:scale` sidesteps
+  LaTeX entirely. (The factor is recomputed absolutely from
+  `text-scale-mode-amount`, so the hook is idempotent.)
+
+The theme refresher is gated on `derived-mode-p 'org-mode`, `display-graphic-p`,
+and the presence of at least one `org-latex-overlay` overlay, so it is a no-op
+in buffers without previews. It *does* re-run LaTeX — unavoidable, since the
+foreground/background colour is baked into the fragment's `\color` at
+compile time — but a light/dark switch is infrequent enough to absorb the cost.
+The zoom hook never touches LaTeX. `:foreground`/`:background` are kept at
+`'default` (not `'auto`) on purpose: `'auto` reads the face *at point*, which
+can leak `hl-line`/region colours into the image; `'default` reads the
+`default` face, which is exactly the theme foreground/background the refresh
+regenerates against. `org-config-latex-preview-base-scale` (defvar, default
+`1.5`) is the single knob for baseline preview size.
 
 ## Babel (Python)
 

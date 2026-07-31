@@ -104,6 +104,19 @@ the new title.  Runs with the shell buffer current (see
                :event 'session-title-changed
                :on-event #'my/agent-shell-sync-buffer-name))))
 
+;; Rendering engine shared by agent-shell-math-renderer (and, in future, an
+;; Org previewer): content-addressed LaTeX->SVG with display-time tint/scale.
+;; Registered here from the local checkout so straight resolves the renderer's
+;; `latex-to-svg' dependency; it loads lazily when the renderer requires it, and
+;; its settings are applied in the renderer's `:config' below (by which point
+;; the `latex-to-svg-*' variables are defined).
+(use-package latex-to-svg
+  :straight (latex-to-svg
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg")
+  :defer t)
+
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
@@ -113,9 +126,10 @@ the new title.  Runs with the shell buffer current (see
   :config
   (setq agent-shell-math-renderer-enabled t)
   (setq agent-shell-math-renderer-render-submitted-prompts t)
-  (setq agent-shell-math-renderer-render-on-non-graphic t)
-  (setq agent-shell-math-renderer-font-scale 1.0)
-  (setq agent-shell-math-renderer-appended-preamble
+  ;; Engine settings now live in the `latex-to-svg' library.
+  (setq latex-to-svg-render-on-non-graphic t)
+  (setq latex-to-svg-font-scale 1.0)
+  (setq latex-to-svg-appended-preamble
         "\\usepackage{physics}
 \\usepackage[only,llbracket,rrbracket]{stmaryrd}
 \\usepackage{siunitx}

@@ -11,6 +11,13 @@
 ;; per-keystroke preview minor mode in mainline Org.  If that ergonomics is
 ;; wanted long-term, it belongs in a dedicated homegrown package rather than a
 ;; dependency on the fork.
+;; Base `:scale' for LaTeX fragment previews, before per-buffer text-scale zoom
+;; is factored in (see `org-config--latex-preview-rescale').  A plain defvar so
+;; it is in scope both when set into `org-format-latex-options' and when the
+;; rescale hook recomputes the effective scale.
+(defvar org-config-latex-preview-base-scale 1.5
+  "Baseline `:scale' applied to Org LaTeX previews at 100% text scale.")
+
 ;; NOTE: this must register Org as built-in with `:type built-in' rather than a
 ;; bare `:straight nil'.  `org-appear' declares `(org "9.3")' in its
 ;; Package-Requires, so straight resolves `org' as a dependency; without an
@@ -46,7 +53,59 @@
   ;; is the classic-preview appearance plist; `:scale' multiplies the rendered
   ;; image size.  (The fork's `org-latex-preview-appearance-options :page-width'
   ;; has no mainline analogue.)
-  (plist-put org-format-latex-options :scale 1.5)
+  (plist-put org-format-latex-options :scale org-config-latex-preview-base-scale)
+  ;; Colour previews from the *default* face (theme foreground/background) at
+  ;; generation time.  This is the stock value, made explicit because the
+  ;; theme-switch refresh below relies on it: when the palette changes, the
+  ;; regenerated fragments pick up the new default-face colours.  (`auto' would
+  ;; instead read the face *at point*, which can leak `hl-line'/region colours
+  ;; into the image.)
+  (plist-put org-format-latex-options :foreground 'default)
+  (plist-put org-format-latex-options :background 'default)
+
+  ;; --- Fork parity: recolour on theme change, rescale on text-scale ---------
+  ;;
+  ;; Built-in (classic) preview bakes colour and size into the cached SVG at
+  ;; generation time; it has no live tracking.  These two hooks re-render the
+  ;; affected previews so they follow the OS-driven light/dark theme switch
+  ;; (`zac-theme-autodetection' -> `enable-theme-functions') and buffer text
+  ;; zoom (`text-scale-adjust').  Both are no-ops in buffers without previews.
+  (defun org-config--latex-preview-refresh ()
+    "Regenerate every LaTeX preview in the current buffer, if any exist."
+    (when (and (derived-mode-p 'org-mode) (display-graphic-p))
+      (when (seq-some
+             (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
+             (overlays-in (point-min) (point-max)))
+        (org-clear-latex-preview (point-min) (point-max))
+        (org--latex-preview-region (point-min) (point-max)))))
+
+  (defun org-config--latex-preview-refresh-all-buffers (&rest _)
+    "Recolour LaTeX previews in all Org buffers after a theme change."
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (org-config--latex-preview-refresh))))
+  (add-hook 'enable-theme-functions
+            #'org-config--latex-preview-refresh-all-buffers)
+
+  (defun org-config--latex-preview-zoom ()
+    "Scale existing LaTeX preview images to the buffer's text zoom.
+
+Previews are SVG (vector), so this adjusts each overlay image's `:scale'
+instead of re-running LaTeX+dvisvgm.  Regenerating (which is what changing
+`org-format-latex-options :scale' would force, since `:scale' feeds the DPI and
+is part of the cache-key hash) re-renders every fragment synchronously and
+hangs Emacs for seconds on each zoom step.  The factor is recomputed absolutely
+from `text-scale-mode-amount', so repeated calls are idempotent."
+    (when (derived-mode-p 'org-mode)
+      (let ((factor (expt text-scale-mode-step text-scale-mode-amount)))
+        (dolist (ov (overlays-in (point-min) (point-max)))
+          (when (eq (overlay-get ov 'org-overlay-type) 'org-latex-overlay)
+            (let ((img (overlay-get ov 'display)))
+              (when (and (consp img) (eq (car img) 'image))
+                (setf (image-property img :scale) factor)
+                (image-flush img)))))
+        (force-window-update (current-buffer)))))
+  (add-hook 'text-scale-mode-hook #'org-config--latex-preview-zoom)
 
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
