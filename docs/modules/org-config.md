@@ -13,14 +13,20 @@ with Emacs (`:straight (org :type built-in)`).
 
 The old fork-based configuration is preserved verbatim but **unloaded** in
 `org-karthink-config.el` (renamed from the previous `org-config.el`; its
-`provide`/header updated, no `init.el` entry). Keep it as a reference or as a
-basis for a homegrown math-rendering package.
+`provide`/header updated, no `init.el` entry).
 
-Consequences of using built-in Org:
+The "basis for a homegrown math-rendering package" that this migration
+anticipated now exists: **`org-latex-to-svg`** (front-end) over **`latex-to-svg`**
+(engine), which is what actually renders math here — see the *LaTeX math
+preview* section below. It restores the fork's recolour-on-theme /
+rescale-on-zoom ergonomics from a content-addressed cache, without the fork.
 
-- **No live preview minor mode.** Mainline Org has no `org-latex-preview-mode`
-  (the fork-only live mode). Math rendering is the classic on-demand
-  `org-latex-preview` command (`C-c C-x C-l`), still using the dvisvgm backend.
+Consequences of using built-in Org (for anything other than math preview, which
+`org-latex-to-svg` handles):
+
+- **No live preview minor mode in Org itself.** Mainline Org has no
+  `org-latex-preview-mode` (the fork-only live mode); its classic
+  `org-latex-preview` command remains as a dvisvgm fallback.
 - The following fork-only settings were **dropped** (no mainline analogue):
   `org-latex-preview-numbered`, `org-latex-preview-mode-display-live`,
   `org-latex-preview-mode-update-delay`, `org-latex-preview-mode-ignored-commands`,
@@ -65,58 +71,46 @@ Consequences of using built-in Org:
   variable exists again, so the workaround is now belt-and-suspenders rather
   than load-bearing; harmless to keep.
 
-## LaTeX preview pipeline (classic)
+## LaTeX math preview — `org-latex-to-svg`
 
-| Setting                                | Value        | Note |
-| -------------------------------------- | ------------ | ---- |
-| `org-startup-with-latex-preview`       | `t`          | render all previews on file open |
-| `org-startup-with-link-previews`       | `t`          | display inline images on file open |
-| `org-preview-latex-default-process`    | `'dvisvgm`   | SVG output |
-| `org-format-latex-options :scale`      | `org-config-latex-preview-base-scale` (1.5) | on-screen size of fragment previews |
-| `org-format-latex-options :foreground` | `'default`   | theme foreground at generation time |
-| `org-format-latex-options :background` | `'default`   | theme background at generation time |
+In-buffer math is **not** rendered by built-in Org's classic
+`org-latex-preview`. It is rendered by the homegrown **`org-latex-to-svg`**
+package, a front-end over the standalone **`latex-to-svg`** engine. Both live
+in `~/Documents/Programming/Emacs/` and are wired in at the end of
+`org-config.el` via local-checkout straight recipes; `org-mode-hook` turns on
+`org-latex-to-svg-mode`, which renders every `latex-fragment` /
+`latex-environment` on open.
 
-Preview is on-demand via `org-latex-preview` (`C-c C-x C-l`) — there is no
-per-keystroke live mode in mainline Org. `org-startup-with-latex-preview t`
-still renders everything on file open.
+Why, and what it buys us:
 
-### Fork-parity: recolour on theme change, rescale on text zoom
+- The engine compiles each unique equation **once** (content-addressed on
+  disk), **color-independent** (`dvisvgm --currentcolor`, tinted at display)
+  and **size-independent** (scaled at display to the buffer font).
+- So previews **recolour on an OS light/dark theme switch** and **rescale on
+  buffer text zoom** straight from cache, with **no LaTeX recompile** — the
+  tecosaur/karthink ergonomics, without the fork. `org-latex-to-svg` owns the
+  refresh hooks (`enable-theme-functions`, `text-scale-mode-hook`,
+  `window-buffer-change-functions`); nothing here in `org-config.el`.
+- `C-c C-x C-l` is rebound (while the mode is on) to `org-latex-to-svg`:
+  toggle the fragment at point / render the region / render the buffer;
+  `C-u` clears. Editing under a preview reveals its source.
 
-Classic preview bakes colour and size into the cached SVG **at generation
-time** — it has no live tracking, which is what the fork provided. Two hooks
-restore that behaviour:
+What `org-config.el` keeps for math is minimal: `org-preview-latex-default-process
+'dvisvgm`, so built-in Org's classic `org-latex-preview` still works as a
+fallback when `org-latex-to-svg-mode` is off. `org-startup-with-latex-preview`
+is **not** set (the mode renders on the hook instead), and the old classic
+stopgap (the `org-format-latex-options` `:scale`/`:foreground`/`:background`
+settings plus the `enable-theme-functions` / `text-scale-mode-hook` recolour and
+rescale hooks, and the `org-config-latex-preview-base-scale` defvar) was
+removed — `org-latex-to-svg` supersedes all of it, doing the recolour/rescale
+from cache instead of re-running LaTeX.
 
-- **Recolour on theme switch.** `org-config--latex-preview-refresh-all-buffers`
-  runs on `enable-theme-functions` (the same hook `theme-harmonize` uses), so
-  when `zac-theme-autodetection` flips light↔dark every Org buffer's previews
-  are cleared and regenerated in the new default-face colours. Without this,
-  cached SVGs keep the colour they had when first rendered.
-- **Rescale on text zoom.** `org-config--latex-preview-zoom` runs on
-  `text-scale-mode-hook`. Previews are **SVG (vector)**, so it does *not*
-  re-run LaTeX: it walks the `org-latex-overlay` overlays and sets each
-  display image's `:scale` to `text-scale-mode-step^amount` (then
-  `image-flush` + `force-window-update`). `C-x C-+` / `C-x C--` scale the math
-  with the text instantly.
-
-  This is deliberately **not** done by changing `org-format-latex-options
-  :scale` and regenerating: `:scale` feeds the dvisvgm DPI and is part of the
-  fragment cache-key hash, so bumping it invalidates every fragment and
-  re-renders the whole buffer through LaTeX synchronously — a multi-second hang
-  on each zoom step. Adjusting the vector image's display `:scale` sidesteps
-  LaTeX entirely. (The factor is recomputed absolutely from
-  `text-scale-mode-amount`, so the hook is idempotent.)
-
-The theme refresher is gated on `derived-mode-p 'org-mode`, `display-graphic-p`,
-and the presence of at least one `org-latex-overlay` overlay, so it is a no-op
-in buffers without previews. It *does* re-run LaTeX — unavoidable, since the
-foreground/background colour is baked into the fragment's `\color` at
-compile time — but a light/dark switch is infrequent enough to absorb the cost.
-The zoom hook never touches LaTeX. `:foreground`/`:background` are kept at
-`'default` (not `'auto`) on purpose: `'auto` reads the face *at point*, which
-can leak `hl-line`/region colours into the image; `'default` reads the
-`default` face, which is exactly the theme foreground/background the refresh
-regenerates against. `org-config-latex-preview-base-scale` (defvar, default
-`1.5`) is the single knob for baseline preview size.
+**Known v0 limitation:** each fragment compiles standalone, so cross-fragment
+`\eqref` / equation numbering do not resolve in-buffer (numbered environments
+show `(1)`); export is unaffected. Numbering + `\eqref` (via a `label → number`
+map and a `\setcounter` injected into the per-fragment LaTeX, which folds into
+the engine's content hash) is a planned `org-latex-to-svg` milestone. See that
+package's repo for details.
 
 ## Babel (Python)
 
@@ -180,11 +174,15 @@ yasnippets. Resist adding global header args here.
 Captures the entire stdout from a Python REPL, including print() calls.
 `value` would only return the last expression's value.
 
-### Live math preview is a future homegrown-package concern
+### Math preview lives in `org-latex-to-svg`, not the fork
 
-If per-keystroke live LaTeX preview is wanted again, do NOT resurrect the
-tecosaur fork dependency. Either revive `org-karthink-config.el` deliberately
-(understanding it is unmaintained) or build a small dedicated package. Built-in
-Org intentionally stays fork-free here.
+Math rendering is owned by the homegrown `org-latex-to-svg` (over `latex-to-svg`),
+wired in at the bottom of the file. Do NOT resurrect the tecosaur fork
+dependency for math. Enhancements (per-keystroke live update, reveal-on-cursor,
+equation numbering, `\eqref`) belong in those packages'
+(`~/Documents/Programming/Emacs/{latex-to-svg,org-latex-to-svg}`) repos, not
+here. `org-config.el` only wires the mode on and keeps classic `org-latex-preview`
+(dvisvgm) as an off-mode fallback. `org-karthink-config.el` remains unloaded,
+kept only for reference.
 </content>
 </invoke>

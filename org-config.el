@@ -6,17 +6,14 @@
 ;; upstream, and the fork is now effectively unmaintained.  The previous
 ;; fork-based configuration is preserved, unloaded, in `org-karthink-config.el'.
 ;;
-;; Math rendering here therefore uses built-in Org's classic on-demand preview
-;; (`org-latex-preview' / `C-c C-x C-l', dvisvgm backend).  There is no live
-;; per-keystroke preview minor mode in mainline Org.  If that ergonomics is
-;; wanted long-term, it belongs in a dedicated homegrown package rather than a
-;; dependency on the fork.
-;; Base `:scale' for LaTeX fragment previews, before per-buffer text-scale zoom
-;; is factored in (see `org-config--latex-preview-rescale').  A plain defvar so
-;; it is in scope both when set into `org-format-latex-options' and when the
-;; rescale hook recomputes the effective scale.
-(defvar org-config-latex-preview-base-scale 1.5
-  "Baseline `:scale' applied to Org LaTeX previews at 100% text scale.")
+;; Math rendering here is done by the homegrown `org-latex-to-svg' package (a
+;; front-end over the `latex-to-svg' engine, wired up at the end of this file),
+;; NOT by built-in Org's classic `org-latex-preview'.  It compiles each unique
+;; equation once (content-addressed) and re-tints / re-scales from cache on a
+;; theme switch or text zoom with no LaTeX recompile — the ergonomics the
+;; tecosaur fork provided, without depending on the fork.  Built-in Org's
+;; classic `org-latex-preview' stays available (dvisvgm) as a fallback when
+;; `org-latex-to-svg-mode' is off.
 
 ;; NOTE: this must register Org as built-in with `:type built-in' rather than a
 ;; bare `:straight nil'.  `org-appear' declares `(org "9.3")' in its
@@ -29,9 +26,9 @@
   :straight (org :type built-in)
   :defer t
   :custom
-  ;; Render all LaTeX previews when opening a file.
-  (org-startup-with-latex-preview t)
   ;; Display inline images (e.g. babel plot output) when opening a file.
+  ;; (LaTeX-math previews are handled by `org-latex-to-svg-mode', not Org's
+  ;; `org-startup-with-latex-preview'.)
   (org-startup-with-link-previews t)
   ;; Cap the maximum size of images.  List form `(N)' (not bare N or t) keeps
   ;; the per-image `#+ATTR_ORG: :width Npx' / `#+ATTR_HTML:' override fallback.
@@ -49,63 +46,11 @@
   ;; Compact fold ellipsis.
   (org-ellipsis "…")
   :config
-  ;; Bump the on-screen size of LaTeX fragment previews.  `org-format-latex-options'
-  ;; is the classic-preview appearance plist; `:scale' multiplies the rendered
-  ;; image size.  (The fork's `org-latex-preview-appearance-options :page-width'
-  ;; has no mainline analogue.)
-  (plist-put org-format-latex-options :scale org-config-latex-preview-base-scale)
-  ;; Colour previews from the *default* face (theme foreground/background) at
-  ;; generation time.  This is the stock value, made explicit because the
-  ;; theme-switch refresh below relies on it: when the palette changes, the
-  ;; regenerated fragments pick up the new default-face colours.  (`auto' would
-  ;; instead read the face *at point*, which can leak `hl-line'/region colours
-  ;; into the image.)
-  (plist-put org-format-latex-options :foreground 'default)
-  (plist-put org-format-latex-options :background 'default)
-
-  ;; --- Fork parity: recolour on theme change, rescale on text-scale ---------
-  ;;
-  ;; Built-in (classic) preview bakes colour and size into the cached SVG at
-  ;; generation time; it has no live tracking.  These two hooks re-render the
-  ;; affected previews so they follow the OS-driven light/dark theme switch
-  ;; (`zac-theme-autodetection' -> `enable-theme-functions') and buffer text
-  ;; zoom (`text-scale-adjust').  Both are no-ops in buffers without previews.
-  (defun org-config--latex-preview-refresh ()
-    "Regenerate every LaTeX preview in the current buffer, if any exist."
-    (when (and (derived-mode-p 'org-mode) (display-graphic-p))
-      (when (seq-some
-             (lambda (o) (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay))
-             (overlays-in (point-min) (point-max)))
-        (org-clear-latex-preview (point-min) (point-max))
-        (org--latex-preview-region (point-min) (point-max)))))
-
-  (defun org-config--latex-preview-refresh-all-buffers (&rest _)
-    "Recolour LaTeX previews in all Org buffers after a theme change."
-    (dolist (buf (buffer-list))
-      (with-current-buffer buf
-        (org-config--latex-preview-refresh))))
-  (add-hook 'enable-theme-functions
-            #'org-config--latex-preview-refresh-all-buffers)
-
-  (defun org-config--latex-preview-zoom ()
-    "Scale existing LaTeX preview images to the buffer's text zoom.
-
-Previews are SVG (vector), so this adjusts each overlay image's `:scale'
-instead of re-running LaTeX+dvisvgm.  Regenerating (which is what changing
-`org-format-latex-options :scale' would force, since `:scale' feeds the DPI and
-is part of the cache-key hash) re-renders every fragment synchronously and
-hangs Emacs for seconds on each zoom step.  The factor is recomputed absolutely
-from `text-scale-mode-amount', so repeated calls are idempotent."
-    (when (derived-mode-p 'org-mode)
-      (let ((factor (expt text-scale-mode-step text-scale-mode-amount)))
-        (dolist (ov (overlays-in (point-min) (point-max)))
-          (when (eq (overlay-get ov 'org-overlay-type) 'org-latex-overlay)
-            (let ((img (overlay-get ov 'display)))
-              (when (and (consp img) (eq (car img) 'image))
-                (setf (image-property img :scale) factor)
-                (image-flush img)))))
-        (force-window-update (current-buffer)))))
-  (add-hook 'text-scale-mode-hook #'org-config--latex-preview-zoom)
+  ;; Keep the classic `org-latex-preview' (available as a fallback when
+  ;; `org-latex-to-svg-mode' is off) on the dvisvgm backend.  The live
+  ;; recolour/rescale hooks that used to live here are obsolete —
+  ;; `org-latex-to-svg' does that from the shared engine cache without a
+  ;; recompile.
 
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
@@ -169,6 +114,32 @@ from `text-scale-mode-amount', so repeated calls are idempotent."
     (font-lock-flush)
     (message "Org emphasis markers: %s"
              (if org-hide-emphasis-markers "hidden" "visible"))))
+
+;; Homegrown SVG-math preview for Org, over the `latex-to-svg' engine.  Replaces
+;; built-in Org's classic `org-latex-preview' for in-buffer math: compiles each
+;; equation once (content-addressed) and re-tints on theme switch / re-scales on
+;; text zoom straight from cache — no LaTeX recompile.
+;;
+;; `latex-to-svg' is the shared engine; it is also registered from
+;; `agent-shell-setup.el'.  Registering the same local-checkout recipe here too
+;; is safe (straight caches an identical recipe) and removes any dependence on
+;; which module loads first — straight must know this recipe before it resolves
+;; `org-latex-to-svg''s `Package-Requires' dependency on it.
+(use-package latex-to-svg
+  :straight (latex-to-svg
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg")
+  :defer t)
+
+(use-package org-latex-to-svg
+  :straight (org-latex-to-svg
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/org-latex-to-svg")
+  :after org
+  ;; Render math in every Org buffer (replaces `org-startup-with-latex-preview').
+  :hook (org-mode . org-latex-to-svg-mode))
 
 (provide 'org-config)
 ;;; org-config.el ends here
