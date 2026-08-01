@@ -169,6 +169,7 @@ Current syntax modules:
 - `syntaxes/elisp.el`: Elisp settings, sets `fill-column` to 80.
 - `syntaxes/magit.el`: Magit display settings, enables `visual-line-mode` and disables line numbers in Magit buffers.
 - `syntaxes/agent-shell.el`: disables line numbers in `agent-shell-mode`.
+- `syntaxes/xwidget.el`: disables line numbers in `xwidget-webkit-mode` (the embedded webkit view used by typst-preview).
 
 Wrapping:
 
