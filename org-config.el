@@ -130,7 +130,12 @@
              :local-repo "/Users/andrea/Documents/Programming/Emacs/org-latex-to-svg")
   :after org
   ;; Render math in every Org buffer (replaces `org-startup-with-latex-preview').
-  :hook (org-mode . org-latex-to-svg-mode))
+  :hook (org-mode . org-latex-to-svg-mode)
+  :config
+  ;; Size multipliers on top of the engine's global `latex-to-svg-font-scale':
+  ;; display equations a bit larger than inline.
+  (setq org-latex-to-svg-inline-rescale 1.20)
+  (setq org-latex-to-svg-display-rescale 1.25))
 
 (provide 'org-config)
 ;;; org-config.el ends here

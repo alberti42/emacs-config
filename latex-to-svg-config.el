@@ -28,7 +28,7 @@
   :custom
   ;; Equation size relative to the surrounding buffer font.  1.0 = match; a bit
   ;; above 1 makes both inline and display math slightly larger than the text.
-  (latex-to-svg-font-scale 1.1)
+  (latex-to-svg-font-scale 1.0)
   ;; Daemon / mixed TTY+GUI: compile even when a non-graphic frame is selected,
   ;; so equations are ready as soon as a GUI frame views the buffer.
   (latex-to-svg-render-on-non-graphic t)

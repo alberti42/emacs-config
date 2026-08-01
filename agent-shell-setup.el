@@ -118,7 +118,11 @@ the new title.  Runs with the shell buffer current (see
   :after agent-shell
   :config
   (setq agent-shell-math-renderer-enabled t)
-  (setq agent-shell-math-renderer-render-submitted-prompts t))
+  (setq agent-shell-math-renderer-render-submitted-prompts t)
+  ;; Size multipliers on top of the engine's global `latex-to-svg-font-scale':
+  ;; display equations a bit larger than inline.
+  (setq agent-shell-math-renderer-inline-rescale 1.20)
+  (setq agent-shell-math-renderer-display-rescale 1.25))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
