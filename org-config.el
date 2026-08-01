@@ -38,7 +38,7 @@
   ;; Display LaTeX entity macros and sub/superscripts as Unicode in prose and
   ;; headings (e.g. \alpha → α, H_2O → H₂O).  Outside math fragments (which get
   ;; the SVG preview), this fills in everywhere else.
-  (org-pretty-entities t)
+  (org-pretty-entities nil)
   ;; Heading editing/insertion ergonomics.
   (org-special-ctrl-a/e t)
   (org-insert-heading-respect-content t)
