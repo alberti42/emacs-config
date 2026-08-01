@@ -56,6 +56,44 @@
   ;; Hide the compilation buffer on a successful `typst compile'.
   (typst-ts-compile-hide-compilation-buffer-if-success t))
 
+;;;; Keep the compile buffer out of the window layout ---------------------------
+;;
+;; On a successful compile, typst-ts-mode's finish function calls
+;; `delete-windows-on' the *typst-compilation* buffer.  If that buffer had been
+;; shown in one of the frame's windows (e.g. it replaced the live-preview
+;; window), deleting that window collapses a multi-window layout down to a
+;; single window with the source — the reported annoyance.
+;;
+;; Fix it the same way `compile-config.el' quiets ordinary builds: keep the
+;; compilation buffer out of the window tree entirely, so there is no window
+;; for `delete-windows-on' to remove and the layout is preserved.
+;; `compilation-start' displays with `(allow-no-window . t)', which is what
+;; makes `display-buffer-no-window' effective; a plain `display-buffer' (used
+;; in the error handler below) passes no such flag, so it falls through to the
+;; normal actions and still pops the buffer up.
+
+(defun typst-config--compile-buffer-p (buffer)
+  "Non-nil when BUFFER is a typst-ts compilation buffer."
+  (and (buffer-live-p (get-buffer buffer))
+       (eq (buffer-local-value 'major-mode (get-buffer buffer))
+           'typst-ts-compilation-mode)))
+
+(defun typst-config--no-window-p (buffer _alist)
+  "`display-buffer-alist' condition matching typst-ts compilation BUFFER."
+  (typst-config--compile-buffer-p buffer))
+
+(add-to-list 'display-buffer-alist
+             '(typst-config--no-window-p (display-buffer-no-window)))
+
+(defun typst-config--show-compile-on-error (buffer msg)
+  "Pop up the hidden typst compilation BUFFER only when the build failed.
+MSG is the `compilation-finish-functions' status string."
+  (when (and (typst-config--compile-buffer-p buffer)
+             (not (string-prefix-p "finished" (string-trim msg))))
+    (display-buffer buffer)))
+
+(add-hook 'compilation-finish-functions #'typst-config--show-compile-on-error)
+
 ;;;; Live preview via tinymist -------------------------------------------------
 ;;
 ;; `typst-preview.el' (havarddj) drives tinymist's incremental HTML preview
