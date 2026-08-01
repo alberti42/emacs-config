@@ -123,8 +123,9 @@ Scans the first 10 lines of the buffer, case-insensitively.
     ('skim
      ;; macOS: use Skim as the PDF viewer.
      ;; Skim's displayline script drives SyncTeX forward search (Emacs → Skim).
-     ;; Flags: -b shows the reading bar to indicate the target line in the PDF;
-     ;;        -g keeps Skim in the background.
+     ;; No flags are passed (`%n %o %b' are displayline's line/pdf/tex
+     ;; arguments, not options), so displayline uses its default behaviour:
+     ;; bring Skim to the foreground and jump to the target line.
      ;; `TeX-source-correlate-start-server' is needed for Skim's emacsclient
      ;; callback (backward search: Skim → Emacs).
      (when (eq system-type 'darwin)

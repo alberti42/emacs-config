@@ -52,12 +52,13 @@ to revert (documents whose path is \"%s\")"
 
 (defun pdf-preview-skim-open (pdf-file)
   "Open PDF-FILE in Skim (macOS), reverting an already-open copy first.
-Off macOS this falls back to `browse-url'.  Skim is left in the background
-\(the `open -g' flag)."
+Off macOS this falls back to `browse-url'.  Skim is brought to the
+foreground, since this is an explicit "show me the PDF" action (unlike the
+silent revert used during LaTeX SyncTeX forward search)."
   (if (eq system-type 'darwin)
       (progn
         (pdf-preview-skim-revert pdf-file)
-        (call-process "open" nil 0 nil "-g" "-a" "Skim"
+        (call-process "open" nil 0 nil "-a" "Skim"
                       (expand-file-name pdf-file)))
     (browse-url pdf-file)))
 
