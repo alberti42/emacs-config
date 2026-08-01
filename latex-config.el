@@ -148,6 +148,13 @@ Scans the first 10 lines of the buffer, case-insensitively.
      ;; `pdf-sync-mode' for SyncTeX forward and inverse search), so we
      ;; only have to select it.  Inverse search runs in-process; no
      ;; emacsclient server needed.
+     ;;
+     ;; Force a real `pdf-tools' load.  `pdf-tools-config.el' uses the lazy
+     ;; `pdf-loader-install', under which `pdf-tools-install' (called by
+     ;; AUCTeX's `TeX-pdf-tools-sync-view') is only a deferral stub — so the
+     ;; PDF would open in `pdf-view-mode' with no rendering backend and show
+     ;; raw bytes.  Requiring the package up front defines the real modes.
+     (require 'pdf-tools)
      (setq TeX-view-program-selection '((output-pdf "PDF Tools")))
      ;; Auto-revert any open pdf-view buffer of the just-compiled PDF,
      ;; then jump to the cursor's position via SyncTeX (also opens the
