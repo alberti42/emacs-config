@@ -34,7 +34,9 @@
           ;; An older pin lacks them and disables the `string' font-lock feature.
           (kotlin "https://github.com/fwcd/tree-sitter-kotlin")
           (markdown "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown/src")
-          (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")))
+          (markdown-inline "https://github.com/tree-sitter-grammars/tree-sitter-markdown" "split_parser" "tree-sitter-markdown-inline/src")
+          ;; Typst (uben0's grammar; consumed by typst-ts-mode).
+          (typst "https://github.com/uben0/tree-sitter-typst")))
 
   ;; Remap major modes to their tree-sitter counterparts
   (setq major-mode-remap-alist

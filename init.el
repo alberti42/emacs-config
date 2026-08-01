@@ -591,6 +591,13 @@ monitor."
 ;;;; -------------------------------------------------------------------------
 
 ;; Editing
+
+;; Shared PDF viewer selection (Skim / pdf-tools / OS default), consumed by
+;; latex-config and typst-config.  Loaded first so both can require it.
+(emacs-config-load-module
+ 'pdf-preview
+ "Could not load pdf-preview.el; shared PDF viewer selection is disabled.")
+
 (emacs-config-load-module
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
@@ -599,6 +606,11 @@ monitor."
 (emacs-config-load-module
  'markdown-config
  "Could not load markdown-config.el; Markdown enhancements are disabled.")
+
+;; Typst authoring (typst-ts-mode, tree-sitter backed)
+(emacs-config-load-module
+ 'typst-config
+ "Could not load typst-config.el; Typst editing is disabled.")
 
 ;; Org mode (LaTeX preview, Python babel, literate notebooks)
 (emacs-config-load-module

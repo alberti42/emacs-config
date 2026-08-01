@@ -1,5 +1,8 @@
 ;;; latex-config.el --- AUCTeX and LaTeX compilation -*- lexical-binding: t; -*-
 
+;; Shared Skim revert/open helpers (also used by typst-config.el).
+(require 'pdf-preview)
+
 (defcustom latex-config-pdf-viewer 'skim
   "Which PDF viewer AUCTeX uses for output-pdf jobs.
 Choices:
@@ -135,12 +138,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
      (add-hook 'TeX-after-compilation-finished-functions
                (lambda (output-file)
                  (with-current-buffer TeX-command-buffer
-                   (when (and (eq system-type 'darwin) (stringp output-file))
-                     (call-process "osascript" nil 0 nil
-                                   "-e"
-                                   (format "tell application \"Skim\" \
-to revert (documents whose path is \"%s\")"
-                                           (expand-file-name output-file))))
+                   (pdf-preview-skim-revert output-file)
                    (TeX-view)))))
 
     ('pdf-tools
@@ -183,12 +181,7 @@ to revert (documents whose path is \"%s\")"
                  (with-current-buffer TeX-command-buffer
                    (cond
                     ((not (display-graphic-p))
-                     (when (and (eq system-type 'darwin) (stringp output-file))
-                       (call-process "osascript" nil 0 nil
-                                     "-e"
-                                     (format "tell application \"Skim\" \
-to revert (documents whose path is \"%s\")"
-                                             (expand-file-name output-file)))))
+                     (pdf-preview-skim-revert output-file))
                     (t
                      (when (stringp output-file)
                        (TeX-revert-document-buffer output-file))))
