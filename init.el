@@ -612,6 +612,13 @@ monitor."
  'typst-config
  "Could not load typst-config.el; Typst editing is disabled.")
 
+;; latex-to-svg rendering engine (LaTeX -> SVG).  Registers + configures the
+;; shared library; must precede its front-ends (`org-config' /
+;; `agent-shell-setup') so straight resolves their dependency on it.
+(emacs-config-load-module
+ 'latex-to-svg-config
+ "Could not load latex-to-svg-config.el; SVG math rendering is disabled.")
+
 ;; Org mode (LaTeX preview, Python babel, literate notebooks)
 (emacs-config-load-module
  'org-config

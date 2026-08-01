@@ -104,19 +104,9 @@ the new title.  Runs with the shell buffer current (see
                :event 'session-title-changed
                :on-event #'my/agent-shell-sync-buffer-name))))
 
-;; Rendering engine shared by agent-shell-math-renderer (and, in future, an
-;; Org previewer): content-addressed LaTeX->SVG with display-time tint/scale.
-;; Registered here from the local checkout so straight resolves the renderer's
-;; `latex-to-svg' dependency; it loads lazily when the renderer requires it, and
-;; its settings are applied in the renderer's `:config' below (by which point
-;; the `latex-to-svg-*' variables are defined).
-(use-package latex-to-svg
-  :straight (latex-to-svg
-             :type git
-             :branch "main"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg")
-  :defer t)
-
+;; The `latex-to-svg' rendering engine (this renderer's dependency) is
+;; registered and configured centrally in `latex-to-svg-config.el', which
+;; init.el loads first.  Here we only turn the front-end on.
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
@@ -125,21 +115,7 @@ the new title.  Runs with the shell buffer current (see
   :after agent-shell
   :config
   (setq agent-shell-math-renderer-enabled t)
-  (setq agent-shell-math-renderer-render-submitted-prompts t)
-  ;; Engine settings now live in the `latex-to-svg' library.
-  (setq latex-to-svg-render-on-non-graphic t)
-  (setq latex-to-svg-font-scale 1.0)
-  (setq latex-to-svg-appended-preamble
-        "\\usepackage{physics}
-\\usepackage[only,llbracket,rrbracket]{stmaryrd}
-\\usepackage{siunitx}
-\\usepackage{mathtools}
-\\sisetup{
-detect-weight=true,
-exponent-product={\\times},
-output-decimal-marker={.},
-print-unity-mantissa=false,
-}"))
+  (setq agent-shell-math-renderer-render-submitted-prompts t))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here

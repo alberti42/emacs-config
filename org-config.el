@@ -120,18 +120,9 @@
 ;; equation once (content-addressed) and re-tints on theme switch / re-scales on
 ;; text zoom straight from cache — no LaTeX recompile.
 ;;
-;; `latex-to-svg' is the shared engine; it is also registered from
-;; `agent-shell-setup.el'.  Registering the same local-checkout recipe here too
-;; is safe (straight caches an identical recipe) and removes any dependence on
-;; which module loads first — straight must know this recipe before it resolves
+;; The shared `latex-to-svg' engine is registered and configured centrally in
+;; `latex-to-svg-config.el' (loaded first in init.el), which satisfies
 ;; `org-latex-to-svg''s `Package-Requires' dependency on it.
-(use-package latex-to-svg
-  :straight (latex-to-svg
-             :type git
-             :branch "main"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg")
-  :defer t)
-
 (use-package org-latex-to-svg
   :straight (org-latex-to-svg
              :type git
