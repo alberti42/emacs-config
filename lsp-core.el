@@ -156,7 +156,7 @@
   ;;     text fills the width it just trails the text; set
   ;;     `flycheck-annotate-other-lines-style' buffer-locally to `below' or nil
   ;;     there if that reads as too noisy.
-  (setq flycheck-annotate-current-line-style 'below
+  (setq flycheck-annotate-current-line-style nil
         flycheck-annotate-other-lines-style nil)
   ;; Enable inline diagnostics wherever flycheck runs.  For on-demand use
   ;; instead, drop this hook and toggle `M-x flycheck-annotate-mode' per buffer
