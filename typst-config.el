@@ -82,9 +82,10 @@
   (typst-preview-partial-rendering t)
   ;; Invert preview colours to match the OS light/dark appearance.
   (typst-preview-invert-colors "auto")
-  ;; "default" routes through `browse-url'.  On an Emacs built --with-xwidgets
-  ;; set this to "xwidget" for an in-Emacs webkit preview buffer.
-  (typst-preview-browser "default")
+  ;; "xwidget" renders the preview in an in-Emacs webkit buffer (requires an
+  ;; Emacs built --with-xwidgets); "default" would route through `browse-url'
+  ;; to the system browser instead.
+  (typst-preview-browser "xwidget")
   :bind (:map typst-ts-mode-map
               ("C-c C-l" . typst-preview-mode)
               :map typst-preview-mode-map
