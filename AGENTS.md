@@ -230,6 +230,32 @@ Notes:
   packages that require immediate downloads, unless you also provide an
   offline-friendly path.
 
+### Local-checkout packages: rebuild after editing (gotcha)
+
+Several packages are developed from **local checkouts** under
+`~/Documents/Programming/Emacs/` and pointed at via a straight `:local-repo`
+recipe: `latex-to-svg`, `org-latex-to-svg`, `agent-shell-math-renderer`, and
+`straight-overview`.
+
+**straight does not pick up edits to a local-repo package automatically.** It
+builds (byte-compiles into `straight/build/<pkg>/`) once and then loads that
+build; editing the source `.el` in the checkout does **not** change what a new
+Emacs session loads. So after committing (or even just saving) a change to one
+of these packages you must rebuild it, or the running session and the next
+restart keep running the stale byte-compiled version:
+
+- `M-x straight-rebuild-package RET <pkg>` — recompile that package from the
+  current checkout, then `(load "<pkg>")` (or restart) to pick it up.
+- Or use the `straight-overview` UI (`M-x straight-overview`) to pull/rebuild.
+- For a quick *session-only* test you can `(load "/abs/path/to/<pkg>.el")`, but
+  that is ephemeral — the persistent `straight/build` copy is unchanged, so a
+  restart reverts. Always `straight-rebuild-package` to make an edit stick.
+
+Hot-reloading a change into a **running daemon** (when you can't restart) is
+the same two steps via `emacsclient -e`: `straight-rebuild-package` then
+`load`. (This bit us once: a fix `load`ed as source into the daemon looked
+applied, but the stale `.elc` in `straight/build` still shipped the bug.)
+
 ## Customize (`custom.el`)
 
 `emacs-config-core.el` sets:
