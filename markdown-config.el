@@ -913,5 +913,33 @@ Interactively, prompts for WIDTH (defaulting to
         (font-lock-flush r-start r-end)
         (message "Recreated markdown-inline parser for (%d . %d)" r-start r-end)))))
 
+;;; -- SVG math preview (latex-to-svg-for-markdown) ---------------------------
+
+;; Homegrown SVG-math preview for Markdown, over the `latex-to-svg' engine — the
+;; Markdown sibling of `org-latex-to-svg'.  Markdown has no math in its parse
+;; tree (the `markdown' grammar sees only paragraphs and code), so the package
+;; detects `$…$' / `$$…$$' / `\(…\)' / `\[…\]' / `\begin{env}…\end{env}' with a
+;; regexp scanner (code-block aware) and overlays each with an SVG compiled once
+;; (content-addressed) that re-tints on theme switch / re-scales on text zoom
+;; straight from cache — no LaTeX recompile.
+;;
+;; The shared `latex-to-svg' engine is registered and configured centrally in
+;; `latex-to-svg-config.el', which init.el loads *before* this module (see the
+;; load-order note there) so straight can resolve this front-end's
+;; `Package-Requires' dependency on the engine from the local checkout.
+(use-package latex-to-svg-for-markdown
+  :straight (latex-to-svg-for-markdown
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg-for-markdown")
+  :after latex-to-svg
+  ;; Render math in every Markdown buffer.
+  :hook (markdown-ts-mode . latex-to-svg-for-markdown-mode)
+  :config
+  ;; Size multipliers on top of the engine's global `latex-to-svg-font-scale':
+  ;; display equations a bit larger than inline (match the Org front-end).
+  (setq latex-to-svg-for-markdown-inline-rescale 1.20)
+  (setq latex-to-svg-for-markdown-display-rescale 1.25))
+
 (provide 'markdown-config)
 ;;; markdown-config.el ends here
