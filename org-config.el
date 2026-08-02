@@ -115,27 +115,34 @@
     (message "Org emphasis markers: %s"
              (if org-hide-emphasis-markers "hidden" "visible"))))
 
-;; Homegrown SVG-math preview for Org, over the `latex-to-svg' engine.  Replaces
-;; built-in Org's classic `org-latex-preview' for in-buffer math: compiles each
-;; equation once (content-addressed) and re-tints on theme switch / re-scales on
-;; text zoom straight from cache — no LaTeX recompile.
+;; SVG-math preview for Org: the Org adaptor of the shared
+;; `latex-to-svg-frontend' core.  Replaces built-in Org's classic
+;; `org-latex-preview' for in-buffer math — compiles each equation once
+;; (content-addressed) and re-tints on theme switch / re-scales on text zoom
+;; straight from cache, no LaTeX recompile.  The adaptor supplies Org's
+;; code/comment exclusions and `org-fold-show-context' as the jump-reveal;
+;; detection uses the core's universal scanner (not `org-element').
 ;;
-;; The shared `latex-to-svg' engine is registered and configured centrally in
-;; `latex-to-svg-config.el' (loaded first in init.el), which satisfies
-;; `org-latex-to-svg''s `Package-Requires' dependency on it.
-(use-package org-latex-to-svg
-  :straight (org-latex-to-svg
+;; The engine (`latex-to-svg-backend') and core (`latex-to-svg-frontend')
+;; recipes are registered in `latex-to-svg-config.el' (loaded first in init.el),
+;; satisfying this adaptor's `Package-Requires' from the local checkouts.
+(defun org-config--latex-to-svg-setup ()
+  "Enable Org SVG-math preview in this buffer with tuned rescales.
+Per-mode config lives here: inline / display size multipliers are set
+buffer-locally before the adaptor turns on the shared core."
+  (setq-local latex-to-svg-frontend-inline-rescale 1.20
+              latex-to-svg-frontend-display-rescale 1.25)
+  (latex-to-svg-for-org-mode 1))
+
+(use-package latex-to-svg-for-org
+  :straight (latex-to-svg-for-org
              :type git
              :branch "main"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/org-latex-to-svg")
-  :after org
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :files ("latex-to-svg-for-org.el"))
   ;; Render math in every Org buffer (replaces `org-startup-with-latex-preview').
-  :hook (org-mode . org-latex-to-svg-mode)
-  :config
-  ;; Size multipliers on top of the engine's global `latex-to-svg-font-scale':
-  ;; display equations a bit larger than inline.
-  (setq org-latex-to-svg-inline-rescale 1.20)
-  (setq org-latex-to-svg-display-rescale 1.25))
+  :init
+  (add-hook 'org-mode-hook #'org-config--latex-to-svg-setup))
 
 (provide 'org-config)
 ;;; org-config.el ends here

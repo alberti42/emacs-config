@@ -1,40 +1,42 @@
-;;; latex-to-svg-config.el --- Configure the latex-to-svg rendering engine -*- lexical-binding: t; -*-
+;;; latex-to-svg-config.el --- Configure the latex-to-svg library stack -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
-;; Single place that registers and configures the `latex-to-svg' rendering
-;; engine (LaTeX -> SVG, content-addressed on-disk cache, color- and
-;; size-independent, tinted/scaled at display time).
+;; Registers the local-checkout straight recipes for the `latex-to-svg' stack
+;; and configures the engine:
 ;;
-;; `latex-to-svg' is a *library* shared by multiple front-ends —
-;; `agent-shell-math-renderer' (math in agent-shell) and `org-latex-to-svg'
-;; (Org math preview).  Its settings are therefore global and belong here, not
-;; inside any one front-end's config (which is where `font-scale' etc. used to
-;; live, misleadingly, in `agent-shell-setup.el').
+;;   `latex-to-svg-backend'  — the rendering engine (LaTeX -> SVG, content-
+;;                             addressed cache, tinted/scaled at display).  A
+;;                             library shared by `agent-shell-math-renderer' and
+;;                             the mode adaptors below.
+;;   `latex-to-svg-frontend' — the shared preview core (detection, overlays,
+;;                             numbering, `\ref'/`\eqref', …) that the per-mode
+;;                             adaptors (`latex-to-svg-for-markdown',
+;;                             `latex-to-svg-for-org') build on.  Lives in the
+;;                             `latex-to-svg' repo alongside the adaptors.
 ;;
-;; Load order: this module must load BEFORE those front-ends so straight can
-;; resolve their `latex-to-svg' `Package-Requires' dependency from the local
-;; checkout (see init.el, where it precedes `org-config' and `agent-shell-setup').
-;; It is the sole owner of the local-checkout straight recipe.
+;; Engine settings are global and belong here.  This module must load BEFORE
+;; the front-ends (see init.el) so straight can resolve their `Package-Requires'
+;; from the local checkouts; it is the sole owner of these two recipes.
 
 ;;; Code:
 
-(use-package latex-to-svg
-  :straight (latex-to-svg
+(use-package latex-to-svg-backend
+  :straight (latex-to-svg-backend
              :type git
              :branch "main"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg")
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg-backend")
   :defer t
   :custom
   ;; Equation size relative to the surrounding buffer font.  1.0 = match; a bit
   ;; above 1 makes both inline and display math slightly larger than the text.
-  (latex-to-svg-font-scale 1.0)
+  (latex-to-svg-backend-font-scale 1.0)
   ;; Daemon / mixed TTY+GUI: compile even when a non-graphic frame is selected,
   ;; so equations are ready as soon as a GUI frame views the buffer.
-  (latex-to-svg-render-on-non-graphic t)
+  (latex-to-svg-backend-render-on-non-graphic t)
   ;; Extra LaTeX packages available in *every* equation (all front-ends).
   ;; Folded into the content hash, so editing it invalidates stale cached SVGs.
-  (latex-to-svg-appended-preamble
+  (latex-to-svg-backend-appended-preamble
    "\\usepackage{physics}
 \\usepackage[only,llbracket,rrbracket]{stmaryrd}
 \\usepackage{siunitx}
@@ -45,6 +47,17 @@ exponent-product={\\times},
 output-decimal-marker={.},
 print-unity-mantissa=false,
 }"))
+
+;; Shared preview core for the mode adaptors.  Registered here (not built until
+;; an adaptor requires it) so straight can resolve each adaptor's dependency on
+;; it from the local `latex-to-svg' checkout.
+(use-package latex-to-svg-frontend
+  :straight (latex-to-svg-frontend
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :files ("latex-to-svg-frontend.el"))
+  :defer t)
 
 (provide 'latex-to-svg-config)
 ;;; latex-to-svg-config.el ends here
