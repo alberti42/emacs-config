@@ -104,13 +104,13 @@ the new title.  Runs with the shell buffer current (see
                :event 'session-title-changed
                :on-event #'my/agent-shell-sync-buffer-name))))
 
-;; The `latex-to-svg' rendering engine (this renderer's dependency) is
+;; The `latex-to-svg-backend' rendering engine (this renderer's dependency) is
 ;; registered and configured centrally in `latex-to-svg-config.el', which
 ;; init.el loads first.  Here we only turn the front-end on.
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
-             ;; The latex-to-svg delegation lives on this branch, not `main'
+             ;; The latex-to-svg-backend delegation lives on this branch, not `main'
              ;; (which stays the self-contained pre-refactor version until the
              ;; library is fully published/tested).  Track the branch here.
              :branch "refactor/latex-to-svg"
@@ -119,7 +119,7 @@ the new title.  Runs with the shell buffer current (see
   :config
   (setq agent-shell-math-renderer-enabled t)
   (setq agent-shell-math-renderer-render-submitted-prompts t)
-  ;; Size multipliers on top of the engine's global `latex-to-svg-font-scale':
+  ;; Size multipliers on top of the engine's global `latex-to-svg-backend-font-scale':
   ;; display equations a bit larger than inline.
   (setq agent-shell-math-renderer-inline-rescale 1.20)
   (setq agent-shell-math-renderer-display-rescale 1.25))
