@@ -10,9 +10,8 @@
   ;;            ;;:host github
   ;;            :local-repo "~/Documents/Programming/Others/fork-agent-shell"
   ;;            ;; :branch "fork/angle-bracket-link-destinations"
-  ;;            ;; :branch "fork/angle-bracket-link-destinations"
-  ;;            :branch "protect-frozen-regions-in-emphasis"
   ;;            ;; :branch "main"
+  ;;            :branch "expose-ui-section-to-render-functions"
   ;;            :repo "xenodium/agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
