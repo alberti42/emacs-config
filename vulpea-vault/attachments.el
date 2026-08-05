@@ -79,11 +79,11 @@ their own and would otherwise be reported as orphans forever.")
 (defun vulpea-vault--internal-p (entry)
   "Non-nil if ENTRY's dangling target belongs to the vault.
 An `id:' target is a note, so always internal; a file target is judged by
-whether it lives under `vulpea-directory'."
+whether it lives under `vulpea-config-notes-directory'."
   (let ((link (nth 1 entry))
         (target (nth 2 entry)))
     (or (equal (plist-get link :type) "id")
-        (file-in-directory-p target vulpea-directory))))
+        (file-in-directory-p target vulpea-config-notes-directory))))
 
 (defun vulpea-vault--insert-dangling (heading entries)
   "Insert a section HEADING listing dangling ENTRIES, sorted by note path."
@@ -114,7 +114,7 @@ whether it lives under `vulpea-directory'."
 Both lists are clickable: follow a link to reach the place that needs
 fixing.  Reads vulpea's database; the notes are not re-parsed."
   (interactive)
-  (let* ((notes (vulpea-db-query-by-directory vulpea-directory))
+  (let* ((notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
          (ids (make-hash-table :test 'equal))
          (referenced (make-hash-table :test 'equal))
          (skipped (make-hash-table :test 'equal))

@@ -715,8 +715,11 @@ class Rewriter:
 
     def wiki_link(self, raw: str, kind: str) -> str:
         # "target|alias|width": Obsidian's third field is an embed width, which
-        # must not end up in the description.
-        fields = raw.split("|")
+        # must not end up in the description.  Split on an optionally escaped
+        # pipe: inside a markdown TABLE the separator is written "\|", and
+        # splitting on a bare "|" leaves the backslash stuck to the path, so the
+        # target never resolves.
+        fields = re.split(r"\\?\|", raw)
         target = fields[0]
         alias = fields[1].strip() if len(fields) > 1 and fields[1].strip() else None
         # "[[target|]]" with an explicitly empty alias renders as nothing in
@@ -1210,6 +1213,11 @@ def main() -> int:
         "changes both",
     )
     ap.add_argument("--write-tag-alist", action="store_true", default=True)
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite a tree that already holds notes. Refused by "
+                         "default: the converter rewrites every note from the "
+                         "vault, so a second import discards whatever was edited "
+                         "in the tree since the first")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -1221,6 +1229,24 @@ def main() -> int:
     if out == vault or vault in out.parents:
         print(f"refusing to write inside the vault: {out}", file=sys.stderr)
         return 2
+
+    # A second import is destructive: every note is rewritten from the vault,
+    # so any editing done in the tree since the first import is discarded.
+    # Once the tree is in use it — not the vault — is the source of truth.
+    if not args.dry_run and not args.force and out.is_dir():
+        existing = next(out.rglob("*.org"), None)
+        if existing is not None:
+            print(f"refusing to overwrite the notes at {out}", file=sys.stderr)
+            print(f"  it already holds .org files, e.g. {existing.relative_to(out)}",
+                  file=sys.stderr)
+            print("  a second import rewrites every note and discards edits made",
+                  file=sys.stderr)
+            print("  there since the first.  Use --dry-run to inspect, --out to",
+                  file=sys.stderr)
+            print("  write elsewhere, or --force if overwriting is intended.",
+                  file=sys.stderr)
+            return 2
+
     report_dir = (args.report_dir or out / REPORT_SUBDIR).expanduser()
 
     print(f"indexing {vault} …")

@@ -17,8 +17,11 @@
 ;;   separately — run `vulpea-config-update-id-locations' once after a
 ;;   conversion, and again after adding notes outside Emacs.
 ;;
-;; - State (the database, `org-id' locations) lives under XDG cache, never in
-;;   the notes tree or this git worktree.
+;; - The database lives in the vault, under `.vulpea/', so the index belongs to
+;;   the vault and a second vault is just a different
+;;   `vulpea-config-notes-directory'.  `org-id-locations' stays under XDG cache
+;;   instead: it spans every org file Emacs knows, not this vault alone.
+;;   Neither ever lands in this git worktree.
 ;;
 ;; - Attachment layout must match what the converter emitted: `org-attach' mode
 ;;   puts everything in one ID-keyed store, mirror mode leaves a
@@ -38,6 +41,17 @@ directory's case on disk: macOS is case-insensitive so a wrong case
 still opens files, but `org-id' stores abbreviated paths and
 `vulpea-config-update-id-locations' compares them with
 `string-prefix-p', which is not.")
+
+(defconst vulpea-config-state-directory
+  (expand-file-name ".vulpea/" vulpea-config-notes-directory)
+  "Per-vault state, kept inside the vault rather than in a global cache.
+The index then belongs to the vault and travels with it, which is what
+makes a second vault (Private, …) a matter of pointing
+`vulpea-config-notes-directory' elsewhere.
+
+Safe to keep here: vulpea's scanner skips hidden directories — anything
+whose path contains \"/.\" — so it neither indexes nor watches its own
+state, and writing the database cannot retrigger a sync.")
 
 (defconst vulpea-config-attach-directory
   (expand-file-name "data/" vulpea-config-notes-directory)
@@ -71,7 +85,7 @@ every file `unchanged' and the hook stays quiet.
 The notes come from the database, which already knows every ID and path;
 there is nothing to scan.
 
-Also drops IDs under `vulpea-directory' that the database no longer
+Also drops IDs under `vulpea-config-notes-directory' that the database no longer
 lists.  `org-id' has no removal API and never prunes, so deleting a note
 leaves its ID pointing at a dead path, and following such a link fails
 with a missing file rather than an unknown ID.
@@ -83,9 +97,9 @@ file, and would discard IDs that are merely unreachable.  Entries outside
 the tree belong to other org files and are never touched."
   (interactive)
   (unless org-id-locations (org-id-locations-load))
-  (let* ((notes (vulpea-db-query-by-directory vulpea-directory))
+  (let* ((notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
          (live (make-hash-table :test 'equal :size (length notes)))
-         (root (abbreviate-file-name vulpea-directory))
+         (root (abbreviate-file-name vulpea-config-notes-directory))
          (dropped 0))
     (dolist (note notes)
       (puthash (vulpea-note-id note) t live))
@@ -184,8 +198,15 @@ clears `org-id-locations' and rescans every known file."
          ("C-c n i" . vulpea-insert)
          ("C-c n b" . vulpea-find-backlink))
   :init
-  (setq vulpea-directory vulpea-config-notes-directory
-        vulpea-db-file (expand-file-name "vulpea.db" (vulpea-config--cache-dir))
+  ;; Note the exact names.  `vulpea-directory' and `vulpea-db-file' are NOT
+  ;; vulpea variables — the first survives only in a commented example in
+  ;; vulpea.el's header, the second never existed.  Setting them does nothing
+  ;; but create globals, leaving vulpea on its defaults: the database in
+  ;; `user-emacs-directory' and the watch list at `org-directory' (~/org),
+  ;; which is wider than this vault.
+  (make-directory vulpea-config-state-directory t)
+  (setq vulpea-db-sync-directories (list vulpea-config-notes-directory)
+        vulpea-db-location (expand-file-name "vulpea.db" vulpea-config-state-directory)
         ;; Parse in one reused buffer without re-running `org-mode' per file.
         ;; The default `temp-buffer' re-runs it WITH hooks, so a full scan fires
         ;; `org-mode-hook' once per note — here that means `org-appear-mode',
@@ -202,10 +223,10 @@ clears `org-id-locations' and rescans every known file."
   ;; Watch the tree and index in the background.  Guarded so a missing tree
   ;; degrades to "vulpea installed but idle" instead of erroring at startup —
   ;; the conversion may not have been run yet.
-  (if (file-directory-p vulpea-directory)
+  (if (file-directory-p vulpea-config-notes-directory)
       (vulpea-db-autosync-mode +1)
     (message "vulpea: %s does not exist yet; autosync not started"
-             vulpea-directory)))
+             vulpea-config-notes-directory)))
 
 ;; Vault utilities live in vulpea-vault/, one concern per file, loaded from here
 ;; the way `completion.el' loads completions/.
