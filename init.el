@@ -628,6 +628,13 @@ monitor."
  'org-config
  "Could not load org-config.el; Org mode enhancements are disabled.")
 
+;; Note database over the org notes.  Indexes every org node carrying an `:ID:';
+;; also owns the `org-id' / `org-attach' settings that share that property, and
+;; loads `org-attach-crossref'.  After org-config so org is configured first.
+(emacs-config-load-module
+ 'vulpea-config
+ "Could not load vulpea-config.el; the note database is disabled.")
+
 ;; PDF viewer (pdf-tools) with continuous scroll
 (emacs-config-load-module
  'pdf-tools-config
