@@ -50,16 +50,32 @@ with Skim's \"Check for file changes\" disabled."
 to revert (documents whose path is \"%s\")"
                           (expand-file-name pdf-file)))))
 
-(defun pdf-preview-skim-open (pdf-file)
-  "Open PDF-FILE in Skim (macOS), reverting an already-open copy first.
-Off macOS this falls back to `browse-url'.  Skim is brought to the
-foreground, since this is an explicit "show me the PDF" action (unlike the
-silent revert used during LaTeX SyncTeX forward search)."
+(defun pdf-preview-skim-open (pdf-file &optional page)
+  "Open PDF-FILE in Skim (macOS), at PAGE when given.
+Reverts an already-open copy first.  Off macOS this falls back to
+`browse-url'.  Skim is brought to the foreground, since this is an explicit
+\"show me the PDF\" action (unlike the silent revert used during LaTeX
+SyncTeX forward search).
+
+Opening and positioning happen in ONE AppleScript call.  Doing them as two
+`call-process' invocations races: both are fire-and-forget, so the page
+command reaches Skim before the document is open and fails silently."
   (if (eq system-type 'darwin)
-      (progn
+      (let ((path (expand-file-name pdf-file)))
         (pdf-preview-skim-revert pdf-file)
-        (call-process "open" nil 0 nil "-a" "Skim"
-                      (expand-file-name pdf-file)))
+        (call-process
+         "osascript" nil 0 nil "-e"
+         (format "tell application \"Skim\"
+  activate
+  open POSIX file \"%s\"
+  %s
+end tell"
+                 path
+                 (if (integerp page)
+                     (format "set theDoc to (first document whose path is \"%s\")
+  go theDoc to (page %d of theDoc)"
+                             path page)
+                   ""))))
     (browse-url pdf-file)))
 
 (defun pdf-preview--pdf-tools-open (pdf-file)
@@ -71,22 +87,33 @@ silent revert used during LaTeX SyncTeX forward search)."
       (setq buf (find-file-noselect pdf-file)))
     (display-buffer buf)))
 
+(defun pdf-preview--pdf-tools-goto-page (pdf-file page)
+  "Show PAGE of PDF-FILE in its `pdf-view' buffer, if it has a window."
+  (when (integerp page)
+    (let* ((buf (find-buffer-visiting pdf-file))
+           (win (and buf (get-buffer-window buf))))
+      (when (and win (fboundp 'pdf-view-goto-page))
+        (with-selected-window win (pdf-view-goto-page page))))))
+
 ;;;###autoload
-(defun pdf-preview-open (pdf-file)
+(defun pdf-preview-open (pdf-file &optional page)
   "Open PDF-FILE in the viewer selected by `pdf-preview-viewer'.
+With PAGE, a positive integer, show that page where the viewer allows it;
+the OS default handler takes no page and ignores it.
+
 Signals a `user-error' if PDF-FILE does not exist.  Suitable as the value
 of e.g. `typst-ts-preview-function'."
   (unless (and (stringp pdf-file) (file-exists-p pdf-file))
     (user-error "PDF not found: %s" pdf-file))
-  (pcase pdf-preview-viewer
-    ('skim       (pdf-preview-skim-open pdf-file))
-    ('pdf-tools  (pdf-preview--pdf-tools-open pdf-file))
-    ('browse-url (browse-url pdf-file))
-    ('auto       (cond
-                  ((display-graphic-p)      (pdf-preview--pdf-tools-open pdf-file))
-                  ((eq system-type 'darwin) (pdf-preview-skim-open pdf-file))
-                  (t                        (browse-url pdf-file))))
-    (_ (browse-url pdf-file))))
+  (pcase (if (eq pdf-preview-viewer 'auto)
+             (cond ((display-graphic-p)      'pdf-tools)
+                   ((eq system-type 'darwin) 'skim)
+                   (t                        'browse-url))
+           pdf-preview-viewer)
+    ('skim      (pdf-preview-skim-open pdf-file page))
+    ('pdf-tools (pdf-preview--pdf-tools-open pdf-file)
+                (pdf-preview--pdf-tools-goto-page pdf-file page))
+    (_          (browse-url pdf-file))))
 
 (provide 'pdf-preview)
 ;;; pdf-preview.el ends here
