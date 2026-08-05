@@ -217,5 +217,9 @@ clears `org-id-locations' and rescans every known file."
  "vulpea-vault/attachments"
  "Could not load vulpea-vault/attachments.el; `vulpea-vault-orphans' is unavailable.")
 
+(emacs-config-load-module
+ "vulpea-vault/bibdesk"
+ "Could not load vulpea-vault/bibdesk.el; x-bdsk: links will not open.")
+
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here

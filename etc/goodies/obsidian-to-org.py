@@ -451,6 +451,24 @@ def org_escape_description(text: str) -> str:
     return text.replace("[", "(").replace("]", ")").strip() or "link"
 
 
+BDSK_STUB_RE = re.compile(r"\Ax-bdsk://\S+\Z")
+
+
+def read_bdsk_stub(path: Path) -> str | None:
+    """Return the `x-bdsk:' URL in a PDF++ stub file, or None.
+
+    Detected by content rather than by location, so it holds wherever the
+    stubs live.  The size guard means a real PDF is never read.
+    """
+    try:
+        if path.stat().st_size > 512:
+            return None
+        text = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    return text if BDSK_STUB_RE.match(text) else None
+
+
 def org_link_escape(path: str) -> str:
     """Port of org-link-escape (ol.el).
 
@@ -646,6 +664,35 @@ class Rewriter:
         self.replacements.append(org_text)
         return f"{TOKEN_PREFIX}{len(self.replacements) - 1}ZZ"
 
+    def bdsk_link(self, stub: Path, fragment: str | None, desc: str | None) -> str | None:
+        """Turn a link to a PDF++ stub into a direct `x-bdsk:' link.
+
+        The vault does not store these PDFs.  Each "*.pdf" under 00 Meta/PDF++
+        is a one-line text file holding `x-bdsk://CITEKEY?doc=N', which a PDF++
+        monkey patch read in order to open the real file from the BibDesk
+        library.  Org needs no such indirection: `x-bdsk:' is a scheme BibDesk
+        itself registers, so the note can address the publication directly.
+
+        The whole Obsidian fragment (page, rect, color, selection, annotation)
+        is appended to the query verbatim.  BibDesk ignores parameters it does
+        not know, so following the link behaves as the bare form does today,
+        while every locator the note carried stays in the link where a future
+        `:follow' handler can read it.  Nothing is judged worth dropping —
+        `page' is the note's own reference point, and the printed page in the
+        description is the citation's start page, a different thing.
+        """
+        url = read_bdsk_stub(stub)
+        if url is None:
+            return None
+        if fragment:
+            url += ("&" if "?" in url else "?") + fragment
+        self.events.append(
+            LinkEvent(self.note.relpath, "bdsk", str(stub), "bdsk", url))
+        escaped = org_link_escape(url)
+        if desc is None:
+            return self.token(f"[[{escaped}]]")
+        return self.token(f"[[{escaped}][{org_escape_description(desc)}]]")
+
     # -- target resolution ------------------------------------------------
 
     def resolve_file(self, target: str) -> Path | None:
@@ -664,7 +711,11 @@ class Rewriter:
         return matches[0] if len(matches) == 1 else None
 
     def wiki_link(self, raw: str, kind: str) -> str:
-        target, alias = (raw.split("|", 1) + [None])[:2] if "|" in raw else (raw, None)
+        # "target|alias|width": Obsidian's third field is an embed width, which
+        # must not end up in the description.
+        fields = raw.split("|")
+        target = fields[0]
+        alias = fields[1].strip() if len(fields) > 1 and fields[1].strip() else None
         path_part, heading, blockref = split_target(target)
 
         note = self.index.lookup(path_part) if path_part else None
@@ -686,6 +737,11 @@ class Rewriter:
         resolved = self.resolve_file(path_part)
         if resolved is not None:
             desc = alias or Path(path_part).name
+            # A PDF++ stub is not a document: it names a BibDesk publication.
+            # The fragment (page/rect/color/selection) rides along in the query.
+            bdsk = self.bdsk_link(resolved, heading or blockref, desc)
+            if bdsk is not None:
+                return bdsk
             is_image = resolved.suffix.lower() in {
                 ".png",
                 ".jpg",
@@ -1230,6 +1286,7 @@ def main() -> int:
         "id",
         "attachment",
         "attachment-crossref",
+        "bdsk",
         "file",
         "file-missing",
         "passthrough",
@@ -1242,6 +1299,7 @@ def main() -> int:
                 "heading-degraded": "  (points at the note, not the heading — deferred)",
                 "blockref-degraded": "  (points at the note, not the block — deferred)",
                 "attachment-crossref": "  (another note's attachment, via its :ID:)",
+                "bdsk": "  (BibDesk publication, replacing a PDF++ stub)",
                 "file-missing": "  (target absent on disk — see links.csv)",
                 "unresolved": "  (emitted as obsidian-unresolved: links)",
             }.get(outcome, "")
@@ -1258,10 +1316,8 @@ def main() -> int:
     if args.attachments == "org-attach":
         print("\norg-attach expects, in your Emacs config:")
         print(f'  (setq org-attach-id-dir "{out / args.attach_dir}/")')
-        print(
-            "  (emacs-config-load-module 'org-attach-crossref"
-            ' "No cross-note attachment: links.")'
-        )
+        print("  vulpea-config.el must supply the attachment:<uuid>/file advice")
+        print("  and vulpea-vault/bibdesk.el the x-bdsk: link type")
     if groups:
         print(f"tag groups written to {out / META_DIR / 'org-tag-alist.el'}:")
         for parent, children in groups:
