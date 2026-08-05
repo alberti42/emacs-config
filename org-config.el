@@ -45,6 +45,13 @@
   (org-catch-invisible-edits 'show-and-error)
   ;; Compact fold ellipsis.
   (org-ellipsis "…")
+  :hook
+  ;; Number sections as overlays rather than as text in the heading.  The notes
+  ;; imported from Obsidian carried their numbers literally ("5.4.2. TensorFlow
+  ;; with TensorRT support"), which put the number inside every link target, so
+  ;; inserting a section broke every link below it.  With the numbers drawn
+  ;; instead, they renumber themselves and a `[[*Heading]]' link never holds one.
+  (org-mode . org-num-mode)
   :config
   ;; Keep the classic `org-latex-preview' (available as a fallback when
   ;; `org-latex-to-svg-mode' is off) on the dvisvgm backend.  The live
