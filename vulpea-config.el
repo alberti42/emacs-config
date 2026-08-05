@@ -207,5 +207,15 @@ clears `org-id-locations' and rescans every known file."
     (message "vulpea: %s does not exist yet; autosync not started"
              vulpea-directory)))
 
+;; Vault utilities live in vulpea-vault/, one concern per file, loaded from here
+;; the way `completion.el' loads completions/.
+(emacs-config-load-module
+ "vulpea-vault/modified-keyword"
+ "Could not load vulpea-vault/modified-keyword.el; #+modified: will not refresh on save.")
+
+(emacs-config-load-module
+ "vulpea-vault/attachments"
+ "Could not load vulpea-vault/attachments.el; `vulpea-vault-orphans' is unavailable.")
+
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here

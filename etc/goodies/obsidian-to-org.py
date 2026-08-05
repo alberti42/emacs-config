@@ -69,10 +69,15 @@ import yaml
 DEFAULT_VAULT = Path("~/Obsidian/Work").expanduser()
 DEFAULT_OUT = Path("~/org/Work").expanduser()
 
-# GENERATED ARTEFACTS (the tag-group declaration, the reports) go here rather
-# than in the tree root, mirroring the vault's own "00 Meta" convention.  None
-# of the vault's 00 Meta files are notes, so nothing collides.
+# The tag-group declaration is derived from the vault and belongs with it, so it
+# goes under the tree's own "00 Meta", mirroring the vault's convention.  None of
+# the vault's 00 Meta files are notes, so nothing collides.
 META_DIR = "00 Meta"
+
+# The reports are the audit trail for this import, kept in a directory named
+# after it so a later import — or a different kind of report — sits beside them
+# rather than mixing in.
+REPORT_SUBDIR = f"{META_DIR}/reports/import-from-obsidian"
 
 # Directories never walked.
 SKIP_DIRS = {".git", ".obsidian", ".smart-env", ".trash", "00 Meta/Templates"}
@@ -1078,7 +1083,7 @@ def main() -> int:
         "--report-dir",
         type=Path,
         default=None,
-        help=f"default: <out>/{META_DIR}/_report",
+        help=f"default: <out>/{REPORT_SUBDIR}",
     )
     ap.add_argument(
         "--only",
@@ -1143,7 +1148,7 @@ def main() -> int:
     if out == vault or vault in out.parents:
         print(f"refusing to write inside the vault: {out}", file=sys.stderr)
         return 2
-    report_dir = (args.report_dir or out / META_DIR / "_report").expanduser()
+    report_dir = (args.report_dir or out / REPORT_SUBDIR).expanduser()
 
     print(f"indexing {vault} …")
     index, skipped, problems = build_index(vault, args.verbose)
