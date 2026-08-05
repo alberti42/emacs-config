@@ -760,6 +760,22 @@ class Rewriter:
         # PDF++ can draw that highlight, so such a link is dropped rather than
         # given a label it never had; the visible citation beside it remains.
         anchor_only = len(fields) > 1 and not fields[1].strip()
+
+        # A URL inside wiki brackets.  Without this it is read as a filename all
+        # the way down: `split_target' tears the "#fragment" off as a heading and
+        # what is left is looked up as a note, then as a file.  `md_link' has had
+        # this scheme test all along; here it must run *before* the target is
+        # taken apart, because the whole URL is the target.
+        url = target.strip()
+        scheme = url.split(":", 1)[0].lower() if ":" in url else ""
+        if scheme in PASSTHROUGH_SCHEMES:
+            self.events.append(
+                LinkEvent(self.note.relpath, kind, raw, "passthrough", url)
+            )
+            return self.token(
+                f"[[{org_link_escape(url)}][{org_escape_description(alias or url)}]]"
+            )
+
         path_part, heading, blockref = split_target(target)
 
         note = self.index.lookup(path_part) if path_part else None
