@@ -30,10 +30,14 @@
 (require 'rx)
 
 (defconst vulpea-config-notes-directory
-  (expand-file-name "~/Org/Work/")
+  (expand-file-name "~/org/Work/")
   "Root of the converted org notes.
 The single place to change when the tree moves.  Must match
-DEFAULT_OUT in `etc/goodies/obsidian-to-org.py'.")
+DEFAULT_OUT in `etc/goodies/obsidian-to-org.py', and must match the
+directory's case on disk: macOS is case-insensitive so a wrong case
+still opens files, but `org-id' stores abbreviated paths and
+`vulpea-config-update-id-locations' compares them with
+`string-prefix-p', which is not.")
 
 (defconst vulpea-config-attach-directory
   (expand-file-name "data/" vulpea-config-notes-directory)

@@ -67,7 +67,7 @@ import yaml
 # --------------------------------------------------------------------------
 
 DEFAULT_VAULT = Path("~/Obsidian/Work").expanduser()
-DEFAULT_OUT = Path("~/Org/Work").expanduser()
+DEFAULT_OUT = Path("~/org/Work").expanduser()
 
 # GENERATED ARTEFACTS (the tag-group declaration, the reports) go here rather
 # than in the tree root, mirroring the vault's own "00 Meta" convention.  None
@@ -879,7 +879,6 @@ def build_org(note: Note, body: str) -> str:
         lines.append(f"#+created: {note.created}")
     if note.modified:
         lines.append(f"#+modified: {note.modified}")
-    lines.append(f"#+obsidian_source: {note.relpath}")
     for key, value in note.extras.items():
         lines.append(f"#+{keyword_name(key)}: {scalar(value)}")
     lines.append("")
