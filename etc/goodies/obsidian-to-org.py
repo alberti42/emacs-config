@@ -82,8 +82,6 @@ REPORT_SUBDIR = f"{META_DIR}/reports/import-from-obsidian"
 # Directories never walked.
 SKIP_DIRS = {".git", ".obsidian", ".smart-env", ".trash", "00 Meta/Templates"}
 
-# Filesystem debris that sits inside attachment folders but is not an attachment.
-JUNK_FILENAMES = {".DS_Store", "Thumbs.db", ".localized"}
 
 # Files that are vault machinery rather than notes.  Absence of a `uuid` in
 # front matter already excludes them; these are listed so the report can say
@@ -148,6 +146,17 @@ def nfc(text: str) -> str:
     resolve.
     """
     return unicodedata.normalize("NFC", text)
+
+
+def is_debris(path: Path, root: Path) -> bool:
+    """True if any component of PATH below ROOT starts with a dot.
+
+    Catches both shapes of filesystem debris found inside attachment folders:
+    dotted files (.DS_Store, written by Finder) and dotted directories
+    (.ipynb_checkpoints, Jupyter's autosaves beside a notebook attachment).
+    Neither is ever an attachment.  Same convention vulpea uses when scanning.
+    """
+    return any(part.startswith(".") for part in path.relative_to(root).parts)
 
 
 # Non-greedy up to the first "]]", so that a target may itself contain "]" —
@@ -1086,8 +1095,7 @@ def copy_attachments(
     for note in notes:
         if note.attach_dir.is_dir():
             for f in note.attach_dir.rglob("*"):
-                # .DS_Store is Finder metadata, never an attachment.
-                if f.is_file() and f.name not in JUNK_FILENAMES:
+                if f.is_file() and not is_debris(f, note.attach_dir):
                     wanted.add(f)
 
     for event in events:

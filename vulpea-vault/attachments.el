@@ -60,21 +60,29 @@ note's store, otherwise the store belongs to NOTE itself."
       (insert-file-contents path)
       (line-number-at-pos (min (max pos (point-min)) (point-max))))))
 
-(defconst vulpea-vault-junk-filenames '(".DS_Store" "Thumbs.db" ".localized")
-  "Filesystem debris that is never an attachment.
-Finder writes .DS_Store into any directory it displays, and the store is
-meant to be browsed — `org-attach-reveal' opens it — so these reappear on
-their own and would otherwise be reported as orphans forever.")
+(defun vulpea-vault--hidden-p (file)
+  "Non-nil if any component of FILE below the store starts with a dot.
+
+Covers both shapes of debris in one rule: a dotted *file* (.DS_Store, which
+Finder writes into any directory it displays — and the store is meant to be
+browsed, since `org-attach-reveal' opens it) and a dotted *directory*
+(.ipynb_checkpoints, Jupyter's autosaves, which arrive alongside a notebook
+attachment).  Neither is ever an attachment, and both come back on their
+own, so reporting them as orphans would never end.
+
+This is the same convention vulpea applies when scanning for notes: it
+skips paths containing \"/.\"."
+  (seq-some (lambda (part) (string-prefix-p "." part))
+            (split-string (file-relative-name file org-attach-id-dir) "/" t)))
 
 (defun vulpea-vault--store-files ()
   "Every attachment currently in the store, ignoring filesystem debris."
   (let ((dir org-attach-id-dir))
     (when (file-directory-p dir)
-      (seq-filter
-       (lambda (f)
-         (and (file-regular-p f)
-              (not (member (file-name-nondirectory f) vulpea-vault-junk-filenames))))
-       (directory-files-recursively dir "")))))
+      (seq-filter (lambda (f)
+                    (and (file-regular-p f)
+                         (not (vulpea-vault--hidden-p f))))
+                  (directory-files-recursively dir "")))))
 
 (defun vulpea-vault--internal-p (entry)
   "Non-nil if ENTRY's dangling target belongs to the vault.
