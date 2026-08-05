@@ -708,19 +708,30 @@ class Rewriter:
     # -- target resolution ------------------------------------------------
 
     def resolve_file(self, target: str) -> Path | None:
-        """Resolve a non-note target to a file on disk."""
+        """Resolve a non-note target to a file on disk.
+
+        A wiki link to a markdown file carries no extension — Obsidian drops
+        ".md" — so each candidate is also tried with it appended.  Without that,
+        a markdown file kept as an *attachment* resolves nowhere: it is not in
+        the note index either, since it has no `uuid` in its front matter and so
+        was never treated as a note.
+        """
         candidate = urllib.parse.unquote(target).strip().strip("<>")
         if candidate.startswith("/"):
             # An absolute path outside the vault (Nextcloud, iCloud, mpcdf …).
             absolute = Path(candidate)
             return absolute if absolute.exists() else None
+        names = [candidate] if candidate.endswith(".md") else [candidate, candidate + ".md"]
         for base in (self.vault, self.note.path.parent):
-            probe = (base / candidate).resolve()
-            if probe.is_file():
-                return probe
-        stem = Path(candidate).name
-        matches = sorted(self.vault.rglob(stem))
-        return matches[0] if len(matches) == 1 else None
+            for name in names:
+                probe = (base / name).resolve()
+                if probe.is_file():
+                    return probe
+        for name in names:
+            matches = sorted(self.vault.rglob(Path(name).name))
+            if len(matches) == 1:
+                return matches[0]
+        return None
 
     def wiki_link(self, raw: str, kind: str) -> str:
         # "target|alias|width": Obsidian's third field is an embed width, which
