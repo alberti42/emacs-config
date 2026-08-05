@@ -51,9 +51,19 @@ empty attachment directory rather than an error.")
     dir))
 
 (defun vulpea-config-update-id-locations ()
-  "Teach `org-id' about every note, so plain `id:' links resolve.
-vulpea's own database is separate and always current; this only
-feeds `org-id-locations', which `org-open-at-point' consults."
+  "Register every note's `:ID:' with `org-id', so `id:' links resolve.
+
+vulpea and `org-id' read the same `:ID:' property but keep separate
+indexes, and neither fills the other: vulpea has its SQLite db, `org-id'
+has `org-id-locations' (persisted to `org-id-locations-file').
+
+`org-id' learns an ID only when it creates one itself or when a scan
+finds it, so any note that appears on disk without Emacs creating it is
+invisible to it — a bulk conversion, a `git pull', a file synced from
+another machine.  The symptom is one-sided: `vulpea-find' finds such a
+note while following an `[[id:…]]' link to it fails.
+`org-id-find-id-file' does a single lookup and never rescans, so nothing
+recovers on its own; run this after notes arrive from outside."
   (interactive)
   (if (not (file-directory-p vulpea-config-notes-directory))
       (user-error "No notes directory at %s" vulpea-config-notes-directory)
