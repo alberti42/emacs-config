@@ -185,7 +185,18 @@ clears `org-id-locations' and rescans every known file."
          ("C-c n b" . vulpea-find-backlink))
   :init
   (setq vulpea-directory vulpea-config-notes-directory
-        vulpea-db-file (expand-file-name "vulpea.db" (vulpea-config--cache-dir)))
+        vulpea-db-file (expand-file-name "vulpea.db" (vulpea-config--cache-dir))
+        ;; Parse in one reused buffer without re-running `org-mode' per file.
+        ;; The default `temp-buffer' re-runs it WITH hooks, so a full scan fires
+        ;; `org-mode-hook' once per note — here that means `org-appear-mode',
+        ;; the latex-to-svg setup, and lsp-ltex-plus trying to attach to a
+        ;; buffer that is not visiting a file, 1000 times over.
+        ;;
+        ;; Safe for these notes: vulpea reads `#+filetags:' from the parsed
+        ;; syntax tree rather than from `org-file-tags' (which mode init would
+        ;; set), no note uses per-file `#+TODO:', `#+PROPERTY:', `#+TAGS:',
+        ;; `#+SETUPFILE:' or `:DIR:', and `org-attach-id-dir' is global.
+        vulpea-db-parse-method 'single-temp-buffer)
   :config
   (add-hook 'vulpea-db-worker-done-functions #'vulpea-config-register-ids)
   ;; Watch the tree and index in the background.  Guarded so a missing tree
