@@ -21,6 +21,8 @@
          ("C-c s R" . consult-ripgrep-here)
          ("C-c s i" . consult-imenu)
          ("C-c s o" . consult-outline)
+         ("C-c s h" . consult-org-heading)
+         ("C-c s a" . consult-org-agenda)
          ("C-c s m" . consult-mark)
          ("C-c s M" . consult-global-mark)
          ("C-c s k" . consult-keep-lines)
