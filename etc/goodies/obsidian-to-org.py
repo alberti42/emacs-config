@@ -82,6 +82,9 @@ REPORT_SUBDIR = f"{META_DIR}/reports/import-from-obsidian"
 # Directories never walked.
 SKIP_DIRS = {".git", ".obsidian", ".smart-env", ".trash", "00 Meta/Templates"}
 
+# Filesystem debris that sits inside attachment folders but is not an attachment.
+JUNK_FILENAMES = {".DS_Store", "Thumbs.db", ".localized"}
+
 # Files that are vault machinery rather than notes.  Absence of a `uuid` in
 # front matter already excludes them; these are listed so the report can say
 # "deliberately skipped" instead of "missing uuid".
@@ -1080,7 +1083,8 @@ def copy_attachments(
     for note in notes:
         if note.attach_dir.is_dir():
             for f in note.attach_dir.rglob("*"):
-                if f.is_file():
+                # .DS_Store is Finder metadata, never an attachment.
+                if f.is_file() and f.name not in JUNK_FILENAMES:
                     wanted.add(f)
 
     for event in events:

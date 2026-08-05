@@ -56,11 +56,47 @@ note's store, otherwise the store belongs to NOTE itself."
       (insert-file-contents path)
       (line-number-at-pos (min (max pos (point-min)) (point-max))))))
 
+(defconst vulpea-vault-junk-filenames '(".DS_Store" "Thumbs.db" ".localized")
+  "Filesystem debris that is never an attachment.
+Finder writes .DS_Store into any directory it displays, and the store is
+meant to be browsed — `org-attach-reveal' opens it — so these reappear on
+their own and would otherwise be reported as orphans forever.")
+
 (defun vulpea-vault--store-files ()
-  "Every file currently in the attachment store."
+  "Every attachment currently in the store, ignoring filesystem debris."
   (let ((dir org-attach-id-dir))
     (when (file-directory-p dir)
-      (seq-filter #'file-regular-p (directory-files-recursively dir "")))))
+      (seq-filter
+       (lambda (f)
+         (and (file-regular-p f)
+              (not (member (file-name-nondirectory f) vulpea-vault-junk-filenames))))
+       (directory-files-recursively dir "")))))
+
+(defun vulpea-vault--internal-p (entry)
+  "Non-nil if ENTRY's dangling target belongs to the vault.
+An `id:' target is a note, so always internal; a file target is judged by
+whether it lives under `vulpea-directory'."
+  (let ((link (nth 1 entry))
+        (target (nth 2 entry)))
+    (or (equal (plist-get link :type) "id")
+        (file-in-directory-p target vulpea-directory))))
+
+(defun vulpea-vault--insert-dangling (heading entries)
+  "Insert a section HEADING listing dangling ENTRIES, sorted by note path."
+  (insert (format "\n* %s (%d)\n" heading (length entries)))
+  (if (null entries)
+      (insert "  none\n")
+    (dolist (entry (sort entries
+                         (lambda (a b) (string< (vulpea-note-path (car a))
+                                                (vulpea-note-path (car b))))))
+      (let* ((note (nth 0 entry))
+             (link (nth 1 entry))
+             (target (nth 2 entry))
+             (path (vulpea-note-path note))
+             (line (vulpea-vault--line-of path (plist-get link :pos))))
+        (insert (format "- %s\n  %s: %s\n"
+                        (vulpea-vault--org-link path line (vulpea-note-title note))
+                        (plist-get link :type) target))))))
 
 (defun vulpea-vault--org-link (path line label)
   "An org link to LINE of PATH, shown as LABEL."
@@ -104,20 +140,13 @@ fixing.  Reads vulpea's database; the notes are not re-parsed."
           (insert "#+title: Vault orphans\n\n"
                   (format "%d notes, %d dangling links, %d unreferenced files\n\n"
                           (length notes) (length dangling) (length orphans)))
-          (insert (format "* Dangling links (%d)\n" (length dangling)))
-          (if (null dangling)
-              (insert "  none\n")
-            (dolist (entry (sort dangling
-                                 (lambda (a b) (string< (vulpea-note-path (car a))
-                                                        (vulpea-note-path (car b))))))
-              (let* ((note (nth 0 entry))
-                     (link (nth 1 entry))
-                     (target (nth 2 entry))
-                     (path (vulpea-note-path note))
-                     (line (vulpea-vault--line-of path (plist-get link :pos))))
-                (insert (format "- %s\n  %s: %s\n"
-                                (vulpea-vault--org-link path line (vulpea-note-title note))
-                                (plist-get link :type) target)))))
+          ;; Split by where the target lives: inside the vault it is the vault's
+          ;; own problem to repair, outside it is a file that moved or a volume
+          ;; that is not mounted — a different kind of follow-up.
+          (let ((inside (seq-filter #'vulpea-vault--internal-p dangling))
+                (outside (seq-remove #'vulpea-vault--internal-p dangling)))
+            (vulpea-vault--insert-dangling "Dangling links inside the vault" inside)
+            (vulpea-vault--insert-dangling "Dangling links to external files" outside))
           (insert (format "\n* Unreferenced files in the store (%d)\n" (length orphans)))
           (if (null orphans)
               (insert "  none\n")
