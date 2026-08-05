@@ -664,7 +664,8 @@ class Rewriter:
         self.replacements.append(org_text)
         return f"{TOKEN_PREFIX}{len(self.replacements) - 1}ZZ"
 
-    def bdsk_link(self, stub: Path, fragment: str | None, desc: str | None) -> str | None:
+    def bdsk_link(self, stub: Path, fragment: str | None, desc: str,
+                  raw: str) -> str | None:
         """Turn a link to a PDF++ stub into a direct `x-bdsk:' link.
 
         The vault does not store these PDFs.  Each "*.pdf" under 00 Meta/PDF++
@@ -686,12 +687,11 @@ class Rewriter:
             return None
         if fragment:
             url += ("&" if "?" in url else "?") + fragment
-        self.events.append(
-            LinkEvent(self.note.relpath, "bdsk", str(stub), "bdsk", url))
-        escaped = org_link_escape(url)
-        if desc is None:
-            return self.token(f"[[{escaped}]]")
-        return self.token(f"[[{escaped}][{org_escape_description(desc)}]]")
+        # RAW, not the stub path: the report is an audit trail, and the original
+        # link is what a reader needs to see.
+        self.events.append(LinkEvent(self.note.relpath, "bdsk", raw, "bdsk", url))
+        return self.token(
+            f"[[{org_link_escape(url)}][{org_escape_description(desc)}]]")
 
     # -- target resolution ------------------------------------------------
 
@@ -716,6 +716,13 @@ class Rewriter:
         fields = raw.split("|")
         target = fields[0]
         alias = fields[1].strip() if len(fields) > 1 and fields[1].strip() else None
+        # "[[target|]]" with an explicitly empty alias renders as nothing in
+        # Obsidian.  It was used to make PDF++ highlight a second rectangle —
+        # a selection running across two columns needs one link per rectangle —
+        # without showing a second link in the rendered note.  Nothing outside
+        # PDF++ can draw that highlight, so such a link is dropped rather than
+        # given a label it never had; the visible citation beside it remains.
+        anchor_only = len(fields) > 1 and not fields[1].strip()
         path_part, heading, blockref = split_target(target)
 
         note = self.index.lookup(path_part) if path_part else None
@@ -737,9 +744,15 @@ class Rewriter:
         resolved = self.resolve_file(path_part)
         if resolved is not None:
             desc = alias or Path(path_part).name
+            if anchor_only and read_bdsk_stub(resolved) is not None:
+                self.events.append(
+                    LinkEvent(self.note.relpath, kind, raw, "bdsk-anchor-dropped",
+                              str(resolved))
+                )
+                return ""
             # A PDF++ stub is not a document: it names a BibDesk publication.
             # The fragment (page/rect/color/selection) rides along in the query.
-            bdsk = self.bdsk_link(resolved, heading or blockref, desc)
+            bdsk = self.bdsk_link(resolved, heading or blockref, desc, raw)
             if bdsk is not None:
                 return bdsk
             is_image = resolved.suffix.lower() in {
@@ -1287,6 +1300,7 @@ def main() -> int:
         "attachment",
         "attachment-crossref",
         "bdsk",
+        "bdsk-anchor-dropped",
         "file",
         "file-missing",
         "passthrough",
@@ -1300,6 +1314,7 @@ def main() -> int:
                 "blockref-degraded": "  (points at the note, not the block — deferred)",
                 "attachment-crossref": "  (another note's attachment, via its :ID:)",
                 "bdsk": "  (BibDesk publication, replacing a PDF++ stub)",
+                "bdsk-anchor-dropped": "  (invisible PDF++ highlight anchor, removed)",
                 "file-missing": "  (target absent on disk — see links.csv)",
                 "unresolved": "  (emitted as obsidian-unresolved: links)",
             }.get(outcome, "")
