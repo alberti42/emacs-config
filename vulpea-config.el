@@ -27,6 +27,8 @@
 
 ;;; Code:
 
+(require 'rx)
+
 (defconst vulpea-config-notes-directory
   (expand-file-name "~/Org/Work/")
   "Root of the converted org notes.
@@ -85,12 +87,34 @@ which on macOS returns uppercase; `org-id-locations' is an
         ;; attachments follow it through renames and moves.
         org-attach-preferred-new-method 'id))
 
-;; Teaches the stock `attachment:' link type a second form,
-;; "attachment:<uuid>/file", for referring to another note's attachment.  The
-;; converter emits 51 of these; without it they do not resolve.
-(emacs-config-load-module
- 'org-attach-crossref
- "Could not load org-attach-crossref.el; cross-note attachment: links will not resolve.")
+;; Cross-note attachment links.  Stock `attachment:' carries only a filename,
+;; which `org-attach-expand' resolves against the *current* node, so there is no
+;; syntax for another note's attachment.  This adds "attachment:<uuid>/file",
+;; discriminated by a leading UUID and resolved through the target's :ID:, so it
+;; survives renaming and moving that note.  The converter emits 51 of them.
+;;
+;; `org-attach-expand' is the choke point shared by following
+;; (`org-attach-follow'), inline preview (`org-attach-preview-file') and export
+;; (`org-attach-expand-links'), so advising it covers all three.  The UUID
+;; pattern is not version-specific — the vault carries both v4 and v5 — and a
+;; filename that merely contains a UUID stays local, since the discriminator is
+;; a UUID followed by "/" as the leading path component.
+
+(defconst vulpea-config-crossref-regexp
+  (rx bos (group (= 8 hex) "-" (= 4 hex) "-" (= 4 hex) "-" (= 4 hex) "-" (= 12 hex))
+      "/" (group (+ nonl)) eos)
+  "Match \"UUID/relative/path\" in an `attachment:' link path.")
+
+(defun vulpea-config-attach-expand (orig file)
+  "Expand FILE, treating a leading UUID as another note's attachment.
+ORIG is the stock `org-attach-expand', used for every other path."
+  (if (string-match vulpea-config-crossref-regexp file)
+      (let ((id (match-string 1 file))
+            (rest (match-string 2 file)))
+        (expand-file-name rest (org-attach-dir-from-id id)))
+    (funcall orig file)))
+
+(advice-add 'org-attach-expand :around #'vulpea-config-attach-expand)
 
 (use-package vulpea
   :straight (vulpea :type git :host github :repo "d12frosted/vulpea")
