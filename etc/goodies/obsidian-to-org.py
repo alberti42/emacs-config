@@ -67,9 +67,9 @@ import yaml
 # --------------------------------------------------------------------------
 
 DEFAULT_VAULT = Path("~/Obsidian/Work").expanduser()
-DEFAULT_OUT = Path("~/Obsidian/Work-org").expanduser()
+DEFAULT_OUT = Path("~/Org/Work").expanduser()
 
-# Generated artefacts (the tag-group declaration, the reports) go here rather
+# GENERATED ARTEFACTS (the tag-group declaration, the reports) go here rather
 # than in the tree root, mirroring the vault's own "00 Meta" convention.  None
 # of the vault's 00 Meta files are notes, so nothing collides.
 META_DIR = "00 Meta"
@@ -98,8 +98,19 @@ ORG_TAG_RE = re.compile(r"\A[0-9A-Za-z_@#%]+\Z")
 # Mail, pdffile: an Obsidian plugin scheme needing an org-link-set-parameters
 # reimplementation).
 PASSTHROUGH_SCHEMES = {
-    "http", "https", "mailto", "message", "x-bdsk", "pdffile",
-    "obsidian", "file", "filefinder", "ftp", "doi", "tel", "zotero",
+    "http",
+    "https",
+    "mailto",
+    "message",
+    "x-bdsk",
+    "pdffile",
+    "obsidian",
+    "file",
+    "filefinder",
+    "ftp",
+    "doi",
+    "tel",
+    "zotero",
 }
 
 TOKEN_PREFIX = "ZZORGLINKZZ"
@@ -130,6 +141,7 @@ def nfc(text: str) -> str:
     """
     return unicodedata.normalize("NFC", text)
 
+
 # Non-greedy up to the first "]]", so that a target may itself contain "]" —
 # attachment filenames here include mailing-list subjects like
 # "[All-mpq] Important Changes ….eml".
@@ -157,7 +169,7 @@ RAW_SCALAR_RE = "^{key}:[ \t]*(?P<value>.*?)[ \t]*$"
 
 @dataclasses.dataclass(slots=True)
 class Note:
-    relpath: str                    # "06 MPQ/foo.md", vault-relative, POSIX
+    relpath: str  # "06 MPQ/foo.md", vault-relative, POSIX
     path: Path
     uuid: str
     title: str
@@ -190,9 +202,9 @@ class LinkEvent:
     """One rewritten (or not) link, for the report."""
 
     source: str
-    kind: str        # wiki | embed | mdlink
+    kind: str  # wiki | embed | mdlink
     raw: str
-    outcome: str     # id | file | passthrough | heading-degraded | blockref-degraded | unresolved
+    outcome: str  # id | file | passthrough | heading-degraded | blockref-degraded | unresolved
     target: str = ""
 
 
@@ -219,7 +231,7 @@ def split_frontmatter(text: str) -> tuple[dict[str, object], str, str]:
         raise ValueError(f"unparseable front matter: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("front matter is not a mapping")
-    return data, raw, text[m.end():]
+    return data, raw, text[m.end() :]
 
 
 def raw_scalar(raw_yaml: str, key: str) -> str | None:
@@ -305,7 +317,7 @@ class Index:
 
     def __init__(self) -> None:
         self.notes: list[Note] = []
-        self.by_relpath: dict[str, Note] = {}      # with and without .md
+        self.by_relpath: dict[str, Note] = {}  # with and without .md
         self.by_stem: dict[str, list[Note]] = defaultdict(list)
         self.by_title: dict[str, list[Note]] = defaultdict(list)
         # "<note> (attachments)" directory -> the note that owns it
@@ -367,7 +379,11 @@ def build_index(vault: Path, verbose: bool) -> tuple[Index, list[Skipped], list[
 
         uuid = data.get("uuid")
         if not isinstance(uuid, str) or not uuid.strip():
-            reason = "deliberate non-note" if rel in KNOWN_NON_NOTES else "no uuid in front matter"
+            reason = (
+                "deliberate non-note"
+                if rel in KNOWN_NON_NOTES
+                else "no uuid in front matter"
+            )
             skipped.append(Skipped(rel, reason))
             continue
         uuid = uuid.strip()
@@ -389,22 +405,25 @@ def build_index(vault: Path, verbose: bool) -> tuple[Index, list[Skipped], list[
                 problems.append(f"{rel}: tag {tag!r} is still not legal org syntax")
 
         extras = {
-            k: v for k, v in data.items()
+            k: v
+            for k, v in data.items()
             if k not in {"uuid", "tags", "created", "modified", "title"}
             and v not in (None, "", [], {})
         }
 
-        index.add(Note(
-            relpath=rel,
-            path=path,
-            uuid=uuid,
-            title=title,
-            org_tags=org_tags,
-            created=raw_scalar(raw_yaml, "created"),
-            modified=raw_scalar(raw_yaml, "modified"),
-            extras=extras,
-            body=body,
-        ))
+        index.add(
+            Note(
+                relpath=rel,
+                path=path,
+                uuid=uuid,
+                title=title,
+                org_tags=org_tags,
+                created=raw_scalar(raw_yaml, "created"),
+                modified=raw_scalar(raw_yaml, "modified"),
+                extras=extras,
+                body=body,
+            )
+        )
         if verbose:
             print(f"  indexed {rel}", file=sys.stderr)
 
@@ -439,6 +458,7 @@ def org_link_escape(path: str) -> str:
     "[All-mpq] Subject….eml", and an unescaped "]" makes org parse the whole
     link as ordinary text.
     """
+
     def repl(m: re.Match[str]) -> str:
         backslashes, bracket = m.group(1), m.group(2)
         return backslashes * 2 + (f"\\{bracket}" if bracket else "")
@@ -464,7 +484,7 @@ def scan_destination(text: str, i: int) -> tuple[str, int] | None:
         if end == -1 or "\n" in text[i:end]:
             return None
         close = text.find(")", end + 1)
-        return (text[i + 1:end], close + 1) if close != -1 else None
+        return (text[i + 1 : end], close + 1) if close != -1 else None
 
     depth = 1
     buf: list[str] = []
@@ -483,7 +503,9 @@ def scan_destination(text: str, i: int) -> tuple[str, int] | None:
             if depth == 0:
                 dest = "".join(buf).strip()
                 # An optional title follows the destination: (path "title")
-                if match := re.match(r"""\A(?P<dest>\S+)\s+["'(].*\Z""", dest, re.DOTALL):
+                if match := re.match(
+                    r"""\A(?P<dest>\S+)\s+["'(].*\Z""", dest, re.DOTALL
+                ):
                     dest = match.group("dest")
                 return dest, i + 1
         buf.append(ch)
@@ -498,7 +520,7 @@ def scan_md_links(text: str):
         start = m.start()
         bang = m.group(0).startswith("!")
         depth = 0
-        j = m.end() - 1                      # at the '['
+        j = m.end() - 1  # at the '['
         label_end = -1
         while j < len(text):
             if text[j] == "\\":
@@ -520,7 +542,7 @@ def scan_md_links(text: str):
             i = start + 1
             continue
         dest, end = scanned
-        yield start, end, "!" if bang else "", text[m.end():label_end], dest
+        yield start, end, "!" if bang else "", text[m.end() : label_end], dest
         i = end
 
 
@@ -538,15 +560,23 @@ def split_target(target: str) -> tuple[str, str | None, str | None]:
 class Rewriter:
     """Replaces links with tokens, remembering the org text for each."""
 
-    def __init__(self, note: Note, index: Index, vault: Path,
-                 out_root: Path, out_dir: Path, link_style: str,
-                 attachments: str, attach_dir_name: str) -> None:
+    def __init__(
+        self,
+        note: Note,
+        index: Index,
+        vault: Path,
+        out_root: Path,
+        out_dir: Path,
+        link_style: str,
+        attachments: str,
+        attach_dir_name: str,
+    ) -> None:
         self.note = note
         self.index = index
         self.vault = vault
-        self.out_root = out_root        # root of the generated .org tree
-        self.out_dir = out_dir          # directory the .org file is written to
-        self.link_style = link_style    # "absolute" | "relative"
+        self.out_root = out_root  # root of the generated .org tree
+        self.out_dir = out_dir  # directory the .org file is written to
+        self.link_style = link_style  # "absolute" | "relative"
         self.attachments = attachments  # "mirror" | "org-attach"
         self.attach_dir_name = attach_dir_name
         self.replacements: list[str] = []
@@ -572,7 +602,8 @@ class Rewriter:
         else:
             path, outcome = f"{owner.uuid}/{inner}", "attachment-crossref"
         self.events.append(
-            LinkEvent(self.note.relpath, "attachment", str(target), outcome, path))
+            LinkEvent(self.note.relpath, "attachment", str(target), outcome, path)
+        )
         escaped = org_link_escape(path)
         if desc is None:
             return self.token(f"[[attachment:{escaped}]]")
@@ -633,7 +664,7 @@ class Rewriter:
 
         note = self.index.lookup(path_part) if path_part else None
         if note is None and not path_part and (heading or blockref):
-            note = self.note          # same-file heading link
+            note = self.note  # same-file heading link
 
         if note is not None:
             desc = alias or (f"{note.title} › {heading}" if heading else note.title)
@@ -642,31 +673,44 @@ class Rewriter:
                 outcome = "blockref-degraded"
             elif heading:
                 outcome = "heading-degraded"
-            self.events.append(LinkEvent(self.note.relpath, kind, raw, outcome, note.uuid))
+            self.events.append(
+                LinkEvent(self.note.relpath, kind, raw, outcome, note.uuid)
+            )
             return self.token(f"[[id:{note.uuid}][{org_escape_description(desc)}]]")
 
         resolved = self.resolve_file(path_part)
         if resolved is not None:
             desc = alias or Path(path_part).name
             is_image = resolved.suffix.lower() in {
-                ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".webp",
             }
             attachment = self.attachment_link(
-                resolved, None if (kind == "embed" and is_image) else desc)
+                resolved, None if (kind == "embed" and is_image) else desc
+            )
             if attachment is not None:
                 return attachment
             self.events.append(
-                LinkEvent(self.note.relpath, kind, raw, "file", str(resolved)))
+                LinkEvent(self.note.relpath, kind, raw, "file", str(resolved))
+            )
             if kind == "embed" and is_image:
-                return self.token(f"[[file:{org_link_escape(self.link_path(resolved))}]]")
+                return self.token(
+                    f"[[file:{org_link_escape(self.link_path(resolved))}]]"
+                )
             return self.token(
-                f"[[file:{org_link_escape(self.link_path(resolved))}][{org_escape_description(desc)}]]")
+                f"[[file:{org_link_escape(self.link_path(resolved))}][{org_escape_description(desc)}]]"
+            )
 
         self.events.append(LinkEvent(self.note.relpath, kind, raw, "unresolved"))
         # An unregistered link type: visible, greppable, and it errors clearly
         # when followed instead of pretending to work.
         return self.token(
-            f"[[obsidian-unresolved:{raw}][{org_escape_description(alias or raw)}]]")
+            f"[[obsidian-unresolved:{raw}][{org_escape_description(alias or raw)}]]"
+        )
 
     def md_link(self, bang: str, label: str, target: str) -> str:
         clean = target.strip()
@@ -675,42 +719,59 @@ class Rewriter:
         if clean.startswith("#"):
             # Fragment-only: a heading or block inside this same note.
             heading = clean.lstrip("#^").strip()
-            outcome = "blockref-degraded" if clean.startswith("#^") else "heading-degraded"
+            outcome = (
+                "blockref-degraded" if clean.startswith("#^") else "heading-degraded"
+            )
             self.events.append(
-                LinkEvent(self.note.relpath, "mdlink", target, outcome, self.note.uuid))
+                LinkEvent(self.note.relpath, "mdlink", target, outcome, self.note.uuid)
+            )
             desc = label or f"{self.note.title} › {heading}"
-            return self.token(f"[[id:{self.note.uuid}][{org_escape_description(desc)}]]")
+            return self.token(
+                f"[[id:{self.note.uuid}][{org_escape_description(desc)}]]"
+            )
 
         if scheme == "file":
             # file:// URL: decode to a path and treat it as a local target.
             clean = urllib.parse.unquote(urllib.parse.urlsplit(clean).path)
         elif scheme in PASSTHROUGH_SCHEMES:
             self.events.append(
-                LinkEvent(self.note.relpath, "mdlink", target, "passthrough", clean))
-            return f"{bang}[{label}]({clean})"      # let pandoc handle it
+                LinkEvent(self.note.relpath, "mdlink", target, "passthrough", clean)
+            )
+            return f"{bang}[{label}]({clean})"  # let pandoc handle it
 
         note = self.index.lookup(urllib.parse.unquote(clean).strip("<>"))
         if note is not None:
             desc = label or note.title
             self.events.append(
-                LinkEvent(self.note.relpath, "mdlink", target, "id", note.uuid))
+                LinkEvent(self.note.relpath, "mdlink", target, "id", note.uuid)
+            )
             return self.token(f"[[id:{note.uuid}][{org_escape_description(desc)}]]")
 
         resolved = self.resolve_file(clean)
         if resolved is not None:
             is_image = resolved.suffix.lower() in {
-                ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".svg",
+                ".webp",
             }
             attachment = self.attachment_link(
-                resolved, None if (bang and is_image) else (label or resolved.name))
+                resolved, None if (bang and is_image) else (label or resolved.name)
+            )
             if attachment is not None:
                 return attachment
             self.events.append(
-                LinkEvent(self.note.relpath, "mdlink", target, "file", str(resolved)))
+                LinkEvent(self.note.relpath, "mdlink", target, "file", str(resolved))
+            )
             if bang and is_image:
-                return self.token(f"[[file:{org_link_escape(self.link_path(resolved))}]]")
+                return self.token(
+                    f"[[file:{org_link_escape(self.link_path(resolved))}]]"
+                )
             return self.token(
-                f"[[file:{org_link_escape(self.link_path(resolved))}][{org_escape_description(label or resolved.name)}]]")
+                f"[[file:{org_link_escape(self.link_path(resolved))}][{org_escape_description(label or resolved.name)}]]"
+            )
 
         decoded = urllib.parse.unquote(clean).strip("<>")
         if decoded.startswith("/"):
@@ -718,9 +779,11 @@ class Rewriter:
             # to a file that moved or lives on an unmounted volume.  Keep the
             # link rather than discard the intent, and flag it in the report.
             self.events.append(
-                LinkEvent(self.note.relpath, "mdlink", target, "file-missing", decoded))
+                LinkEvent(self.note.relpath, "mdlink", target, "file-missing", decoded)
+            )
             return self.token(
-                f"[[file:{org_link_escape(self.link_path(Path(decoded)))}][{org_escape_description(label or Path(decoded).name)}]]")
+                f"[[file:{org_link_escape(self.link_path(Path(decoded)))}][{org_escape_description(label or Path(decoded).name)}]]"
+            )
 
         self.events.append(LinkEvent(self.note.relpath, "mdlink", target, "unresolved"))
         return f"{bang}[{label}]({clean})"
@@ -729,8 +792,12 @@ class Rewriter:
 
     def rewrite(self) -> str:
         def rewrite_prose(chunk: str) -> str:
-            chunk = EMBED_RE.sub(lambda m: self.wiki_link(m.group("target"), "embed"), chunk)
-            chunk = WIKI_RE.sub(lambda m: self.wiki_link(m.group("target"), "wiki"), chunk)
+            chunk = EMBED_RE.sub(
+                lambda m: self.wiki_link(m.group("target"), "embed"), chunk
+            )
+            chunk = WIKI_RE.sub(
+                lambda m: self.wiki_link(m.group("target"), "wiki"), chunk
+            )
             # Markdown links are scanned, not regexped, so that "(attachments)"
             # in a destination does not truncate it.
             out: list[str] = []
@@ -745,8 +812,8 @@ class Rewriter:
         out: list[str] = []
         pos = 0
         for m in PROTECTED_RE.finditer(self.note.body):
-            out.append(rewrite_prose(self.note.body[pos:m.start()]))
-            out.append(m.group(0))          # code or math, verbatim
+            out.append(rewrite_prose(self.note.body[pos : m.start()]))
+            out.append(m.group(0))  # code or math, verbatim
             pos = m.end()
         out.append(rewrite_prose(self.note.body[pos:]))
         # Applied last, and to code/math regions too, so a dash inside a
@@ -772,10 +839,16 @@ def run_pandoc(markdown: str) -> str:
         # because a "# comment" inside a shell fence is not a heading and no
         # regexp over the markdown can reliably tell the difference.
         [
-            "pandoc", "--from=gfm-gfm_auto_identifiers", "--to=org",
-            "--wrap=preserve", f"--lua-filter={HEADING_FILTER}",
+            "pandoc",
+            "--from=gfm-gfm_auto_identifiers",
+            "--to=org",
+            "--wrap=preserve",
+            f"--lua-filter={HEADING_FILTER}",
         ],
-        input=markdown, capture_output=True, text=True, check=False,
+        input=markdown,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if proc.returncode != 0:
         raise RuntimeError(f"pandoc failed: {proc.stderr.strip()}")
@@ -813,13 +886,21 @@ def build_org(note: Note, body: str) -> str:
     return "\n".join(lines) + body.lstrip("\n")
 
 
-def convert(note: Note, index: Index, vault: Path, out_root: Path, out_dir: Path,
-            link_style: str, attachments: str,
-            attach_dir_name: str) -> tuple[str, list[LinkEvent]]:
+def convert(
+    note: Note,
+    index: Index,
+    vault: Path,
+    out_root: Path,
+    out_dir: Path,
+    link_style: str,
+    attachments: str,
+    attach_dir_name: str,
+) -> tuple[str, list[LinkEvent]]:
     if TOKEN_PREFIX in note.body:
         raise RuntimeError(f"{note.relpath}: body already contains {TOKEN_PREFIX}")
-    rewriter = Rewriter(note, index, vault, out_root, out_dir, link_style,
-                        attachments, attach_dir_name)
+    rewriter = Rewriter(
+        note, index, vault, out_root, out_dir, link_style, attachments, attach_dir_name
+    )
     org_body = run_pandoc(rewriter.rewrite())
 
     def restore(m: re.Match[str]) -> str:
@@ -889,7 +970,7 @@ def place_file(src: Path, dest: Path, mode: str, stats: CopyStats) -> None:
             stats.linked += 1
             return
     except OSError:
-        pass                        # different filesystem, or link limit
+        pass  # different filesystem, or link limit
     try:
         shutil.copy2(src, dest)
         stats.copied += 1
@@ -979,7 +1060,8 @@ def write_reports(
         for s in skipped:
             w.writerow([s.relpath, s.reason])
     (report_dir / "problems.txt").write_text(
-        "\n".join(problems) + ("\n" if problems else ""), encoding="utf-8")
+        "\n".join(problems) + ("\n" if problems else ""), encoding="utf-8"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -988,44 +1070,68 @@ def write_reports(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    ap.add_argument("--report-dir", type=Path, default=None,
-                    help=f"default: <out>/{META_DIR}/_report")
-    ap.add_argument("--only", default=None,
-                    help="regexp; convert only notes whose vault-relative path matches")
+    ap.add_argument(
+        "--report-dir",
+        type=Path,
+        default=None,
+        help=f"default: <out>/{META_DIR}/_report",
+    )
+    ap.add_argument(
+        "--only",
+        default=None,
+        help="regexp; convert only notes whose vault-relative path matches",
+    )
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--dry-run", action="store_true",
-                    help="index, convert and report, but write no .org files")
-    ap.add_argument("--link-style", choices=("absolute", "relative"),
-                    default="relative",
-                    help="how to render file: links to attachments and other "
-                         "local files. relative keeps the tree portable when "
-                         "notes and attachments move together; absolute always "
-                         "resolves but pins notes to the current location")
-    ap.add_argument("--attachments", choices=("org-attach", "mirror"),
-                    default="org-attach",
-                    help="org-attach (default) puts every note's attachments in "
-                         "one central store under --attach-dir, keyed by the "
-                         "note's :ID:, addressed by attachment: links that "
-                         "survive renaming and moving the note. mirror keeps "
-                         "the Obsidian convention instead: attachments stay in "
-                         "a '<note> (attachments)' folder beside the note, "
-                         "addressed by relative file: links")
-    ap.add_argument("--attach-dir", default="data", metavar="NAME",
-                    help="org-attach mode only: name of the central attachment "
-                         "directory at the tree root; must match "
-                         "org-attach-id-dir in Emacs (default: data)")
-    ap.add_argument("--copy-mode", choices=("copy", "hardlink"),
-                    default="copy",
-                    help="how attachments are mirrored into the org tree. "
-                         "copy (default) makes the org tree an independent "
-                         "source of truth, at the cost of ~1.75 GB. hardlink "
-                         "costs no extra disk but gives the file one identity "
-                         "shared with the vault, so editing it in one place "
-                         "changes both")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="index, convert and report, but write no .org files",
+    )
+    ap.add_argument(
+        "--link-style",
+        choices=("absolute", "relative"),
+        default="relative",
+        help="how to render file: links to attachments and other "
+        "local files. relative keeps the tree portable when "
+        "notes and attachments move together; absolute always "
+        "resolves but pins notes to the current location",
+    )
+    ap.add_argument(
+        "--attachments",
+        choices=("org-attach", "mirror"),
+        default="org-attach",
+        help="org-attach (default) puts every note's attachments in "
+        "one central store under --attach-dir, keyed by the "
+        "note's :ID:, addressed by attachment: links that "
+        "survive renaming and moving the note. mirror keeps "
+        "the Obsidian convention instead: attachments stay in "
+        "a '<note> (attachments)' folder beside the note, "
+        "addressed by relative file: links",
+    )
+    ap.add_argument(
+        "--attach-dir",
+        default="data",
+        metavar="NAME",
+        help="org-attach mode only: name of the central attachment "
+        "directory at the tree root; must match "
+        "org-attach-id-dir in Emacs (default: data)",
+    )
+    ap.add_argument(
+        "--copy-mode",
+        choices=("copy", "hardlink"),
+        default="copy",
+        help="how attachments are mirrored into the org tree. "
+        "copy (default) makes the org tree an independent "
+        "source of truth, at the cost of ~1.75 GB. hardlink "
+        "costs no extra disk but gives the file one identity "
+        "shared with the vault, so editing it in one place "
+        "changes both",
+    )
     ap.add_argument("--write-tag-alist", action="store_true", default=True)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
@@ -1058,10 +1164,17 @@ def main() -> int:
             # NFC so note filenames, directory names and the relative
             # link paths computed from them all agree.
             dest = out / nfc(note.out_relpath)
-            org, note_events = convert(note, index, vault, out, dest.parent,
-                                       args.link_style, args.attachments,
-                                       args.attach_dir)
-        except Exception as exc:                       # noqa: BLE001 - reported, not raised
+            org, note_events = convert(
+                note,
+                index,
+                vault,
+                out,
+                dest.parent,
+                args.link_style,
+                args.attachments,
+                args.attach_dir,
+            )
+        except Exception as exc:  # noqa: BLE001 - reported, not raised
             problems.append(f"{note.relpath}: conversion failed: {exc}")
             failed += 1
             continue
@@ -1071,15 +1184,24 @@ def main() -> int:
             dest.write_text(org, encoding="utf-8")
         written += 1
         if args.verbose:
-            print(f"  {'would write' if args.dry_run else 'wrote'} {note.out_relpath}",
-                  file=sys.stderr)
+            print(
+                f"  {'would write' if args.dry_run else 'wrote'} {note.out_relpath}",
+                file=sys.stderr,
+            )
 
     copy_stats: CopyStats | None = None
     if args.link_style == "relative" and not args.dry_run:
         print("mirroring attachments …")
-        copy_stats = copy_attachments(selected, events, index, vault, out,
-                                      args.copy_mode, args.attachments,
-                                      args.attach_dir)
+        copy_stats = copy_attachments(
+            selected,
+            events,
+            index,
+            vault,
+            out,
+            args.copy_mode,
+            args.attachments,
+            args.attach_dir,
+        )
 
     groups: list[tuple[str, list[str]]] = []
     if args.write_tag_alist and not args.dry_run:
@@ -1095,12 +1217,22 @@ def main() -> int:
         by_outcome[e.outcome] += 1
 
     print()
-    print(f"{'would convert' if args.dry_run else 'converted'}: {written} notes"
-          + (f", {failed} failed" if failed else ""))
+    print(
+        f"{'would convert' if args.dry_run else 'converted'}: {written} notes"
+        + (f", {failed} failed" if failed else "")
+    )
     print("links:")
-    for outcome in ("id", "attachment", "attachment-crossref", "file",
-                    "file-missing", "passthrough", "heading-degraded",
-                    "blockref-degraded", "unresolved"):
+    for outcome in (
+        "id",
+        "attachment",
+        "attachment-crossref",
+        "file",
+        "file-missing",
+        "passthrough",
+        "heading-degraded",
+        "blockref-degraded",
+        "unresolved",
+    ):
         if by_outcome.get(outcome):
             note = {
                 "heading-degraded": "  (points at the note, not the heading — deferred)",
@@ -1113,15 +1245,19 @@ def main() -> int:
     if copy_stats is not None:
         print(f"attachments ({args.copy_mode}):")
         print(f"  {copy_stats.linked:6d}  hardlinked")
-        print(f"  {copy_stats.copied:6d}  copied ({copy_stats.bytes_new / 2**30:.2f} GB)")
+        print(
+            f"  {copy_stats.copied:6d}  copied ({copy_stats.bytes_new / 2**30:.2f} GB)"
+        )
         print(f"  {copy_stats.skipped:6d}  already present")
         if copy_stats.failed:
             print(f"  {copy_stats.failed:6d}  FAILED")
     if args.attachments == "org-attach":
         print("\norg-attach expects, in your Emacs config:")
         print(f'  (setq org-attach-id-dir "{out / args.attach_dir}/")')
-        print("  (emacs-config-load-module 'org-attach-crossref"
-              " \"No cross-note attachment: links.\")")
+        print(
+            "  (emacs-config-load-module 'org-attach-crossref"
+            ' "No cross-note attachment: links.")'
+        )
     if groups:
         print(f"tag groups written to {out / META_DIR / 'org-tag-alist.el'}:")
         for parent, children in groups:
