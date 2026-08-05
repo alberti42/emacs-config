@@ -221,5 +221,9 @@ clears `org-id-locations' and rescans every known file."
  "vulpea-vault/bibdesk"
  "Could not load vulpea-vault/bibdesk.el; x-bdsk: links will not open.")
 
+(emacs-config-load-module
+ "vulpea-vault/pdffile"
+ "Could not load vulpea-vault/pdffile.el; pdffile: links will not open.")
+
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here

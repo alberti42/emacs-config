@@ -24,7 +24,7 @@
 (require 'org-attach)
 (require 'seq)
 
-(defconst vulpea-vault-checkable-link-types '("attachment" "id" "file")
+(defconst vulpea-vault-checkable-link-types '("attachment" "id" "file" "pdffile")
   "Link types `vulpea-vault-orphans' can verify.
 Everything else is either remote (`https:'), or a type org does not
 know, or an internal target that would need the file parsed.")
@@ -47,6 +47,10 @@ note's store, otherwise the store belongs to NOTE itself."
       ("id" dest)
       ("file" (expand-file-name (car (split-string dest "::"))
                                 (file-name-directory (vulpea-note-path note))))
+      ;; `fboundp' rather than `require': vulpea-vault/pdffile.el is loaded as a
+      ;; file, not a feature on `load-path', and by report time it is present.
+      ("pdffile" (and (fboundp 'vulpea-vault-pdffile-parse)
+                      (car (vulpea-vault-pdffile-parse dest))))
       (_ nil))))
 
 (defun vulpea-vault--line-of (path pos)
