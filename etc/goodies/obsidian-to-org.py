@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import csv
 import dataclasses
+import glob
 import os
 import re
 import shutil
@@ -715,6 +716,11 @@ class Rewriter:
         a markdown file kept as an *attachment* resolves nowhere: it is not in
         the note index either, since it has no `uuid` in its front matter and so
         was never treated as a note.
+
+        The vault-wide search escapes the name: `rglob' reads it as a glob
+        pattern, so a filename containing "[…]" (the PDF++ stubs abbreviate
+        author lists that way) becomes a character class matching a bare "…"
+        and finds nothing.
         """
         candidate = urllib.parse.unquote(target).strip().strip("<>")
         if candidate.startswith("/"):
@@ -728,7 +734,7 @@ class Rewriter:
                 if probe.is_file():
                     return probe
         for name in names:
-            matches = sorted(self.vault.rglob(Path(name).name))
+            matches = sorted(self.vault.rglob(glob.escape(Path(name).name)))
             if len(matches) == 1:
                 return matches[0]
         return None
@@ -742,6 +748,11 @@ class Rewriter:
         fields = re.split(r"\\?\|", raw)
         target = fields[0]
         alias = fields[1].strip() if len(fields) > 1 and fields[1].strip() else None
+        # An embed has no alias — its one field is a display width.  Only a
+        # *link* alias is a label, so "![[stub.pdf#page=4…|600]]" must not end
+        # up described as "600".
+        if kind == "embed" and alias is not None and alias.isdigit():
+            alias = None
         # "[[target|]]" with an explicitly empty alias renders as nothing in
         # Obsidian.  It was used to make PDF++ highlight a second rectangle —
         # a selection running across two columns needs one link per rectangle —
