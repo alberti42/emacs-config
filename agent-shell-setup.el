@@ -109,10 +109,9 @@ the new title.  Runs with the shell buffer current (see
 (use-package agent-shell-math-renderer
   :straight (agent-shell-math-renderer
              :type git
-             ;; The latex-to-svg-backend delegation lives on this branch, not `main'
-             ;; (which stays the self-contained pre-refactor version until the
-             ;; library is fully published/tested).  Track the branch here.
-             :branch "refactor/latex-to-svg"
+             ;; The latex-to-svg-backend delegation is now on `main' (the
+             ;; former `refactor/latex-to-svg' was promoted and retired).
+             :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
   :after agent-shell
   :config
