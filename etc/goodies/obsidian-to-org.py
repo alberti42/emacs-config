@@ -69,6 +69,11 @@ import yaml
 DEFAULT_VAULT = Path("~/Obsidian/Work").expanduser()
 DEFAULT_OUT = Path("~/Obsidian/Work-org").expanduser()
 
+# Generated artefacts (the tag-group declaration, the reports) go here rather
+# than in the tree root, mirroring the vault's own "00 Meta" convention.  None
+# of the vault's 00 Meta files are notes, so nothing collides.
+META_DIR = "00 Meta"
+
 # Directories never walked.
 SKIP_DIRS = {".git", ".obsidian", ".smart-env", ".trash", "00 Meta/Templates"}
 
@@ -988,7 +993,7 @@ def main() -> int:
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--report-dir", type=Path, default=None,
-                    help="default: <out>/_report")
+                    help=f"default: <out>/{META_DIR}/_report")
     ap.add_argument("--only", default=None,
                     help="regexp; convert only notes whose vault-relative path matches")
     ap.add_argument("--limit", type=int, default=None)
@@ -1033,7 +1038,7 @@ def main() -> int:
     if out == vault or vault in out.parents:
         print(f"refusing to write inside the vault: {out}", file=sys.stderr)
         return 2
-    report_dir = (args.report_dir or out / "_report").expanduser()
+    report_dir = (args.report_dir or out / META_DIR / "_report").expanduser()
 
     print(f"indexing {vault} …")
     index, skipped, problems = build_index(vault, args.verbose)
@@ -1079,7 +1084,9 @@ def main() -> int:
     groups: list[tuple[str, list[str]]] = []
     if args.write_tag_alist and not args.dry_run:
         out.mkdir(parents=True, exist_ok=True)
-        groups = write_tag_alist(index, out / "org-tag-alist.el")
+        tag_alist = out / META_DIR / "org-tag-alist.el"
+        tag_alist.parent.mkdir(parents=True, exist_ok=True)
+        groups = write_tag_alist(index, tag_alist)
 
     write_reports(report_dir, events, skipped, problems)
 
@@ -1116,7 +1123,7 @@ def main() -> int:
         print("  (emacs-config-load-module 'org-attach-crossref"
               " \"No cross-note attachment: links.\")")
     if groups:
-        print(f"tag groups written to {out / 'org-tag-alist.el'}:")
+        print(f"tag groups written to {out / META_DIR / 'org-tag-alist.el'}:")
         for parent, children in groups:
             print(f"  {parent}: {' '.join(children)}")
     if problems:
