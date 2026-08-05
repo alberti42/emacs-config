@@ -51,24 +51,54 @@ empty attachment directory rather than an error.")
     dir))
 
 (defun vulpea-config-update-id-locations ()
-  "Register every note's `:ID:' with `org-id', so `id:' links resolve.
+  "Register every note in vulpea's database with `org-id'.
 
 vulpea and `org-id' read the same `:ID:' property but keep separate
 indexes, and neither fills the other: vulpea has its SQLite db, `org-id'
-has `org-id-locations' (persisted to `org-id-locations-file').
+has `org-id-locations' (persisted to `org-id-locations-file').  The
+symptom of a gap is one-sided — `vulpea-find' finds a note while
+following an `[[id:…]]' link to it fails.
 
-`org-id' learns an ID only when it creates one itself or when a scan
-finds it, so any note that appears on disk without Emacs creating it is
-invisible to it — a bulk conversion, a `git pull', a file synced from
-another machine.  The symptom is one-sided: `vulpea-find' finds such a
-note while following an `[[id:…]]' link to it fails.
-`org-id-find-id-file' does a single lookup and never rescans, so nothing
-recovers on its own; run this after notes arrive from outside."
+`vulpea-config-register-ids' keeps the two in step as files are indexed,
+so this is a repair command for the one case that misses: when
+`org-id-locations' is lost but vulpea's db is current, so vulpea reports
+every file `unchanged' and the hook stays quiet.
+
+The notes come from the database, which already knows every ID and path;
+there is nothing to scan.
+
+Also drops IDs under `vulpea-directory' that the database no longer
+lists.  `org-id' has no removal API and never prunes, so deleting a note
+leaves its ID pointing at a dead path, and following such a link fails
+with a missing file rather than an unknown ID.
+
+The database is the authority for what the tree contains, so pruning
+compares against it rather than testing the disk: `file-exists-p' cannot
+tell a deleted file from one on an unmounted volume or an evicted cloud
+file, and would discard IDs that are merely unreachable.  Entries outside
+the tree belong to other org files and are never touched."
   (interactive)
-  (if (not (file-directory-p vulpea-config-notes-directory))
-      (user-error "No notes directory at %s" vulpea-config-notes-directory)
-    (org-id-update-id-locations
-     (directory-files-recursively vulpea-config-notes-directory "\\.org\\'"))))
+  (unless org-id-locations (org-id-locations-load))
+  (let* ((notes (vulpea-db-query-by-directory vulpea-directory))
+         (live (make-hash-table :test 'equal :size (length notes)))
+         (root (abbreviate-file-name vulpea-directory))
+         (dropped 0))
+    (dolist (note notes)
+      (puthash (vulpea-note-id note) t live))
+    ;; org-id stores abbreviated paths, hence comparing against an
+    ;; abbreviated root.  No filesystem access in either half.
+    (let (stale)
+      (maphash (lambda (id file)
+                 (when (and (string-prefix-p root file)
+                            (not (gethash id live)))
+                   (push id stale)))
+               org-id-locations)
+      (dolist (id stale) (remhash id org-id-locations))
+      (setq dropped (length stale)))
+    (dolist (note notes)
+      (org-id-add-location (vulpea-note-id note) (vulpea-note-path note)))
+    (message "org-id: %d registered from the notes tree, %d stale dropped"
+             (length notes) dropped)))
 
 (defun vulpea-config-org-id-new (&rest _)
   "Return a lowercase v4 UUID, using `uuid.el'.
@@ -126,6 +156,23 @@ ORIG is the stock `org-attach-expand', used for every other path."
 
 (advice-add 'org-attach-expand :around #'vulpea-config-attach-expand)
 
+(defun vulpea-config-register-ids (path status _count)
+  "Register the IDs vulpea just indexed in PATH with `org-id'.
+
+Added to `vulpea-db-worker-done-functions', which vulpea's file watcher
+runs after indexing a file, so a note arriving from outside Emacs becomes
+followable by `[[id:…]]' without a manual scan.  STATUS is `applied' when
+notes were written; the other statuses (`unchanged', `stale', `requeued',
+`missing', `error') mean there is nothing new to register.
+
+The IDs come from vulpea's own database rather than from re-parsing the
+file — it has just extracted them.  `org-id-add-location' is a single
+`puthash'; `org-id-update-id-locations' is not usable here because it
+clears `org-id-locations' and rescans every known file."
+  (when (eq status 'applied)
+    (dolist (note (vulpea-db-query-by-file-path path))
+      (org-id-add-location (vulpea-note-id note) path))))
+
 (use-package vulpea
   :straight (vulpea :type git :host github :repo "d12frosted/vulpea")
   :after org
@@ -136,6 +183,7 @@ ORIG is the stock `org-attach-expand', used for every other path."
   (setq vulpea-directory vulpea-config-notes-directory
         vulpea-db-file (expand-file-name "vulpea.db" (vulpea-config--cache-dir)))
   :config
+  (add-hook 'vulpea-db-worker-done-functions #'vulpea-config-register-ids)
   ;; Watch the tree and index in the background.  Guarded so a missing tree
   ;; degrades to "vulpea installed but idle" instead of erroring at startup —
   ;; the conversion may not have been run yet.
