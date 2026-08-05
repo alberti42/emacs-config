@@ -6,11 +6,6 @@
 ;; carries an `:ID:' and answers queries about them without blocking.  It is
 ;; standalone as of v2 — no org-roam involved.
 ;;
-;; The notes are the tree produced by `etc/goodies/obsidian-to-org.py' from the
-;; Obsidian vault.  Each note's file-level `:ID:' is the `uuid' its Obsidian
-;; front matter carried, so links, external UUID references and org-attach
-;; directories all keep working across renames.
-;;
 ;; Three things key off that one `:ID:' property: `org-id' (for `id:' links),
 ;; `org-attach' (for the attachment directory) and vulpea (as its primary key).
 ;;
@@ -33,9 +28,10 @@
 ;;; Code:
 
 (defconst vulpea-config-notes-directory
-  (expand-file-name "~/Obsidian/Work-org/")
+  (expand-file-name "~/Org/Work/")
   "Root of the converted org notes.
-The single place to change when the tree moves.")
+The single place to change when the tree moves.  Must match
+DEFAULT_OUT in `etc/goodies/obsidian-to-org.py'.")
 
 (defconst vulpea-config-attach-directory
   (expand-file-name "data/" vulpea-config-notes-directory)
@@ -62,17 +58,23 @@ feeds `org-id-locations', which `org-open-at-point' consults."
     (org-id-update-id-locations
      (directory-files-recursively vulpea-config-notes-directory "\\.org\\'"))))
 
+(defun vulpea-config-org-id-new (&rest _)
+  "Return a lowercase v4 UUID, using `uuid.el'.
+Org 9.8.7 still builds UUIDs by forking `org-id-uuid-program',
+which on macOS returns uppercase; `org-id-locations' is an
+`equal'-test hash table and every migrated ID is lowercase.
+`uuid-v4' returns a struct, hence `uuid-to-string'."
+  (uuid-to-string (uuid-v4)))
+
 (use-package org-id
   :straight nil
   :after org
   :init
   (setq org-id-locations-file
         (expand-file-name "org-id-locations.eld" (vulpea-config--cache-dir)))
-  ;; macOS uuidgen prints uppercase, and `org-id' shells out to it verbatim
-  ;; (`org-id-uuid-program', used through `shell-command-to-string', so a
-  ;; pipeline is legal).  Every migrated ID is lowercase and ID lookup is
-  ;; case-sensitive, so keep newly minted ones lowercase too.
-  (setq org-id-uuid-program "uuidgen | tr A-Z a-z"))
+  :config
+  (require 'uuid)
+  (advice-add 'org-id-new :override #'vulpea-config-org-id-new))
 
 (use-package org-attach
   :straight nil
