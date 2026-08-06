@@ -235,6 +235,10 @@ clears `org-id-locations' and rescans every known file."
  "Could not load vulpea-vault/modified-keyword.el; #+modified: will not refresh on save.")
 
 (emacs-config-load-module
+ "vulpea-vault/tags"
+ "Could not load vulpea-vault/tags.el; the vault's tag groups will not be in effect.")
+
+(emacs-config-load-module
  "vulpea-vault/create"
  "Could not load vulpea-vault/create.el; new notes will use vulpea's own defaults.")
 
