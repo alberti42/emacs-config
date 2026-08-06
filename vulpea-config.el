@@ -246,5 +246,9 @@ clears `org-id-locations' and rescans every known file."
  "vulpea-vault/pdffile"
  "Could not load vulpea-vault/pdffile.el; pdffile: links will not open.")
 
+(emacs-config-load-module
+ "vulpea-vault/message"
+ "Could not load vulpea-vault/message.el; message: links will not open.")
+
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here

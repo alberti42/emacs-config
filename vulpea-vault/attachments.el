@@ -88,17 +88,28 @@ would pass.  An entry here means \"no anchor of any kind\"."
            dangling schemes)
       (org-element-map tree 'link
         (lambda (link)
-          (when (equal (org-element-property :type link) "fuzzy")
-            (let* ((dest (org-element-property :path link))
-                   (scheme (vulpea-vault--fuzzy-scheme dest)))
-              (cond
-               (scheme (cl-incf (alist-get scheme schemes 0 nil #'equal)))
-               ((if (string-prefix-p "*" dest)
-                    (member (substring dest 1) headings)
-                  (or (member dest targets) (member dest headings))))
-               (t (push (list :type "fuzzy" :dest dest
-                              :pos (org-element-property :begin link))
-                        dangling)))))))
+          (let ((type (org-element-property :type link))
+                (dest (org-element-property :path link)))
+            (cond
+             ((equal type "fuzzy")
+              (let ((scheme (vulpea-vault--fuzzy-scheme dest)))
+                (cond
+                 (scheme (cl-incf (alist-get scheme schemes 0 nil #'equal)))
+                 ((if (string-prefix-p "*" dest)
+                      (member (substring dest 1) headings)
+                    (or (member dest targets) (member dest headings))))
+                 (t (push (list :type "fuzzy" :dest dest
+                                :pos (org-element-property :begin link))
+                          dangling)))))
+             ;; Checked from the database, which knows the file each one names.
+             ((member type vulpea-vault-checkable-link-types))
+             ;; Everything else is tallied here rather than from the database,
+             ;; because org and the index can disagree: registering a type with
+             ;; `org-link-set-parameters' changes `message://…' from `fuzzy' to
+             ;; `message' the moment it is loaded, while the index keeps saying
+             ;; `fuzzy' until the note is next scanned.  Counting from the same
+             ;; parse that judged the rest of the note keeps the two in step.
+             (t (cl-incf (alist-get type schemes 0 nil #'equal)))))))
       (cons (nreverse dangling) schemes))))
 
 (defun vulpea-vault--attachment-file (note dest)
@@ -206,25 +217,31 @@ in a second pass."
          dangling)
     (dolist (note notes)
       (puthash (vulpea-note-id note) t ids))
+    ;; A note holding any same-file link is audited from its file, and its
+    ;; unverifiable links are tallied there too — decided up front, so the
+    ;; decision does not depend on the order links appear in.
+    (dolist (note notes)
+      (when (seq-some (lambda (l) (equal (plist-get l :type) "fuzzy"))
+                      (vulpea-note-links note))
+        (puthash (vulpea-note-path note) note fuzzy)))
     ;; One pass: collect what is referenced and what fails to resolve.
     (dolist (note notes)
-      (dolist (link (vulpea-note-links note))
-        (let ((type (plist-get link :type))
-              (dest (plist-get link :dest)))
-          (cond
-           ;; Audited per note rather than per link, from the file itself.
-           ((equal type "fuzzy") (puthash (vulpea-note-path note) note fuzzy))
-           ((not (member type vulpea-vault-checkable-link-types))
-            (cl-incf (gethash type skipped 0)))
-           (t
-            (let ((target (vulpea-vault--link-target note link)))
-              (when target
-                (if (equal type "id")
-                    (unless (gethash target ids)
-                      (push (list note link target) dangling))
-                  (puthash target t referenced)
-                  (unless (file-exists-p target)
-                    (push (list note link target) dangling))))))))))
+      (let ((audited (gethash (vulpea-note-path note) fuzzy)))
+        (dolist (link (vulpea-note-links note))
+          (let ((type (plist-get link :type)))
+            (cond
+             ((equal type "fuzzy"))     ; the audit judges these
+             ((not (member type vulpea-vault-checkable-link-types))
+              (unless audited (cl-incf (gethash type skipped 0))))
+             (t
+              (let ((target (vulpea-vault--link-target note link)))
+                (when target
+                  (if (equal type "id")
+                      (unless (gethash target ids)
+                        (push (list note link target) dangling))
+                    (puthash target t referenced)
+                    (unless (file-exists-p target)
+                      (push (list note link target) dangling)))))))))))
     ;; Second pass, one file read per note that has any fuzzy link.
     (maphash
      (lambda (_path note)
@@ -261,10 +278,16 @@ in a second pass."
               (insert "  nothing\n")
             (let (rows)
               (maphash (lambda (k v) (push (cons k v) rows)) skipped)
+              ;; "Not checked" is not the same as "broken": an https: link is
+              ;; simply outside what this report can verify.  What matters is
+              ;; whether org can follow it at all, which is one lookup away.
               (dolist (row (sort rows (lambda (a b) (> (cdr a) (cdr b)))))
-                (insert (format "- %s: %d\n" (car row) (cdr row))))
-              (insert "\n  A scheme listed here is a link type org does not know;\n"
-                      "  it needs `org-link-set-parameters', not repair.\n")))
+                (insert (format "- %s: %d%s\n" (car row) (cdr row)
+                                (if (org-link-get-parameter (car row) :follow)
+                                    ""
+                                  "   ← no handler; following one fails"))))
+              (insert "\n  A type with no handler needs `org-link-set-parameters',\n"
+                      "  not repair.  The rest are remote or open in another app.\n")))
           (goto-char (point-min)))
         (display-buffer (current-buffer))))))
 
