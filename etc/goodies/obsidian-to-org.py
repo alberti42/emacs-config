@@ -1029,8 +1029,13 @@ def run_pandoc(markdown: str) -> str:
     return proc.stdout
 
 
-def keyword_name(key: str) -> str:
-    return re.sub(r"[^0-9A-Za-z_]", "_", key.strip()).lower()
+def property_name(key: str) -> str:
+    """Return a frontmatter field name as an org property name.
+
+    Upper case by org convention, and anything org would not accept in a
+    property name replaced by an underscore.
+    """
+    return re.sub(r"[^0-9A-Za-z_]", "_", key.strip()).upper()
 
 
 def scalar(value: object) -> str:
@@ -1057,12 +1062,16 @@ def build_org(note: Note, body: str) -> str:
         lines.append("%-10s %s" % (":CREATED:", note.created))
     if note.modified:
         lines.append("%-10s %s" % (":MODIFIED:", note.modified))
+    # Every other frontmatter field is a property too.  Org defines a fixed
+    # set of keywords and ignores any other `#+field:' line, and vulpea
+    # indexes the drawer, so a field written as a keyword can be found only by
+    # eye or by grep.  Only `#+title:' and `#+filetags:' below are org's own.
+    for key, value in note.extras.items():
+        lines.append("%-10s %s" % (f":{property_name(key)}:", scalar(value)))
     lines.append(":END:")
     lines.append(f"#+title: {note.title}")
     if note.org_tags:
         lines.append("#+filetags: :" + ":".join(note.org_tags) + ":")
-    for key, value in note.extras.items():
-        lines.append(f"#+{keyword_name(key)}: {scalar(value)}")
     lines.append("")
     preamble = "\n".join(lines)
 
