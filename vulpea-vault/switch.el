@@ -16,7 +16,8 @@
 ;; itself.
 ;;
 ;; Nothing about the vaults themselves lives here.  Which vaults exist is
-;; `vulpea-config-vaults', and what each one contains it says itself, in its
+;; `vulpea-config-vaults' and `vulpea-vault-history' — the ones configured and
+;; the ones actually opened — and what each one contains it says itself, in its
 ;; own `.dir-locals.el'.
 ;;
 ;; The vault being left is closed as well as unhooked: its notes and any dired
@@ -34,12 +35,55 @@
 (require 'seq)
 (require 'vulpea-vault-scheme)
 
+(defvar vulpea-vault-history nil
+  "Vault roots opened in this Emacs, most recently opened first.
+
+Grown by `vulpea-vault-switch' and offered back by it, the way
+`project.el' offers the projects you have visited: a vault reached once
+by typing its path need not be typed again, and need not be added to
+`vulpea-config-vaults' either.
+
+Persisted across sessions through `savehist' — the list is registered in
+`savehist-additional-variables' below — and truncated to
+`history-length' like any other history.")
+
+(with-eval-after-load 'savehist
+  (add-to-list 'savehist-additional-variables 'vulpea-vault-history))
+
+(defconst vulpea-vault-choose-directory "... (choose a directory)"
+  "Entry standing for a vault that is not in the list.
+Worded as `project.el' words the same escape, since it is the same
+gesture and there is nothing to gain by spelling it differently.")
+
 (defun vulpea-vault--candidates ()
-  "Return the known vaults, current one first, as absolute directories."
-  (let ((known (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
-                       vulpea-config-vaults)))
-    (append (seq-remove (lambda (d) (equal d vulpea-config-notes-directory)) known)
-            (list vulpea-config-notes-directory))))
+  "Return the vaults to offer, most recently opened first.
+
+`vulpea-vault-history' before `vulpea-config-vaults', so the order is by
+use and falls back to what is configured; the active vault last, where
+it is out of the way but still says where you are; and the escape to any
+other directory at the very end.
+
+A remembered vault whose directory has gone is left out of the prompt
+rather than dropped from the history — a vault on a volume that is not
+mounted is not gone, and comes back on its own."
+  (let ((known (delete-dups
+                (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
+                        (append vulpea-vault-history vulpea-config-vaults)))))
+    (append (seq-filter (lambda (d)
+                          (and (not (equal d vulpea-config-notes-directory))
+                               (file-directory-p d)))
+                        known)
+            (list vulpea-config-notes-directory
+                  vulpea-vault-choose-directory))))
+
+(defun vulpea-vault--read ()
+  "Prompt for a vault among those known, or for any other directory."
+  (let* ((candidates (vulpea-vault--candidates))
+         (choice (completing-read "Vault: " candidates nil t nil nil
+                                  (car candidates))))
+    (if (equal choice vulpea-vault-choose-directory)
+        (read-directory-name "Vault directory: " nil nil t)
+      choice)))
 
 (defun vulpea-vault--buffers (root)
   "Return the buffers belonging to the vault at ROOT.
@@ -70,15 +114,15 @@ anything, which is the bargain any other kill makes."
 (defun vulpea-vault-switch (root)
   "Make ROOT the vault in use, without restarting Emacs.
 
-Interactively, offer `vulpea-config-vaults', the current one last; any
-other directory may be typed instead, which opens it as a vault without
-adding it to that list.
+Interactively, offer the vaults opened before and those in
+`vulpea-config-vaults', with `vulpea-vault-choose-directory' for any
+other directory.  A vault opened by that route is remembered in
+`vulpea-vault-history', so it is offered from then on without being
+added to the configured list.
 
 A vault with no index yet is scanned in the background, so the switch
 returns before its notes are findable."
-  (interactive
-   (list (completing-read "Vault: " (vulpea-vault--candidates) nil nil nil nil
-                          (car (vulpea-vault--candidates)))))
+  (interactive (list (vulpea-vault--read)))
   (let ((root (file-name-as-directory (expand-file-name root))))
     (unless (file-directory-p root)
       (user-error "Not a directory: %s" root))
@@ -100,6 +144,12 @@ returns before its notes are findable."
       ;; fail until something re-scanned; a vault being indexed for the first
       ;; time has nothing here yet and is covered by that hook instead.
       (vulpea-config-update-id-locations)
+      ;; Recorded only once the switch has gone through, so a directory that
+      ;; turned out not to be openable is not offered again.  The binding is
+      ;; what makes `add-to-history' move an already-known vault to the front
+      ;; instead of listing it twice; the variable is nil by default.
+      (let ((history-delete-duplicates t))
+        (add-to-history 'vulpea-vault-history root))
       (message "Vault: %s — %d buffer%s closed"
                (abbreviate-file-name root) closed (if (= closed 1) "" "s")))))
 
