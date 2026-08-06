@@ -32,7 +32,7 @@
 ;;; Code:
 
 (require 'seq)
-(require 'vulpea-vault-directories)
+(require 'vulpea-vault-scheme)
 
 (defun vulpea-vault--candidates ()
   "Return the known vaults, current one first, as absolute directories."
