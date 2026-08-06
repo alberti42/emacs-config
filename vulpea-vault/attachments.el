@@ -312,8 +312,9 @@ in a second pass."
     (let ((orphans (seq-remove (lambda (f) (gethash f referenced))
                                (vulpea-vault--store-files)))
           (undeclared (seq-difference (vulpea-db-query-tags)
-                                      (vulpea-vault--declared-tags))))
-      (with-current-buffer (get-buffer-create "*vulpea orphans*")
+                                      (vulpea-vault--declared-tags)))
+          (buffer (get-buffer-create "*vulpea orphans*")))
+      (with-current-buffer buffer
         (let ((inhibit-read-only t))
           (erase-buffer)
           (vulpea-vault-report-mode)
@@ -352,8 +353,10 @@ in a second pass."
                                   "   ← no handler; following one fails"))))
               (insert "\n  A type with no handler needs `org-link-set-parameters',\n"
                       "  not repair.  The rest are remote or open in another app.\n")))
-          (goto-char (point-min)))
-        (display-buffer (current-buffer))))))
+          (goto-char (point-min))))
+      ;; Selected, not merely shown: the report is what was asked for, and `q'
+      ;; should dismiss it without going looking for its window first.
+      (pop-to-buffer buffer))))
 
 (provide 'vulpea-vault-attachments)
 ;;; attachments.el ends here
