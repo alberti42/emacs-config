@@ -168,7 +168,11 @@ file name since there is nothing to name it after."
                                   (plist-get tpl :head)))
                   "\n"))
      (when tags (list :tags tags))
-     (when (plist-get tpl :body) (list :body (plist-get tpl :body)))
+     ;; Always a body, empty when the folder has no template.  vulpea writes a
+     ;; blank line before a body and nothing at all without one, and the empty
+     ;; string is still a body to it — which leaves the note opening where
+     ;; every imported one does, a blank line below the keywords.
+     (list :body (or (plist-get tpl :body) ""))
      (if title
          (list :title title
                :file-name (expand-file-name "${fname}.org" dir)
