@@ -936,6 +936,27 @@ class Rewriter:
             out.append(chunk[pos:])
             return "".join(out)
 
+        # TODO: a link that *contains* code or math is never converted.
+        #
+        # Protected spans are skipped by slicing around them, so `rewrite_prose'
+        # only ever sees the gaps between them.  A wiki link whose target holds
+        # inline code or math straddles a span and arrives as two fragments —
+        # "[[#7.1. Understanding " and " Commands|7.1. Understanding " and
+        # " Commands]]" — so neither EMBED_RE nor WIKI_RE nor `scan_md_links'
+        # matches anything, and the link reaches pandoc as plain text.  It comes
+        # out looking converted (pandoc turns the backticks into "=code=") while
+        # keeping Obsidian's "[[#Heading|alias]]" shape, which org then reads as
+        # a `custom-id' link and fails to follow: 36 such links in this vault.
+        #
+        # The fix is to protect by substitution rather than by slicing: replace
+        # each span with an inert placeholder, run `rewrite_prose' over the whole
+        # body, then put the spans back.  It needs a *second* placeholder table,
+        # separate from `self.token': these must be restored to their original
+        # markdown before pandoc runs (so pandoc still renders the code and math),
+        # whereas link tokens are restored as org text afterwards.
+        #
+        # Not done because this tree is no longer re-imported; the 36 links were
+        # repaired in place.  Worth doing before any future vault is converted.
         out: list[str] = []
         pos = 0
         for m in PROTECTED_RE.finditer(self.note.body):
