@@ -32,33 +32,69 @@
 
 (require 'rx)
 
-(defconst vulpea-config-notes-directory
-  (expand-file-name "~/org/Work/")
-  "Root of the converted org notes.
-The single place to change when the tree moves.  Must match
-DEFAULT_OUT in `etc/goodies/obsidian-to-org.py', and must match the
-directory's case on disk: macOS is case-insensitive so a wrong case
-still opens files, but `org-id' stores abbreviated paths and
-`vulpea-config-update-id-locations' compares them with
-`string-prefix-p', which is not.")
+(defcustom vulpea-config-vaults '("~/org/Work/")
+  "Note vaults this configuration knows about; the first is opened at startup.
 
-(defconst vulpea-config-state-directory
-  (expand-file-name ".vulpea/" vulpea-config-notes-directory)
+Where a vault *is* is the one thing that cannot live inside it, so it is
+named here.  Everything about a vault's inside — its folder roles, tag
+vocabulary and note templates — is declared in its own `.dir-locals.el'.
+
+Each must match the directory's case on disk: macOS is case-insensitive
+so a wrong case still opens files, but `org-id' stores abbreviated paths
+and `vulpea-config-update-id-locations' compares them with
+`string-prefix-p', which is not."
+  :type '(repeat directory)
+  :group 'vulpea)
+
+(defvar vulpea-config-notes-directory nil
+  "Root of the vault currently in use.
+Assigned by `vulpea-config-apply-vault'; do not set it directly, since
+everything below derives from it.  Must match DEFAULT_OUT in
+`etc/goodies/obsidian-to-org.py' for a converted tree.")
+
+(defvar vulpea-config-state-directory nil
   "Per-vault state, kept inside the vault rather than in a global cache.
 The index then belongs to the vault and travels with it, which is what
-makes a second vault (Private, …) a matter of pointing
-`vulpea-config-notes-directory' elsewhere.
+makes a second vault a matter of pointing at it.
 
 Safe to keep here: vulpea's scanner skips hidden directories — anything
 whose path contains \"/.\" — so it neither indexes nor watches its own
 state, and writing the database cannot retrigger a sync.")
 
-(defconst vulpea-config-attach-directory
-  (expand-file-name "data/" vulpea-config-notes-directory)
+(defvar vulpea-config-attach-directory nil
   "Central org-attach store, matching the converter's --attach-dir.
 Must stay in sync with it: `org-attach' derives a note's directory
 from this path plus its `:ID:', so a mismatch silently yields an
 empty attachment directory rather than an error.")
+
+(defun vulpea-config-apply-vault (root)
+  "Point every vault-derived setting at ROOT, and return it.
+
+Assignment only — no database is opened and no watcher is touched — so
+it is as safe to run at load time as it is mid-session.  Switching a
+running Emacs needs the teardown and restart around it that
+`vulpea-vault-switch' supplies.
+
+The settings it owns are the reason a vault cannot simply be re-pointed
+by hand: three of them belong to other packages, `org-attach' and vulpea
+read plain values, and vulpea opens its database from
+`vulpea-db-location' as it finds it."
+  (setq vulpea-config-notes-directory (file-name-as-directory (expand-file-name root))
+        vulpea-config-state-directory (expand-file-name
+                                       ".vulpea/" vulpea-config-notes-directory)
+        vulpea-config-attach-directory (expand-file-name
+                                        "data/" vulpea-config-notes-directory)
+        org-attach-id-dir vulpea-config-attach-directory
+        vulpea-db-sync-directories (list vulpea-config-notes-directory)
+        vulpea-db-location (expand-file-name "vulpea.db" vulpea-config-state-directory))
+  (make-directory vulpea-config-state-directory t)
+  vulpea-config-notes-directory)
+
+;; Before the `use-package' forms below, so their `:init' blocks and every
+;; module loaded from here see a vault already in place.  Setting a defcustom
+;; a package has not defined yet is what those blocks were doing anyway:
+;; `defcustom' keeps a value that is already bound.
+(vulpea-config-apply-vault (car vulpea-config-vaults))
 
 (defun vulpea-config--cache-dir ()
   "Return the XDG cache directory for this config, creating it."
@@ -140,10 +176,10 @@ which on macOS returns uppercase; `org-id-locations' is an
   :straight nil
   :after org
   :init
-  (setq org-attach-id-dir vulpea-config-attach-directory
-        ;; Attach by ID rather than by an explicit :DIR: property, so a note's
-        ;; attachments follow it through renames and moves.
-        org-attach-preferred-new-method 'id))
+  ;; `org-attach-id-dir' is set by `vulpea-config-apply-vault', which follows
+  ;; the vault.  Attach by ID rather than by an explicit :DIR: property, so a
+  ;; note's attachments follow it through renames and moves.
+  (setq org-attach-preferred-new-method 'id))
 
 ;; Cross-note attachment links.  Stock `attachment:' carries only a filename,
 ;; which `org-attach-expand' resolves against the *current* node, so there is no
@@ -198,16 +234,14 @@ clears `org-id-locations' and rescans every known file."
          ("C-c n i" . vulpea-insert)
          ("C-c n b" . vulpea-find-backlink))
   :init
-  ;; Note the exact names.  `vulpea-directory' and `vulpea-db-file' are NOT
-  ;; vulpea variables — the first survives only in a commented example in
-  ;; vulpea.el's header, the second never existed.  Setting them does nothing
-  ;; but create globals, leaving vulpea on its defaults: the database in
-  ;; `user-emacs-directory' and the watch list at `org-directory' (~/org),
-  ;; which is wider than this vault.
-  (make-directory vulpea-config-state-directory t)
-  (setq vulpea-db-sync-directories (list vulpea-config-notes-directory)
-        vulpea-db-location (expand-file-name "vulpea.db" vulpea-config-state-directory)
-        ;; Parse in one reused buffer without re-running `org-mode' per file.
+  ;; `vulpea-db-sync-directories' and `vulpea-db-location' are set by
+  ;; `vulpea-config-apply-vault', which follows the vault.  Note their exact
+  ;; names: `vulpea-directory' and `vulpea-db-file' are NOT vulpea variables —
+  ;; the first survives only in a commented example in vulpea.el's header, the
+  ;; second never existed.  Setting those does nothing but create globals,
+  ;; leaving vulpea on its defaults: the database in `user-emacs-directory'
+  ;; and the watch list at `org-directory' (~/org), wider than any one vault.
+  (setq ;; Parse in one reused buffer without re-running `org-mode' per file.
         ;; The default `temp-buffer' re-runs it WITH hooks, so a full scan fires
         ;; `org-mode-hook' once per note — here that means `org-appear-mode',
         ;; the latex-to-svg setup, and lsp-ltex-plus trying to attach to a
@@ -261,6 +295,10 @@ clears `org-id-locations' and rescans every known file."
 (emacs-config-load-module
  "vulpea-vault/message"
  "Could not load vulpea-vault/message.el; message: links will not open.")
+
+(emacs-config-load-module
+ "vulpea-vault/switch"
+ "Could not load vulpea-vault/switch.el; `vulpea-vault-switch' is unavailable.")
 
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here
