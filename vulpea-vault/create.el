@@ -7,10 +7,16 @@
 ;; root of the vault containing nothing but `:ID:' and `#+title:'.  The notes
 ;; converted from the Obsidian vault follow other conventions: the file is
 ;; named after its title, sits in a topic folder, opens with the date, and
-;; carries `#+created:' and `#+modified:'.  The last one matters beyond
-;; appearance — `vulpea-vault/modified-keyword.el' refreshes a `#+modified:'
-;; that is already there and never adds one, so a note created without it
-;; never acquires it.
+;; carries `:CREATED:' and `:MODIFIED:' in the file-level property drawer,
+;; beside the `:ID:'.  The second matters beyond appearance —
+;; `vulpea-vault/modified-stamp.el' refreshes a `:MODIFIED:' that is already
+;; there and never adds one, so a note created without it never acquires it.
+;;
+;; Both are properties rather than keywords because vulpea indexes the
+;; property drawer and ignores arbitrary keywords: `:CREATED:' reaches the
+;; database as `vulpea-note-created-at' and answers
+;; `vulpea-db-query-by-created-date', while a `#+created:' line would have
+;; been text only grep could reach.
 ;;
 ;; `vulpea-create-default-function' supplies those defaults.  It runs in the
 ;; buffer the command was invoked from, so the destination can follow from
@@ -42,7 +48,7 @@
 ;;; Code:
 
 (require 'rx)
-(require 'vulpea-vault-modified-keyword)
+(require 'vulpea-vault-modified-stamp)
 (require 'vulpea-vault-directories)
 
 (defconst vulpea-vault-dated-title-regexp
@@ -60,7 +66,7 @@ A plist, meant to be set per folder from the vault's `.dir-locals.el'
 using its directory keys.  Keys, all optional:
 
   :tags   list of filetags
-  :head   keywords added after `#+created:' and `#+modified:'
+  :head   keywords added after `#+title:' and `#+filetags:'
   :body   initial content, written a blank line below the keywords
   :dated  nil to leave the title alone; otherwise today's date opens it
 
@@ -163,12 +169,14 @@ file name since there is nothing to name it after."
                     (concat (format-time-string "%F ") title)
                   title)))
     (append
-     (list :head (string-join
-                  (delq nil (list (format "#+created: %%<%s>\n#+modified: %%<%s>"
-                                          vulpea-vault-modified-time-format
-                                          vulpea-vault-modified-time-format)
-                                  (plist-get tpl :head)))
-                  "\n"))
+     ;; Both stamps open at the same instant; vulpea expands `%<…>' in a
+     ;; property value as it does in a template, so the format string is the
+     ;; same one `modified-stamp.el' refreshes with.
+     (list :properties
+           (let ((now (format "%%<%s>" vulpea-vault-modified-time-format)))
+             (list (cons "CREATED" now) (cons "MODIFIED" now))))
+     (when-let* ((head (plist-get tpl :head)))
+       (list :head head))
      (when tags (list :tags tags))
      ;; Always a body, empty when the folder declares none.  vulpea writes a
      ;; blank line before a body and nothing at all without one, and the empty

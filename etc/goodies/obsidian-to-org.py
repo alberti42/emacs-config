@@ -1043,16 +1043,24 @@ def build_org(note: Note, body: str) -> str:
     lines: list[str] = []
     # The drawer is first by requirement, not by preference: org reads a
     # file-level ID only from byte 0.  Do not insert anything above it.
+    #
+    # The timestamps go in the drawer rather than in `#+created:'/`#+modified:'
+    # keywords, because the drawer belongs to the file-level node these stamps
+    # describe -- and because vulpea indexes properties while arbitrary
+    # keywords reach the database not at all.  `:CREATED:' is read back as
+    # `vulpea-note-created-at'; the full ISO stamp is kept, vulpea taking the
+    # date out of it.  Property lines are laid out as org writes them,
+    # `org-property-format' = "%-10s %s".
     lines.append(":PROPERTIES:")
-    lines.append(f":ID:       {note.uuid}")
+    lines.append("%-10s %s" % (":ID:", note.uuid))
+    if note.created:
+        lines.append("%-10s %s" % (":CREATED:", note.created))
+    if note.modified:
+        lines.append("%-10s %s" % (":MODIFIED:", note.modified))
     lines.append(":END:")
     lines.append(f"#+title: {note.title}")
     if note.org_tags:
         lines.append("#+filetags: :" + ":".join(note.org_tags) + ":")
-    if note.created:
-        lines.append(f"#+created: {note.created}")
-    if note.modified:
-        lines.append(f"#+modified: {note.modified}")
     for key, value in note.extras.items():
         lines.append(f"#+{keyword_name(key)}: {scalar(value)}")
     lines.append("")

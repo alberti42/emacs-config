@@ -195,6 +195,47 @@ over, reconciled with what the converted notes actually carry. Keys:
   that variable — which is why `tags.el` must be loaded for the
   *templates* to apply at all.
 
+## Where a per-note fact goes: keyword, drawer, or meta list
+
+Org offers three places, and they are not interchangeable — vulpea reads
+two of them:
+
+| Where | Syntax | Indexed | Queryable by |
+| ----- | ------ | ------- | ------------ |
+| Keyword | `#+created: 2024-11-04` | **no** | grep |
+| Property drawer | `:CREATED:  2024-11-04` | yes → `properties` | `vulpea-db-query-by-property` |
+| Meta list | `- status :: open` | yes → `meta` | `vulpea-db-query-by-meta` |
+
+Only a handful of keywords are special-cased at extraction — `#+title`,
+`#+filetags`, `#+CATEGORY`, aliases. Everything else in the preamble is
+text the index never sees. That is why this vault's timestamps are
+`:CREATED:` / `:MODIFIED:` properties: `:CREATED:` becomes
+`vulpea-note-created-at` (read by `vulpea-db--extract-created-date`,
+which scans the value for the first `YYYY-MM-DD`, so a full ISO stamp
+with zone offset is fine) and answers `vulpea-db-query-by-created-date`.
+
+`:MODIFIED:` earns less — properties support exact-match lookup only —
+because **filesystem mtime is already indexed**, as `vulpea-note-modified-at`
+and the `files` table behind `vulpea-db-query-stale-notes`. It is there
+for symmetry and because the stamp describes the file-level node.
+
+### Where a file-level drawer may sit
+
+It must be the **first element in the buffer**: before the first heading
+*and* before every keyword, with only comments allowed above. Verified:
+
+| File starts with | `org-entry-get` | `org-element` |
+| ---------------- | --------------- | ------------- |
+| drawer, then `#+title:` | ✅ | ✅ |
+| `#+title:`, then drawer | ❌ | ❌ not parsed as a property drawer |
+| `# comment`, then drawer | ✅ | ✅ |
+| blank line, then drawer | ❌ | ✅ parsed |
+
+The last row is the trap: a leading blank line splits the two parsers, so
+vulpea would index properties that `org-entry-get` — and therefore
+inheritance, `org-entry-put`, and `modified-stamp.el` — cannot see. The
+converter emits the drawer at byte 0 for this reason.
+
 ## Where a new note lands
 
 `vulpea-create-default-function` → `vulpea-vault-create-defaults`
@@ -211,7 +252,7 @@ its subdirectory is the note's *year* rather than a topic, so creating
 from a 2024 daily note still files under the new note's own year.
 
 The note is named after its title, opens with today's date, and is
-seeded with `#+created:` / `#+modified:` plus the folder's
+seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
 `vulpea-vault-template`.
 
 ## Two gotchas that cost real time
@@ -225,6 +266,12 @@ seeded with `#+created:` / `#+modified:` plus the folder's
 - **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
   mismatch yields an *empty* attachment directory rather than an error.
   Likewise `vulpea-config-notes-directory` versus its `DEFAULT_OUT`.
+- **The watcher does not survive a bulk external edit.** Rewriting all
+  949 notes at once (the `:CREATED:`/`:MODIFIED:` migration) left the
+  index holding 697 of them, and it never caught up — no error, just a
+  database quietly describing the previous state. `M-x
+  vulpea-db-sync-full-scan` reconciled it in one pass. Run it after any
+  change made from outside Emacs: a script, a `git pull`, a restore.
 
 ## Other behaviour owned here
 
@@ -248,7 +295,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 
 | File                  | Concern                                                        |
 | --------------------- | -------------------------------------------------------------- |
-| `modified-keyword.el` | refreshes `#+modified:` on save, only in notes that have it     |
+| `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
 | `scheme.el`           | what makes a directory a vault; the schema version and its check |
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
