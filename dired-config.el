@@ -2,6 +2,26 @@
 
 ;;; Code:
 
+;; When non-nil, inject the ls -h flag so sizes show as 4.0K / 1.2M rather
+;; than raw byte counts.  `dired-config--switches' reads this to build every
+;; switch string (the default listing and each sort command), so there is a
+;; single source of truth; `dired-config-toggle-human-readable-sizes' flips it
+;; live.
+(defcustom dired-config-human-readable-sizes t
+  "When non-nil, Dired shows human-readable file sizes (ls -h)."
+  :type 'boolean
+  :group 'dired)
+
+(defun dired-config--switches (base &optional extra)
+  "Build an ls switch string from BASE, optional -h, and EXTRA.
+BASE is the leading flag cluster without the dash (e.g. \"al\", \"l\").
+The h flag is inserted when `dired-config-human-readable-sizes' is
+non-nil.  EXTRA is any trailing flags/long options (e.g. \"S\", \"tr\",
+\" --sort=time --time=birth\")."
+  (concat "-" base
+          (if dired-config-human-readable-sizes "h" "")
+          (or extra "")))
+
 (use-package dired
   :straight nil
   :init
@@ -12,6 +32,8 @@
   ;; of opening new buffer for each directory
   (dired-kill-when-opening-new-dired-buffer t)
   (dired-dwim-target t)
+  ;; Built dynamically from `dired-config-human-readable-sizes'.
+  (dired-listing-switches (dired-config--switches "al"))
   (dired-use-ls-dired t)
   (delete-by-moving-to-trash t))
 
@@ -60,20 +82,38 @@ or reveal in the system file manager."
       (reveal-file file)))
     (message "Applied '%s' to %s" selected (file-name-nondirectory file))))
 
-(defun dired-sort-by-name ()            (interactive) (dired-sort-other "-l"))
-(defun dired-sort-by-name-r ()          (interactive) (dired-sort-other "-lr"))
-(defun dired-sort-by-size ()            (interactive) (dired-sort-other "-lS"))
-(defun dired-sort-by-size-r ()          (interactive) (dired-sort-other "-lSr"))
-(defun dired-sort-by-mtime ()           (interactive) (dired-sort-other "-lt"))
-(defun dired-sort-by-mtime-r ()         (interactive) (dired-sort-other "-ltr"))
+(defun dired-sort-by-name ()            (interactive) (dired-sort-other (dired-config--switches "l")))
+(defun dired-sort-by-name-r ()          (interactive) (dired-sort-other (dired-config--switches "l" "r")))
+(defun dired-sort-by-size ()            (interactive) (dired-sort-other (dired-config--switches "l" "S")))
+(defun dired-sort-by-size-r ()          (interactive) (dired-sort-other (dired-config--switches "l" "Sr")))
+(defun dired-sort-by-mtime ()           (interactive) (dired-sort-other (dired-config--switches "l" "t")))
+(defun dired-sort-by-mtime-r ()         (interactive) (dired-sort-other (dired-config--switches "l" "tr")))
 (defun dired-sort-by-btime ()
   "Sort by birth (creation) time, newest first.  Requires GNU ls >= 8.25."
-  (interactive) (dired-sort-other "-l --sort=time --time=birth"))
+  (interactive) (dired-sort-other (dired-config--switches "l" " --sort=time --time=birth")))
 (defun dired-sort-by-btime-r ()
   "Sort by birth (creation) time, oldest first.  Requires GNU ls >= 8.25."
-  (interactive) (dired-sort-other "-lr --sort=time --time=birth"))
-(defun dired-sort-by-ext ()             (interactive) (dired-sort-other "-lX"))
-(defun dired-sort-by-ext-r ()           (interactive) (dired-sort-other "-lXr"))
+  (interactive) (dired-sort-other (dired-config--switches "l" "r --sort=time --time=birth")))
+(defun dired-sort-by-ext ()             (interactive) (dired-sort-other (dired-config--switches "l" "X")))
+(defun dired-sort-by-ext-r ()           (interactive) (dired-sort-other (dired-config--switches "l" "Xr")))
+
+(defun dired-config-toggle-human-readable-sizes ()
+  "Toggle human-readable file sizes in Dired and refresh the listing.
+Updates the global default and, in a Dired buffer, re-sorts in place
+while preserving the current sort order (by adding/removing the h flag
+in the buffer-local switches)."
+  (interactive)
+  (setq dired-config-human-readable-sizes
+        (not dired-config-human-readable-sizes))
+  (setq-default dired-listing-switches (dired-config--switches "al"))
+  (when (derived-mode-p 'dired-mode)
+    (let ((base (replace-regexp-in-string "h" "" dired-actual-switches)))
+      (dired-sort-other
+       (if dired-config-human-readable-sizes
+           (replace-regexp-in-string "\\`\\(-[a-zA-Z]*\\)" "\\1h" base)
+         base))))
+  (message "Dired human-readable sizes %s"
+           (if dired-config-human-readable-sizes "on" "off")))
 
 (defun dired-goto-first-file ()
   "Move point to the first non-trivial file in the Dired listing."
@@ -102,7 +142,8 @@ or reveal in the system file manager."
   (define-key dired-mode-map (kbd ", s") #'dired-sort-by-size)
   (define-key dired-mode-map (kbd ", S") #'dired-sort-by-size-r)  
   (define-key dired-mode-map (kbd ", e") #'dired-sort-by-ext)
-  (define-key dired-mode-map (kbd ", E") #'dired-sort-by-ext-r))
+  (define-key dired-mode-map (kbd ", E") #'dired-sort-by-ext-r)
+  (define-key dired-mode-map (kbd ", h") #'dired-config-toggle-human-readable-sizes))
 
 ;;; -- Font-locking -----------------------------------------------------------
 
