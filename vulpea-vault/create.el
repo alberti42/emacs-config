@@ -24,9 +24,15 @@
 ;; writing where nothing would index it, and so does one inside the attachment
 ;; store, which holds attachments rather than notes.
 ;;
-;; What the note starts as then comes from the folder, the way Obsidian's
-;; Templater plugin picked a template per folder — the mapping in
-;; `vulpea-vault-folder-templates' is that configuration, carried over.
+;; What the note starts as then comes from the folder — the way Obsidian's
+;; Templater plugin picked a template per folder.  That mapping belongs to the
+;; vault, not here, so it lives in the vault's `.dir-locals.el' as
+;; `vulpea-vault-template', declared once per folder against the directory
+;; keys `.dir-locals.el' already supports.  Emacs resolves the folder; nothing
+;; in this file matches paths.  Absent keys fall back to what this file
+;; decides, which is why an entry carries only what makes its folder differ:
+;; a deeper directory key replaces the value of a shallower one outright
+;; rather than merging into it.
 ;;
 ;; The title reaches the file name as a `:context' value instead of being
 ;; spliced into the template string.  vulpea expands `%(elisp)' in a template
@@ -50,65 +56,62 @@
 Such a title is not given a second date, and files under the year it
 names rather than the current one.")
 
-(defconst vulpea-vault-teaching-tag-overrides
-  '(("E4 Atom und Molekülphysik" . "E4")
-    ("Experimental techniques"   . "Experimental_Techniques")
-    ("Organization"              . "Teaching"))
-  "Teaching subfolders whose tag is not simply their own name.")
+;;;; What a folder's notes start as
 
-(defun vulpea-vault-teaching-tags (subpath)
-  "Return the filetags for a Teaching note in SUBPATH.
-SUBPATH is relative to \"05 Teaching\".  Reproduces the rule the Obsidian
-template computed: the tag is the immediate subfolder with its spaces
-removed, apart from the three in `vulpea-vault-teaching-tag-overrides',
-and is plain \"Teaching\" for a note sitting in the folder itself."
-  (let ((sub (car (split-string (or subpath "") "/" t "\\`\\.\\'"))))
-    (list (cond ((null sub) "Teaching")
-                ((cdr (assoc sub vulpea-vault-teaching-tag-overrides)))
-                (t (replace-regexp-in-string "[[:space:]]+" "" sub))))))
+(defvar-local vulpea-vault-template nil
+  "What a note created in this directory starts as, or nil for the defaults.
 
-(defcustom vulpea-vault-folder-templates
-  `(("01 Daily notes"       :tags ("Daily"))
-    ("02 Paper writing"     :tags ("Paper")
-     :body ,(concat "* References\n\n--------------\n\n"
-                    "- Computer:\n- Folder references:\n- Git commit:\n\n"
-                    "* Observations\n"))
-    ("03 Literature review" :tags ("Literature")
-     :body ,(concat "* 📘 References:\n\n--------------\n\n-\n\n"
-                    "* ✏️ Observations:\n\n--------------\n\n"
-                    "* 📌 Summary:\n\n--------------\n"))
-    ("04 Computer related"  :tags ("Computer"))
-    ("05 Teaching"          :tags vulpea-vault-teaching-tags)
-    ("06 MPQ"               :tags ("Regulations" "MPQ"))
-    ("07 LMU"               :tags ("Regulations" "LMU"))
-    ("08 Conferences"       :tags ("Daily") :head "#+location:")
-    ("09 Flashcards"        :dated nil)
-    ("10 Prompts"           :tags ("Prompt") :head "#+quality:")
-    ("11 Software licenses" :tags ("Software")))
-  "What a new note starts as, chosen by the folder it is created in.
+A plist, meant to be set per folder from the vault's `.dir-locals.el'
+using its directory keys.  Keys, all optional:
 
-Carried over from the Obsidian vault's Templater configuration, which
-picked a template per folder, and reconciled with what the converted
-notes actually carry: \"11 Software licenses\" gains the entry it never
-had in Templater (all 169 of its notes are tagged Software), \"10
-Prompts\" is the folder Templater still called \"11 Prompts\", and the
-Templater entry sending \"09 Flashcards\" to the daily template is
-dropped, no note there having ever been tagged Daily.
-
-Each entry is a folder relative to `vulpea-config-notes-directory'
-followed by a plist.  A folder covers its subfolders, and the longest
-matching folder wins.  Keys:
-
-  :tags   list of filetags, or a function of the path below the folder
+  :tags   list of filetags
   :head   keywords added after `#+created:' and `#+modified:'
-  :body   initial content
-  :dated  nil to leave the title alone; otherwise today's date opens it,
-          as it does in 906 of the 950 converted notes
+  :body   initial content, written a blank line below the keywords
+  :dated  nil to leave the title alone; otherwise today's date opens it
 
-Values are expanded by `vulpea-create', so `%(elisp)', `%<format>' and
-`${title}' work in them."
-  :type '(alist :key-type string :value-type plist)
-  :group 'vulpea)
+An entry carries only what makes its folder differ.  Emacs replaces the
+value of a shallower directory key rather than merging into it, so a
+subfolder cannot inherit half of its parent's — what is absent comes
+from `vulpea-vault-create-defaults' instead.")
+
+(defconst vulpea-vault-template-keys '(:tags :head :body :dated)
+  "The keys `vulpea-vault-template' may carry.")
+
+(defun vulpea-vault-template-p (value)
+  "Return non-nil if VALUE is a well-formed `vulpea-vault-template'.
+
+Admits inert data only — strings, lists of strings, and t or nil — and
+in particular no function symbols, so a vault's `.dir-locals.el' can
+describe its folders without being able to introduce code."
+  (and (listp value)
+       (zerop (% (length value) 2))
+       (let ((rest value) (ok t))
+         (while (and ok rest)
+           (let ((key (pop rest))
+                 (val (pop rest)))
+             (setq ok (pcase key
+                        (:tags (and (listp val) (seq-every-p #'stringp val)))
+                        ((or :head :body) (stringp val))
+                        (:dated (or (eq val t) (null val)))
+                        (_ nil)))))
+         ok)))
+
+(put 'vulpea-vault-template 'safe-local-variable #'vulpea-vault-template-p)
+
+(defun vulpea-vault--template (dir)
+  "Return the `vulpea-vault-template' the vault declares for DIR.
+
+Resolved from DIR rather than read out of the current buffer, even when
+that buffer is dired listing DIR.  The daily-note path needs a directory
+nobody is visiting, so the lookup has to exist regardless; and one that
+reads `.dir-locals.el' afresh cannot go stale the way a dired buffer
+made before the file was last edited would."
+  (with-temp-buffer
+    (setq default-directory dir)
+    (hack-dir-local-variables-non-file-buffer)
+    vulpea-vault-template))
+
+;;;; Where it lands
 
 (defun vulpea-vault--dired-directory ()
   "Return the vault directory dired is listing, or nil.
@@ -119,20 +122,6 @@ somewhere vulpea does not index — and inside the attachment store."
       (and (file-in-directory-p dir vulpea-config-notes-directory)
            (not (file-in-directory-p dir vulpea-config-attach-directory))
            dir))))
-
-(defun vulpea-vault--folder-template (dir)
-  "Return (PLIST . SUBPATH) from `vulpea-vault-folder-templates' for DIR.
-PLIST belongs to the longest configured folder containing DIR, so a
-nested entry wins over the one above it, and SUBPATH is what is left of
-DIR below that folder.  Nil when no entry covers DIR."
-  (let (best (best-length -1))
-    (pcase-dolist (`(,folder . ,plist) vulpea-vault-folder-templates)
-      (let ((root (expand-file-name folder vulpea-config-notes-directory)))
-        (when (and (> (length root) best-length)
-                   (file-in-directory-p dir root))
-          (setq best (cons plist (file-relative-name dir root))
-                best-length (length root)))))
-    best))
 
 (defun vulpea-vault--file-base (title)
   "Return TITLE as a file name base.
@@ -145,21 +134,19 @@ after its title verbatim, and no title in the vault contains a slash."
 Value of `vulpea-create-default-function'; see this file's commentary.
 TITLE is nil for an untitled note, which then keeps a timestamp for a
 file name since there is nothing to name it after."
-  (pcase-let* ((dired-dir (vulpea-vault--dired-directory))
-               (dated (and title (string-match vulpea-vault-dated-title-regexp title)))
-               (year (if dated (match-string 1 title) (format-time-string "%Y")))
-               (dir (or dired-dir
-                        (expand-file-name (concat year "/")
-                                          vulpea-vault-daily-directory)))
-               (`(,tpl . ,subpath) (vulpea-vault--folder-template dir))
-               (tags (plist-get tpl :tags))
-               (tags (if (functionp tags) (funcall tags subpath) tags))
-               (title (if (and title (not dated)
-                               (if (plist-member tpl :dated)
-                                   (plist-get tpl :dated)
-                                 t))
-                          (concat (format-time-string "%F ") title)
-                        title)))
+  (let* ((dired-dir (vulpea-vault--dired-directory))
+         (dated (and title (string-match vulpea-vault-dated-title-regexp title)))
+         (year (if dated (match-string 1 title) (format-time-string "%Y")))
+         (dir (or dired-dir
+                  (expand-file-name (concat year "/") vulpea-vault-daily-directory)))
+         (tpl (vulpea-vault--template dir))
+         (tags (plist-get tpl :tags))
+         (title (if (and title (not dated)
+                         (if (plist-member tpl :dated)
+                             (plist-get tpl :dated)
+                           t))
+                    (concat (format-time-string "%F ") title)
+                  title)))
     (append
      (list :head (string-join
                   (delq nil (list (format "#+created: %%<%s>\n#+modified: %%<%s>"
@@ -168,7 +155,7 @@ file name since there is nothing to name it after."
                                   (plist-get tpl :head)))
                   "\n"))
      (when tags (list :tags tags))
-     ;; Always a body, empty when the folder has no template.  vulpea writes a
+     ;; Always a body, empty when the folder declares none.  vulpea writes a
      ;; blank line before a body and nothing at all without one, and the empty
      ;; string is still a body to it — which leaves the note opening where
      ;; every imported one does, a blank line below the keywords.
