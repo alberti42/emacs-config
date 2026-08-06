@@ -1,0 +1,271 @@
+# vulpea-config.el
+
+Note database over the org notes migrated from an Obsidian vault —
+**vulpea v2**, which is standalone (v2 dropped org-roam and owns its own
+SQLite db).
+
+Also the single owner of the settings that key off `:ID:`, because
+*three* systems share that one property:
+
+| System       | Uses `:ID:` for               |
+| ------------ | ----------------------------- |
+| `org-id`     | `id:` links                   |
+| `org-attach` | the attachment directory      |
+| vulpea       | its database primary key      |
+
+Each note's `:ID:` is the `uuid` its Obsidian front matter carried, so
+links, external UUID references and attachment directories survive
+renames.
+
+The tree itself is produced by `etc/goodies/obsidian-to-org.py` — see
+its header for the conversion invariants.
+
+## The vault ↔ config boundary
+
+Everything a vault can state about itself, it states in its own
+`.dir-locals.el`: that it *is* a vault, which scheme it follows, what
+its folders are for, its tag vocabulary, its note templates. The
+configuration keeps only what a vault cannot say — where it is — and
+even that is not written down anywhere.
+
+**No vault directory is named in this repository.** There is no vault
+list and no startup setting. A vault becomes known by being opened, and
+`vulpea-vault-history` is the whole of what Emacs knows about which
+vaults exist.
+
+### Startup
+
+`vulpea-config--initial-vault` resumes the most recent entry of
+`vulpea-vault-history`, walking down past any vault whose directory is
+missing right now — an unmounted volume is a reason to open something
+else, not a reason to fail. The vault actually resumed is then pushed to
+the front of the history at the foot of the file, so skipping an
+unreachable one is recorded as what it is.
+
+Reading the history that early works because of a load-order fact worth
+knowing:
+
+- `savehist-mode` starts at **init.el:299** and restores the list by
+  plain `setq`;
+- `vulpea-config.el` is loaded at **init.el:636**, well after;
+- `vulpea-vault/switch.el`, which owns the variable, is loaded at the
+  *foot* of `vulpea-config.el` — so its `defvar` runs last of all, and
+  leaves an already-bound value alone.
+
+Hence `bound-and-true-p` at the call site: the variable may legitimately
+not exist yet.
+
+### No vault open is a supported state
+
+`vulpea-config-notes-directory` nil is ordinary — a first run with an
+empty history. Autosync stays off with a message, and the first note
+opened from a vault activates it through the `find-file-hook` guard.
+
+Consumers split two ways:
+
+- **Answer nil and carry on** — `vulpea-vault--candidates` (no "current"
+  entry, just the escape), `vulpea-vault-switch` (nothing to close),
+  `vulpea-vault-special-directory`, `vulpea-vault--context-directory`.
+- **Refuse cleanly** — `vulpea-vault-orphans`,
+  `vulpea-config-update-id-locations` and note creation with no daily
+  folder go through `vulpea-config-vault-or-error`, so nil fails as one
+  `user-error` instead of a wrong-type-argument deep inside.
+
+## `vulpea-config-apply-vault`
+
+Derives five settings from a root and assigns them. Called at load and
+by `vulpea-vault-switch`:
+
+| Setting                        | Value                        |
+| ------------------------------ | ---------------------------- |
+| `vulpea-config-state-directory` | `<root>/.vulpea/`           |
+| `vulpea-config-attach-directory` | `<root>/data/`             |
+| `org-attach-id-dir`            | = attach directory           |
+| `vulpea-db-sync-directories`   | `(<root>)`                   |
+| `vulpea-db-location`           | `<root>/.vulpea/vulpea.db`   |
+
+Three of those belong to other packages, which is why a vault cannot be
+re-pointed by hand.
+
+`org-id` locations live under `$XDG_CACHE_HOME/emacs/` instead — they
+span every org file Emacs knows, not one vault. The database lives in
+the vault's own `.vulpea/`, so the index travels with the notes.
+
+## Switching vaults live
+
+`M-x vulpea-vault-switch` (`vulpea-vault/switch.el`) closes the leaving
+vault's buffers, stops the watcher, closes the database, re-points, and
+restarts — no Emacs restart.
+
+The prompt offers `vulpea-vault-history` (persisted via
+`savehist-additional-variables`, appended under a
+`with-eval-after-load 'savehist` so load order does not matter), the
+active vault last, and project.el's `... (choose a directory)` escape
+for a vault reached by path. A remembered vault whose directory is
+missing is left out of the prompt but kept in the history; the history
+entry is added only after the switch succeeds.
+
+Modified notes are offered for saving before the kill, `save-some-buffers`
+doing the asking; declining leaves `kill-buffer` to ask again, which is
+the bargain any other kill makes.
+
+**Closing the buffers is required, not tidy.** `org-attach-id-dir` is a
+single global with no per-buffer form, so a note left open from the old
+vault would resolve `attachment:` links against the *new* vault's store
+and find nothing. Dir-locals, being per-buffer, stay correct — it is
+only this one global that cannot. Buffers are closed *before* anything
+is re-pointed, so declining to kill a modified note leaves the vault
+unchanged rather than half-switched.
+
+The same module guards the other direction from `find-file-hook`:
+opening an org file whose vault is not the active one offers **switch /
+open anyway / cancel**, since that is exactly the case where
+`attachment:` links fail silently. With no vault active there is nothing
+to weigh, so the note's own vault is simply opened. A loose org file
+outside any vault never prompts.
+
+## What makes a directory a vault
+
+Only this, in its `.dir-locals.el`:
+
+```elisp
+(vulpea-vault-version . 1)
+```
+
+The mere presence of a `.dir-locals.el` means nothing — most projects
+have one, this repository included.
+
+`vulpea-vault-schema-version` (in `scheme.el`) is what these modules
+implement. A vault declaring anything else, or nothing, is still opened,
+but `vulpea-vault-version-check` warns — once per vault per session,
+since the check runs for every note opened there. The version governs
+the whole vault↔config contract (folder roles, tag vocabulary,
+templates), which is why it lives on its own rather than inside any one
+of them. Raise it when a change would make an older vault behave
+*wrongly* rather than merely differently.
+
+## What the vault declares
+
+All in the vault's own `.dir-locals.el`, all behind `safe-local-variable`
+predicates that admit inert data only — no function symbols — so a vault
+cannot introduce code: `natnump` for the version itself, then
+`vulpea-vault-special-directories-p`, `vulpea-vault-tag-alist-p` and
+`vulpea-vault-template-p`.
+
+### Folder roles — `vulpea-vault-special-directories`
+
+An alist of role → folder, currently just `daily`, read back by
+`vulpea-vault-special-directory`, which resolves against the vault root
+because the caller is usually outside the vault. Keeps folder names like
+`01 Daily notes/` out of this repository.
+
+### Tag vocabulary — `org-tag-alist` / `org-tag-persistent-alist`
+
+`vulpea-vault/tags.el` marks both safe as file-locals behind a predicate
+admitting only tag names, selection characters and grouping keywords,
+then re-runs `(org-set-regexps-and-options 'tags-only)` from
+`hack-local-variables-hook`.
+
+**That recompute is not optional.** Dir-locals are applied *after* the
+major mode has run, and `org-mode` has already derived the buffer-local
+`org-current-tag-alist` — the value every consumer reads — from the
+globals. A dir-local `org-tag-alist` alone changes nothing.
+
+Obsidian's nested tags appear as org tag *groups*, the converter having
+kept the last segment of `#Teaching/E4`. The converter still emits
+`00 Meta/org-tag-alist.el` for a fresh vault; the work vault's copy was
+folded into its `.dir-locals.el` and the file deleted.
+
+### Note templates — `vulpea-vault-template`
+
+Declared **per folder**, under the directory keys dir-locals already
+supports, so Emacs resolves the folder and nothing here matches paths.
+This is the Obsidian Templater `folder_templates` configuration carried
+over, reconciled with what the converted notes actually carry. Keys:
+`:tags`, `:head`, `:body`, `:dated`.
+
+### Dir-locals gotchas that bite here
+
+- A **deeper directory key replaces** a shallower one's value rather
+  than merging it, so each entry must be self-contained; absent keys
+  fall back to code.
+- A **nested `.dir-locals.el`** anywhere under the vault shadows the
+  root file *wholesale*. One file per vault.
+- **One unsafe variable makes Emacs discard the entire file**, not just
+  that variable — which is why `tags.el` must be loaded for the
+  *templates* to apply at all.
+
+## Where a new note lands
+
+`vulpea-create-default-function` → `vulpea-vault-create-defaults`
+(`vulpea-vault/create.el`).
+
+A new note goes in the current buffer's `default-directory` when that is
+inside the vault — dired's listed directory, the directory of the note
+being read, a shell's cwd. Otherwise it becomes a note under
+`<daily>/<year>/`, where `<daily>` is the folder the vault gives the
+`daily` role (vault root if it declares none).
+
+The daily tree is the one exception to following `default-directory`:
+its subdirectory is the note's *year* rather than a topic, so creating
+from a 2024 daily note still files under the new note's own year.
+
+The note is named after its title, opens with today's date, and is
+seeded with `#+created:` / `#+modified:` plus the folder's
+`vulpea-vault-template`.
+
+## Two gotchas that cost real time
+
+- **vulpea does not hook `org-id`.** Its own commands resolve through
+  the db, but a plain `[[id:…]]` link goes through `org-id-locations`,
+  which nothing populates automatically. Run
+  `M-x vulpea-config-update-id-locations` after a conversion.
+  (`vulpea-config-register-ids` on `vulpea-db-worker-done-functions`
+  keeps the two in step for files indexed later.)
+- **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
+  mismatch yields an *empty* attachment directory rather than an error.
+  Likewise `vulpea-config-notes-directory` versus its `DEFAULT_OUT`.
+
+## Other behaviour owned here
+
+- **IDs are minted by an `:override` on `org-id-new`** returning
+  `(uuid-to-string (uuid-v4))`. Org 9.8.7 still forks
+  `org-id-uuid-program`, which is uppercase on macOS, and ID lookup is
+  case-sensitive.
+- **Cross-note attachment links.** Stock `attachment:` carries only a
+  filename, resolved against the *current* node, so there is no
+  cross-reference syntax. An `attachment:<uuid>/file` form is added via
+  advice on `org-attach-expand` — the one choke point shared by
+  following, inline preview and export. The converter emits 51 of them.
+- **Autosync is guarded on the tree existing**, so a not-yet-run
+  conversion degrades to "installed but idle" rather than erroring at
+  startup.
+
+## Modules — `vulpea-vault/`
+
+One concern per file, loaded from `vulpea-config.el` the way
+`completion.el` loads `completions/`.
+
+| File                  | Concern                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| `modified-keyword.el` | refreshes `#+modified:` on save, only in notes that have it     |
+| `scheme.el`           | what makes a directory a vault; the schema version and its check |
+| `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
+| `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
+| `create.el`           | where a new note lands and what it starts as                    |
+| `attachments.el`      | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
+| `bibdesk.el`          | the `x-bdsk:` link type                                         |
+| `pdffile.el`          | the `pdffile:` link type                                        |
+| `message.el`          | the `message:` link type                                        |
+| `switch.el`           | live vault switching, the history, the wrong-vault guard        |
+
+## Keys and commands
+
+| Binding / command                     | Purpose                              |
+| ------------------------------------- | ------------------------------------ |
+| `C-c n f`                             | `vulpea-find`                        |
+| `C-c n i`                             | `vulpea-insert`                      |
+| `C-c n b`                             | `vulpea-find-backlink`               |
+| `M-x vulpea-vault-switch`             | open another vault, live             |
+| `M-x vulpea-vault-orphans`            | the vault health report              |
+| `M-x vulpea-config-update-id-locations` | repair `org-id-locations` from the db |
