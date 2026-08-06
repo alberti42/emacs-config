@@ -118,9 +118,11 @@ where a new note belongs.
 
 Nil outside the vault, where the note would land somewhere vulpea does
 not index, and nil inside the attachment store, which holds attachments
-rather than notes."
+rather than notes.  Nil too when no vault is open, there being no inside
+to be in."
   (let ((dir (expand-file-name default-directory)))
-    (and (file-in-directory-p dir vulpea-config-notes-directory)
+    (and vulpea-config-notes-directory
+         (file-in-directory-p dir vulpea-config-notes-directory)
          (not (file-in-directory-p dir vulpea-config-attach-directory))
          dir)))
 
@@ -141,9 +143,11 @@ file name since there is nothing to name it after."
          (daily (vulpea-vault-special-directory 'daily))
          ;; A vault declaring no daily folder still has to put the note
          ;; somewhere indexed, and its root is the one directory it must have.
+         ;; With no vault open there is nowhere indexed at all, which is the
+         ;; one case here that cannot be worked around, only reported.
          (fallback (if daily
                        (expand-file-name (concat year "/") daily)
-                     vulpea-config-notes-directory))
+                     (vulpea-config-vault-or-error)))
          ;; Anywhere in the daily tree means the note's own year, not the year
          ;; of whichever note happened to be open: reading a 2024 daily note
          ;; must not file a note dated today under 2024.

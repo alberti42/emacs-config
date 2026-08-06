@@ -15,10 +15,10 @@
 ;; and scans the new tree, so a vault opened for the first time indexes
 ;; itself.
 ;;
-;; Nothing about the vaults themselves lives here.  Which vaults exist is
-;; `vulpea-config-vaults' and `vulpea-vault-history' — the ones configured and
-;; the ones actually opened — and what each one contains it says itself, in its
-;; own `.dir-locals.el'.
+;; Nothing about the vaults themselves lives here, nor anywhere else in this
+;; configuration.  Which vaults exist is `vulpea-vault-history', the ones that
+;; have been opened; where the rest are is answered by typing a path the once.
+;; What a vault contains it says itself, in its own `.dir-locals.el'.
 ;;
 ;; The vault being left is closed as well as unhooked: its notes and any dired
 ;; listing of it are killed, after `save-some-buffers' has offered to save
@@ -40,8 +40,11 @@
 
 Grown by `vulpea-vault-switch' and offered back by it, the way
 `project.el' offers the projects you have visited: a vault reached once
-by typing its path need not be typed again, and need not be added to
-`vulpea-config-vaults' either.
+by typing its path need not be typed again.
+
+This is the whole of what Emacs knows about which vaults exist — no
+directory is named in the configuration — and it is also what
+`vulpea-config--initial-vault' resumes at startup.
 
 Persisted across sessions through `savehist' — the list is registered in
 `savehist-additional-variables' below — and truncated to
@@ -58,23 +61,25 @@ gesture and there is nothing to gain by spelling it differently.")
 (defun vulpea-vault--candidates ()
   "Return the vaults to offer, most recently opened first.
 
-`vulpea-vault-history' before `vulpea-config-vaults', so the order is by
-use and falls back to what is configured; the active vault last, where
-it is out of the way but still says where you are; and the escape to any
-other directory at the very end.
+`vulpea-vault-history' in its own order, which is by use; the active
+vault last, where it is out of the way but still says where you are; and
+the escape to any other directory at the very end.
 
 A remembered vault whose directory has gone is left out of the prompt
 rather than dropped from the history — a vault on a volume that is not
-mounted is not gone, and comes back on its own."
+mounted is not gone, and comes back on its own.
+
+The first time of all, the list is the escape alone: nothing has been
+opened yet and nothing is configured, so there is nothing else to say."
   (let ((known (delete-dups
                 (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
-                        (append vulpea-vault-history vulpea-config-vaults)))))
+                        vulpea-vault-history))))
     (append (seq-filter (lambda (d)
                           (and (not (equal d vulpea-config-notes-directory))
                                (file-directory-p d)))
                         known)
-            (list vulpea-config-notes-directory
-                  vulpea-vault-choose-directory))))
+            (delq nil (list vulpea-config-notes-directory
+                            vulpea-vault-choose-directory)))))
 
 (defun vulpea-vault--read ()
   "Prompt for a vault among those known, or for any other directory."
@@ -114,11 +119,11 @@ anything, which is the bargain any other kill makes."
 (defun vulpea-vault-switch (root)
   "Make ROOT the vault in use, without restarting Emacs.
 
-Interactively, offer the vaults opened before and those in
-`vulpea-config-vaults', with `vulpea-vault-choose-directory' for any
-other directory.  A vault opened by that route is remembered in
-`vulpea-vault-history', so it is offered from then on without being
-added to the configured list.
+Interactively, offer the vaults opened before, with
+`vulpea-vault-choose-directory' for any other.  A vault opened by that
+route is remembered in `vulpea-vault-history', so it is offered from
+then on and resumed at the next startup — being opened is the whole of
+how a vault becomes known.
 
 A vault with no index yet is scanned in the background, so the switch
 returns before its notes are findable."
@@ -129,11 +134,16 @@ returns before its notes are findable."
     (when (equal root vulpea-config-notes-directory)
       (user-error "Already in %s" root))
     (vulpea-vault-version-check (vulpea-vault-version-at root) root)
-    (let ((watching vulpea-db-autosync-mode)
+    (let (;; With no vault open there was nothing to watch, so the watcher
+          ;; being off says nothing about whether it is wanted — only a vault
+          ;; left with it deliberately off keeps it off.
+          (watching (or vulpea-db-autosync-mode (null vulpea-config-notes-directory)))
           ;; Closed before re-pointing, while this still names the vault being
           ;; left — and before the watcher stops, so a save made here is still
           ;; picked up by the index it belongs to.
-          (closed (vulpea-vault--close-buffers vulpea-config-notes-directory)))
+          (closed (if vulpea-config-notes-directory
+                      (vulpea-vault--close-buffers vulpea-config-notes-directory)
+                    0)))
       (when watching (vulpea-db-autosync-mode -1))
       (vulpea-db-close)
       (vulpea-config-apply-vault root)

@@ -57,14 +57,17 @@ layout without being able to introduce code."
 Read from the vault root through
 `hack-dir-local-variables-non-file-buffer', which is how a buffer not
 visiting a file picks up directory-local variables — the caller is
-usually somewhere else entirely, and may be outside the vault."
-  (let ((alist (with-temp-buffer
-                 (setq default-directory vulpea-config-notes-directory)
-                 (hack-dir-local-variables-non-file-buffer)
-                 vulpea-vault-special-directories)))
-    (when-let* ((dir (alist-get role alist)))
-      (file-name-as-directory
-       (expand-file-name dir vulpea-config-notes-directory)))))
+usually somewhere else entirely, and may be outside the vault.
+
+Nil as well when no vault is open: no vault, no roles."
+  (when vulpea-config-notes-directory
+    (let ((alist (with-temp-buffer
+                   (setq default-directory vulpea-config-notes-directory)
+                   (hack-dir-local-variables-non-file-buffer)
+                   vulpea-vault-special-directories)))
+      (when-let* ((dir (alist-get role alist)))
+        (file-name-as-directory
+         (expand-file-name dir vulpea-config-notes-directory))))))
 
 (provide 'vulpea-vault-directories)
 ;;; directories.el ends here

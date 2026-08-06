@@ -267,7 +267,7 @@ which cannot be judged without the file: those notes are read once each,
 in a second pass."
   (interactive)
   (let* ((start (current-time))
-         (notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
+         (notes (vulpea-db-query-by-directory (vulpea-config-vault-or-error)))
          (ids (make-hash-table :test 'equal))
          (referenced (make-hash-table :test 'equal))
          (skipped (make-hash-table :test 'equal))

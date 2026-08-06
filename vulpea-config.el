@@ -31,26 +31,19 @@
 ;;; Code:
 
 (require 'rx)
-
-(defcustom vulpea-config-vaults '("~/org/Work/")
-  "Note vaults this configuration knows about; the first is opened at startup.
-
-Where a vault *is* is the one thing that cannot live inside it, so it is
-named here.  Everything about a vault's inside — its folder roles, tag
-vocabulary and note templates — is declared in its own `.dir-locals.el'.
-
-Each must match the directory's case on disk: macOS is case-insensitive
-so a wrong case still opens files, but `org-id' stores abbreviated paths
-and `vulpea-config-update-id-locations' compares them with
-`string-prefix-p', which is not."
-  :type '(repeat directory)
-  :group 'vulpea)
+(require 'seq)
 
 (defvar vulpea-config-notes-directory nil
-  "Root of the vault currently in use.
+  "Root of the vault currently in use, or nil when none is open.
+
 Assigned by `vulpea-config-apply-vault'; do not set it directly, since
 everything below derives from it.  Must match DEFAULT_OUT in
-`etc/goodies/obsidian-to-org.py' for a converted tree.")
+`etc/goodies/obsidian-to-org.py' for a converted tree.
+
+Nil is an ordinary state, not a broken one — an Emacs started before any
+vault has been opened.  Code that only wants to know where it is tests
+this and carries on; a command that cannot proceed without a vault says
+so through `vulpea-config-vault-or-error'.")
 
 (defvar vulpea-config-state-directory nil
   "Per-vault state, kept inside the vault rather than in a global cache.
@@ -90,11 +83,40 @@ read plain values, and vulpea opens its database from
   (make-directory vulpea-config-state-directory t)
   vulpea-config-notes-directory)
 
+(defun vulpea-config-vault-or-error ()
+  "Return the active vault root, or say that there is none.
+For the commands that are meaningless without one — where nil would
+otherwise travel a long way before failing as a wrong argument type."
+  (or vulpea-config-notes-directory
+      (user-error "No vault is open; `vulpea-vault-switch' opens one")))
+
+(defun vulpea-config--initial-vault ()
+  "Return the vault to resume at startup, or nil when there is none.
+
+The one opened last, which is the only vault this configuration knows of
+— no directory is named anywhere in it, since a vault is not something
+Emacs has to be told about in advance.  Opening one is what makes it
+known, and `vulpea-vault-history' is where that is kept.
+
+That list belongs to `vulpea-vault/switch.el', which is loaded at the
+foot of this file and so has not run yet — but savehist restored it by
+plain `setq' when `savehist-mode' started, long before this file was
+reached, hence `bound-and-true-p' rather than a reference to a variable
+that may simply not exist yet.
+
+The history is walked rather than merely read: a vault whose directory
+is not there right now is skipped in favour of the one visited before
+it, which is what makes an unmounted volume a reason to open something
+else instead of a reason to fail."
+  (seq-find (lambda (d) (file-directory-p (expand-file-name d)))
+            (bound-and-true-p vulpea-vault-history)))
+
 ;; Before the `use-package' forms below, so their `:init' blocks and every
-;; module loaded from here see a vault already in place.  Setting a defcustom
+;; module loaded from here see the vault already in place.  Setting a defcustom
 ;; a package has not defined yet is what those blocks were doing anyway:
 ;; `defcustom' keeps a value that is already bound.
-(vulpea-config-apply-vault (car vulpea-config-vaults))
+(when-let* ((root (vulpea-config--initial-vault)))
+  (vulpea-config-apply-vault root))
 
 (defun vulpea-config--cache-dir ()
   "Return the XDG cache directory for this config, creating it."
@@ -133,9 +155,10 @@ file, and would discard IDs that are merely unreachable.  Entries outside
 the tree belong to other org files and are never touched."
   (interactive)
   (unless org-id-locations (org-id-locations-load))
-  (let* ((notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
+  (let* ((vault (vulpea-config-vault-or-error))
+         (notes (vulpea-db-query-by-directory vault))
          (live (make-hash-table :test 'equal :size (length notes)))
-         (root (abbreviate-file-name vulpea-config-notes-directory))
+         (root (abbreviate-file-name vault))
          (dropped 0))
     (dolist (note notes)
       (puthash (vulpea-note-id note) t live))
@@ -254,13 +277,18 @@ clears `org-id-locations' and rescans every known file."
         vulpea-db-parse-method 'single-temp-buffer)
   :config
   (add-hook 'vulpea-db-worker-done-functions #'vulpea-config-register-ids)
-  ;; Watch the tree and index in the background.  Guarded so a missing tree
-  ;; degrades to "vulpea installed but idle" instead of erroring at startup —
-  ;; the conversion may not have been run yet.
-  (if (file-directory-p vulpea-config-notes-directory)
-      (vulpea-db-autosync-mode +1)
+  ;; Watch the tree and index in the background.  Guarded twice over, so both
+  ;; "no vault opened yet" and "a vault whose tree is not there" degrade to
+  ;; "vulpea installed but idle" rather than erroring at startup.
+  ;; `vulpea-vault-switch' starts the watcher when a vault is opened later.
+  (cond
+   ((null vulpea-config-notes-directory)
+    (message "vulpea: no vault open; M-x vulpea-vault-switch opens one"))
+   ((file-directory-p vulpea-config-notes-directory)
+    (vulpea-db-autosync-mode +1))
+   (t
     (message "vulpea: %s does not exist yet; autosync not started"
-             vulpea-config-notes-directory)))
+             vulpea-config-notes-directory))))
 
 ;; Vault utilities live in vulpea-vault/, one concern per file, loaded from here
 ;; the way `completion.el' loads completions/.
@@ -303,6 +331,13 @@ clears `org-id-locations' and rescans every known file."
 (emacs-config-load-module
  "vulpea-vault/switch"
  "Could not load vulpea-vault/switch.el; `vulpea-vault-switch' is unavailable.")
+
+;; Move the vault actually resumed to the front of the history: when the one
+;; opened last was unreachable and an older one was taken instead, that older
+;; one is now the last visited.  After the module above, which defines the list.
+(when (and vulpea-config-notes-directory (boundp 'vulpea-vault-history))
+  (let ((history-delete-duplicates t))
+    (add-to-history 'vulpea-vault-history vulpea-config-notes-directory)))
 
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here
