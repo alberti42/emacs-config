@@ -235,6 +235,10 @@ clears `org-id-locations' and rescans every known file."
  "Could not load vulpea-vault/modified-keyword.el; #+modified: will not refresh on save.")
 
 (emacs-config-load-module
+ "vulpea-vault/create"
+ "Could not load vulpea-vault/create.el; new notes will use vulpea's own defaults.")
+
+(emacs-config-load-module
  "vulpea-vault/attachments"
  "Could not load vulpea-vault/attachments.el; `vulpea-vault-orphans' is unavailable.")
 
