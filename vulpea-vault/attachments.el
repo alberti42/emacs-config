@@ -17,6 +17,17 @@
 ;; `org-element' files them all as `fuzzy'.  Calling those broken would bury
 ;; the handful of genuinely dangling links.  Registering the types with
 ;; `org-link-set-parameters' is the fix for them, not repair.
+;;
+;; The rest of the `fuzzy' pile *is* checkable, and is checked: `[[*Heading]]'
+;; and `[[dedicated-target]]' both point inside the file that holds them, so
+;; the file itself says whether they resolve.  This is the one place the report
+;; reads a note, and only notes carrying such a link, once each.
+;;
+;; It also catches text that was never meant to be a link.  Org claims any
+;; `[[…]]', so stabilizer-code notation (`[[8,3,2]]'), Mathematica part
+;; extraction (`[[1]]') and a pasted config key all become links pointing
+;; nowhere.  They belong in the report: org renders them as links, and the fix
+;; is to make them verbatim.
 
 ;;; Code:
 
@@ -24,10 +35,63 @@
 (require 'org-attach)
 (require 'seq)
 
-(defconst vulpea-vault-checkable-link-types '("attachment" "id" "file" "pdffile")
+(defconst vulpea-vault-checkable-link-types
+  '("attachment" "id" "file" "pdffile" "fuzzy")
   "Link types `vulpea-vault-orphans' can verify.
-Everything else is either remote (`https:'), or a type org does not
-know, or an internal target that would need the file parsed.")
+Everything else is remote (`https:') or a scheme org does not know.
+`fuzzy' is only partly verifiable — see `vulpea-vault--fuzzy-scheme'.")
+
+(defun vulpea-vault--fuzzy-scheme (dest)
+  "Return DEST's URI scheme when it has one.
+
+`org-element' types a link with an unregistered scheme as `fuzzy', so
+`message://…' arrives here looking like an internal target.  Reporting
+the scheme instead of \"fuzzy\" tells the reader which link type is
+missing an `org-link-set-parameters'.
+
+The colon must be followed by a non-blank for this to count, so an
+ordinary heading reference like `[[*Summary: incoherent averaging]]' is
+not mistaken for a scheme."
+  (when (string-match "\\`\\([A-Za-z][A-Za-z0-9+.-]*\\):[^ \t]" dest)
+    (match-string 1 dest)))
+
+(defun vulpea-vault--anchors (path cache)
+  "Return (HEADINGS . TARGETS) for PATH, memoised in CACHE.
+TARGETS covers both `<<dedicated targets>>' and `#+NAME:' values, the
+two things a non-headline fuzzy link can land on."
+  (or (gethash path cache)
+      (puthash
+       path
+       (with-temp-buffer
+         (insert-file-contents path)
+         (let ((case-fold-search t) headings targets)
+           (goto-char (point-min))
+           (while (re-search-forward "^\\*+[ \t]+\\(.*?\\)[ \t]*$" nil t)
+             (push (match-string-no-properties 1) headings))
+           (goto-char (point-min))
+           (while (re-search-forward "<<\\([^<>\n]+\\)>>" nil t)
+             (push (match-string-no-properties 1) targets))
+           (goto-char (point-min))
+           (while (re-search-forward "^[ \t]*#\\+name:[ \t]*\\(.+?\\)[ \t]*$" nil t)
+             (push (match-string-no-properties 1) targets))
+           (cons headings targets)))
+       cache)))
+
+(defun vulpea-vault--fuzzy-resolves-p (note dest cache)
+  "Non-nil if the fuzzy link DEST in NOTE lands on something in NOTE's file.
+
+A leading `*' restricts the search to headlines; anything else may also
+match a dedicated target or a `#+NAME:'.  Org would additionally fall
+back to a plain-text search, which is deliberately not imitated: the
+link's own text would satisfy it every time, so every link would pass.
+A link reported here therefore means \"no anchor of any kind\", which is
+worth fixing whether or not a stray text match would rescue it."
+  (let* ((anchors (vulpea-vault--anchors (vulpea-note-path note) cache))
+         (headings (car anchors)))
+    (if (string-prefix-p "*" dest)
+        (member (substring dest 1) headings)
+      (or (member dest (cdr anchors))
+          (member dest headings)))))
 
 (defun vulpea-vault--attachment-file (note dest)
   "Resolve an `attachment:' DEST written in NOTE to an absolute file.
@@ -90,7 +154,7 @@ An `id:' target is a note, so always internal; a file target is judged by
 whether it lives under `vulpea-config-notes-directory'."
   (let ((link (nth 1 entry))
         (target (nth 2 entry)))
-    (or (equal (plist-get link :type) "id")
+    (or (member (plist-get link :type) '("id" "fuzzy"))
         (file-in-directory-p target vulpea-config-notes-directory))))
 
 (defun vulpea-vault--insert-dangling (heading entries)
@@ -126,15 +190,27 @@ fixing.  Reads vulpea's database; the notes are not re-parsed."
          (ids (make-hash-table :test 'equal))
          (referenced (make-hash-table :test 'equal))
          (skipped (make-hash-table :test 'equal))
+         (anchors (make-hash-table :test 'equal))
          dangling)
     (dolist (note notes)
       (puthash (vulpea-note-id note) t ids))
     ;; One pass: collect what is referenced and what fails to resolve.
     (dolist (note notes)
       (dolist (link (vulpea-note-links note))
-        (let ((type (plist-get link :type)))
-          (if (not (member type vulpea-vault-checkable-link-types))
-              (cl-incf (gethash type skipped 0))
+        (let ((type (plist-get link :type))
+              (dest (plist-get link :dest)))
+          (cond
+           ((equal type "fuzzy")
+            ;; Either an unregistered scheme (counted under that scheme, which
+            ;; names the missing link type) or a target inside this same file.
+            (let ((scheme (vulpea-vault--fuzzy-scheme dest)))
+              (if scheme
+                  (cl-incf (gethash scheme skipped 0))
+                (unless (vulpea-vault--fuzzy-resolves-p note dest anchors)
+                  (push (list note link dest) dangling)))))
+           ((not (member type vulpea-vault-checkable-link-types))
+            (cl-incf (gethash type skipped 0)))
+           (t
             (let ((target (vulpea-vault--link-target note link)))
               (when target
                 (if (equal type "id")
@@ -142,7 +218,7 @@ fixing.  Reads vulpea's database; the notes are not re-parsed."
                       (push (list note link target) dangling))
                   (puthash target t referenced)
                   (unless (file-exists-p target)
-                    (push (list note link target) dangling)))))))))
+                    (push (list note link target) dangling))))))))))
     (let ((orphans (seq-remove (lambda (f) (gethash f referenced))
                               (vulpea-vault--store-files))))
       (with-current-buffer (get-buffer-create "*vulpea orphans*")
@@ -172,9 +248,8 @@ fixing.  Reads vulpea's database; the notes are not re-parsed."
               (maphash (lambda (k v) (push (cons k v) rows)) skipped)
               (dolist (row (sort rows (lambda (a b) (> (cdr a) (cdr b)))))
                 (insert (format "- %s: %d\n" (car row) (cdr row))))
-              (insert "\n  `fuzzy' covers link types org does not know, such as\n"
-                      "  x-bdsk:, pdffile: and message:.  Those need\n"
-                      "  `org-link-set-parameters', not repair.\n")))
+              (insert "\n  A scheme listed here is a link type org does not know;\n"
+                      "  it needs `org-link-set-parameters', not repair.\n")))
           (goto-char (point-min)))
         (display-buffer (current-buffer))))))
 
