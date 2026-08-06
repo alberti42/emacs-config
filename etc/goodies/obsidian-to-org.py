@@ -137,6 +137,32 @@ PROTECTED_RE = re.compile(
     re.DOTALL | re.MULTILINE,
 )
 
+# TODO: "protected" only means the converter keeps its hands off — pandoc still
+# reads these regions as markdown, and for display math that loses content.
+#
+# A `$$…$$' block written one factor per line is normal in this vault:
+#
+#     $$
+#     \epsilon_{\mathrm{stat}}
+#     =
+#     \frac{\pi^2}{4}
+#     $$
+#
+# A line holding nothing but "=" is a setext heading underline, so pandoc reads
+# "$$ \epsilon_{\mathrm{stat}}" as an H1 and consumes the "=" as its underline.
+# The relation symbol is gone from the output and the rest of the block is left
+# as prose under a heading called "$$".  A lone "-" line would do the same.  Any
+# "\," in what remains then decays to "," — a markdown escape of a comma.  Three
+# blocks in this vault, all repaired in place.
+#
+# The fix is to keep display math away from pandoc entirely: recognise `$$…$$'
+# here, emit the org form directly as "\\[…\\]", and hand it through `self.token'
+# like a link.  Pandoc converts the well-behaved blocks correctly today, so this
+# only has to cover the ones it would otherwise reparse.
+#
+# Worth doing before any future vault is converted; the check afterwards is that
+# `org-element' finds one latex-fragment per source block.
+
 
 def nfc(text: str) -> str:
     """Normalise to NFC.
