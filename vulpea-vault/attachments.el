@@ -28,6 +28,11 @@
 ;; extraction (`[[1]]') and a pasted config key all become links pointing
 ;; nowhere.  They belong in the report: org renders them as links, and the fix
 ;; is to make them verbatim.
+;;
+;; The report closes with the same question asked of tags: which of the tags
+;; the notes actually carry are missing from the vault's declared vocabulary.
+;; Only that direction is drift — a declared tag with no notes yet is someone
+;; deciding a tag should exist, which is what declaring is for.
 
 ;;; Code:
 
@@ -193,6 +198,44 @@ whether it lives under `vulpea-config-notes-directory'."
                         (vulpea-vault--org-link path line (vulpea-note-title note))
                         (plist-get link :type) target))))))
 
+(defun vulpea-vault--declared-tags ()
+  "Return the tag names the vault declares in its `.dir-locals.el'.
+
+Read through `hack-dir-local-variables-non-file-buffer', which is how a
+buffer not visiting a file picks up directory-local variables.  The
+declaration is scoped to the vault on purpose (see vulpea-vault/tags.el),
+so it is invisible from the report's own buffer and has to be fetched.
+
+Group parents count as declared: they are entries of the alist like any
+other, even though no note is tagged with them."
+  (with-temp-buffer
+    (setq default-directory vulpea-config-notes-directory)
+    (hack-dir-local-variables-non-file-buffer)
+    (seq-filter #'stringp
+                (mapcar #'car (append org-tag-alist org-tag-persistent-alist)))))
+
+(defconst vulpea-vault-undeclared-tag-notes-limit 5
+  "How many notes an undeclared tag is listed with.
+A tag on more notes than this is plainly one to declare rather than a
+typo to track down, so the paths stop earning their room.")
+
+(defun vulpea-vault--insert-undeclared-tags (tags)
+  "Insert the section listing TAGS, each with the notes carrying it."
+  (insert (format "\n* Tags in use but not declared (%d)\n" (length tags)))
+  (if (null tags)
+      (insert "  none\n")
+    (dolist (tag (sort tags #'string<))
+      (let ((tagged (vulpea-db-query-by-tags-some (list tag))))
+        (insert (format "- %s (%d)\n" tag (length tagged)))
+        (when (<= (length tagged) vulpea-vault-undeclared-tag-notes-limit)
+          (dolist (note (seq-sort-by #'vulpea-note-path #'string< tagged))
+            (insert (format "  - %s\n"
+                            (vulpea-vault--org-link (vulpea-note-path note) nil
+                                                    (vulpea-note-title note))))))))
+    (insert "\n  Either a tag to add to the vault's .dir-locals.el, or a typo to\n"
+            (format "  fix in the note.  Notes are listed for a tag on %d or fewer.\n"
+                    vulpea-vault-undeclared-tag-notes-limit))))
+
 (defun vulpea-vault--org-link (path line label)
   "An org link to LINE of PATH, shown as LABEL."
   (format "[[file:%s%s][%s]]"
@@ -201,8 +244,8 @@ whether it lives under `vulpea-config-notes-directory'."
           (replace-regexp-in-string "[][]" "" label)))
 
 (defun vulpea-vault-orphans ()
-  "Report dangling links and unreferenced attachment files.
-Both lists are clickable: follow a link to reach the place that needs
+  "Report dangling links, unreferenced attachment files and undeclared tags.
+The lists are clickable: follow a link to reach the place that needs
 fixing.
 
 Everything comes from vulpea's database except the same-file links,
@@ -252,14 +295,17 @@ in a second pass."
            (cl-incf (gethash scheme skipped 0) count))))
      fuzzy)
     (let ((orphans (seq-remove (lambda (f) (gethash f referenced))
-                              (vulpea-vault--store-files))))
+                               (vulpea-vault--store-files)))
+          (undeclared (seq-difference (vulpea-db-query-tags)
+                                      (vulpea-vault--declared-tags))))
       (with-current-buffer (get-buffer-create "*vulpea orphans*")
         (let ((inhibit-read-only t))
           (erase-buffer)
           (org-mode)
           (insert "#+title: Vault orphans\n\n"
-                  (format "%d notes, %d dangling links, %d unreferenced files\n\n"
-                          (length notes) (length dangling) (length orphans)))
+                  (format "%d notes, %d dangling links, %d unreferenced files, %d undeclared tags\n\n"
+                          (length notes) (length dangling) (length orphans)
+                          (length undeclared)))
           ;; Split by where the target lives: inside the vault it is the vault's
           ;; own problem to repair, outside it is a file that moved or a volume
           ;; that is not mounted — a different kind of follow-up.
@@ -273,6 +319,7 @@ in a second pass."
             (dolist (f (sort orphans #'string<))
               (insert (format "- %s\n"
                               (vulpea-vault--org-link f nil (file-name-nondirectory f))))))
+          (vulpea-vault--insert-undeclared-tags undeclared)
           (insert "\n* Not checked\n")
           (if (zerop (hash-table-count skipped))
               (insert "  nothing\n")
