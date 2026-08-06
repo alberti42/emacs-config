@@ -243,6 +243,20 @@ typo to track down, so the paths stop earning their room.")
           (if line (format "::%d" line) "")
           (replace-regexp-in-string "[][]" "" label)))
 
+(define-derived-mode vulpea-vault-report-mode org-mode "Vulpea-Report"
+  "Major mode for the `vulpea-vault-orphans' report.
+
+Derived from `org-mode' so the entries stay live links, but read-only
+and dismissed with `q', the way a help buffer is — the report is output,
+and there is nothing in it to edit.
+
+A derived mode rather than a binding added to the buffer: the local map
+of an org buffer *is* `org-mode-map', so `local-set-key' there would
+rebind `q' in every org buffer, this vault's notes included."
+  (setq buffer-read-only t))
+
+(define-key vulpea-vault-report-mode-map (kbd "q") #'quit-window)
+
 (defun vulpea-vault-orphans ()
   "Report dangling links, unreferenced attachment files and undeclared tags.
 The lists are clickable: follow a link to reach the place that needs
@@ -301,7 +315,7 @@ in a second pass."
       (with-current-buffer (get-buffer-create "*vulpea orphans*")
         (let ((inhibit-read-only t))
           (erase-buffer)
-          (org-mode)
+          (vulpea-vault-report-mode)
           (insert "#+title: Vault orphans\n\n"
                   (format "%d notes, %d dangling links, %d unreferenced files, %d undeclared tags\n\n"
                           (length notes) (length dangling) (length orphans)
