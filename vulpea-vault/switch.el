@@ -101,5 +101,61 @@ returns before its notes are findable."
       (message "Vault: %s — %d buffer%s closed"
                (abbreviate-file-name root) closed (if (= closed 1) "" "s")))))
 
+;;;; Opening a note from a vault that is not the active one
+
+(defun vulpea-vault--buffer-vault ()
+  "Return the root of the vault this buffer's file belongs to, or nil.
+
+A directory is a vault when its `.dir-locals.el' declares what only a
+vault declares — some `vulpea-vault-' variable.  The mere presence of a
+`.dir-locals.el' says nothing; most projects have one.
+
+`dir-local-variables-alist' already lists what was applied to this
+buffer, so the question costs no file reading, and the answer does not
+depend on which vault happens to be active: directory-locals are a
+property of where the file is."
+  (when (and buffer-file-name
+             (seq-some (lambda (entry)
+                         (string-prefix-p "vulpea-vault-" (symbol-name (car entry))))
+                       dir-local-variables-alist))
+    (when-let* ((root (locate-dominating-file default-directory dir-locals-file)))
+      (file-name-as-directory (expand-file-name root)))))
+
+(defun vulpea-vault-check-buffer ()
+  "Offer to activate this note's vault when it is not the active one.
+
+Reading a note from an inactive vault mostly works — its tags and
+templates come from its own directory-locals — but `org-attach-id-dir'
+is a single global, so every `attachment:' link in it resolves against
+the active vault's store and finds nothing.  That failure is silent,
+which is why this asks rather than letting it happen.
+
+Run from `find-file-hook', after directory-locals have been applied.
+With no vault active the note's own is simply opened; there is nothing
+to weigh up."
+  (when (derived-mode-p 'org-mode)
+    (when-let* ((vault (vulpea-vault--buffer-vault)))
+      (unless (equal vault vulpea-config-notes-directory)
+        (if (null vulpea-config-notes-directory)
+            (vulpea-vault-switch vault)
+          (pcase (car (read-multiple-choice
+                       (format "%s belongs to vault %s, not the active %s"
+                               (file-name-nondirectory buffer-file-name)
+                               (abbreviate-file-name vault)
+                               (abbreviate-file-name vulpea-config-notes-directory))
+                       '((?s "switch" "Activate that vault, closing this one's buffers")
+                         (?o "open anyway" "Read it as it is; attachment: links will not resolve")
+                         (?c "cancel" "Do not open the file"))))
+            (?s (vulpea-vault-switch vault))
+            (?c (let ((name buffer-file-name))
+                  ;; Killed before signalling, so `find-file' has nothing left
+                  ;; to display and no half-visited buffer is left behind.
+                  (set-buffer-modified-p nil)
+                  (kill-buffer)
+                  (user-error "Not opened: %s" (abbreviate-file-name name))))
+            (_ nil)))))))
+
+(add-hook 'find-file-hook #'vulpea-vault-check-buffer)
+
 (provide 'vulpea-vault-switch)
 ;;; switch.el ends here
