@@ -1064,7 +1064,14 @@ def build_org(note: Note, body: str) -> str:
     for key, value in note.extras.items():
         lines.append(f"#+{keyword_name(key)}: {scalar(value)}")
     lines.append("")
-    return "\n".join(lines) + body.lstrip("\n")
+    preamble = "\n".join(lines)
+
+    # Exactly one blank line between the preamble and the body: the shape
+    # every note in the vault carries, and what `vulpea-vault/create.el'
+    # writes for a new one.  A note with no body ends at the preamble rather
+    # than trailing a blank line.
+    body = body.lstrip("\n")
+    return (preamble + "\n" + body) if body else preamble
 
 
 def convert(
