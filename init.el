@@ -473,6 +473,11 @@ monitor."
 ;;  'treemacs-config
 ;;  "Could not load treemacs-config.el; Treemacs is disabled.")
 
+;; Speedbar: built-in file/tag browser.
+(emacs-config-load-module
+ 'speedbar-config
+ "Could not load speedbar-config.el; Speedbar customizations are disabled.")
+
 ;; inheritenv: propagate buffer-local `process-environment' and `exec-path'
 ;; from the caller buffer into commands that internally pop to a fresh
 ;; buffer (and therefore lose the caller's buffer-locals) before spawning.
