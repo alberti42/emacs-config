@@ -43,10 +43,7 @@
 
 (require 'rx)
 (require 'vulpea-vault-modified-keyword)
-
-(defconst vulpea-vault-daily-directory
-  (expand-file-name "01 Daily notes/" vulpea-config-notes-directory)
-  "Root of the dated notes, one subdirectory per year.")
+(require 'vulpea-vault-directories)
 
 (defconst vulpea-vault-dated-title-regexp
   (rx bos (group (= 4 digit)) "-" (= 2 digit) "-" (= 2 digit) " ")
@@ -141,12 +138,17 @@ file name since there is nothing to name it after."
   (let* ((here (vulpea-vault--context-directory))
          (dated (and title (string-match vulpea-vault-dated-title-regexp title)))
          (year (if dated (match-string 1 title) (format-time-string "%Y")))
-         (yearly (expand-file-name (concat year "/") vulpea-vault-daily-directory))
+         (daily (vulpea-vault-special-directory 'daily))
+         ;; A vault declaring no daily folder still has to put the note
+         ;; somewhere indexed, and its root is the one directory it must have.
+         (fallback (if daily
+                       (expand-file-name (concat year "/") daily)
+                     vulpea-config-notes-directory))
          ;; Anywhere in the daily tree means the note's own year, not the year
          ;; of whichever note happened to be open: reading a 2024 daily note
          ;; must not file a note dated today under 2024.
-         (dir (cond ((null here) yearly)
-                    ((file-in-directory-p here vulpea-vault-daily-directory) yearly)
+         (dir (cond ((null here) fallback)
+                    ((and daily (file-in-directory-p here daily)) fallback)
                     (t here)))
          (tpl (vulpea-vault--template dir))
          (tags (plist-get tpl :tags))

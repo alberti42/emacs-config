@@ -235,6 +235,10 @@ clears `org-id-locations' and rescans every known file."
  "Could not load vulpea-vault/modified-keyword.el; #+modified: will not refresh on save.")
 
 (emacs-config-load-module
+ "vulpea-vault/directories"
+ "Could not load vulpea-vault/directories.el; the vault's folder roles are unavailable.")
+
+(emacs-config-load-module
  "vulpea-vault/tags"
  "Could not load vulpea-vault/tags.el; the vault's tag groups will not be in effect.")
 
