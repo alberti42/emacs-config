@@ -14,15 +14,13 @@
 ;;
 ;; `vulpea-create-default-function' supplies those defaults.  It runs in the
 ;; buffer the command was invoked from, so the destination can follow from
-;; context:
+;; context — `default-directory', whether that is the directory dired is
+;; listing or the one holding the note being read.  Being somewhere in the
+;; vault is taken as a statement of where the note belongs; anywhere else, and
+;; the note becomes a daily one under "01 Daily notes/<year>/".
 ;;
-;; - dired listing a directory of the vault: that directory, on the reading
-;;   that having navigated there already says where the note belongs;
-;; - anywhere else: a daily note under "01 Daily notes/<year>/".
-;;
-;; A dired buffer outside the vault falls back to the daily note rather than
-;; writing where nothing would index it, and so does one inside the attachment
-;; store, which holds attachments rather than notes.
+;; The daily tree is the exception to following `default-directory', since its
+;; subdirectory is the note's year rather than a topic.
 ;;
 ;; What the note starts as then comes from the folder — the way Obsidian's
 ;; Templater plugin picked a template per folder.  That mapping belongs to the
@@ -113,15 +111,21 @@ made before the file was last edited would."
 
 ;;;; Where it lands
 
-(defun vulpea-vault--dired-directory ()
-  "Return the vault directory dired is listing, or nil.
-Nil outside dired, outside the vault — where the note would land
-somewhere vulpea does not index — and inside the attachment store."
-  (when (derived-mode-p 'dired-mode)
-    (let ((dir (expand-file-name default-directory)))
-      (and (file-in-directory-p dir vulpea-config-notes-directory)
-           (not (file-in-directory-p dir vulpea-config-attach-directory))
-           dir))))
+(defun vulpea-vault--context-directory ()
+  "Return the vault directory the current buffer is in, or nil.
+
+`default-directory' throughout, which is the directory dired is listing,
+the directory of the note being read, or a shell's working directory —
+each of them an answer to \"where am I\" that is as good a statement of
+where a new note belongs.
+
+Nil outside the vault, where the note would land somewhere vulpea does
+not index, and nil inside the attachment store, which holds attachments
+rather than notes."
+  (let ((dir (expand-file-name default-directory)))
+    (and (file-in-directory-p dir vulpea-config-notes-directory)
+         (not (file-in-directory-p dir vulpea-config-attach-directory))
+         dir)))
 
 (defun vulpea-vault--file-base (title)
   "Return TITLE as a file name base.
@@ -134,11 +138,16 @@ after its title verbatim, and no title in the vault contains a slash."
 Value of `vulpea-create-default-function'; see this file's commentary.
 TITLE is nil for an untitled note, which then keeps a timestamp for a
 file name since there is nothing to name it after."
-  (let* ((dired-dir (vulpea-vault--dired-directory))
+  (let* ((here (vulpea-vault--context-directory))
          (dated (and title (string-match vulpea-vault-dated-title-regexp title)))
          (year (if dated (match-string 1 title) (format-time-string "%Y")))
-         (dir (or dired-dir
-                  (expand-file-name (concat year "/") vulpea-vault-daily-directory)))
+         (yearly (expand-file-name (concat year "/") vulpea-vault-daily-directory))
+         ;; Anywhere in the daily tree means the note's own year, not the year
+         ;; of whichever note happened to be open: reading a 2024 daily note
+         ;; must not file a note dated today under 2024.
+         (dir (cond ((null here) yearly)
+                    ((file-in-directory-p here vulpea-vault-daily-directory) yearly)
+                    (t here)))
          (tpl (vulpea-vault--template dir))
          (tags (plist-get tpl :tags))
          (title (if (and title (not dated)
