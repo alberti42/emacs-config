@@ -272,6 +272,12 @@ seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
   database quietly describing the previous state. `M-x
   vulpea-db-sync-full-scan` reconciled it in one pass. Run it after any
   change made from outside Emacs: a script, a `git pull`, a restore.
+- **A plain full scan will not notice a metadata-only change.** It
+  compares content, so restoring 948 mtimes moved nothing: the index
+  went on reporting one single day until `(vulpea-db-sync-full-scan
+  'force)` — `C-u M-x vulpea-db-sync-full-scan` — re-indexed everything.
+  Reach for the prefix argument whenever what changed is *about* the
+  files rather than *in* them.
 
 ## Other behaviour owned here
 
