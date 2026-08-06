@@ -32,6 +32,7 @@
 ;;; Code:
 
 (require 'seq)
+(require 'vulpea-vault-directories)
 
 (defun vulpea-vault--candidates ()
   "Return the known vaults, current one first, as absolute directories."
@@ -83,6 +84,7 @@ returns before its notes are findable."
       (user-error "Not a directory: %s" root))
     (when (equal root vulpea-config-notes-directory)
       (user-error "Already in %s" root))
+    (vulpea-vault-version-check (vulpea-vault-version-at root) root)
     (let ((watching vulpea-db-autosync-mode)
           ;; Closed before re-pointing, while this still names the vault being
           ;; left — and before the watcher stops, so a save made here is still
@@ -106,20 +108,19 @@ returns before its notes are findable."
 (defun vulpea-vault--buffer-vault ()
   "Return the root of the vault this buffer's file belongs to, or nil.
 
-A directory is a vault when its `.dir-locals.el' declares what only a
-vault declares — some `vulpea-vault-' variable.  The mere presence of a
-`.dir-locals.el' says nothing; most projects have one.
+The vault declared itself with `vulpea-vault-version', which the
+directory-locals have already applied here, so the question costs no
+file reading; and the answer does not depend on which vault happens to
+be active, since where a file sits is not a matter of opinion.
 
-`dir-local-variables-alist' already lists what was applied to this
-buffer, so the question costs no file reading, and the answer does not
-depend on which vault happens to be active: directory-locals are a
-property of where the file is."
-  (when (and buffer-file-name
-             (seq-some (lambda (entry)
-                         (string-prefix-p "vulpea-vault-" (symbol-name (car entry))))
-                       dir-local-variables-alist))
-    (when-let* ((root (locate-dominating-file default-directory dir-locals-file)))
-      (file-name-as-directory (expand-file-name root)))))
+A vault from a scheme these modules do not implement is still a vault,
+and is treated as one — the warning has been given, and refusing to see
+it would help nobody."
+  (when (and buffer-file-name vulpea-vault-version)
+    (when-let* ((root (locate-dominating-file default-directory dir-locals-file))
+                (root (file-name-as-directory (expand-file-name root))))
+      (vulpea-vault-version-check vulpea-vault-version root)
+      root)))
 
 (defun vulpea-vault-check-buffer ()
   "Offer to activate this note's vault when it is not the active one.
