@@ -266,7 +266,8 @@ Everything comes from vulpea's database except the same-file links,
 which cannot be judged without the file: those notes are read once each,
 in a second pass."
   (interactive)
-  (let* ((notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
+  (let* ((start (current-time))
+         (notes (vulpea-db-query-by-directory vulpea-config-notes-directory))
          (ids (make-hash-table :test 'equal))
          (referenced (make-hash-table :test 'equal))
          (skipped (make-hash-table :test 'equal))
@@ -316,10 +317,12 @@ in a second pass."
         (let ((inhibit-read-only t))
           (erase-buffer)
           (vulpea-vault-report-mode)
+          ;; Timed here rather than around the whole command: everything that
+          ;; scans has run by now, and what follows is only rendering.
           (insert "#+title: Vault orphans\n\n"
-                  (format "%d notes, %d dangling links, %d unreferenced files, %d undeclared tags\n\n"
-                          (length notes) (length dangling) (length orphans)
-                          (length undeclared)))
+                  (format "%d notes scanned in %.2f s: %d dangling links, %d unreferenced files, %d undeclared tags\n"
+                          (length notes) (float-time (time-since start))
+                          (length dangling) (length orphans) (length undeclared)))
           ;; Split by where the target lives: inside the vault it is the vault's
           ;; own problem to repair, outside it is a file that moved or a volume
           ;; that is not mounted — a different kind of follow-up.
