@@ -339,6 +339,19 @@ reading the working tree.
 `M-x vulpea-vault-git-rollup` runs it on demand; `C-u` waives the
 interval.
 
+**Pushing.** After the commit the script pushes, if the repository says
+where to: the branch's own upstream first, else the only remote there is,
+and nothing at all when there are two remotes and no upstream — a
+question the script has no business answering. No remote name appears in
+it. A failed push is not a failed rollup: the commit is made, the next
+run carries it, and a laptop off the network raises nothing every six
+hours. Git's complaint is left on stderr, visible in
+` *notes-git-rollup*`, which does mean a persistent failure (a dead
+credential, say) is quiet by design.
+
+Only branches travel. `refs/wip/*` stays local, which matches what it is
+— detail that exists to be discarded.
+
 The result: four readable commits a day, plus save-by-save detail for
 the last few hours. Older detail is discarded deliberately.
 

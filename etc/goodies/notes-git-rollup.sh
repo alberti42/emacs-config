@@ -58,3 +58,19 @@ git -C "$repo" for-each-ref --format='%(refname)' refs/wip/ |
     while IFS= read -r ref; do
         git -C "$repo" update-ref -d "$ref"
     done
+
+# Off-machine, if the repository says where to.  No remote is named here: the
+# branch's own upstream first, and failing that the only remote there is.  Two
+# remotes and no upstream is a question this script has no business answering,
+# so it stays home.
+branch=$(git -C "$repo" symbolic-ref --quiet --short HEAD) || exit 0
+remote=$(git -C "$repo" config --get "branch.$branch.remote" || true)
+if [ -z "$remote" ] && [ "$(git -C "$repo" remote | wc -l)" -eq 1 ]; then
+    remote=$(git -C "$repo" remote)
+fi
+[ -n "$remote" ] || exit 0
+
+# A failed push is not a failed rollup.  The commit is made and the next run
+# will carry it; a laptop off the network must not raise anything every six
+# hours.  Git's complaint is left on stderr for anyone who goes looking.
+git -C "$repo" push --quiet --set-upstream "$remote" "$branch" || true
