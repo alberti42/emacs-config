@@ -140,6 +140,11 @@ Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
   (ghostel-shell shell-file-name)
   (ghostel-term "xterm-ghostty")
   :config
+  ;; Full key passthrough for TUIs needing an exotic chord: `C-c M-d'
+  ;; (ghostel-char-mode) captures *every* key — including C-c, C-b, C-g —
+  ;; and forwards it to the terminal.  `M-RET' (or C-M-m / C-c C-j) is the
+  ;; only way back to semi-char mode.
+  ;;
   ;; ghostel's default input mode is the minor mode `ghostel-semi-char-mode',
   ;; and *its* keymap (`ghostel-semi-char-mode-map') shadows the major-mode map.
   ;; That minor-mode map is built at load time by
@@ -151,22 +156,7 @@ Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
   ;; add-to-list call is kept for any future rebuild of the map.
   (add-to-list 'ghostel-keymap-exceptions "C-b")
   (define-key ghostel-mode-map           (kbd "C-b") (lookup-key global-map (kbd "C-b")))
-  (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
-  ;; Full key passthrough for TUIs needing an exotic chord: `C-c M-d'
-  ;; (ghostel-char-mode) captures *every* key — including C-c, C-b, C-g —
-  ;; and forwards it to the terminal.  `M-RET' (or C-M-m / C-c C-j) is the
-  ;; only way back to semi-char mode.  Note: the C-M-m -> \e\r binding below
-  ;; does not apply in char mode, where C-M-m exits instead.
-  :bind (:map ghostel-mode-map
-              ;; Forward C-SPC (= C-@) as NUL (\C-@), the standard terminal encoding for C-SPC.
-              ;; Caveat: Emacs resolves C-SPC to set-mark-command before the
-              ;; mode map is consulted, so we bind C-@ instead.
-              ;; ("C-@"   . (lambda () (interactive) (ghostel-send-string "\C-@")))
-              ;; Forward Shift+Enter (remapped to Alt+Enter by WezTerm) as ESC+CR (\e\r).
-              ("C-M-m" . (lambda () (interactive) (ghostel-send-string "\e\r")))
-              ;; C-g passes through to Emacs by default in ghostel; rebind to send BEL
-              ;; (\C-g = ASCII 7) so terminal apps (e.g. Claude Code) receive it.
-              ("C-g"   . (lambda () (interactive) (ghostel-send-string "\C-g")))))
+  (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b"))))
 
 (with-eval-after-load 'ghostel
   (add-to-list 'ghostel-eval-cmds '("eb-open-file" eb-open-file)))
