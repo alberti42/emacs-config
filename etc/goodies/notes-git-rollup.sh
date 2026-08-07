@@ -25,8 +25,7 @@
 # Usage:  notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]
 #
 # Exit status:  0  nothing to do, or rolled up (and pushed, if a remote)
-#               1  the argument is not a git repository
-#               3  rolled up, but the push did not go through
+#               1  the argument is not a git repository, or the push failed
 
 set -eu
 
@@ -74,8 +73,25 @@ if [ -z "$remote" ] && [ "$(git -C "$repo" remote | wc -l)" -eq 1 ]; then
 fi
 [ -n "$remote" ] || exit 0
 
-# A failed push is not a failed rollup: the commit is made, and the next run
-# carries it.  Exit 3 says exactly that — rolled up, not pushed — so the
-# caller can mention it without treating it as a fault.  A laptop off the
-# network is not a fault.
-git -C "$repo" push --quiet --set-upstream "$remote" "$branch" || exit 3
+# Being off the network is the ordinary state of a laptop, not a fault, so it
+# is established before pushing rather than diagnosed from the wreckage
+# afterwards: no network, no attempt, nothing to report.  `scutil -r' asks the
+# system whether it has a path to the destination and answers instantly
+# without sending anything.
+#
+# Only an explicit "Not Reachable" skips.  Anything else -- no scutil, a URL
+# this cannot pick a host out of, an answer in a form not foreseen -- pushes
+# and lets git speak, so a test that stops working cannot quietly stop the
+# pushes with it.
+if command -v scutil >/dev/null 2>&1; then
+    host=$(git -C "$repo" remote get-url "$remote" |
+               sed -E 's#^[a-z+]+://##; s#^[^@/]*@##; s#[:/].*$##')
+    if [ -n "$host" ] && scutil -r "$host" 2>/dev/null | grep -q '^Not Reachable'; then
+        exit 0
+    fi
+fi
+
+# Reachable, so a failure here is a real one: bad credentials, a rejected
+# force push, a branch gone from the remote.  `set -e' carries git's status
+# out of the script, and the caller warns.
+git -C "$repo" push --quiet --set-upstream "$remote" "$branch"

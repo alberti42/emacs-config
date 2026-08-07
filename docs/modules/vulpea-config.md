@@ -343,18 +343,23 @@ interval.
 where to: the branch's own upstream first, else the only remote there is,
 and nothing at all when there are two remotes and no upstream — a
 question the script has no business answering. No remote name appears in
-it. A failed push is not a failed rollup: the commit is made and the next
-run carries it. The script exits **3** to say exactly that — rolled up,
-not pushed — and Emacs turns that into one line in the echo area naming
-git's reason, never a `display-warning`. That distinction is not
-cosmetic here: `warning-toast.el` renders warnings as popups, so being
-off the network would otherwise interrupt you. Any other non-zero exit
-*is* warned about.
+it. **Being offline is established before pushing, not diagnosed after.**
+`scutil -r <host>` asks macOS whether it has a network path to the
+remote and answers instantly without sending anything; on "Not
+Reachable" the push is skipped and nothing is reported, because a laptop
+off the network is not a fault. Everything else — no `scutil`, a URL no
+host can be picked out of, an unfamiliar answer — pushes anyway and lets
+git speak, so a check that stops working cannot quietly stop the pushes
+with it.
 
-A push is only attempted right after a commit, and a commit resets the
-age of `HEAD`, so the message can appear at most once per rollup
-interval — not once per tick. The gap that leaves: a commit made offline
-is not retried until the next rollup has something new to commit.
+That leaves one rule for the caller: **any non-zero exit is a real
+failure and is warned about** (bad credentials, a rejected force push, a
+branch gone from the remote). No classifying of git's error text, and no
+warning for a missing wifi — which matters here because
+`warning-toast.el` renders warnings as popups.
+
+The commit is made either way; an unpushed one goes out with the next
+rollup.
 
 Only branches travel. `refs/wip/*` stays local, which matches what it is
 — detail that exists to be discarded.

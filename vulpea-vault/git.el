@@ -44,9 +44,6 @@
 
 ;;; Code:
 
-(require 'rx)
-(require 'seq)
-
 (declare-function magit-wip-commit-buffer-file "magit-wip")
 (declare-function magit-wip-commit-initial-backup "magit-wip")
 (declare-function magit-wip-log-current "magit-wip")
@@ -108,20 +105,6 @@ than adding a second one.")
                      script)))
      (t script))))
 
-(defun vulpea-vault-git--reason (output)
-  "Return the line of git's OUTPUT that names why a push failed.
-
-Git explains itself over several lines and ends with advice, so neither
-the first line nor the last is reliably the reason.  The one that is
-begins with the word git uses to introduce it."
-  (let ((lines (split-string output "\n" t "[ \t]+")))
-    (or (seq-find (lambda (line)
-                    (string-match-p (rx bos (or "fatal" "error" "ssh" "remote") ":")
-                                    line))
-                  lines)
-        (car lines)
-        "no network?")))
-
 (defun vulpea-vault-git-rollup (&optional now)
   "Fold the vault's saves into one commit, if one is due.
 
@@ -132,10 +115,9 @@ committed at once.
 
 Runs asynchronously: the rollup writes objects, and nothing in Emacs
 needs to wait for it.  Success says nothing, since this fires unattended
-all day.  A push that did not go through says so in the echo area and
-nowhere else — being off the network is not a fault, and a warning here
-would arrive as a popup by way of `warning-toast'.  Anything else is a
-real failure and is warned about."
+all day; a failure is warned about.  Being off the network is not one —
+the script establishes that before pushing and skips silently, so what
+reaches here is a fault worth interrupting for."
   (interactive "P")
   (when-let* ((root vulpea-config-notes-directory)
               ((file-directory-p (expand-file-name ".git" root)))
@@ -151,19 +133,12 @@ real failure and is warned about."
                        (if now 0 vulpea-vault-git-rollup-interval)))
        :sentinel
        (lambda (process _event)
-         (when (eq (process-status process) 'exit)
-           (let ((code (process-exit-status process))
-                 (output (with-current-buffer (process-buffer process)
-                           (string-trim (buffer-string)))))
-             (pcase code
-               (0 nil)
-               ;; Rolled up, but the push did not go through.  Said once, in
-               ;; the echo area: the commit is safe locally and the next
-               ;; rollup carries it.
-               (3 (message "Notes rolled up; not pushed — %s"
-                           (vulpea-vault-git--reason output)))
-               (_ (lwarn 'vulpea-vault :error "Rollup failed (%s): %s"
-                         code output))))))))))
+         (when (and (eq (process-status process) 'exit)
+                    (/= (process-exit-status process) 0))
+           (lwarn 'vulpea-vault :error "Rollup failed (%s): %s"
+                  (process-exit-status process)
+                  (with-current-buffer (process-buffer process)
+                    (string-trim (buffer-string))))))))))
 
 ;; First check a couple of minutes in rather than at load: a vault changed
 ;; while Emacs was closed should not wait out a whole interval, and startup
