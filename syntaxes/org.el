@@ -6,7 +6,7 @@
 (when emacs-config-syntaxes-enable-org
   (add-hook 'org-mode-hook
             (lambda ()
-              (setq-local fill-column 100)
+              (setq-local fill-column 140)
               (setq-local soft-wrap-default-centered t)
               (soft-wrap-mode 1)
 
