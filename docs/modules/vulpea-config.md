@@ -294,6 +294,49 @@ seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
   conversion degrades to "installed but idle" rather than erroring at
   startup.
 
+## History of the notes
+
+Duplicacy backs the tree up hourly, which answers "get it back" but not
+"what did I change" — reading that from snapshots means diffing two of
+them in a shell. So the vault is also a git repository, and every save
+is recorded without anyone writing a commit.
+
+**Per save** — `vulpea-vault/git.el` adds Magit's two work-in-progress
+hooks buffer-locally to any file under the open vault:
+`magit-wip-commit-initial-backup` (the state before your first change of
+the session) and `magit-wip-commit-buffer-file` (after every save). The
+commits go to `refs/wip/wtree/refs/heads/<branch>` — an ordinary git ref
+that simply is not a branch, so `git log` and Magit's log show nothing
+unusual. Not the global `magit-wip-mode`, which would record saves in
+every repository on the machine, this one included.
+
+**Every six hours** — a launchd agent runs
+`etc/goodies/notes-git-rollup.sh`, which commits the working tree to the
+branch and deletes the WIP refs. Magit re-anchors a fresh chain on the
+new commit by itself (`magit-wip-get-parent` follows the WIP ref only
+while the branch is still an ancestor of it).
+
+The result: four readable commits a day, plus save-by-save detail for
+the last few hours. Older detail is discarded deliberately.
+
+`C-c n l` (`vulpea-vault-log-saves`) shows both at once — rolled-up
+commits with the individual saves woven in.
+
+Two things to know:
+
+- **A note must be tracked before its saves are recorded** —
+  `magit-wip` checks `magit-file-tracked-p`. A new note has no per-save
+  history until the next rollup, whose `git add -A` picks it up.
+- **`data/` (1.5 GB), `*.pdf` (227 MB of lecture slides among the notes)
+  and `.vulpea/` are git-ignored.** Binaries git cannot diff, and an
+  index rebuilt in one scan. Duplicacy still covers all of them.
+
+The launchd plist is *not* in this repository: it names the vault's
+path, and the repo deliberately names no vault. It sits beside the other
+machine-specific agents in `~/Library/LaunchAgents/`
+(`com.alberti42.notes-git-rollup.plist`), while the script it runs stays
+here and takes the repository as an argument.
+
 ## Modules — `vulpea-vault/`
 
 One concern per file, loaded from `vulpea-config.el` the way
@@ -311,6 +354,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `pdffile.el`          | the `pdffile:` link type                                        |
 | `message.el`          | the `message:` link type                                        |
 | `switch.el`           | live vault switching, the history, the wrong-vault guard        |
+| `git.el`              | records every save on a git work-in-progress ref; `C-c n l` to read it |
 
 ## Keys and commands
 

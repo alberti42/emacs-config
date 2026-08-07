@@ -332,6 +332,10 @@ clears `org-id-locations' and rescans every known file."
  "vulpea-vault/switch"
  "Could not load vulpea-vault/switch.el; `vulpea-vault-switch' is unavailable.")
 
+(emacs-config-load-module
+ "vulpea-vault/git"
+ "Could not load vulpea-vault/git.el; note saves will not be recorded in git.")
+
 ;; Move the vault actually resumed to the front of the history: when the one
 ;; opened last was unreachable and an older one was taken instead, that older
 ;; one is now the last visited.  After the module above, which defines the list.
