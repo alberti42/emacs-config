@@ -7,13 +7,24 @@
 # Usage: eb FILE
 #
 # Mechanism: emit ghostel's OSC 52;e escape — the same sequence `ghostel_cmd'
-# sends — to dispatch `eb-open-file FILE SEMAPHORE' (whitelisted in
+# sends — to dispatch `eb-open-file FILE SEMAPHORE ACK' (whitelisted in
 # `ghostel-eval-cmds'; see terminal-config.el), then poll until SEMAPHORE
 # appears.  `eb-open-file' opens FILE and binds C-c C-q to `eb-done', which
 # saves the buffer, writes SEMAPHORE, and buries it — unblocking this process
 # without any Emacs server / daemon.  Inlining the escape (rather than calling
 # the `ghostel_cmd' shell function) keeps `eb' usable as $EDITOR no matter how
 # the launching program spawns it.
+#
+# The escape is written blind to /dev/tty: nothing in the sequence reports back,
+# so a tty with no ghostel reading it swallows the request and this script would
+# poll forever.  Two guards prevent that.  $INSIDE_EMACS rejects the obvious
+# cases up front, but it is inherited across spawns — a Claude Code session sent
+# to the background still carries INSIDE_EMACS=ghostel while its tty is a daemon
+# PTY — so it cannot be trusted alone.  ACK is the authoritative check:
+# `eb-open-file' creates it the moment it runs, proving a handler is on THIS tty.
+# No ack within $EB_ACK_TIMEOUT seconds means nobody is listening; bail out
+# loudly rather than hang.  Only after the ack do we block indefinitely, since a
+# legitimate edit takes as long as it takes.
 #
 # For a NON-blocking "just open it" (no $EDITOR contract), use ghostel's own
 # `ghostel_cmd find-file FILE' instead.
@@ -26,15 +37,43 @@ _eb_ghostel_cmd() {
         arg="${arg//\"/\\\"}"   # "         -> \"
         payload="$payload\"$arg\" "
     done
-    printf '\e]52;e;%s\e\\' "$payload" > /dev/tty
+    # Braces so the *redirection* failure (reported by the shell, not by printf)
+    # is silenced too; the caller prints its own message.
+    { printf '\e]52;e;%s\e\\' "$payload" > /dev/tty } 2>/dev/null
 }
+
+# Seconds to wait for the ack before giving up (override for a loaded Emacs).
+: ${EB_ACK_TIMEOUT:=5}
+
+if [[ "$INSIDE_EMACS" != ghostel ]]; then
+    print -u2 "eb: not a ghostel terminal (INSIDE_EMACS='${INSIDE_EMACS:-unset}'); set \$EDITOR to a real editor here."
+    exit 1
+fi
 
 # Absolute, symlink-resolved path (zsh :A modifier; default to cwd).
 file="${${1:-.}:A}"
 
 semaphore="$(mktemp)"
 rm -f "$semaphore"
-_eb_ghostel_cmd eb-open-file "$file" "$semaphore"
+ack="$semaphore.ack"
+
+if ! _eb_ghostel_cmd eb-open-file "$file" "$semaphore" "$ack"; then
+    print -u2 "eb: no controlling terminal to reach ghostel through."
+    exit 1
+fi
+
+# Wait for the handler to answer.  Anything else means the escape went nowhere.
+typeset -F SECONDS=0
+until [[ -e "$ack" ]]; do
+    if (( SECONDS > EB_ACK_TIMEOUT )); then
+        print -u2 "eb: no ghostel session listening on this tty (waited ${EB_ACK_TIMEOUT}s); not blocking."
+        print -u2 "eb: \$INSIDE_EMACS is inherited, so this shell only looks like ghostel — tmux, ssh and backgrounded sessions all land here."
+        exit 1
+    fi
+    sleep 0.05
+done
+rm -f "$ack"
+
 until [[ -e "$semaphore" ]]; do
     sleep 0.1
 done

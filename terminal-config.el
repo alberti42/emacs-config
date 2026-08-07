@@ -20,8 +20,10 @@
 ;; eb ("emacs blocking"): blocking "open in Emacs" for use as $EDITOR from ghostel.
 ;;
 ;; The `eb` script (etc/goodies/eb, symlinked onto PATH) emits ghostel's
-;; OSC 52;e escape to dispatch `eb-open-file FILE SEMAPHORE`, then polls until
-;; SEMAPHORE exists.  `eb-open-file` opens the file and binds C-c C-q to
+;; OSC 52;e escape to dispatch `eb-open-file FILE SEMAPHORE ACK`, waits for ACK
+;; to confirm a ghostel handler actually received it, then polls until SEMAPHORE
+;; exists.  The escape is written blind to /dev/tty, so without ACK a tty with no
+;; ghostel on the other end (backgrounded session, tmux, ssh) blocks forever.  `eb-open-file` opens the file and binds C-c C-q to
 ;; `eb-done`, which saves and closes the buffer.  The shell is released by
 ;; `eb--release` (writes SEMAPHORE) — run from BOTH `eb-done` and a buffer-local
 ;; `kill-buffer-hook`, so killing the buffer (C-x k) instead of C-c C-q still
@@ -89,25 +91,40 @@ live terminal buffer; `eb--release' deletes it when editing finishes."
         (overlay-put ov 'after-string (eb--waiting-banner composer))
         (setq eb--banner-overlay ov)))))
 
-(defun eb-open-file (file semaphore)
+(defun eb-open-file (file semaphore &optional ack)
   "Open FILE as a blocking $EDITOR buffer; SEMAPHORE unblocks the waiting shell.
-C-c C-q saves and finishes; killing the buffer also unblocks the shell."
-  (let ((origin (current-buffer)))
-    (find-file file)
-    (setq eb--semaphore semaphore)
-    (setq eb--origin-buffer origin)
-    (eb--add-banner origin (current-buffer)))
-  ;; A private, buffer-local keymap inheriting the major mode's map.  NOT
-  ;; `local-set-key', which mutates the *shared* major-mode keymap (e.g.
-  ;; `markdown-ts-mode-map') and would leak C-c C-q into every buffer of that
-  ;; mode.
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map (current-local-map))
-    (define-key map (kbd "C-c C-q") #'eb-done)
-    (use-local-map map))
-  ;; Safety net: any buffer death releases the shell, not just C-c C-q.
-  (add-hook 'kill-buffer-hook #'eb--release nil t)
-  (message "eb: edit, then C-c C-q (or kill the buffer) when done"))
+C-c C-q saves and finishes; killing the buffer also unblocks the shell.
+
+ACK, when given, is written immediately: it is the caller's proof that a ghostel
+OSC handler is listening on its tty, so that `eb' can fail fast instead of
+polling forever when the escape reaches a PTY nobody is reading (a backgrounded
+session, tmux, ssh).  It answers \"was I heard?\", never \"is the buffer ready?\",
+hence it is written before anything that can fail or prompt."
+  (when ack
+    (write-region "" nil ack nil 'no-message))
+  ;; With the ack written the caller is committed to waiting for SEMAPHORE, so a
+  ;; failure anywhere below must release it or the shell hangs forever.
+  (condition-case err
+      (progn
+        (let ((origin (current-buffer)))
+          (find-file file)
+          (setq eb--semaphore semaphore)
+          (setq eb--origin-buffer origin)
+          (eb--add-banner origin (current-buffer)))
+        ;; A private, buffer-local keymap inheriting the major mode's map.  NOT
+        ;; `local-set-key', which mutates the *shared* major-mode keymap (e.g.
+        ;; `markdown-ts-mode-map') and would leak C-c C-q into every buffer of
+        ;; that mode.
+        (let ((map (make-sparse-keymap)))
+          (set-keymap-parent map (current-local-map))
+          (define-key map (kbd "C-c C-q") #'eb-done)
+          (use-local-map map))
+        ;; Safety net: any buffer death releases the shell, not just C-c C-q.
+        (add-hook 'kill-buffer-hook #'eb--release nil t)
+        (message "eb: edit, then C-c C-q (or kill the buffer) when done"))
+    (error
+     (write-region "" nil semaphore nil 'no-message)
+     (signal (car err) (cdr err)))))
 
 (defun eb-done ()
   "Finish editing (eb $EDITOR integration): save, then kill the buffer.
