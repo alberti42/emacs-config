@@ -310,11 +310,34 @@ that simply is not a branch, so `git log` and Magit's log show nothing
 unusual. Not the global `magit-wip-mode`, which would record saves in
 every repository on the machine, this one included.
 
-**Every six hours** — a launchd agent runs
-`etc/goodies/notes-git-rollup.sh`, which commits the working tree to the
-branch and deletes the WIP refs. Magit re-anchors a fresh chain on the
-new commit by itself (`magit-wip-get-parent` follows the WIP ref only
-while the branch is still an ancestor of it).
+**Every six hours** — `etc/goodies/notes-git-rollup.sh` commits the
+working tree to the branch and deletes the WIP refs. Magit re-anchors a
+fresh chain on the new commit by itself (`magit-wip-get-parent` follows
+the WIP ref only while the branch is still an ancestor of it).
+
+It commits the **working tree**, not the WIP ref, because that ref is a
+partial record: `magit-wip` only commits tracked files saved from Emacs,
+so a note created today is absent from it, and so is every change made
+by a script. `git add -A` sees all of it.
+
+An Emacs timer drives this, not a launchd agent. An agent has to name a
+repository, and this configuration names no vault — it would go on
+rolling up the vault it was written for long after
+`vulpea-vault-switch` had moved on. The timer reads
+`vulpea-config-notes-directory` at each tick, so it follows the switch.
+
+**The timer does not measure the six hours.** It ticks every
+`vulpea-vault-git-rollup-check-interval` (20 min) and the *script*
+decides whether a rollup is due, from the age of `HEAD`. Rollups are the
+only thing that commits here, so HEAD's timestamp is the record of the
+last one: nothing persisted, correct per repository, and still correct
+after a week with Emacs closed — where a repeating timer would have
+restarted its clock at every Emacs restart and possibly never fired.
+A check with nothing to do costs one `git log -1` and stops before
+reading the working tree.
+
+`M-x vulpea-vault-git-rollup` runs it on demand; `C-u` waives the
+interval.
 
 The result: four readable commits a day, plus save-by-save detail for
 the last few hours. Older detail is discarded deliberately.
@@ -331,11 +354,9 @@ Two things to know:
   and `.vulpea/` are git-ignored.** Binaries git cannot diff, and an
   index rebuilt in one scan. Duplicacy still covers all of them.
 
-The launchd plist is *not* in this repository: it names the vault's
-path, and the repo deliberately names no vault. It sits beside the other
-machine-specific agents in `~/Library/LaunchAgents/`
-(`com.alberti42.notes-git-rollup.plist`), while the script it runs stays
-here and takes the repository as an argument.
+The script takes the repository as an argument and a minimum interval
+in seconds, so it names no vault either and is testable from a shell:
+`notes-git-rollup.sh ~/org/Work 21600`.
 
 ## Modules — `vulpea-vault/`
 

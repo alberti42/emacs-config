@@ -14,11 +14,24 @@
 ;; unusual.  The commits are made with `git commit-tree' — plumbing, no
 ;; invention.
 ;;
-;; Every six hours a launchd agent (`etc/goodies/notes-git-rollup.sh') commits
-;; whatever the working tree holds to the branch and deletes the WIP ref.  The
-;; history is then four readable commits a day, while the last few hours stay
-;; available save by save.  Older detail is discarded on purpose: it is the
-;; price of a log a human can skim.
+;; Every six hours the window is folded into one commit on the branch and the
+;; WIP ref is dropped, by `etc/goodies/notes-git-rollup.sh'.  The history is
+;; then four readable commits a day, while the last few hours stay available
+;; save by save.  Older detail is discarded on purpose: it is the price of a
+;; log a human can skim.
+;;
+;; A timer here drives that, not a launchd agent, because an agent has to name
+;; a repository and this configuration names no vault — an agent would go on
+;; rolling up the vault it was written for after `vulpea-vault-switch' had
+;; moved on, silently and forever.  The timer reads
+;; `vulpea-config-notes-directory' at each tick, so it follows the switch.
+;;
+;; It ticks far more often than it acts.  Six hours is not something a timer
+;; can be trusted to measure — Emacs restarts, and a repeating timer restarts
+;; its clock with it — so the interval is decided by the script from the age
+;; of HEAD.  Rollups are the only thing that commits, which makes HEAD's
+;; timestamp the record of when the last one happened: nothing to persist,
+;; right per repository, and right after a week with Emacs closed.
 ;;
 ;; Scoped to the vault deliberately.  `magit-wip-mode' is global and would
 ;; record a save in every repository on this machine, this configuration's own
@@ -57,6 +70,84 @@ boot path; the first note opened pays for it."
     (add-hook 'after-save-hook #'magit-wip-commit-buffer-file nil t)))
 
 (add-hook 'find-file-hook #'vulpea-vault-git-setup)
+
+;;;; Folding the saves into the branch
+
+(defcustom vulpea-vault-git-rollup-interval (* 6 60 60)
+  "Seconds a rollup commit covers.
+The window of saves folded into one commit — and so, roughly, how many
+commits a day of note-taking leaves behind.  Saves made since the last
+rollup stay individually available; older ones do not."
+  :type 'natnum
+  :group 'vulpea)
+
+(defcustom vulpea-vault-git-rollup-check-interval (* 20 60)
+  "Seconds between checks for a rollup being due.
+Sets how late a rollup can be, not how often one happens: a check with
+nothing to do costs one `git log -1', and stops there without reading
+the working tree."
+  :type 'natnum
+  :group 'vulpea)
+
+(defvar vulpea-vault-git--rollup-timer nil
+  "The repeating check, so that reloading this file replaces it rather
+than adding a second one.")
+
+(defun vulpea-vault-git--rollup-script ()
+  "Return the rollup script, or nil with a warning if it is not runnable."
+  (let ((script (expand-file-name "etc/goodies/notes-git-rollup.sh"
+                                  emacs-config-dir)))
+    (cond
+     ((not (file-exists-p script))
+      (ignore (lwarn 'vulpea-vault :warning "Missing %s; no rollups" script)))
+     ((not (file-executable-p script))
+      (ignore (lwarn 'vulpea-vault :warning "%s is not executable; no rollups"
+                     script)))
+     (t script))))
+
+(defun vulpea-vault-git-rollup (&optional now)
+  "Fold the vault's saves into one commit, if one is due.
+
+Due is the script's decision, from the age of HEAD against
+`vulpea-vault-git-rollup-interval'.  With NOW non-nil (a prefix argument
+interactively) the interval is waived and anything uncommitted is
+committed at once.
+
+Runs asynchronously: the rollup writes objects, and nothing in Emacs
+needs to wait for it.  Failure is reported; success says nothing, since
+this fires unattended all day."
+  (interactive "P")
+  (when-let* ((root vulpea-config-notes-directory)
+              ((file-directory-p (expand-file-name ".git" root)))
+              (script (vulpea-vault-git--rollup-script)))
+    (let ((buffer (get-buffer-create " *notes-git-rollup*")))
+      (with-current-buffer buffer (erase-buffer))
+      (make-process
+       :name "notes-git-rollup"
+       :buffer buffer
+       :noquery t
+       :command (list script root
+                      (number-to-string
+                       (if now 0 vulpea-vault-git-rollup-interval)))
+       :sentinel
+       (lambda (process _event)
+         (when (and (eq (process-status process) 'exit)
+                    (/= (process-exit-status process) 0))
+           (lwarn 'vulpea-vault :error "Rollup failed (%s): %s"
+                  (process-exit-status process)
+                  (with-current-buffer (process-buffer process)
+                    (string-trim (buffer-string))))))))))
+
+;; First check a couple of minutes in rather than at load: a vault changed
+;; while Emacs was closed should not wait out a whole interval, and startup
+;; should not wait for git.
+(when (timerp vulpea-vault-git--rollup-timer)
+  (cancel-timer vulpea-vault-git--rollup-timer))
+(setq vulpea-vault-git--rollup-timer
+      (run-with-timer 120 vulpea-vault-git-rollup-check-interval
+                      #'vulpea-vault-git-rollup))
+
+;;;; Reading it back
 
 ;;;###autoload
 (defun vulpea-vault-log-saves ()

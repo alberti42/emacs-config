@@ -9,18 +9,36 @@
 #
 # What survives is one commit per run, and the saves made since the last one.
 #
-# Run from a launchd agent, which is where the path of the notes belongs —
-# a repository this script never has to know the name of.
+# The working tree is committed, not the work-in-progress ref, because that
+# ref is a partial record: `magit-wip' commits tracked files saved from
+# Emacs, so a note created today is absent from it, and so is every change
+# made by a script.  `git add -A' is what sees all of it.
 #
-# Usage:  notes-git-rollup.sh REPO
+# When is the last run?  The repository already knows -- rollups are the only
+# thing that commits here, so the timestamp of HEAD is the answer.  Nothing is
+# persisted anywhere, the answer is per-repository by construction, and it is
+# still right after Emacs has been closed for a week.
+#
+# The caller passes the repository, so this script never has to know the name
+# of any particular one.
+#
+# Usage:  notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]
 
 set -eu
 
-repo=${1:?usage: notes-git-rollup.sh REPO}
+repo=${1:?usage: notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]}
+min_interval=${2:-0}
 
 if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
     echo "notes-git-rollup: $repo is not a git repository" >&2
     exit 1
+fi
+
+# Ask the cheap question first.  On a timer that ticks far more often than the
+# interval, most runs end here without the working tree being touched at all.
+if [ "$min_interval" -gt 0 ] && last=$(git -C "$repo" log -1 --format=%ct 2>/dev/null); then
+    age=$(( $(date +%s) - last ))
+    [ "$age" -lt "$min_interval" ] && exit 0
 fi
 
 git -C "$repo" add -A
