@@ -9,6 +9,10 @@
 ;; - `speedbar-use-images' is disabled so entries use plain-text markers rather
 ;;   than bitmap icons.
 ;;
+;; In window mode (Emacs 31+), the side-window width is controlled by
+;; `speedbar-window-default-width' (width on open) and
+;; `speedbar-window-max-width' (width kept on reopen).
+;;
 
 ;;; Code:
 
@@ -19,7 +23,9 @@
   ;; Show Speedbar in a window of the current frame, not a separate frame.
   (setq speedbar-prefer-window t)
   ;; No bitmap icons; use plain-text markers.
-  (setq speedbar-use-images nil))
+  (setq speedbar-use-images nil)
+  (setq speedbar-window-default-width 30
+        speedbar-window-max-width 50))
 
 (provide 'speedbar-config)
 ;;; speedbar-config.el ends here
