@@ -7,6 +7,7 @@
   (add-hook 'org-mode-hook
             (lambda ()
               (setq-local fill-column 100)
+              (setq-local soft-wrap-default-centered t)
               (soft-wrap-mode 1)
 
               ;; Prose word-completion: merged dabbrev + in-memory
