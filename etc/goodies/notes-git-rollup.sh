@@ -22,15 +22,22 @@
 # The caller passes the repository, so this script never has to know the name
 # of any particular one.
 #
-# Usage:  notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]
+# Usage:  notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS] [STALE-DAYS]
 #
-# Exit status:  0  nothing to do, or rolled up (and pushed, if a remote)
-#               1  the argument is not a git repository, or the push failed
+# STALE-DAYS is how long commits may sit unpushed before that is worth
+# complaining about -- three by default.  Being off the network for an
+# afternoon is normal; being off it, or broken, for days is the failure that
+# would otherwise pass unnoticed for weeks.
+#
+# Exit status:  0  nothing to do, or rolled up (and pushed, if reachable)
+#               1  not a git repository, the push failed, or the backlog is
+#                  older than STALE-DAYS
 
 set -eu
 
-repo=${1:?usage: notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]}
+repo=${1:?usage: notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS] [STALE-DAYS]}
 min_interval=${2:-0}
+stale_days=${3:-3}
 
 if ! git -C "$repo" rev-parse --git-dir >/dev/null 2>&1; then
     echo "notes-git-rollup: $repo is not a git repository" >&2
@@ -47,20 +54,19 @@ fi
 git -C "$repo" add -A
 
 # Nothing staged means nothing changed since the last run; leave no commit
-# behind to say so.
-if git -C "$repo" diff --cached --quiet; then
-    exit 0
+# behind to say so.  The push below still runs: a commit made while the
+# network was away is waiting whether or not there is anything new today.
+if ! git -C "$repo" diff --cached --quiet; then
+    git -C "$repo" commit -q -m "notes $(date '+%Y-%m-%d %H:%M')"
+
+    # The saves are now contained in the commit above.  Deleting the refs is
+    # what keeps the repository from carrying every keystroke of every day
+    # forever; Magit starts a fresh chain from the new commit by itself.
+    git -C "$repo" for-each-ref --format='%(refname)' refs/wip/ |
+        while IFS= read -r ref; do
+            git -C "$repo" update-ref -d "$ref"
+        done
 fi
-
-git -C "$repo" commit -q -m "notes $(date '+%Y-%m-%d %H:%M')"
-
-# The saves are now contained in the commit above.  Deleting the refs is what
-# keeps the repository from carrying every keystroke of every day forever;
-# Magit starts a fresh chain from the new commit by itself.
-git -C "$repo" for-each-ref --format='%(refname)' refs/wip/ |
-    while IFS= read -r ref; do
-        git -C "$repo" update-ref -d "$ref"
-    done
 
 # Off-machine, if the repository says where to.  No remote is named here: the
 # branch's own upstream first, and failing that the only remote there is.  Two
@@ -72,6 +78,13 @@ if [ -z "$remote" ] && [ "$(git -C "$repo" remote | wc -l)" -eq 1 ]; then
     remote=$(git -C "$repo" remote)
 fi
 [ -n "$remote" ] || exit 0
+
+# Is anything actually waiting to go out?  Once the remote is level there is
+# nothing to say to it, and saying it every twenty minutes would be chatter.
+upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)
+if [ -n "$upstream" ] && [ "$(git -C "$repo" rev-list --count "$upstream..HEAD")" -eq 0 ]; then
+    exit 0
+fi
 
 # Being off the network is the ordinary state of a laptop, not a fault, so it
 # is established before pushing rather than diagnosed from the wreckage
@@ -87,6 +100,21 @@ if command -v scutil >/dev/null 2>&1; then
     host=$(git -C "$repo" remote get-url "$remote" |
                sed -E 's#^[a-z+]+://##; s#^[^@/]*@##; s#[:/].*$##')
     if [ -n "$host" ] && scutil -r "$host" 2>/dev/null | grep -q '^Not Reachable'; then
+        # Silence is right for a day off the network and wrong for a fortnight
+        # of one.  The failure that matters is not any single skipped push but
+        # a backlog nobody is looking at -- so the age of the oldest commit
+        # still waiting is what decides whether to speak.  Nothing to persist
+        # here either: the commits carry their own dates.
+        if [ -n "$upstream" ]; then
+            oldest=$(git -C "$repo" log --format=%ct "$upstream..HEAD" | tail -1)
+            if [ -n "$oldest" ]; then
+                days=$(( ($(date +%s) - oldest) / 86400 ))
+                if [ "$days" -ge "$stale_days" ]; then
+                    echo "notes-git-rollup: nothing pushed to $remote for $days days" >&2
+                    exit 1
+                fi
+            fi
+        fi
         exit 0
     fi
 fi

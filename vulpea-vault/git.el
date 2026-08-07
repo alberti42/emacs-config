@@ -135,10 +135,16 @@ reaches here is a fault worth interrupting for."
        (lambda (process _event)
          (when (and (eq (process-status process) 'exit)
                     (/= (process-exit-status process) 0))
-           (lwarn 'vulpea-vault :error "Rollup failed (%s): %s"
-                  (process-exit-status process)
-                  (with-current-buffer (process-buffer process)
-                    (string-trim (buffer-string))))))))))
+           ;; The script says what went wrong, in its own words — a push that
+           ;; git refused, or a backlog that has waited too long.  Repeating
+           ;; it verbatim beats wrapping it in a sentence that guesses which.
+           (let ((output (with-current-buffer (process-buffer process)
+                           (string-trim (buffer-string)))))
+             (lwarn 'vulpea-vault :error "%s"
+                    (if (string-empty-p output)
+                        (format "notes-git-rollup exited %s and said nothing"
+                                (process-exit-status process))
+                      output)))))))))
 
 ;; First check a couple of minutes in rather than at load: a vault changed
 ;; while Emacs was closed should not wait out a whole interval, and startup

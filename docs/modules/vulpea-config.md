@@ -356,10 +356,25 @@ That leaves one rule for the caller: **any non-zero exit is a real
 failure and is warned about** (bad credentials, a rejected force push, a
 branch gone from the remote). No classifying of git's error text, and no
 warning for a missing wifi — which matters here because
-`warning-toast.el` renders warnings as popups.
+`warning-toast.el` renders warnings as popups. The warning repeats the
+script's own words rather than wrapping them in a sentence that guesses
+which failure it was.
 
-The commit is made either way; an unpushed one goes out with the next
-rollup.
+**The push runs whether or not anything was committed**, so a commit
+made offline goes out at the next tick once the network is back — not
+only when there is fresh work to commit. It is skipped when the branch
+is level with its upstream, so a quiet vault causes no network chatter.
+
+**Silence has a time limit.** Skipping the push is right for an
+afternoon away from the network and wrong for a fortnight of it: the
+failure that actually costs something is not one skipped push but a
+backlog nobody is watching. So when the push is skipped, the age of the
+*earliest* commit still waiting is checked against `STALE-DAYS` (the
+script's third argument, three by default) and anything older is
+reported — through the same non-zero exit, so the same warning. Nothing
+persisted for this either: the commits carry their own dates.
+
+The commit is made either way.
 
 Only branches travel. `refs/wip/*` stays local, which matches what it is
 — detail that exists to be discarded.
