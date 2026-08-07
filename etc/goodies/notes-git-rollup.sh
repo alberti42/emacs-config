@@ -23,6 +23,10 @@
 # of any particular one.
 #
 # Usage:  notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS]
+#
+# Exit status:  0  nothing to do, or rolled up (and pushed, if a remote)
+#               1  the argument is not a git repository
+#               3  rolled up, but the push did not go through
 
 set -eu
 
@@ -70,7 +74,8 @@ if [ -z "$remote" ] && [ "$(git -C "$repo" remote | wc -l)" -eq 1 ]; then
 fi
 [ -n "$remote" ] || exit 0
 
-# A failed push is not a failed rollup.  The commit is made and the next run
-# will carry it; a laptop off the network must not raise anything every six
-# hours.  Git's complaint is left on stderr for anyone who goes looking.
-git -C "$repo" push --quiet --set-upstream "$remote" "$branch" || true
+# A failed push is not a failed rollup: the commit is made, and the next run
+# carries it.  Exit 3 says exactly that — rolled up, not pushed — so the
+# caller can mention it without treating it as a fault.  A laptop off the
+# network is not a fault.
+git -C "$repo" push --quiet --set-upstream "$remote" "$branch" || exit 3

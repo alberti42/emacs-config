@@ -343,11 +343,18 @@ interval.
 where to: the branch's own upstream first, else the only remote there is,
 and nothing at all when there are two remotes and no upstream — a
 question the script has no business answering. No remote name appears in
-it. A failed push is not a failed rollup: the commit is made, the next
-run carries it, and a laptop off the network raises nothing every six
-hours. Git's complaint is left on stderr, visible in
-` *notes-git-rollup*`, which does mean a persistent failure (a dead
-credential, say) is quiet by design.
+it. A failed push is not a failed rollup: the commit is made and the next
+run carries it. The script exits **3** to say exactly that — rolled up,
+not pushed — and Emacs turns that into one line in the echo area naming
+git's reason, never a `display-warning`. That distinction is not
+cosmetic here: `warning-toast.el` renders warnings as popups, so being
+off the network would otherwise interrupt you. Any other non-zero exit
+*is* warned about.
+
+A push is only attempted right after a commit, and a commit resets the
+age of `HEAD`, so the message can appear at most once per rollup
+interval — not once per tick. The gap that leaves: a commit made offline
+is not retried until the next rollup has something new to commit.
 
 Only branches travel. `refs/wip/*` stays local, which matches what it is
 — detail that exists to be discarded.
