@@ -19,11 +19,19 @@
 
 ;; eb ("emacs blocking"): blocking "open in Emacs" for use as $EDITOR from ghostel.
 ;;
-;; The `eb` script (etc/goodies/eb, symlinked onto PATH) emits ghostel's
-;; OSC 52;e escape to dispatch `eb-open-file FILE SEMAPHORE ACK`, waits for ACK
-;; to confirm a ghostel handler actually received it, then polls until SEMAPHORE
-;; exists.  The escape is written blind to /dev/tty, so without ACK a tty with no
-;; ghostel on the other end (backgrounded session, tmux, ssh) blocks forever.  `eb-open-file` opens the file and binds C-c C-q to
+;; The `eb` script lives in etc/bin, a directory that is on PATH *only* inside a
+;; ghostel shell: `ghostel-environment' below exports EMACS_GHOSTEL_BIN, and
+;; .zshrc prepends it when INSIDE_EMACS=ghostel.  Since eb works nowhere else,
+;; nothing else can reach it — the earlier ~/.local/bin symlink put it on every
+;; shell's PATH, where every invocation was a hang waiting to happen.
+;;
+;; It emits ghostel's OSC 52;e escape to dispatch
+;; `eb-open-file FILE SEMAPHORE ACK`, waits for ACK to confirm a ghostel handler
+;; actually received it, then polls until SEMAPHORE exists.  The escape is
+;; written blind to /dev/tty, so without ACK a tty with no ghostel on the other
+;; end (backgrounded session, tmux, ssh) blocks forever.
+;;
+;; `eb-open-file` opens the file and binds C-c C-q to
 ;; `eb-done`, which saves and closes the buffer.  The shell is released by
 ;; `eb--release` (writes SEMAPHORE) — run from BOTH `eb-done` and a buffer-local
 ;; `kill-buffer-hook`, so killing the buffer (C-x k) instead of C-c C-q still
@@ -156,6 +164,11 @@ Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
   :custom
   (ghostel-shell shell-file-name)
   (ghostel-term "xterm-ghostty")
+  ;; Hand the shell the location of etc/bin (see the eb section above).  Only the
+  ;; directory is exported, never PATH itself: PATH is the shell's to build, and
+  ;; a value snapshotted here would go stale the moment Emacs's own PATH changed.
+  (ghostel-environment
+   (list (concat "EMACS_GHOSTEL_BIN=" (expand-file-name "etc/bin" emacs-config-dir))))
   :config
   ;; Full key passthrough for TUIs needing an exotic chord: `C-c M-d'
   ;; (ghostel-char-mode) captures *every* key — including C-c, C-b, C-g —
