@@ -369,9 +369,9 @@ is level with its upstream, so a quiet vault causes no network chatter.
 afternoon away from the network and wrong for a fortnight of it: the
 failure that actually costs something is not one skipped push but a
 backlog nobody is watching. So when the push is skipped, the age of the
-*earliest* commit still waiting is checked against `STALE-DAYS` (the
-script's third argument, three by default) and anything older is
-reported — through the same non-zero exit, so the same warning. Nothing
+*earliest* commit still waiting is checked against
+`vulpea-vault-git-push-stale-days` (3), passed to the script as its
+third argument, and anything older is reported — through the same non-zero exit, so the same warning. Nothing
 persisted for this either: the commits carry their own dates.
 
 The commit is made either way.

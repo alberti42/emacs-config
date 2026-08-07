@@ -89,6 +89,17 @@ the working tree."
   :type 'natnum
   :group 'vulpea)
 
+(defcustom vulpea-vault-git-push-stale-days 3
+  "Days commits may sit unpushed before that is worth a warning.
+
+Skipping a push for want of a network is silent, which is right for an
+afternoon and wrong for a fortnight — a credential that has expired, or
+a reachability check that has stopped working, would otherwise go
+unnoticed for as long as nobody thought to look at the remote.  Counted
+from the earliest commit still waiting."
+  :type 'natnum
+  :group 'vulpea)
+
 (defvar vulpea-vault-git--rollup-timer nil
   "The repeating check, so that reloading this file replaces it rather
 than adding a second one.")
@@ -130,7 +141,8 @@ reaches here is a fault worth interrupting for."
        :noquery t
        :command (list script root
                       (number-to-string
-                       (if now 0 vulpea-vault-git-rollup-interval)))
+                       (if now 0 vulpea-vault-git-rollup-interval))
+                      (number-to-string vulpea-vault-git-push-stale-days))
        :sentinel
        (lambda (process _event)
          (when (and (eq (process-status process) 'exit)
