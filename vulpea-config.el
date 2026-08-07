@@ -32,6 +32,14 @@
 
 (require 'rx)
 (require 'seq)
+;; This file is a database layer over *org* notes, so org is a hard dependency,
+;; not an optional one.  Requiring it here — rather than leaning on a submodule
+;; (`modified-stamp.el', `attachments.el') to pull it in transitively — makes the
+;; `:after org' + `:demand t' on the `use-package vulpea' form below fire
+;; deterministically as that form is reached, so the vault commands defined in
+;; vulpea-vault/ have vulpea's (non-autoloaded) query API available even on a
+;; fresh Emacs where no org file has been opened yet.
+(require 'org)
 
 (defvar vulpea-config-notes-directory nil
   "Root of the vault currently in use, or nil when none is open.
@@ -253,6 +261,16 @@ clears `org-id-locations' and rescans every known file."
 (use-package vulpea
   :straight (vulpea :type git :host github :repo "d12frosted/vulpea")
   :after org
+  ;; Load eagerly (org is required at the top of this file, so this fires as the
+  ;; form is reached) rather than deferring to the first `:bind' command.  The
+  ;; vault commands defined in vulpea-vault/ (e.g. `vulpea-vault-orphans',
+  ;; `vulpea-config-update-id-locations') call the query API in
+  ;; `vulpea-db-query.el' directly, and those functions are NOT autoloaded (the
+  ;; build emits only `register-definition-prefixes').  A lazy vulpea would
+  ;; leave them void until a `:bind' command happened to load the package.
+  ;; `require'-ing vulpea pulls in `vulpea-db-query' transitively (through
+  ;; `vulpea-buffer'), so demanding it here makes the whole query API present.
+  :demand t
   :bind (("C-c n f" . vulpea-find)
          ("C-c n i" . vulpea-insert)
          ("C-c n b" . vulpea-find-backlink))
