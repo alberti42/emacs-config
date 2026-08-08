@@ -120,16 +120,18 @@ than adding a second one.")
   "Fold the vault's saves into one commit, if one is due.
 
 Due is the script's decision, from the age of HEAD against
-`vulpea-vault-git-rollup-interval'.  With NOW non-nil (a prefix argument
-interactively) the interval is waived and anything uncommitted is
-committed at once.
+`vulpea-vault-git-rollup-interval'.  With NOW non-nil the interval is
+waived and anything uncommitted is committed at once.  Called
+interactively NOW is always t: asking for a rollup by hand is an explicit
+“do it now”, not a request gated on the interval — that gate is for the
+unattended timer, which calls with no arguments.
 
 Runs asynchronously: the rollup writes objects, and nothing in Emacs
 needs to wait for it.  Success says nothing, since this fires unattended
 all day; a failure is warned about.  Being off the network is not one —
 the script establishes that before pushing and skips silently, so what
 reaches here is a fault worth interrupting for."
-  (interactive "P")
+  (interactive (list t))
   (when-let* ((root vulpea-config-notes-directory)
               ((file-directory-p (expand-file-name ".git" root)))
               (script (vulpea-vault-git--rollup-script)))
