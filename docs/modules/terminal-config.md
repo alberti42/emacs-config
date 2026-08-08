@@ -103,9 +103,9 @@ block on an in-session edit.
 
 ### Wiring it up as `$EDITOR`
 
-- `zsh/.zshrc` sets `EDITOR="$HOME/.local/bin/eb"` whenever `$INSIDE_EMACS`
-  is set, so git commits and other `$EDITOR`-spawning CLIs open in the running
-  session.
+- `zsh/.zshrc` sets `EDITOR="$DOTFILES_DIR/.config/emacs/etc/bin/eb"` whenever
+  `$INSIDE_EMACS` is set, so git commits and other `$EDITOR`-spawning CLIs open
+  in the running session.
 - The `claude` launcher (`.local/bin/claude`) does the same guard, because it
   runs with `zsh -fd` (no rc files) and so does not inherit the `.zshrc`
   branch's logic — only the already-exported `EDITOR` value. Routing Claude's
