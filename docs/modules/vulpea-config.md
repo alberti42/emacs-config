@@ -79,13 +79,18 @@ by `vulpea-vault-switch`:
 | Setting                        | Value                        |
 | ------------------------------ | ---------------------------- |
 | `vulpea-config-state-directory` | `<root>/.vulpea/`           |
-| `vulpea-config-attach-directory` | `<root>/data/`             |
+| `vulpea-config-attach-directory` | `<root>/<data>/`           |
 | `org-attach-id-dir`            | = attach directory           |
 | `vulpea-db-sync-directories`   | `(<root>)`                   |
 | `vulpea-db-location`           | `<root>/.vulpea/vulpea.db`   |
 
 Three of those belong to other packages, which is why a vault cannot be
 re-pointed by hand.
+
+`<data>` defaults to `data` but is vault-configurable — see
+[Attachment store](#attachment-store--vulpea-vault-data-directory)
+below. To read it, `apply-vault` `hack-dir-local-variables`-reads the
+root before assigning, the same idiom the other declared variables use.
 
 `org-id` locations live under `$XDG_CACHE_HOME/emacs/` instead — they
 span every org file Emacs knows, not one vault. The database lives in
@@ -176,6 +181,27 @@ kept the last segment of `#Teaching/E4`. The converter still emits
 `00 Meta/org-tag-alist.el` for a fresh vault; the work vault's copy was
 folded into its `.dir-locals.el` and the file deleted.
 
+### Attachment store — `vulpea-vault-data-directory`
+
+A relative directory name (default `"data"`) placing the central
+org-attach store under the root. Behind `vulpea-vault-data-directory-p`
+(non-empty, relative — never an absolute path out of the tree). Lets a
+vault hide its data: `".data"` tucks it away *and* keeps vulpea's scanner
+out (it skips any `/.` path); `"00 Meta/data"` files it under a folder.
+
+Unlike the other declared variables, its defvar and safe-local
+registration live in `vulpea-config.el`, not a `vulpea-vault/` module:
+`apply-vault` reads the value at load time, before those modules load, so
+the registration must already be in place.
+
+**It is one contract with the converter.** The name MUST match
+`obsidian-to-org.py --attach-dir` (also default `data`); a mismatch
+yields an *empty* attachment directory, not an error. Moving an existing
+store is link-safe — `attachment:` and the UUID crossref form resolve
+through `org-attach-dir-from-id`, never a literal path — but the files
+themselves need a one-time `git mv`, and the store must hold nothing but
+attachments (a stray `.org` under it would be indexed as a note).
+
 ### Note templates — `vulpea-vault-template`
 
 Declared **per folder**, under the directory keys dir-locals already
@@ -265,7 +291,9 @@ seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
   keeps the two in step for files indexed later.)
 - **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
   mismatch yields an *empty* attachment directory rather than an error.
-  Likewise `vulpea-config-notes-directory` versus its `DEFAULT_OUT`.
+  Likewise `vulpea-config-notes-directory` versus its `DEFAULT_OUT`. The
+  store name is now the vault's to choose — see [Attachment store](#attachment-store--vulpea-vault-data-directory)
+  — which makes keeping the two ends in step the vault's responsibility.
 - **The watcher does not survive a bulk external edit.** Rewriting all
   949 notes at once (the `:CREATED:`/`:MODIFIED:` migration) left the
   index holding 697 of them, and it never caught up — no error, just a

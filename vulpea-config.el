@@ -66,7 +66,43 @@ state, and writing the database cannot retrigger a sync.")
   "Central org-attach store, matching the converter's --attach-dir.
 Must stay in sync with it: `org-attach' derives a note's directory
 from this path plus its `:ID:', so a mismatch silently yields an
-empty attachment directory rather than an error.")
+empty attachment directory rather than an error.
+
+Absolute; its trailing directory name comes from
+`vulpea-vault-data-directory', which a vault may set in its
+`.dir-locals.el'.")
+
+(defvar vulpea-vault-data-directory "data"
+  "Name of the attachment store, relative to the vault root.
+
+Declared by the vault in its `.dir-locals.el', so where its data lives
+travels with the notes:
+
+  ((nil . ((vulpea-vault-data-directory . \"00 Meta/data\"))))
+
+Default \"data\" is a visible directory at the root; \".data\" tucks the
+store out of sight (a leading dot also keeps vulpea's scanner from
+walking it, since it skips any path containing \"/.\").  Whatever the
+value, it MUST match the converter's --attach-dir
+(`etc/goodies/obsidian-to-org.py'): the two are one contract, and a
+mismatch yields an empty attachment directory rather than an error.
+
+Existing links survive a move — `attachment:' and the UUID crossref form
+both resolve through `org-attach-dir-from-id', never a literal path — but
+the files themselves must be moved to the new name (a one-time `git mv').
+Keep the store in a directory that holds nothing but attachments, so no
+stray `.org' under it is mistaken for a note.")
+
+(defun vulpea-vault-data-directory-p (value)
+  "Return non-nil if VALUE is a valid relative attachment-store name.
+Relative and non-empty, so a vault's `.dir-locals.el' can place its store
+without naming an absolute path outside the tree."
+  (and (stringp value)
+       (not (string-empty-p value))
+       (not (file-name-absolute-p value))))
+
+(put 'vulpea-vault-data-directory 'safe-local-variable
+     #'vulpea-vault-data-directory-p)
 
 (defun vulpea-config-apply-vault (root)
   "Point every vault-derived setting at ROOT, and return it.
@@ -80,14 +116,23 @@ The settings it owns are the reason a vault cannot simply be re-pointed
 by hand: three of them belong to other packages, `org-attach' and vulpea
 read plain values, and vulpea opens its database from
 `vulpea-db-location' as it finds it."
-  (setq vulpea-config-notes-directory (file-name-as-directory (expand-file-name root))
-        vulpea-config-state-directory (expand-file-name
-                                       ".vulpea/" vulpea-config-notes-directory)
-        vulpea-config-attach-directory (expand-file-name
-                                        "data/" vulpea-config-notes-directory)
-        org-attach-id-dir vulpea-config-attach-directory
-        vulpea-db-sync-directories (list vulpea-config-notes-directory)
-        vulpea-db-location (expand-file-name "vulpea.db" vulpea-config-state-directory))
+  (let* ((root (file-name-as-directory (expand-file-name root)))
+         ;; The store's name is the vault's to choose (see
+         ;; `vulpea-vault-data-directory'), read from the root the same way
+         ;; every other vault-declared variable is.  Absent, the default
+         ;; "data" stands, so a vault that says nothing behaves as before.
+         (data (with-temp-buffer
+                 (setq default-directory root)
+                 (hack-dir-local-variables-non-file-buffer)
+                 (or vulpea-vault-data-directory "data"))))
+    (setq vulpea-config-notes-directory root
+          vulpea-config-state-directory (expand-file-name ".vulpea/" root)
+          vulpea-config-attach-directory (expand-file-name
+                                          (file-name-as-directory data) root)
+          org-attach-id-dir vulpea-config-attach-directory
+          vulpea-db-sync-directories (list root)
+          vulpea-db-location (expand-file-name "vulpea.db"
+                                              vulpea-config-state-directory)))
   (make-directory vulpea-config-state-directory t)
   vulpea-config-notes-directory)
 
