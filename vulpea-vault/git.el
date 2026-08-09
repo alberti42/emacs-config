@@ -100,6 +100,33 @@ from the earliest commit still waiting."
   :type 'natnum
   :group 'vulpea)
 
+(defcustom vulpea-vault-git-rollup-environment nil
+  "Extra environment for the rollup subprocess.
+
+Either a list of \"NAME=VALUE\" strings or a function of no arguments
+returning such a list, prepended to `process-environment' for the git
+the rollup runs — and so for its push.
+
+This is the seam for pushing without an interactive credential.  The
+rollup fires unattended all day; if the remote authenticates over SSH
+through a GUI agent — a 1Password prompt, a passphrase dialog — every
+push wakes it.  Point git at an HTTPS remote and a token here instead
+and the push goes out silently.  A function is resolved at each rollup,
+so a credential read from a file is read fresh rather than baked in at
+load time.
+
+Nothing host- or vault-specific belongs in this module: the mapping from
+a remote to a credential is supplied from outside, in the user's own
+configuration."
+  :type '(choice (repeat string) function)
+  :group 'vulpea)
+
+(defun vulpea-vault-git--rollup-environment ()
+  "Resolve `vulpea-vault-git-rollup-environment' to a list of strings."
+  (if (functionp vulpea-vault-git-rollup-environment)
+      (funcall vulpea-vault-git-rollup-environment)
+    vulpea-vault-git-rollup-environment))
+
 (defvar vulpea-vault-git--rollup-timer nil
   "The repeating check, so that reloading this file replaces it rather
 than adding a second one.")
@@ -135,7 +162,13 @@ reaches here is a fault worth interrupting for."
   (when-let* ((root vulpea-config-notes-directory)
               ((file-directory-p (expand-file-name ".git" root)))
               (script (vulpea-vault-git--rollup-script)))
-    (let ((buffer (get-buffer-create " *notes-git-rollup*")))
+    (let ((buffer (get-buffer-create " *notes-git-rollup*"))
+          ;; Applied to the whole subprocess, of which the push is the only
+          ;; part that touches the network and so the only part that needs a
+          ;; credential; the rest ignores it.  Local to this process — the
+          ;; interactive remote is left exactly as it is on disk.
+          (process-environment (append (vulpea-vault-git--rollup-environment)
+                                       process-environment)))
       (with-current-buffer buffer (erase-buffer))
       (make-process
        :name "notes-git-rollup"
