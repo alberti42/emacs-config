@@ -8,6 +8,43 @@ the *real* directory and loads the rest.
 Use this document as the operating manual when making changes with an automated
 agent (LLM) or when you want to understand the configuration structure.
 
+## Filesystem Layout (canonical source vs. symlink)
+
+- The **canonical source** of every Emacs config file lives in this dotfiles
+  repo: `/Users/andrea/google-drive/dotfiles/.config/emacs/`. Edit files here.
+- `~/.config/emacs/init.el` is a **symlink** to
+  `/Users/andrea/google-drive/dotfiles/.config/emacs/init.el` (via the
+  `~/.config/dotfiles` → repo symlink). All the other config files
+  (`early-init.el`, `*-config.el`, `local/`, `syntaxes/`, `completions/`,
+  `docs/`, …) live alongside it in this repo directory.
+- **`straight.el` still installs into `~/.config/emacs/straight/`** (its
+  clones under `straight/repos/` and byte-compiled builds under
+  `straight/build/`) — that tree is *not* in the dotfiles repo and is not
+  symlinked back. Look there for third-party package sources.
+
+## Probing the live Emacs for paths / values
+
+When you need to locate a library, resolve a variable, or check runtime state,
+probe the running Emacs directly with `emacsclient` instead of guessing. This
+is the fastest way to find the real on-disk path of an installed package:
+
+```sh
+# Where is a feature/library actually loaded from?
+emacsclient -e '(find-library-name "magit")'
+emacsclient -e '(locate-library "consult")'
+
+# Resolve a variable / evaluate arbitrary Elisp
+emacsclient -e 'straight-base-dir'
+emacsclient -e '(expand-file-name "straight/build" user-emacs-directory)'
+emacsclient -e 'emacs-config-dir'
+```
+
+If no daemon/server is running, fall back to a batch eval:
+
+```sh
+emacs --batch --quick -l init.el --eval '(princ (find-library-name "magit"))'
+```
+
 ## Goals and Non-Goals
 
 Goals:
