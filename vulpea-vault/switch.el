@@ -83,10 +83,28 @@ opened yet and nothing is configured, so there is nothing else to say."
             (delq nil (list vulpea-config-notes-directory
                             vulpea-vault-choose-directory)))))
 
+(defun vulpea-vault--collection (candidates)
+  "Return a completion table over CANDIDATES that keeps their order.
+
+The list is already ordered deliberately — vaults by use, the active one
+after them, `vulpea-vault-choose-directory' last — but a completion UI
+sorts by its own lights (Vertico by history, then length), which would
+scatter the escape into the middle.  The `display-sort-function' and
+`cycle-sort-function' metadata, both `identity', tell it to honour the
+given order instead, so \"... (choose a directory)\" stays at the bottom
+as it does in `project.el'."
+  (lambda (string pred action)
+    (if (eq action 'metadata)
+        '(metadata (display-sort-function . identity)
+                   (cycle-sort-function . identity))
+      (complete-with-action action candidates string pred))))
+
 (defun vulpea-vault--read ()
   "Prompt for a vault among those known, or for any other directory."
   (let* ((candidates (vulpea-vault--candidates))
-         (choice (completing-read "Vault: " candidates nil t nil nil
+         (choice (completing-read "Vault: "
+                                  (vulpea-vault--collection candidates)
+                                  nil t nil nil
                                   (car candidates))))
     (if (equal choice vulpea-vault-choose-directory)
         (read-directory-name "Vault directory: " nil nil t)
