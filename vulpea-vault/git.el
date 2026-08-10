@@ -23,8 +23,15 @@
 ;; A timer here drives that, not a launchd agent, because an agent has to name
 ;; a repository and this configuration names no vault — an agent would go on
 ;; rolling up the vault it was written for after `vulpea-vault-switch' had
-;; moved on, silently and forever.  The timer reads
-;; `vulpea-config-notes-directory' at each tick, so it follows the switch.
+;; moved on, silently and forever.  The timer reads the set of vaults opened in
+;; this Emacs at each tick (`vulpea-vault-git--known-vaults'), so it follows
+;; whatever has been opened and backs each one up in turn.
+;;
+;; Backup is not scoped to the one active vault: a note edited in another vault
+;; belongs to that vault's own git repository and is worth recording all the
+;; same.  Every vault opened in this Emacs is rolled up, each on its own repo —
+;; the single-active-vault limit is vulpea's database, not git's, and git has
+;; no such limit.  See docs/modules/vulpea-config.md "Multiple vaults".
 ;;
 ;; It ticks far more often than it acts.  Six hours is not something a timer
 ;; can be trusted to measure — Emacs restarts, and a repeating timer restarts
@@ -33,10 +40,12 @@
 ;; timestamp the record of when the last one happened: nothing to persist,
 ;; right per repository, and right after a week with Emacs closed.
 ;;
-;; Scoped to the vault deliberately.  `magit-wip-mode' is global and would
+;; Scoped to the vaults deliberately.  `magit-wip-mode' is global and would
 ;; record a save in every repository on this machine, this configuration's own
 ;; included; here the save hooks are added buffer-locally, and only to files
-;; living under the open vault.
+;; living under a vault opened in this Emacs.  `magit-wip' records to whichever
+;; repository the file lives in, so a note from any vault is recorded on that
+;; vault's own ref with no further arrangement — each vault being its own repo.
 ;;
 ;; A note has to be tracked before its saves are recorded — `magit-wip' checks
 ;; `magit-file-tracked-p'.  A newly created note therefore has no per-save
@@ -44,15 +53,39 @@
 
 ;;; Code:
 
+(require 'seq)
+
 (declare-function magit-wip-commit-buffer-file "magit-wip")
 (declare-function magit-wip-commit-initial-backup "magit-wip")
 (declare-function magit-wip-log-current "magit-wip")
 
+(defun vulpea-vault-git--known-vaults ()
+  "Return the vault roots whose saves are recorded and rolled up.
+
+The vaults opened in this Emacs — `vulpea-vault-history', persisted
+across sessions by savehist — plus the active one, deduplicated and
+expanded.  Not scoped to the single active vault, because backup is not:
+each vault is its own git repository, `magit-wip' records to whichever
+one a note lives in, and the rollup timer folds each in turn.  The
+single-active-vault limit is vulpea's database, which git does not share.
+
+`vulpea-vault-history' belongs to `vulpea-vault/switch.el', loaded before
+this file; `bound-and-true-p' guards the case of this module loaded on
+its own."
+  (delete-dups
+   (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
+           (append (and vulpea-config-notes-directory
+                        (list vulpea-config-notes-directory))
+                   (bound-and-true-p vulpea-vault-history)))))
+
 (defun vulpea-vault-git--vault-file-p ()
-  "Non-nil when this buffer visits a file inside the open vault."
+  "Non-nil when this buffer visits a file inside a known vault.
+Any vault opened in this Emacs, not only the active one — see
+`vulpea-vault-git--known-vaults'."
   (and buffer-file-name
-       vulpea-config-notes-directory
-       (file-in-directory-p buffer-file-name vulpea-config-notes-directory)))
+       (seq-some (lambda (root)
+                   (file-in-directory-p buffer-file-name root))
+                 (vulpea-vault-git--known-vaults))))
 
 (defun vulpea-vault-git-setup ()
   "Record this buffer's saves on the vault's work-in-progress ref.
@@ -143,55 +176,69 @@ than adding a second one.")
                      script)))
      (t script))))
 
-(defun vulpea-vault-git-rollup (&optional now)
-  "Fold the vault's saves into one commit, if one is due.
+(defun vulpea-vault-git--rollup-run (script root now)
+  "Run the rollup SCRIPT on the vault at ROOT; NOW waives the interval.
 
-Due is the script's decision, from the age of HEAD against
-`vulpea-vault-git-rollup-interval'.  With NOW non-nil the interval is
-waived and anything uncommitted is committed at once.  Called
+Asynchronous: the rollup writes objects and nothing in Emacs waits for
+it.  Success says nothing, since this fires unattended all day; a failure
+is warned about, naming ROOT since several vaults may be rolled up at
+once.  Being off the network is not a failure — the script establishes
+that before pushing and skips silently, so what reaches here is a fault
+worth interrupting for."
+  (let ((buffer (get-buffer-create
+                 (format " *notes-git-rollup:%s*" (abbreviate-file-name root))))
+        ;; Applied to the whole subprocess, of which the push is the only
+        ;; part that touches the network and so the only part that needs a
+        ;; credential; the rest ignores it.  Local to this process — the
+        ;; interactive remote is left exactly as it is on disk.  The mapping
+        ;; only rewrites the one remote it names, so it is harmless on a vault
+        ;; whose remote it does not match.
+        (process-environment (append (vulpea-vault-git--rollup-environment)
+                                     process-environment)))
+    (with-current-buffer buffer (erase-buffer))
+    (make-process
+     :name "notes-git-rollup"
+     :buffer buffer
+     :noquery t
+     :command (list script root
+                    (number-to-string
+                     (if now 0 vulpea-vault-git-rollup-interval))
+                    (number-to-string vulpea-vault-git-push-stale-days))
+     :sentinel
+     (lambda (process _event)
+       (when (and (eq (process-status process) 'exit)
+                  (/= (process-exit-status process) 0))
+         ;; The script says what went wrong, in its own words — a push that
+         ;; git refused, or a backlog that has waited too long.  Repeating
+         ;; it verbatim beats wrapping it in a sentence that guesses which.
+         (let ((output (with-current-buffer (process-buffer process)
+                         (string-trim (buffer-string)))))
+           (lwarn 'vulpea-vault :error "%s: %s"
+                  (abbreviate-file-name root)
+                  (if (string-empty-p output)
+                      (format "notes-git-rollup exited %s and said nothing"
+                              (process-exit-status process))
+                    output))))))))
+
+(defun vulpea-vault-git-rollup (&optional now)
+  "Fold each known vault's saves into one commit, wherever one is due.
+
+Every vault opened in this Emacs (`vulpea-vault-git--known-vaults') that
+is a git repository is rolled up in turn, so a note edited in a vault
+other than the active one is backed up all the same — each on its own
+repository.
+
+Due is the script's decision per repository, from the age of HEAD
+against `vulpea-vault-git-rollup-interval'.  With NOW non-nil the
+interval is waived and anything uncommitted is committed at once.  Called
 interactively NOW is always t: asking for a rollup by hand is an explicit
 “do it now”, not a request gated on the interval — that gate is for the
-unattended timer, which calls with no arguments.
-
-Runs asynchronously: the rollup writes objects, and nothing in Emacs
-needs to wait for it.  Success says nothing, since this fires unattended
-all day; a failure is warned about.  Being off the network is not one —
-the script establishes that before pushing and skips silently, so what
-reaches here is a fault worth interrupting for."
+unattended timer, which calls with no arguments."
   (interactive (list t))
-  (when-let* ((root vulpea-config-notes-directory)
-              ((file-directory-p (expand-file-name ".git" root)))
-              (script (vulpea-vault-git--rollup-script)))
-    (let ((buffer (get-buffer-create " *notes-git-rollup*"))
-          ;; Applied to the whole subprocess, of which the push is the only
-          ;; part that touches the network and so the only part that needs a
-          ;; credential; the rest ignores it.  Local to this process — the
-          ;; interactive remote is left exactly as it is on disk.
-          (process-environment (append (vulpea-vault-git--rollup-environment)
-                                       process-environment)))
-      (with-current-buffer buffer (erase-buffer))
-      (make-process
-       :name "notes-git-rollup"
-       :buffer buffer
-       :noquery t
-       :command (list script root
-                      (number-to-string
-                       (if now 0 vulpea-vault-git-rollup-interval))
-                      (number-to-string vulpea-vault-git-push-stale-days))
-       :sentinel
-       (lambda (process _event)
-         (when (and (eq (process-status process) 'exit)
-                    (/= (process-exit-status process) 0))
-           ;; The script says what went wrong, in its own words — a push that
-           ;; git refused, or a backlog that has waited too long.  Repeating
-           ;; it verbatim beats wrapping it in a sentence that guesses which.
-           (let ((output (with-current-buffer (process-buffer process)
-                           (string-trim (buffer-string)))))
-             (lwarn 'vulpea-vault :error "%s"
-                    (if (string-empty-p output)
-                        (format "notes-git-rollup exited %s and said nothing"
-                                (process-exit-status process))
-                      output)))))))))
+  (when-let* ((script (vulpea-vault-git--rollup-script)))
+    (dolist (root (vulpea-vault-git--known-vaults))
+      (when (file-directory-p (expand-file-name ".git" root))
+        (vulpea-vault-git--rollup-run script root now)))))
 
 ;; First check a couple of minutes in rather than at load: a vault changed
 ;; while Emacs was closed should not wait out a whole interval, and startup

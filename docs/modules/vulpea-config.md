@@ -129,6 +129,122 @@ open anyway / cancel**, since that is exactly the case where
 to weigh, so the note's own vault is simply opened. A loose org file
 outside any vault never prompts.
 
+## Multiple vaults: why single-vault, and what a redesign would take
+
+The current design keeps **one vault active at a time** and closes the
+leaving vault's buffers on `vulpea-vault-switch`. This is a deliberate
+choice forced by vulpea's architecture, not a preference. What follows
+records a design investigation (2026) into a project.el-style model —
+where every open buffer belongs to *its own* vault and switching closes
+nothing — so the reasoning need not be re-derived. **Nothing here is
+implemented; the decision was to defer and pursue the fix upstream.**
+
+### What a project.el-style model would want
+
+Three cleanly separated roles, mirroring how `project.el` derives the
+current project from the buffer rather than from a global:
+
+- **Contextual vault** — `(vulpea-vault-current)`, derived per buffer
+  from `default-directory` (walk up to the `.dir-locals.el` carrying
+  `vulpea-vault-version`; use `default-directory` for dired buffers with
+  no `buffer-file-name`). Drives everything *about where you are*:
+  new-note placement, `vulpea-vault-orphans`, the git target, and the
+  attachment store. A command run from a buffer in no vault would
+  `message` and abort (via a `vulpea-vault-current-or-message` helper).
+- **Live vault** — the single vault the database pointer and file watcher
+  are bound to. Would *follow* the contextual vault **lazily**: when a
+  db-backed command runs in a buffer whose vault differs, re-point the db
+  first (the existing `apply-vault` + close/reopen/re-watch), **without
+  killing buffers**.
+- **Registered vaults** — `vulpea-vault-history`, the set worth backing
+  up and offering in the picker.
+
+### The one soft blocker: attachments (solvable)
+
+The stated reason for closing buffers — `org-attach-id-dir` is a single
+global — is **soft**. It is a defcustom, but nothing stops making it
+**buffer-local**: `org-attach-dir-from-id` reads it dynamically in the
+current buffer when following / previewing / exporting a link. Setting
+`(setq-local org-attach-id-dir <this-buffer's-vault-store>)` from
+`find-file-hook` makes every open note resolve its *own* vault's
+attachments regardless of which vault is live — removing the entire
+reason to close buffers. (Cross-*vault* attachment cross-refs would then
+miss, but those never worked and are never used here; the 51
+within-vault crossrefs the converter emits are fine.)
+
+### The hard blocker: vulpea's db + sync are singletons
+
+Everything else rides one root cause — vulpea's database and its whole
+background pipeline are **module-global singletons**, not a per-vault
+"workspace" object:
+
+- `vulpea-db--connection` — **one** emacsql connection; every query
+  calls `(vulpea-db)`, which lazily opens *that one* from the global
+  `vulpea-db-location` (`vulpea-db.el`).
+- The sync/watch pipeline is a singleton too: `vulpea-db-sync--watchers`,
+  `--queue`, `--queue-tail`, `--queue-set`, `--force-set`, `--timer`,
+  `--idle-timer`, `--fswatch-process`, `--file-attributes`,
+  `--queue-total`, plus the global `vulpea-db-sync-directories` and the
+  worker (`vulpea-db-worker.el`). There is exactly **one** autosync
+  context in the process.
+
+This is the opposite of `lsp-mode` (a `lsp--workspace` struct per
+project, backed by an independent server subprocess) and `eglot` (one
+server process per project root, tracked in `eglot--servers-by-project`)
+— both designed for concurrent workspaces from the start. vulpea has no
+workspace abstraction to hang a second db on; "the current db" *is* a
+global.
+
+### Consequences that ride the same singleton
+
+Because the pipeline is one object, "only the watcher is single" quietly
+implies more:
+
+1. **Note creation in a non-live vault would not be indexed.**
+   `vulpea-create` writes the file; the db learns of it only through the
+   live watcher/worker. So `org-id` auto-registration
+   (`vulpea-config-register-ids`, fired from
+   `vulpea-db-worker-done-functions`) also misses it. → A redesign must
+   make **creation promote its target vault to live**.
+2. **Schema/version skew kills the "read-only connection pool" shortcut.**
+   `vulpea-db--init` rebuilds the schema (a full re-scan, needing the
+   sync pipeline) when a db's stored settings-fingerprint or parser
+   epoch differs. A vault last indexed by another vulpea version, opened
+   as a pooled read-only connection, could error or under-report. So a
+   pool is not actually read-only — some opens demand a scan. This is the
+   decisive argument for **single live vault, lazily re-pointed** over a
+   connection pool. (`vulpea-db-close`/`-clear`/full-scan and the rebuild
+   flags are global too, safe only when one vault drives the pipeline.)
+3. **Git backup must span *registered* vaults, in two halves.** The
+   rollup timer iterating a vault list is the obvious half; the easy one
+   to forget is that the **per-save `magit-wip-*` hook** in
+   `vulpea-vault/git.el` is *also* single-vault (it gates on
+   `vulpea-config-notes-directory`). Editing a note in a non-live vault
+   would record no per-save history unless that buffer-local hook keys
+   off "under **any** registered vault." Git backup is genuinely
+   independent of the db/watcher question and could be improved on its
+   own, anytime.
+4. **Opening must register a vault.** Today `vulpea-vault-history` grows
+   only on explicit `vulpea-vault-switch`. For backup + the picker to
+   know a vault, opening a note in a not-yet-known vault would have to
+   register it.
+
+### Decision (2026)
+
+Deferred — build nothing. Vault switching is rare in this workflow, and
+the genuinely hard part (schema-skew, creation-promotes-to-live,
+watcher/worker singleton) can only be done cleanly by **forking**
+`vulpea-db.el` + `vulpea-db-sync.el` + `vulpea-db-worker.el`, a
+forever-maintenance cost out of proportion to the benefit here. Since
+home/work vault separation is a canonical multi-vault need and the
+lsp/eglot per-workspace pattern is well established, the right venue is
+**upstream**: open a vulpea issue proposing concurrent vaults
+(lsp-workspace style), citing the singleton inventory above, and gauge
+the author's interest in a PR before anyone writes one. The only piece
+we would still own regardless is **git rollup across registered vaults**,
+which needs none of the db multiplicity and stays on the "later, and
+unblocked" pile.
+
 ## What makes a directory a vault
 
 Only this, in its `.dir-locals.el`:
@@ -330,7 +446,8 @@ them in a shell. So the vault is also a git repository, and every save
 is recorded without anyone writing a commit.
 
 **Per save** — `vulpea-vault/git.el` adds Magit's two work-in-progress
-hooks buffer-locally to any file under the open vault:
+hooks buffer-locally to any file under a known vault (see "Backup is not
+scoped to the active vault" below):
 `magit-wip-commit-initial-backup` (the state before your first change of
 the session) and `magit-wip-commit-buffer-file` (after every save). The
 commits go to `refs/wip/wtree/refs/heads/<branch>` — an ordinary git ref
@@ -351,8 +468,41 @@ by a script. `git add -A` sees all of it.
 An Emacs timer drives this, not a launchd agent. An agent has to name a
 repository, and this configuration names no vault — it would go on
 rolling up the vault it was written for long after
-`vulpea-vault-switch` had moved on. The timer reads
-`vulpea-config-notes-directory` at each tick, so it follows the switch.
+`vulpea-vault-switch` had moved on. The timer reads the set of vaults
+opened in this Emacs at each tick (`vulpea-vault-git--known-vaults`:
+`vulpea-vault-history` plus the active vault), so it follows whatever
+has been opened.
+
+**Backup is not scoped to the active vault; per-save recording isn't
+either.** The single-active-vault limit is vulpea's *database*, not git —
+each vault is its own git repository, and git has no such limit. So every
+vault opened in this Emacs is rolled up in turn, each on its own repo,
+and a note edited in a vault other than the active one is backed up all
+the same. The per-save `magit-wip-*` hooks work identically: they are
+added buffer-locally to any file under a *known* vault (not only the
+active one — `vulpea-vault-git--vault-file-p` tests membership in
+`vulpea-vault-git--known-vaults`), and `magit-wip` records to whichever
+repository the file lives in, so no per-vault wiring is needed. The
+rollup subprocess environment (`vulpea-vault-git-rollup-environment`,
+e.g. the MPCDF HTTPS-token rewrite) is applied to every vault's rollup;
+it only rewrites the one remote it names, so it is inert on a vault
+whose remote it does not match.
+
+**How a vault enters the backup set (note for a future agent).** The set
+is `vulpea-vault-git--known-vaults` = `vulpea-vault-history` + the active
+vault. Under today's single-active-vault design, `vulpea-vault-history`
+grows *only* when a vault is **switched into** — `vulpea-vault-switch`,
+the `find-file-hook` guard's **switch** choice, or the active vault at
+startup. It does **not** grow on the guard's **open anyway** choice, nor
+by merely visiting a note. So a vault backed up is exactly a vault
+switched into at least once (persisted across sessions by savehist); a
+vault only ever "opened anyway" is neither rolled up nor given per-save
+WIP hooks. This is self-consistent now — *using* another vault means
+switching to it, which is the act that registers it — but it is
+precisely consequence #4 ("opening must register a vault") of the
+deferred multi-vault work above: if that model is ever built, the
+registration point must broaden so a vault used without being made
+active is still backed up.
 
 **The timer does not measure the six hours.** It ticks every
 `vulpea-vault-git-rollup-check-interval` (20 min) and the *script*
