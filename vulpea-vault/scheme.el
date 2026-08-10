@@ -77,5 +77,16 @@ being open anywhere inside it."
     (hack-dir-local-variables-non-file-buffer)
     vulpea-vault-version))
 
+(defun vulpea-vault-p (dir)
+  "Return non-nil if DIR is a vulpea vault.
+
+A directory is a vault only when its `.dir-locals.el' declares a
+`vulpea-vault-version' — the sole marker, since a bare `.dir-locals.el'
+means nothing.  Only the declaration's presence is weighed here, not
+which version it names; whether that version is one these modules
+implement is `vulpea-vault-version-check'."
+  (and (file-directory-p dir)
+       (vulpea-vault-version-at dir)))
+
 (provide 'vulpea-vault-scheme)
 ;;; scheme.el ends here

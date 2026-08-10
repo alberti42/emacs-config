@@ -157,12 +157,29 @@ plain `setq' when `savehist-mode' started, long before this file was
 reached, hence `bound-and-true-p' rather than a reference to a variable
 that may simply not exist yet.
 
-The history is walked rather than merely read: a vault whose directory
-is not there right now is skipped in favour of the one visited before
-it, which is what makes an unmounted volume a reason to open something
-else instead of a reason to fail."
-  (seq-find (lambda (d) (file-directory-p (expand-file-name d)))
+The history is walked rather than merely read: an entry that is not a
+vault right now is skipped in favour of the one visited before it —
+whether its directory is not there (an unmounted volume is a reason to
+open something else, not to fail) or it no longer declares a
+`vulpea-vault-version' (a `.dir-locals.el' edited away, or an ordinary
+directory that slipped into the history before switching learned to
+refuse one).  `vulpea-vault-p' answers both, guarded by `fboundp' since
+it is not certain the scheme module loaded."
+  (seq-find (lambda (d)
+              (let ((dir (expand-file-name d)))
+                (if (fboundp 'vulpea-vault-p)
+                    (vulpea-vault-p dir)
+                  (file-directory-p dir))))
             (bound-and-true-p vulpea-vault-history)))
+
+;; `vulpea-config--initial-vault' asks `vulpea-vault-p' whether a remembered
+;; directory is still a vault, so the scheme module has to be loaded before the
+;; resume runs, not with its siblings at the foot of the file.  It is
+;; self-contained (no other vulpea-vault module needed), so loading it early is
+;; safe; the siblings that need it `require' it and find it already provided.
+(emacs-config-load-module
+ "vulpea-vault/scheme"
+ "Could not load vulpea-vault/scheme.el; vaults cannot be recognised as such.")
 
 ;; Before the `use-package' forms below, so their `:init' blocks and every
 ;; module loaded from here see the vault already in place.  Setting a defcustom
@@ -358,10 +375,6 @@ clears `org-id-locations' and rescans every known file."
 (emacs-config-load-module
  "vulpea-vault/modified-stamp"
  "Could not load vulpea-vault/modified-stamp.el; :MODIFIED: will not refresh on save.")
-
-(emacs-config-load-module
- "vulpea-vault/scheme"
- "Could not load vulpea-vault/scheme.el; vaults cannot be recognised as such.")
 
 (emacs-config-load-module
  "vulpea-vault/directories"

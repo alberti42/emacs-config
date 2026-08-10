@@ -106,9 +106,24 @@ The prompt offers `vulpea-vault-history` (persisted via
 `savehist-additional-variables`, appended under a
 `with-eval-after-load 'savehist` so load order does not matter), the
 active vault last, and project.el's `... (choose a directory)` escape
-for a vault reached by path. A remembered vault whose directory is
-missing is left out of the prompt but kept in the history; the history
-entry is added only after the switch succeeds.
+for a vault reached by path. A remembered entry that is not a vault
+right now is left out of the prompt but kept in the history (`vulpea-vault-p`
+filters `vulpea-vault--candidates`); the history entry is added only
+after the switch succeeds.
+
+**A directory chosen by hand must be a vault.** `vulpea-vault-switch`
+refuses a directory whose `.dir-locals.el` declares no
+`vulpea-vault-version`, with a `user-error` — an explicit switch is the
+one path with no other signal that a directory is a vault (the
+`find-file-hook` guard keys off the per-buffer `vulpea-vault-version` a
+note's own directory-locals set), so without this check the
+`... (choose a directory)` escape would happily open an ordinary
+directory like `~/org` as a vault. A directory that declares a
+*non-nil but unrecognised* version is still a vault and is opened with a
+warning, as everywhere else — only the *absence* of the declaration is
+refused. The same `vulpea-vault-p` test guards the startup resume
+(`vulpea-config--initial-vault`), so a stale non-vault entry left in the
+history is skipped rather than resumed.
 
 Modified notes are offered for saving before the kill, `save-some-buffers`
 doing the asking; declining leaves `kill-buffer` to ask again, which is
@@ -254,12 +269,20 @@ Only this, in its `.dir-locals.el`:
 ```
 
 The mere presence of a `.dir-locals.el` means nothing — most projects
-have one, this repository included.
+have one, this repository included. `vulpea-vault-p` (in `scheme.el`)
+is the single predicate for "is this directory a vault": a directory
+plus a declared `vulpea-vault-version`.
 
-`vulpea-vault-schema-version` (in `scheme.el`) is what these modules
-implement. A vault declaring anything else, or nothing, is still opened,
-but `vulpea-vault-version-check` warns — once per vault per session,
-since the check runs for every note opened there. The version governs
+**Absence of the declaration and an unrecognised value are different
+cases.** `vulpea-vault-schema-version` (in `scheme.el`) is the version
+these modules implement. A vault declaring a *different non-nil* version
+is still a vault and is still opened — `vulpea-vault-version-check` warns
+(once per vault per session, since the check runs for every note opened
+there) but does not refuse, because being unable to read a vault
+perfectly is no reason to refuse it at all. Declaring *nothing*,
+however, means the directory is not a vault: the `find-file-hook` guard
+never treats such a buffer as belonging to one, and `vulpea-vault-switch`
+refuses to open it (see "Switching vaults live"). The version governs
 the whole vault↔config contract (folder roles, tag vocabulary,
 templates), which is why it lives on its own rather than inside any one
 of them. Raise it when a change would make an older vault behave

@@ -65,9 +65,11 @@ gesture and there is nothing to gain by spelling it differently.")
 vault last, where it is out of the way but still says where you are; and
 the escape to any other directory at the very end.
 
-A remembered vault whose directory has gone is left out of the prompt
-rather than dropped from the history — a vault on a volume that is not
-mounted is not gone, and comes back on its own.
+A remembered entry that is not a vault right now is left out of the
+prompt rather than dropped from the history — whether because its
+directory has gone (a volume not mounted is not gone, and comes back on
+its own) or because it no longer declares a `vulpea-vault-version' (a
+`.dir-locals.el' edited or removed).  `vulpea-vault-p' answers both.
 
 The first time of all, the list is the escape alone: nothing has been
 opened yet and nothing is configured, so there is nothing else to say."
@@ -76,7 +78,7 @@ opened yet and nothing is configured, so there is nothing else to say."
                         vulpea-vault-history))))
     (append (seq-filter (lambda (d)
                           (and (not (equal d vulpea-config-notes-directory))
-                               (file-directory-p d)))
+                               (vulpea-vault-p d)))
                         known)
             (delq nil (list vulpea-config-notes-directory
                             vulpea-vault-choose-directory)))))
@@ -125,6 +127,10 @@ route is remembered in `vulpea-vault-history', so it is offered from
 then on and resumed at the next startup — being opened is the whole of
 how a vault becomes known.
 
+A directory that declares no `vulpea-vault-version' in its
+`.dir-locals.el' is refused: it is not a vault, and opening one as a
+vault by mistake is the error this guards against.
+
 A vault with no index yet is scanned in the background, so the switch
 returns before its notes are findable."
   (interactive (list (vulpea-vault--read)))
@@ -133,7 +139,20 @@ returns before its notes are findable."
       (user-error "Not a directory: %s" root))
     (when (equal root vulpea-config-notes-directory)
       (user-error "Already in %s" root))
-    (vulpea-vault-version-check (vulpea-vault-version-at root) root)
+    ;; The declaration is the whole of what makes a vault, and an explicit
+    ;; switch is the one path with no other signal that a directory is one:
+    ;; the `find-file-hook' guard keys off the per-buffer `vulpea-vault-version'
+    ;; a note's own directory-locals set, but a directory chosen by hand has
+    ;; only its `.dir-locals.el' to vouch for it.  Refuse when it does not,
+    ;; rather than opening an ordinary directory as a vault by mistake.
+    (let ((version (vulpea-vault-version-at root)))
+      (unless version
+        (user-error
+         "Not a vulpea vault: %s declares no `vulpea-vault-version' in .dir-locals.el"
+         (abbreviate-file-name root)))
+      ;; A vault on a scheme these modules do not implement is still a vault;
+      ;; warn but proceed, as everywhere else.
+      (vulpea-vault-version-check version root))
     (let (;; With no vault open there was nothing to watch, so the watcher
           ;; being off says nothing about whether it is wanted — only a vault
           ;; left with it deliberately off keeps it off.
