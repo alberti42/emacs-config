@@ -78,23 +78,31 @@ by `vulpea-vault-switch`:
 
 | Setting                        | Value                        |
 | ------------------------------ | ---------------------------- |
-| `vulpea-config-state-directory` | `<root>/.vulpea/`           |
+| `vulpea-db-location`           | `expand-file-name(<db>, <root>)` |
+| `vulpea-config-state-directory` | directory of `vulpea-db-location` |
 | `vulpea-config-attach-directory` | `<root>/<data>/`           |
 | `org-attach-id-dir`            | = attach directory           |
 | `vulpea-db-sync-directories`   | `(<root>)`                   |
-| `vulpea-db-location`           | `<root>/.vulpea/vulpea.db`   |
 
 Three of those belong to other packages, which is why a vault cannot be
 re-pointed by hand.
 
-`<data>` defaults to `data` but is vault-configurable — see
-[Attachment store](#attachment-store--vulpea-vault-data-directory)
-below. To read it, `apply-vault` `hack-dir-local-variables`-reads the
-root before assigning, the same idiom the other declared variables use.
+Two of the values are vault-configurable, read from the root with
+`hack-dir-local-variables` before assigning (the idiom every declared
+variable uses):
+
+- `<data>` defaults to `data` — see
+  [Attachment store](#attachment-store--vulpea-vault-data-directory).
+- `<db>` defaults to `./.vulpea/vulpea.db` and is `expand-file-name`-d
+  against the root — see
+  [Cache location](#cache-location--vulpea-vault-db-location). So a
+  relative value lands inside the vault and an absolute one is taken
+  as-is, and `vulpea-config-state-directory` follows its directory part.
 
 `org-id` locations live under `$XDG_CACHE_HOME/emacs/` instead — they
-span every org file Emacs knows, not one vault. The database lives in
-the vault's own `.vulpea/`, so the index travels with the notes.
+span every org file Emacs knows, not one vault. The database defaults to
+the vault's own `.vulpea/`, so the index travels with the notes unless
+the vault points it elsewhere.
 
 ## Switching vaults live
 
@@ -340,6 +348,39 @@ store is link-safe — `attachment:` and the UUID crossref form resolve
 through `org-attach-dir-from-id`, never a literal path — but the files
 themselves need a one-time `git mv`, and the store must hold nothing but
 attachments (a stray `.org` under it would be indexed as a note).
+
+### Cache location — `vulpea-vault-db-location`
+
+Where the vault's SQLite index lives (default `"./.vulpea/vulpea.db"`).
+`apply-vault` `expand-file-name`s it against the root, so a **relative**
+value lands inside the vault and an **absolute** value (or a `~`-path) is
+taken as-is; `vulpea-config-state-directory` becomes its directory and is
+created if absent. Behind `vulpea-vault-db-location-p` (non-empty
+string), and — like `vulpea-vault-data-directory` — its defvar and safe
+registration live in `vulpea-config.el`, not a `vulpea-vault/` module,
+because `apply-vault` reads it at load time before those modules load.
+
+**The index is a cache, not content.** It embeds absolute paths and is
+machine-local, so it is never synced and never part of the vault's
+tracked content (`.vulpea/` is git-ignored). Keeping it inside the vault
+by default is what gives the storage-domain property: on an encrypted
+disk the cache is encrypted-at-rest and unmounts with the vault. The
+variable exists for the cases where in-vault is *wrong*:
+
+- A **shared/synced** vault (Samba, Dropbox, Syncthing) must not host one
+  SQLite file that several machines write over a mount, nor sync a DB of
+  stale absolute paths. Point it at a per-machine local path instead. But
+  note the vault's `.dir-locals.el` travels with it, so a hardwired
+  absolute path would be identical on every machine, *not* per-machine —
+  for a shared vault, leave the value relative and sync-exclude the
+  directory, or resolve the per-machine path from user configuration
+  keyed on the vault rather than naming it here.
+
+Unlike `vulpea-vault-data-directory`, an **absolute** path is admitted by
+the safe predicate (the whole point is placement outside a shared vault);
+the value is inert data, never code. If untrusted vaults were ever a
+concern, tightening the predicate to relative-only is a one-line change,
+with absolute placement then handled by a user-config resolver.
 
 ### Note templates — `vulpea-vault-template`
 

@@ -54,9 +54,10 @@ this and carries on; a command that cannot proceed without a vault says
 so through `vulpea-config-vault-or-error'.")
 
 (defvar vulpea-config-state-directory nil
-  "Per-vault state, kept inside the vault rather than in a global cache.
-The index then belongs to the vault and travels with it, which is what
-makes a second vault a matter of pointing at it.
+  "Directory holding this vault's index -- the directory of `vulpea-db-location'.
+Inside the vault by default (`<root>/.vulpea/'), so the index belongs to
+the vault and travels with it; a vault may point its cache elsewhere
+through `vulpea-vault-db-location', and this follows the directory part.
 
 Safe to keep here: vulpea's scanner skips hidden directories — anything
 whose path contains \"/.\" — so it neither indexes nor watches its own
@@ -104,6 +105,41 @@ without naming an absolute path outside the tree."
 (put 'vulpea-vault-data-directory 'safe-local-variable
      #'vulpea-vault-data-directory-p)
 
+(defvar vulpea-vault-db-location "./.vulpea/vulpea.db"
+  "Where this vault's index -- a SQLite *cache*, not content -- is stored.
+
+Declared by the vault in its `.dir-locals.el', so a vault says where its
+own cache belongs:
+
+  ((nil . ((vulpea-vault-db-location . \"./.vulpea/vulpea.db\"))))
+
+Resolved with `expand-file-name' against the vault root: a relative value
+(the default) lands inside the vault -- encrypted-at-rest and unmounting
+with it on an encrypted disk -- while an absolute value or a `~'-path is
+taken as-is, for a per-machine local cache when the vault is shared.  Its
+directory becomes `vulpea-config-state-directory' and is created if absent;
+keep it hidden (a leading dot) so vulpea's scanner, which skips any path
+containing \"/.\", neither indexes nor watches the cache.
+
+Caveat for a *shared* vault: its `.dir-locals.el' travels with it, so a
+hardwired absolute path here would be identical on every machine -- not
+per-machine.  For that case leave the value relative and sync-exclude the
+directory, or resolve the per-machine path from user configuration keyed
+on the vault rather than naming it here.")
+
+(defun vulpea-vault-db-location-p (value)
+  "Return non-nil if VALUE is a valid `vulpea-vault-db-location'.
+A non-empty string.  Unlike `vulpea-vault-data-directory' an absolute
+path is admitted, since the point is to be able to place the cache
+outside a shared vault; the value is inert data, never code.  (Opening an
+untrusted vault that redirects its cache is the reason to tighten this to
+relative-only should such vaults ever be a concern.)"
+  (and (stringp value)
+       (not (string-empty-p value))))
+
+(put 'vulpea-vault-db-location 'safe-local-variable
+     #'vulpea-vault-db-location-p)
+
 (defun vulpea-config-apply-vault (root)
   "Point every vault-derived setting at ROOT, and return it.
 
@@ -117,22 +153,28 @@ by hand: three of them belong to other packages, `org-attach' and vulpea
 read plain values, and vulpea opens its database from
 `vulpea-db-location' as it finds it."
   (let* ((root (file-name-as-directory (expand-file-name root)))
-         ;; The store's name is the vault's to choose (see
-         ;; `vulpea-vault-data-directory'), read from the root the same way
-         ;; every other vault-declared variable is.  Absent, the default
-         ;; "data" stands, so a vault that says nothing behaves as before.
-         (data (with-temp-buffer
-                 (setq default-directory root)
-                 (hack-dir-local-variables-non-file-buffer)
-                 (or vulpea-vault-data-directory "data"))))
+         ;; The store's name and the cache's location are both the vault's to
+         ;; choose (see `vulpea-vault-data-directory' and
+         ;; `vulpea-vault-db-location'), read from the root the same way every
+         ;; other vault-declared variable is.  Absent, the defaults stand, so a
+         ;; vault that says nothing behaves as before.
+         (declared (with-temp-buffer
+                     (setq default-directory root)
+                     (hack-dir-local-variables-non-file-buffer)
+                     (list (or vulpea-vault-data-directory "data")
+                           (or vulpea-vault-db-location "./.vulpea/vulpea.db"))))
+         (data (nth 0 declared))
+         ;; A relative value (the default) lands inside the vault; an absolute
+         ;; one or a `~'-path is taken as-is.  `expand-file-name' does exactly
+         ;; that, so no branch on the shape of the path is needed.
+         (db (expand-file-name (nth 1 declared) root)))
     (setq vulpea-config-notes-directory root
-          vulpea-config-state-directory (expand-file-name ".vulpea/" root)
+          vulpea-config-state-directory (file-name-directory db)
           vulpea-config-attach-directory (expand-file-name
                                           (file-name-as-directory data) root)
           org-attach-id-dir vulpea-config-attach-directory
           vulpea-db-sync-directories (list root)
-          vulpea-db-location (expand-file-name "vulpea.db"
-                                              vulpea-config-state-directory)))
+          vulpea-db-location db))
   (make-directory vulpea-config-state-directory t)
   vulpea-config-notes-directory)
 
