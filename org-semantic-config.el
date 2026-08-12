@@ -79,11 +79,32 @@
   ;; seconds on top of a semantic run, and `m' in the results buffer swaps
   ;; between them, which is only useful when both exist.
   (org-semantic-index-mode "both")
-  ;; The indexing policy is deliberately left nil.  It is compared *whole*, so
-  ;; a partial one reads as a change to everything it omits and fails the
-  ;; search against an index built without it; nil searches the index as it
-  ;; stands, which is what a command-line run does.
-  (org-semantic-config nil))
+
+  ;; The indexing policy, stated whole.  It is compared whole, so a setting left
+  ;; out is not left alone — it takes its default — and a policy that disagrees
+  ;; with the one an index was built under fails the search rather than
+  ;; answering from passages split by rules no longer held.
+  ;;
+  ;; Everything here is org-semantic's own default except `:languages', which
+  ;; names the three this vault is written in: that confines the lexical
+  ;; classifier to those, instead of letting it guess among all 176 and label a
+  ;; link-only note Portuguese.
+  ;;
+  ;; Vectors, not lists, and no commas between the elements: a comma inside a
+  ;; quoted form is the symbol `\,', which serialises to JSON as an object and
+  ;; is silently accepted as far as Emacs is concerned.
+  (org-semantic-config
+   '(:languages ["en-US" "de-DE" "it-IT"]
+     :fold_diacritics :json-false
+     :blocks (:src     (:semantic "placeholder" :lexical t)
+              :example (:semantic "placeholder" :lexical t)
+              :results (:semantic :json-false   :lexical t)
+              :quote   (:semantic t             :lexical t)
+              :verse   (:semantic t             :lexical t))
+     :planning_line (:semantic :json-false :lexical t)
+     :chunk (:semantic_tokens 350 :lexical_chars 1500)
+     :exclude_tagged ["noexport" "ARCHIVE"]
+     :todo_keywords ["TODO" "DONE"])))
 
 (provide 'org-semantic-config)
 ;;; org-semantic-config.el ends here
