@@ -109,6 +109,79 @@ incremented."
         (setq n (1+ n)))
       next)))
 
+;;; -- Shell files declaring environment variables ------------------------------
+;;
+;; Reading a value out of one of the plain `KEY=VALUE' files the shell sources
+;; -- `~/.config/envs/*.sh', a cached `interactive-shell-env.sh', a secrets file
+;; kept outside this repository -- without running a shell and without baking
+;; the value into a variable at load time.
+;;
+;; LITERAL ASSIGNMENTS ONLY, BY DESIGN.  No `$VAR' interpolation, no command
+;; substitution, no `unset', no line continuations, no heredocs, no arithmetic:
+;; anything past a literal assignment is out of scope, because the alternative
+;; is either a shell subprocess (slow, and a different thing entirely) or a
+;; half-shell whose gaps are discovered one surprise at a time.  A file needing
+;; more than this should be read by asking the shell.
+;;
+;; `env-config.el' keeps its own parser rather than calling these.  Not
+;; duplication to fold away: it runs from `early-init.el', long before this file
+;; is loaded (init.el:437), and pulling utils.el into the pre-package phase
+;; would drag `use-package', keybindings and advice in with it.  It also does a
+;; different job -- `setenv' into this Emacs, plus `exec-path' for PATH --
+;; whereas these two only read.
+
+(require 'rx)                           ; `my/env-file-assignment-regexp', below
+
+(defconst my/env-file-assignment-regexp
+  (rx bol (* (in " \t")) (? "export" (+ (in " \t")))
+      (group (any "A-Za-z_") (* (any "A-Za-z0-9_")))
+      "=" (group (* nonl)) eol)
+  "Match one assignment line of a shell environment file.
+Group 1 is the name, group 2 the raw value.  `export' is optional; a
+comment line cannot match, `#' not being a name character.")
+
+(defun my/parse-env-file (file)
+  "Return an alist of (NAME . VALUE) for the assignments in FILE.
+
+Matches `export NAME=VALUE' and bare `NAME=VALUE' (see
+`my/env-file-assignment-regexp'); a single matching pair of surrounding
+quotes is stripped from the value, as is surrounding whitespace.  Nil when
+FILE is unreadable -- an absent secrets file is a state to handle, not an
+error to signal, so the caller decides.
+
+A name assigned twice keeps the LAST value, as a shell would, and appears
+once; the alist is otherwise in first-appearance order.
+
+See the section commentary for what this deliberately does not parse."
+  (when (file-readable-p file)
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (let (alist)
+        (while (re-search-forward my/env-file-assignment-regexp nil t)
+          (let ((name (match-string 1))
+                (val (string-trim (match-string 2))))
+            (when (and (>= (length val) 2)
+                       (memq (aref val 0) '(?\" ?\'))
+                       (eq (aref val 0) (aref val (1- (length val)))))
+              (setq val (substring val 1 -1)))
+            ;; `setf' on `alist-get' rather than `push': a repeated assignment
+            ;; replaces the earlier one in place, so the shell's last-wins rule
+            ;; holds however the caller reads the result, and the name keeps the
+            ;; position of its first appearance.
+            (setf (alist-get name alist nil nil #'equal) val)))
+        ;; Built by consing, so file order is the reverse of the list.
+        (nreverse alist)))))
+
+(defun my/env-file-value (file name)
+  "Return the value NAME is assigned in FILE, or nil.
+
+A convenience over `my/parse-env-file' for the common case of wanting one
+variable, and a guard against the trap in doing it by hand: the keys are
+strings, so `alist-get' needs `equal' as its TESTFN and silently answers
+nil with the default `eq'."
+  (alist-get name (my/parse-env-file file) nil nil #'equal))
+
 ;;; -- Mode-specific scratch buffers -------------------------------------------
 
 (defvar my/scratch-mode-alist

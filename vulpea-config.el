@@ -453,45 +453,27 @@ clears `org-id-locations' and rescans every known file."
 ;; the shell keep using SSH, and nothing on disk changes.
 ;;
 ;; The token lives outside this repository, in the file the shell already
-;; sources, and is read fresh at each rollup — nothing secret is committed and
-;; nothing is baked into a variable at load time.  `url.<https>.insteadOf'
+;; sources, and is read fresh at each rollup by `my/env-file-value' — nothing
+;; secret is committed and nothing is baked into a variable at load time.  The
+;; parser is in utils.el because reading such a file is not a vulpea concern;
+;; only knowing which file, and which name in it, is.  `url.<https>.insteadOf'
 ;; does the rewrite through git's own GIT_CONFIG_* environment protocol, so no
 ;; on-disk git config is touched either.  This is host-specific and so lives
 ;; here, not in the (vault-agnostic) git module.
-(defun vulpea-config--parse-env-file (file)
-  "Return an alist of (NAME . VALUE) for the assignments in FILE.
-Matches `export NAME=VALUE' and bare `NAME=VALUE' lines; a single
-matching pair of surrounding quotes on the value is stripped.  Nil when
-FILE is unreadable.  This is for the plain secrets files the shell
-sources, not for shell in general — anything past a literal assignment
-(command substitution, interpolation) is out of scope by design."
-  (when (file-readable-p file)
-    (with-temp-buffer
-      (insert-file-contents file)
-      (goto-char (point-min))
-      (let (alist)
-        (while (re-search-forward
-                (rx bol (* space) (? "export" (+ space))
-                    (group (any "A-Za-z_") (* (any "A-Za-z0-9_")))
-                    "=" (group (* nonl)) eol)
-                nil t)
-          (let ((name (match-string 1))
-                (val (string-trim (match-string 2))))
-            (when (and (>= (length val) 2)
-                       (memq (aref val 0) '(?\" ?\'))
-                       (eq (aref val 0) (aref val (1- (length val)))))
-              (setq val (substring val 1 -1)))
-            (push (cons name val) alist)))
-        (nreverse alist)))))
-
 (defun vulpea-config-mpcdf-git-environment ()
   "Environment that pushes the vault to gitlab.mpcdf.mpg.de over HTTPS.
 Rewrites the SSH remote to an HTTPS URL carrying an oauth2 token, so the
 rollup's push authenticates with the token instead of an SSH key.
-Returns nil when no token is available, leaving the push on SSH."
-  (when-let* ((env (vulpea-config--parse-env-file
-                    (expand-file-name "~/.config/envs/gitlab_mpcdf.sh")))
-              (token (alist-get "GITLAB_MPCDF_TOKEN" env nil nil #'equal)))
+Returns nil when no token is available, leaving the push on SSH.
+
+The file is read at each rollup through `my/env-file-value' (utils.el, one
+of the plain `KEY=VALUE' files the shell sources), so the token is never
+baked into a variable at load time and an absent file simply leaves the
+push on SSH.  Called from the rollup timer, long after utils.el is loaded,
+so the reference costs no load-order constraint."
+  (when-let* ((token (my/env-file-value
+                      (expand-file-name "~/.config/envs/gitlab_mpcdf.sh")
+                      "GITLAB_MPCDF_TOKEN")))
     (list "GIT_CONFIG_COUNT=1"
           (format
            "GIT_CONFIG_KEY_0=url.https://oauth2:%s@gitlab.mpcdf.mpg.de/.insteadOf"
