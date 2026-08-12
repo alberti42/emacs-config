@@ -405,6 +405,10 @@ clears `org-id-locations' and rescans every known file."
  "Could not load vulpea-vault/modified-stamp.el; :MODIFIED: will not refresh on save.")
 
 (emacs-config-load-module
+ "vulpea-vault/select"
+ "Could not load vulpea-vault/select.el; note selection will show no dates.")
+
+(emacs-config-load-module
  "vulpea-vault/directories"
  "Could not load vulpea-vault/directories.el; the vault's folder roles are unavailable.")
 
