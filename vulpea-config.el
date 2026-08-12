@@ -450,6 +450,11 @@ clears `org-id-locations' and rescans every known file."
  "vulpea-vault/switch"
  "Could not load vulpea-vault/switch.el; `vulpea-vault-switch' is unavailable.")
 
+;; After switch.el, whose hooks it joins (and whose feature it requires).
+(emacs-config-load-module
+ "vulpea-vault/semantic"
+ "Could not load vulpea-vault/semantic.el; org-semantic will not follow the vault.")
+
 (emacs-config-load-module
  "vulpea-vault/git"
  "Could not load vulpea-vault/git.el; note saves will not be recorded in git.")

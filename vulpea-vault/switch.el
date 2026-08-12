@@ -53,6 +53,30 @@ Persisted across sessions through `savehist' — the list is registered in
 (with-eval-after-load 'savehist
   (add-to-list 'savehist-additional-variables 'vulpea-vault-history))
 
+(defvar vulpea-vault-leave-functions nil
+  "Abnormal hook run with the root of the vault being left.
+
+Run by `vulpea-vault-switch' after that vault's buffers have been closed
+and before anything is re-pointed, so `vulpea-config-notes-directory'
+still names it and its state can be found where it lives — inside the
+vault.  Not run at startup: resuming a vault leaves none.
+
+This is where anything else that keys off the vault is torn down.  Its
+one user today is `vulpea-vault/semantic.el', which tells the
+org-semantic server to drop that vault's index.")
+
+(defvar vulpea-vault-enter-functions nil
+  "Abnormal hook run with the root of the vault just opened.
+
+Run by `vulpea-vault-switch' once every setting has been re-pointed and
+the database is watching again, so a function on it sees the new vault
+fully in place.
+
+Not run at startup either: `vulpea-config-apply-vault' assigns the
+resumed vault directly, and the point of this configuration is that a
+fresh Emacs starts no more processes than it must.  A consumer that
+wants to act on the vault it resumed does so on its own terms.")
+
 (defconst vulpea-vault-choose-directory "... (choose a directory)"
   "Entry standing for a vault that is not in the list.
 Worded as `project.el' words the same escape, since it is the same
@@ -181,6 +205,9 @@ returns before its notes are findable."
           (closed (if vulpea-config-notes-directory
                       (vulpea-vault--close-buffers vulpea-config-notes-directory)
                     0)))
+      (when vulpea-config-notes-directory
+        (run-hook-with-args 'vulpea-vault-leave-functions
+                            vulpea-config-notes-directory))
       (when watching (vulpea-db-autosync-mode -1))
       (vulpea-db-close)
       (vulpea-config-apply-vault root)
@@ -197,6 +224,7 @@ returns before its notes are findable."
       ;; instead of listing it twice; the variable is nil by default.
       (let ((history-delete-duplicates t))
         (add-to-history 'vulpea-vault-history root))
+      (run-hook-with-args 'vulpea-vault-enter-functions root)
       (message "Vault: %s — %d buffer%s closed"
                (abbreviate-file-name root) closed (if (= closed 1) "" "s")))))
 

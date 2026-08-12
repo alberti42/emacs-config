@@ -633,6 +633,13 @@ monitor."
  'org-config
  "Could not load org-config.el; Org mode enhancements are disabled.")
 
+;; Search a tree of org notes by meaning or by word (one Rust binary over a
+;; pipe, no database).  Before vulpea-config, which loads the vulpea-vault/
+;; module that ties a vault's org-semantic index to `vulpea-vault-switch'.
+(emacs-config-load-module
+ 'org-semantic-config
+ "Could not load org-semantic-config.el; semantic search over the notes is disabled.")
+
 ;; Note database over the org notes.  Indexes every org node carrying an `:ID:';
 ;; also owns the `org-id' / `org-attach' settings that share that property, and
 ;; extends `attachment:' to cross-note links.  After org-config so org is
