@@ -71,74 +71,8 @@ empty attachment directory rather than an error.
 
 Absolute; its trailing directory name comes from
 `vulpea-vault-data-directory', which a vault may set in its
-`.dir-locals.el'.")
-
-(defvar vulpea-vault-data-directory "data"
-  "Name of the attachment store, relative to the vault root.
-
-Declared by the vault in its `.dir-locals.el', so where its data lives
-travels with the notes:
-
-  ((nil . ((vulpea-vault-data-directory . \"00 Meta/data\"))))
-
-Default \"data\" is a visible directory at the root; \".data\" tucks the
-store out of sight (a leading dot also keeps vulpea's scanner from
-walking it, since it skips any path containing \"/.\").  Whatever the
-value, it MUST match the converter's --attach-dir
-(`etc/goodies/obsidian-to-org.py'): the two are one contract, and a
-mismatch yields an empty attachment directory rather than an error.
-
-Existing links survive a move — `attachment:' and the UUID crossref form
-both resolve through `org-attach-dir-from-id', never a literal path — but
-the files themselves must be moved to the new name (a one-time `git mv').
-Keep the store in a directory that holds nothing but attachments, so no
-stray `.org' under it is mistaken for a note.")
-
-(defun vulpea-vault-data-directory-p (value)
-  "Return non-nil if VALUE is a valid relative attachment-store name.
-Relative and non-empty, so a vault's `.dir-locals.el' can place its store
-without naming an absolute path outside the tree."
-  (and (stringp value)
-       (not (string-empty-p value))
-       (not (file-name-absolute-p value))))
-
-(put 'vulpea-vault-data-directory 'safe-local-variable
-     #'vulpea-vault-data-directory-p)
-
-(defvar vulpea-vault-db-location "./.vulpea/vulpea.db"
-  "Where this vault's index -- a SQLite *cache*, not content -- is stored.
-
-Declared by the vault in its `.dir-locals.el', so a vault says where its
-own cache belongs:
-
-  ((nil . ((vulpea-vault-db-location . \"./.vulpea/vulpea.db\"))))
-
-Resolved with `expand-file-name' against the vault root: a relative value
-(the default) lands inside the vault -- encrypted-at-rest and unmounting
-with it on an encrypted disk -- while an absolute value or a `~'-path is
-taken as-is, for a per-machine local cache when the vault is shared.  Its
-directory becomes `vulpea-config-state-directory' and is created if absent;
-keep it hidden (a leading dot) so vulpea's scanner, which skips any path
-containing \"/.\", neither indexes nor watches the cache.
-
-Caveat for a *shared* vault: its `.dir-locals.el' travels with it, so a
-hardwired absolute path here would be identical on every machine -- not
-per-machine.  For that case leave the value relative and sync-exclude the
-directory, or resolve the per-machine path from user configuration keyed
-on the vault rather than naming it here.")
-
-(defun vulpea-vault-db-location-p (value)
-  "Return non-nil if VALUE is a valid `vulpea-vault-db-location'.
-A non-empty string.  Unlike `vulpea-vault-data-directory' an absolute
-path is admitted, since the point is to be able to place the cache
-outside a shared vault; the value is inert data, never code.  (Opening an
-untrusted vault that redirects its cache is the reason to tighten this to
-relative-only should such vaults ever be a concern.)"
-  (and (stringp value)
-       (not (string-empty-p value))))
-
-(put 'vulpea-vault-db-location 'safe-local-variable
-     #'vulpea-vault-db-location-p)
+`.dir-locals.el' — declared, with everything else a vault may say about
+itself, in `vulpea-vault/scheme.el'.")
 
 (defun vulpea-config-apply-vault (root)
   "Point every vault-derived setting at ROOT, and return it.
@@ -154,10 +88,13 @@ read plain values, and vulpea opens its database from
 `vulpea-db-location' as it finds it."
   (let* ((root (file-name-as-directory (expand-file-name root)))
          ;; The store's name and the cache's location are both the vault's to
-         ;; choose (see `vulpea-vault-data-directory' and
-         ;; `vulpea-vault-db-location'), read from the root the same way every
-         ;; other vault-declared variable is.  Absent, the defaults stand, so a
-         ;; vault that says nothing behaves as before.
+         ;; choose (declared in `vulpea-vault/scheme.el' as
+         ;; `vulpea-vault-data-directory' and `vulpea-vault-db-location'), read
+         ;; from the root the same way every other vault-declared variable is.
+         ;; Absent, the defaults stand, so a vault that says nothing behaves as
+         ;; before.  This is the deriving half of the contract: the scheme says
+         ;; what a vault may state, this turns a stated value into the global
+         ;; another package reads.
          (declared (with-temp-buffer
                      (setq default-directory root)
                      (hack-dir-local-variables-non-file-buffer)
@@ -214,11 +151,16 @@ it is not certain the scheme module loaded."
                   (file-directory-p dir))))
             (bound-and-true-p vulpea-vault-history)))
 
-;; `vulpea-config--initial-vault' asks `vulpea-vault-p' whether a remembered
-;; directory is still a vault, so the scheme module has to be loaded before the
-;; resume runs, not with its siblings at the foot of the file.  It is
-;; self-contained (no other vulpea-vault module needed), so loading it early is
-;; safe; the siblings that need it `require' it and find it already provided.
+;; The scheme module holds every variable a vault may declare, so it must be
+;; loaded before anything reads a vault's `.dir-locals.el': a
+;; `safe-local-variable' predicate has to be attached to a symbol before the
+;; value is read, or the read prompts (or is discarded).  Both readers below run
+;; at load time — `vulpea-config--initial-vault' asks `vulpea-vault-p', and
+;; `vulpea-config-apply-vault' reads the store name and cache location — hence
+;; here rather than with its siblings at the foot of the file.  It is
+;; declarations and recognition only, requiring no other module of ours and
+;; nothing of org, so loading it early is safe; the siblings that need it
+;; `require' it and find it already provided.
 (emacs-config-load-module
  "vulpea-vault/scheme"
  "Could not load vulpea-vault/scheme.el; vaults cannot be recognised as such.")

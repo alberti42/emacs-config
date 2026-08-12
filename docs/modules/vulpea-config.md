@@ -89,7 +89,9 @@ re-pointed by hand.
 
 Two of the values are vault-configurable, read from the root with
 `hack-dir-local-variables` before assigning (the idiom every declared
-variable uses):
+variable uses). This is the *deriving* half of the contract —
+`scheme.el` states what a vault may say, `apply-vault` turns a stated
+value into the global another package reads:
 
 - `<data>` defaults to `data` — see
   [Attachment store](#attachment-store--vulpea-vault-data-directory).
@@ -292,17 +294,48 @@ however, means the directory is not a vault: the `find-file-hook` guard
 never treats such a buffer as belonging to one, and `vulpea-vault-switch`
 refuses to open it (see "Switching vaults live"). The version governs
 the whole vault↔config contract (folder roles, tag vocabulary,
-templates), which is why it lives on its own rather than inside any one
-of them. Raise it when a change would make an older vault behave
-*wrongly* rather than merely differently.
+templates), which is why it lives beside the declarations themselves
+rather than inside any one of their consumers. Raise it when a change
+would make an older vault behave *wrongly* rather than merely
+differently.
 
 ## What the vault declares
 
 All in the vault's own `.dir-locals.el`, all behind `safe-local-variable`
 predicates that admit inert data only — no function symbols — so a vault
 cannot introduce code: `natnump` for the version itself, then
+`vulpea-vault-data-directory-p`, `vulpea-vault-db-location-p`,
 `vulpea-vault-special-directories-p`, `vulpea-vault-tag-alist-p` and
 `vulpea-vault-template-p`.
+
+**Every one of them is declared in `vulpea-vault/scheme.el`** — the
+`defvar`, the default, the docstring and the predicate — and nowhere
+else. Three reasons, in order of weight:
+
+1. `vulpea-vault-schema-version` is a version *of this list*. Adding or
+   changing a declaration is the moment to weigh a bump, so the two
+   edits are adjacent lines in one file. Split across files, the edit
+   that must not be forgotten is the easy one to forget — and forgetting
+   it is silent: an old vault keeps declaring version 1 and is read
+   wrongly instead of reported.
+2. A `safe-local-variable` predicate must be attached to its symbol
+   *before* anything reads a `.dir-locals.el` naming it. The vault
+   resumed at startup is read before the other modules load, so the
+   declarations cannot live with the code that consumes them — while
+   `scheme.el` is loaded first anyway, to answer `vulpea-vault-p`.
+3. "What may a vault declare?" gets one answer from one file, in the
+   same order as the header of the vault's own `.dir-locals.el`, instead
+   of a grep for `safe-local-variable` across five modules.
+
+The consuming modules (`directories.el`, `tags.el`, `create.el`, and
+`apply-vault` for the two global ones) only *read* the values. Two kinds:
+`defvar-local` for what is read per buffer or folder (version, folder
+roles, templates) and plain `defvar` for what `apply-vault` reads once
+from the root (store name, cache location) — there being one store and
+one index per vault, a per-folder value would be meaningless.
+
+Not in `scheme.el`, deliberately: `org-semantic-vault-root`, which
+org-semantic marks safe itself.
 
 ### Folder roles — `vulpea-vault-special-directories`
 
@@ -313,9 +346,13 @@ because the caller is usually outside the vault. Keeps folder names like
 
 ### Tag vocabulary — `org-tag-alist` / `org-tag-persistent-alist`
 
-`vulpea-vault/tags.el` marks both safe as file-locals behind a predicate
-admitting only tag names, selection characters and grouping keywords,
-then re-runs `(org-set-regexps-and-options 'tags-only)` from
+`scheme.el` marks both safe as file-locals behind
+`vulpea-vault-tag-alist-p`, admitting only tag names, selection
+characters and grouping keywords — org's own variables rather than
+proxies of ours, so what a vault writes is what the org manual
+describes. `vulpea-vault/tags.el` is then left with the one thing that
+makes the declaration *take effect*: re-running
+`(org-set-regexps-and-options 'tags-only)` from
 `hack-local-variables-hook`.
 
 **That recompute is not optional.** Dir-locals are applied *after* the
@@ -336,10 +373,10 @@ org-attach store under the root. Behind `vulpea-vault-data-directory-p`
 vault hide its data: `".data"` tucks it away *and* keeps vulpea's scanner
 out (it skips any `/.` path); `"00 Meta/data"` files it under a folder.
 
-Unlike the other declared variables, its defvar and safe-local
-registration live in `vulpea-config.el`, not a `vulpea-vault/` module:
-`apply-vault` reads the value at load time, before those modules load, so
-the registration must already be in place.
+Declared in `scheme.el` like everything else a vault may state; the
+reading and expanding into `org-attach-id-dir` is `apply-vault`, and the
+store wiring that resolves an `attachment:` link through it is
+`vulpea-vault/attachments.el`.
 
 **It is one contract with the converter.** The name MUST match
 `obsidian-to-org.py --attach-dir` (also default `data`); a mismatch
@@ -356,9 +393,8 @@ Where the vault's SQLite index lives (default `"./.vulpea/vulpea.db"`).
 value lands inside the vault and an **absolute** value (or a `~`-path) is
 taken as-is; `vulpea-config-state-directory` becomes its directory and is
 created if absent. Behind `vulpea-vault-db-location-p` (non-empty
-string), and — like `vulpea-vault-data-directory` — its defvar and safe
-registration live in `vulpea-config.el`, not a `vulpea-vault/` module,
-because `apply-vault` reads it at load time before those modules load.
+string), and — like `vulpea-vault-data-directory` — declared in
+`scheme.el` and read from the root by `apply-vault`.
 
 **The index is a cache, not content.** It embeds absolute paths and is
 machine-local, so it is never synced and never part of the vault's
@@ -398,8 +434,12 @@ over, reconciled with what the converted notes actually carry. Keys:
 - A **nested `.dir-locals.el`** anywhere under the vault shadows the
   root file *wholesale*. One file per vault.
 - **One unsafe variable makes Emacs discard the entire file**, not just
-  that variable — which is why `tags.el` must be loaded for the
-  *templates* to apply at all.
+  that variable — and non-interactively (batch, or a `--batch` smoke
+  test) it is discarded *silently*, with no prompt. Which is why every
+  declaration has to be in place before any of them can apply: with
+  `scheme.el` unloaded, nothing in the file takes effect, not merely the
+  variables it declares. The same trap catches `org-semantic-vault-root`
+  in a batch Emacs where org-semantic is not loaded.
 
 ## Where a per-note fact goes: keyword, drawer, or meta list
 
@@ -648,7 +688,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | File                  | Concern                                                        |
 | --------------------- | -------------------------------------------------------------- |
 | `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
-| `scheme.el`           | what makes a directory a vault; the schema version and its check |
+| `scheme.el`           | the contract: every variable a vault may declare (defaults + safe predicates), the schema version and its check, `vulpea-vault-p` |
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |

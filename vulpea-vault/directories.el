@@ -16,40 +16,16 @@
 ;; from outside the vault entirely — the daily note is where a note goes when
 ;; nothing about the buffer says otherwise.
 ;;
+;; The variable itself is declared in `vulpea-vault/scheme.el', with the rest
+;; of what a vault may say about itself; this file only reads it.
+;;
 ;; Where the vault *is* stays in the configuration, as
 ;; `vulpea-config-notes-directory'.  Something has to know that much before it
 ;; can read anything the vault says about itself.
 
 ;;; Code:
 
-(require 'seq)
-
-(defvar-local vulpea-vault-special-directories nil
-  "Alist of ROLE to directory for this vault, or nil.
-
-ROLE is a symbol naming what the folder is for; the directory is
-relative to the vault root unless absolute.  Meant to be declared in the
-vault's `.dir-locals.el', so the layout travels with the notes:
-
-  (vulpea-vault-special-directories . ((daily . \"01 Daily notes/\")))
-
-Roles in use: `daily', where a note goes when nothing else says where.
-Unknown roles are simply never asked for, so the alist may carry more
-than any code reads.")
-
-(defun vulpea-vault-special-directories-p (value)
-  "Return non-nil if VALUE is a well-formed role-to-directory alist.
-Symbols and strings only, so a vault's `.dir-locals.el' can describe its
-layout without being able to introduce code."
-  (and (listp value)
-       (seq-every-p (lambda (entry)
-                      (and (consp entry)
-                           (symbolp (car entry))
-                           (stringp (cdr entry))))
-                    value)))
-
-(put 'vulpea-vault-special-directories 'safe-local-variable
-     #'vulpea-vault-special-directories-p)
+(require 'vulpea-vault-scheme)
 
 (defun vulpea-vault-special-directory (role)
   "Return the absolute directory the vault gives ROLE, or nil if none.

@@ -48,6 +48,7 @@
 ;;; Code:
 
 (require 'rx)
+(require 'vulpea-vault-scheme)
 (require 'vulpea-vault-modified-stamp)
 (require 'vulpea-vault-directories)
 
@@ -59,45 +60,10 @@ names rather than the current one.")
 
 ;;;; What a folder's notes start as
 
-(defvar-local vulpea-vault-template nil
-  "What a note created in this directory starts as, or nil for the defaults.
-
-A plist, meant to be set per folder from the vault's `.dir-locals.el'
-using its directory keys.  Keys, all optional:
-
-  :tags   list of filetags
-  :head   keywords added after `#+title:' and `#+filetags:'
-  :body   initial content, written a blank line below the keywords
-  :dated  nil to leave the title alone; otherwise today's date opens it
-
-An entry carries only what makes its folder differ.  Emacs replaces the
-value of a shallower directory key rather than merging into it, so a
-subfolder cannot inherit half of its parent's — what is absent comes
-from `vulpea-vault-create-defaults' instead.")
-
-(defconst vulpea-vault-template-keys '(:tags :head :body :dated)
-  "The keys `vulpea-vault-template' may carry.")
-
-(defun vulpea-vault-template-p (value)
-  "Return non-nil if VALUE is a well-formed `vulpea-vault-template'.
-
-Admits inert data only — strings, lists of strings, and t or nil — and
-in particular no function symbols, so a vault's `.dir-locals.el' can
-describe its folders without being able to introduce code."
-  (and (listp value)
-       (zerop (% (length value) 2))
-       (let ((rest value) (ok t))
-         (while (and ok rest)
-           (let ((key (pop rest))
-                 (val (pop rest)))
-             (setq ok (pcase key
-                        (:tags (and (listp val) (seq-every-p #'stringp val)))
-                        ((or :head :body) (stringp val))
-                        (:dated (or (eq val t) (null val)))
-                        (_ nil)))))
-         ok)))
-
-(put 'vulpea-vault-template 'safe-local-variable #'vulpea-vault-template-p)
+;; `vulpea-vault-template' — what a vault declares per folder — is defined in
+;; `vulpea-vault/scheme.el' along with its predicate and the keys it may carry.
+;; This file supplies what a template leaves out, and turns the result into a
+;; note.
 
 (defun vulpea-vault--template (dir)
   "Return the `vulpea-vault-template' the vault declares for DIR.

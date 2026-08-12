@@ -8,11 +8,11 @@
 ;; stand between writing them there and their having any effect.
 ;;
 ;; Neither variable is safe as a file-local, so Emacs would ask on every note
-;; opened.  Both are declared safe here behind a predicate admitting tag
-;; names, fast-selection characters and the grouping keywords and nothing
-;; else: the value is inert data, so waiving the prompt gives up nothing.
+;; opened.  That permission — and the predicate behind it — is granted in
+;; `vulpea-vault/scheme.el', with every other declaration a vault may make.
 ;;
-;; And dir-locals are applied *after* the major mode has run, by which point
+;; The second thing is what is left here.  Dir-locals are applied *after* the
+;; major mode has run, by which point
 ;; `org-mode' has already derived `org-current-tag-alist' — the buffer-local
 ;; value everything downstream actually reads — from the global settings.
 ;; Setting `org-tag-alist' at that point does nothing whatsoever until the
@@ -24,30 +24,6 @@
 ;; a tag group.  Searching Log still matches Daily and Meeting.
 
 ;;; Code:
-
-(defconst vulpea-vault-tag-alist-keywords
-  '(:startgroup :startgrouptag :grouptags :endgroup :endgrouptag :newline)
-  "The structural keywords org allows in a tag alist.")
-
-(defun vulpea-vault-tag-alist-p (value)
-  "Return non-nil if VALUE has the shape org expects of a tag alist.
-That shape is inert data throughout — tag names, fast-selection
-characters and the grouping keywords — so a `.dir-locals.el' satisfying
-it can name tags and nothing else.  See `org-tag-alist'."
-  (and (listp value)
-       (seq-every-p
-        (lambda (entry)
-          (pcase entry
-            (`(,(pred stringp)) t)
-            (`(,(pred stringp) . ,(pred characterp)) t)
-            (`(,(pred keywordp)) (memq (car entry) vulpea-vault-tag-alist-keywords))
-            (_ nil)))
-        value)))
-
-;; Org's own variables rather than proxies of ours, so what a vault writes in
-;; its `.dir-locals.el' is what the org manual describes.
-(dolist (var '(org-tag-alist org-tag-persistent-alist))
-  (put var 'safe-local-variable #'vulpea-vault-tag-alist-p))
 
 (defun vulpea-vault-apply-tag-alist ()
   "Re-derive the tag settings a dir-local has just supplied.
