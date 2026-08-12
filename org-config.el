@@ -52,6 +52,8 @@
   ;; inserting a section broke every link below it.  With the numbers drawn
   ;; instead, they renumber themselves and a `[[*Heading]]' link never holds one.
   (org-mode . org-num-mode)
+  :bind (:map org-mode-map
+              ("C-c t l" . org-toggle-link-display))
   :config
   ;; Keep the classic `org-latex-preview' (available as a fallback when
   ;; `org-latex-to-svg-mode' is off) on the dvisvgm backend.  The live
