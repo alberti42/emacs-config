@@ -27,6 +27,16 @@
 ;; An unrecognised version is reported, not refused.  Being unable to read a
 ;; vault perfectly is no reason to be unable to read it at all.
 ;;
+;; A predicate here answers one question only: IS THIS VALUE SAFE TO READ?
+;; — inert data, no function symbols, nothing that could introduce code.  It
+;; does NOT answer whether the value is *wise*.  That distinction is not
+;; pedantry: a predicate returning nil makes Emacs discard the WHOLE
+;; `.dir-locals.el', silently when non-interactive, so a vault refused one
+;; unwise value loses its tags, its templates and its version too — it stops
+;; being a vault at all.  A rule about what a sensible value looks like
+;; therefore belongs where it can be reported and recovered from, which is the
+;; deriving side (`vulpea-config-apply-vault'), never here.
+;;
 ;; Where each declaration is *used* is named in its docstring; this file only
 ;; states the contract and recognises a vault by it.  What a vault says is read
 ;; in two different ways, which is why the declarations are not all of a kind:
@@ -104,6 +114,14 @@ Read from the root by `vulpea-config-apply-vault', which expands it into
 `org-attach-id-dir'; the store wiring that then resolves an
 `attachment:' link through it is `vulpea-vault/attachments.el'.
 
+Relative \=-> inside the vault, which is where a store belongs; an
+absolute value or a `~'-path is taken as-is, as for
+`vulpea-vault-db-location', but is warned about — unlike a cache, a store
+holds content, and a store outside the vault is far more often a mistake
+than a decision.  Write a relative value with a leading \"./\" to mark it
+as one; not required (`expand-file-name' needs no marker), but it says so
+to a reader.
+
 Existing links survive a move — `attachment:' and the UUID crossref form
 both resolve through `org-attach-dir-from-id', never a literal path — but
 the files themselves must be moved to the new name (a one-time `git mv').
@@ -111,12 +129,21 @@ Keep the store in a directory that holds nothing but attachments, so no
 stray `.org' under it is mistaken for a note.")
 
 (defun vulpea-vault-data-directory-p (value)
-  "Return non-nil if VALUE is a valid relative attachment-store name.
-Relative and non-empty, so a vault's `.dir-locals.el' can place its store
-without naming an absolute path outside the tree."
+  "Return non-nil if VALUE could name an attachment store.
+A non-empty string; the value is inert data, never code.
+
+Whether it is *relative* is deliberately not judged here, though a
+relative value is what a store should be.  This predicate once required
+it, which made a vault naming an absolute store lose its whole
+`.dir-locals.el' — tags, templates, folder roles, and the
+`vulpea-vault-version' that makes it a vault at all — silently, over a
+setting no other declaration depends on.  A predicate is read as a safety
+gate by Emacs and cannot report anything; the preference belongs where it
+can warn, and does: `vulpea-config-apply-vault'.  Same admission rule as
+`vulpea-vault-db-location-p', so all three declared paths now accept the
+same shapes."
   (and (stringp value)
-       (not (string-empty-p value))
-       (not (file-name-absolute-p value))))
+       (not (string-empty-p value))))
 
 (put 'vulpea-vault-data-directory 'safe-local-variable
      #'vulpea-vault-data-directory-p)

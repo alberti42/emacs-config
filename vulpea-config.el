@@ -74,6 +74,33 @@ Absolute; its trailing directory name comes from
 `.dir-locals.el' — declared, with everything else a vault may say about
 itself, in `vulpea-vault/scheme.el'.")
 
+(defun vulpea-config--store-name (value root)
+  "Return VALUE, the attachment store the vault at ROOT declares.
+
+Warns when it is absolute and returns it regardless.  A store belongs
+inside the vault — it holds content, travels with the notes, and is one
+contract with the converter's --attach-dir — so an absolute value is
+almost always a mistake; but it is the vault's statement to make, as it is
+for `vulpea-vault-db-location', and honouring it is the only behaviour
+that cannot surprise.  Falling back to the default would point a live
+vault at an empty store instead, which reads as \"every attachment link is
+broken\" and says nothing about why.
+
+This is where the preference for a relative store lives, because this is
+where it can be said out loud.  `vulpea-vault-data-directory-p' cannot:
+a `safe-local-variable' predicate that returns nil makes Emacs discard the
+vault's entire `.dir-locals.el' without a word.
+
+Once per `vulpea-config-apply-vault' — startup and each
+`vulpea-vault-switch' — not once per note, so it is not deduplicated the
+way `vulpea-vault-version-check' is."
+  (when (file-name-absolute-p value)
+    (lwarn 'vulpea-vault :warning
+           "Vault %s puts its attachment store outside itself (%s); \
+using it as declared, but a store belongs in the vault"
+           (abbreviate-file-name root) value))
+  value)
+
 (defun vulpea-config-apply-vault (root)
   "Point every vault-derived setting at ROOT, and return it.
 
@@ -100,7 +127,10 @@ read plain values, and vulpea opens its database from
                      (hack-dir-local-variables-non-file-buffer)
                      (list (or vulpea-vault-data-directory "data")
                            (or vulpea-vault-db-location "./.vulpea/vulpea.db"))))
-         (data (nth 0 declared))
+         ;; Absolute is admitted and warned about here rather than refused by
+         ;; the predicate; see `vulpea-config--store-name'.  The
+         ;; `expand-file-name' below needs no branch either way.
+         (data (vulpea-config--store-name (nth 0 declared) root))
          ;; A relative value (the default) lands inside the vault; an absolute
          ;; one or a `~'-path is taken as-is.  `expand-file-name' does exactly
          ;; that, so no branch on the shape of the path is needed.

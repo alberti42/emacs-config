@@ -369,9 +369,16 @@ folded into its `.dir-locals.el` and the file deleted.
 
 A relative directory name (default `"data"`) placing the central
 org-attach store under the root. Behind `vulpea-vault-data-directory-p`
-(non-empty, relative — never an absolute path out of the tree). Lets a
-vault hide its data: `".data"` tucks it away *and* keeps vulpea's scanner
-out (it skips any `/.` path); `"00 Meta/data"` files it under a folder.
+(non-empty string). Lets a vault hide its data: `".data"` tucks it away
+*and* keeps vulpea's scanner out (it skips any `/.` path);
+`"00 Meta/data"` files it under a folder.
+
+An **absolute** value (or a `~`-path) is honoured as declared, but
+`vulpea-config--store-name` warns — a store holds content and travels
+with the notes, so outside the vault is nearly always a mistake, yet it
+remains the vault's statement to make. See [Shape vs
+policy](#shape-vs-policy-where-a-rule-about-a-value-belongs) for why the
+rule is a warning here and not a rejection in the predicate.
 
 Declared in `scheme.el` like everything else a vault may state; the
 reading and expanding into `org-attach-id-dir` is `apply-vault`, and the
@@ -412,11 +419,40 @@ variable exists for the cases where in-vault is *wrong*:
   directory, or resolve the per-machine path from user configuration
   keyed on the vault rather than naming it here.
 
-Unlike `vulpea-vault-data-directory`, an **absolute** path is admitted by
-the safe predicate (the whole point is placement outside a shared vault);
-the value is inert data, never code. If untrusted vaults were ever a
-concern, tightening the predicate to relative-only is a one-line change,
-with absolute placement then handled by a user-config resolver.
+An **absolute** path is admitted by the safe predicate — the whole point
+is placement outside a shared vault — and, unlike
+`vulpea-vault-data-directory`, is not even warned about: a cache is
+machine-local by nature, so out-of-vault is a normal choice for it rather
+than a suspicious one. The value is inert data, never code. If untrusted
+vaults were ever a concern, both are a user-config resolver away, *not* a
+tightened predicate — see below.
+
+### Shape vs policy: where a rule about a value belongs
+
+All three declared paths (`data-directory`, `db-location`,
+`special-directories`) now admit the same shapes, and pattern-1 resolution
+— `expand-file-name VALUE ROOT`, relative under the root, absolute or
+`~` as-is — is used for every one of them. That uniformity was worth a
+fix: `vulpea-vault-data-directory-p` used to *require* relative.
+
+**A `safe-local-variable` predicate answers "is this value safe to
+read?" — inert data, no code — and nothing else.** It is the wrong place
+for "is this value wise?", because it cannot say so: returning nil makes
+Emacs discard the vault's **entire `.dir-locals.el`** (silently, when
+non-interactive). The old predicate therefore meant that a vault naming an
+absolute store lost its tags, its templates, its folder roles, its cache
+location *and its `vulpea-vault-version`* — so it was no longer
+recognised as a vault at all, over one setting nothing else depends on.
+Verified before the fix: a test vault with an absolute store read back
+`version=nil special=nil vault-p=nil`; after it, everything reads and one
+warning is emitted.
+
+So: **shape in the predicate (`scheme.el`), policy on the deriving side
+(`apply-vault`)**, where it can warn, fall back, or both. This is the same
+declare/derive split the module layout follows, applied to a single value.
+Honouring the declared value rather than substituting the default is
+deliberate too: a live vault silently re-pointed at an empty store reads
+as "every attachment link is broken" and says nothing about why.
 
 ### Note templates — `vulpea-vault-template`
 
