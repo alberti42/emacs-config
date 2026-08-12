@@ -28,38 +28,30 @@
 ;; to no org-semantic vault at all falls back to the active vulpea vault, so
 ;; `C-c n s' searches the notes from anywhere.
 ;;
-;; The binary is not installed system-wide here, so `org-semantic-executable'
-;; falls back to the release build inside the checkout — see
-;; `org-semantic-config-executable'.
+;; The Lisp comes from the checkout; the *binary* deliberately does not.  It is
+;; found where org-semantic looks for one by itself —
+;; `org-semantic-install-directory', which defaults to
+;; ~/.config/emacs/org-semantic/ — so nothing about the binary is configured
+;; here and this exercises the path a user takes.  Pointing it at the checkout
+;; would make this the only machine the configuration works on, and would hide
+;; anything wrong with the lookup everyone else depends on.
+;;
+;; To keep running the build in the checkout without downloading anything, put
+;; a symlink there:
+;;
+;;   mkdir -p ~/.config/emacs/org-semantic
+;;   ln -sf ~/Documents/Programming/Emacs/org-semantic/target/release/org-semantic \
+;;          ~/.config/emacs/org-semantic/org-semantic
+;;
+;; `cargo build --release' then updates what Emacs runs, with no copying — and
+;; the lookup is still the real one, so a mistake in it shows up here.
 
 ;;; Code:
 
-(defconst org-semantic-config-checkout
-  (expand-file-name "~/Documents/Programming/Emacs/org-semantic")
-  "The org-semantic repository, holding both the Lisp and the Rust binary.
-
-Spelled out again in the `:straight' recipe below, which cannot use it:
-a use-package recipe is literal data, not an expression, so a symbol
-there reaches straight as a symbol and fails as a directory name.")
-
-(defun org-semantic-config-executable ()
-  "Return the org-semantic binary to run.
-
-Installed copy first — `cargo install' puts one on PATH, and that is
-what a shell run of `org-semantic index' would use, so preferring it
-keeps the two from being different releases.  Failing that, the release
-build inside the checkout, which is what a development machine has.
-
-The default name is returned when neither exists, so the failure is
-org-semantic's own \"binary not found\" rather than a nil argument
-travelling into `make-process'."
-  (or (executable-find "org-semantic")
-      (let ((built (expand-file-name "target/release/org-semantic"
-                                     org-semantic-config-checkout)))
-        (and (file-executable-p built) built))
-      "org-semantic"))
-
 (use-package org-semantic
+  ;; The path is spelled out rather than named: a use-package recipe is literal
+  ;; data, not an expression, so a symbol here would reach straight as a symbol
+  ;; and fail as a directory name.
   :straight (org-semantic
              :type git
              :host github
@@ -77,7 +69,12 @@ travelling into `make-process'."
          ("C-c n S" . org-semantic-find-at-point)
          ("C-c n R" . org-semantic-reindex))
   :custom
-  (org-semantic-executable (org-semantic-config-executable))
+  ;; `org-semantic-executable' and `org-semantic-install-directory' are both
+  ;; left at their defaults: the binary is looked for in
+  ;; ~/.config/emacs/org-semantic/ and then on PATH, which is what a user
+  ;; without this configuration gets.  See the Commentary for the symlink that
+  ;; keeps the development build in that first place.
+  ;;
   ;; Build both indexes on `M-x org-semantic-reindex': the lexical one is
   ;; seconds on top of a semantic run, and `m' in the results buffer swaps
   ;; between them, which is only useful when both exist.
