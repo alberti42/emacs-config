@@ -122,7 +122,23 @@
     (setq org-hide-emphasis-markers (not org-hide-emphasis-markers))
     (font-lock-flush)
     (message "Org emphasis markers: %s"
-             (if org-hide-emphasis-markers "hidden" "visible"))))
+             (if org-hide-emphasis-markers "hidden" "visible")))
+
+  ;; Never reveal markup in response to a mouse click -- otherwise clicking a
+  ;; link only reveals it and you must click a second time to follow it.
+  ;; Why: `org-appear' reveals on `down-mouse-1' (point enters the element on
+  ;; the press), which reflows the line while the button is still down.  Emacs
+  ;; classifies a press+release as a *click* only if the buffer position under
+  ;; the pointer is unchanged (`make_lispy_event', src/keyboard.c); here it
+  ;; changed, so the release arrives as `drag-mouse-1' -- and a drag never
+  ;; follows a link (see `mouse-1-click-follows-link').  Suppressing only the
+  ;; reveal keeps hide-on-leave intact, so nothing is left unhidden.
+  ;; A mouse click is navigation; use the keyboard when you mean to edit.
+  (defun my/org-appear-not-mouse-p (&rest _)
+    "Return nil when the current command came from the mouse."
+    (not (mouse-event-p last-command-event)))
+  (advice-add 'org-appear--show-with-lock
+              :before-while #'my/org-appear-not-mouse-p))
 
 ;; SVG-math preview for Org: the Org adaptor of the shared
 ;; `latex-to-svg-frontend' core.  Replaces built-in Org's classic
