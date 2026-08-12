@@ -54,7 +54,12 @@ Through `file-truename' and without a trailing slash, which is what
 `org-semantic-vault' returns and therefore what a search from inside the
 vault was recorded under.  A `close' naming it any other way — the
 symlinked path, or with the slash vulpea keeps — closes nothing, and
-says so with a cheerful message about zero entries dropped."
+says so with a cheerful message about zero entries dropped.
+
+Hence NOT `vulpea-vault-root', which is how every other root here is
+spelled: absolute, trailing slash, symlinks left alone.  This function is
+the boundary between the two spellings, and the only place the truename
+one is used."
   (directory-file-name (file-truename (expand-file-name root))))
 
 (defun vulpea-vault-semantic-close (root)

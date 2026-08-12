@@ -427,6 +427,36 @@ than a suspicious one. The value is inert data, never code. If untrusted
 vaults were ever a concern, both are a user-config resolver away, *not* a
 tightened predicate — see below.
 
+### One spelling for a root — `vulpea-vault-root`
+
+Absolute, trailing slash, symlinks left alone. Used by `apply-vault`, the
+switch prompt, the `find-file-hook` guard and the backup's vault list.
+
+**Equality depends on it**, which is why it is a named function and not an
+inline idiom: a candidate is hidden from the switch prompt by `equal`
+against `vulpea-config-notes-directory`, the active root and the
+remembered ones are folded with `delete-dups` before backup, and
+`file-in-directory-p` decides which buffers belong to a vault. Two
+spellings of one directory would list it twice, back it up twice, or fail
+to recognise it — and none of those announces itself as a spelling
+problem.
+
+It is *normalisation*, not relative-to-absolute resolution: every caller
+already holds an absolute path (a `default-directory`, a
+`locate-dominating-file` result, a `vulpea-vault-history` entry — only
+ever written from `vulpea-config-notes-directory`), so it expands `~` and
+`..` and settles the trailing slash.
+
+**The one exception is deliberate.** `vulpea-vault-semantic-root` uses
+`file-truename` and *no* trailing slash, because that is how the
+org-semantic server keys a vault; it is the boundary between the two
+spellings and the only place the truename form appears. Folding it into
+`vulpea-vault-root` would make every `close` a no-op that reports success.
+Equally, `vulpea-vault-root` must *not* start resolving symlinks: vulpea,
+`org-attach` and the buffer list all speak the path as the user opened it,
+and truenaming here would stop `file-in-directory-p` from recognising a
+vault reached through a symlink.
+
 ### Shape vs policy: where a rule about a value belongs
 
 All three declared paths (`data-directory`, `db-location`,
@@ -724,7 +754,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | File                  | Concern                                                        |
 | --------------------- | -------------------------------------------------------------- |
 | `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
-| `scheme.el`           | the contract: every variable a vault may declare (defaults + safe predicates), the schema version and its check, `vulpea-vault-p` |
+| `scheme.el`           | the contract: every variable a vault may declare (defaults + safe predicates), the schema version and its check, `vulpea-vault-p`, `vulpea-vault-root` |
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |

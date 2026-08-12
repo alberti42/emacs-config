@@ -54,6 +54,9 @@
 ;;; Code:
 
 (require 'seq)
+;; For `vulpea-vault-root': the roots below are compared with `equal' and folded
+;; with `delete-dups', so they must carry the one spelling it defines.
+(require 'vulpea-vault-scheme)
 
 (declare-function magit-wip-commit-buffer-file "magit-wip")
 (declare-function magit-wip-commit-initial-backup "magit-wip")
@@ -73,7 +76,7 @@ single-active-vault limit is vulpea's database, which git does not share.
 this file; `bound-and-true-p' guards the case of this module loaded on
 its own."
   (delete-dups
-   (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
+   (mapcar #'vulpea-vault-root
            (append (and vulpea-config-notes-directory
                         (list vulpea-config-notes-directory))
                    (bound-and-true-p vulpea-vault-history)))))

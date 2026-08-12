@@ -76,6 +76,39 @@ A vault declaring something else is reported by
 `vulpea-vault-version-check'.")
 
 
+;;;; How a vault root is spelled
+
+(defun vulpea-vault-root (dir)
+  "Return DIR spelled the way every vault root is spelled here.
+Absolute, with a trailing slash.
+
+One spelling, because equality depends on it: a candidate is hidden from
+the switch prompt by `equal' against `vulpea-config-notes-directory', the
+active root and the remembered ones are folded together with
+`delete-dups' before backup, and `file-in-directory-p' decides which
+buffers belong to a vault.  Two spellings of one directory would show it
+twice, back it up twice, or fail to recognise it — none of which announces
+itself as a spelling problem.
+
+Normalisation only.  Every caller already holds an absolute path
+\=(a `default-directory', a `locate-dominating-file' result, an entry of
+`vulpea-vault-history', which is only ever written from
+`vulpea-config-notes-directory'), so this expands `~' and `..' and settles
+the trailing slash; it is not the relative-to-absolute step.  A relative
+DIR does resolve against `default-directory', which is what a Lisp caller
+of `vulpea-vault-switch' would mean by one.
+
+Deliberately NOT `file-truename': vulpea, `org-attach' and the buffer list
+all speak the path as the user opened it, symlinks unresolved, and
+resolving them here would stop `file-in-directory-p' from recognising a
+vault reached through a symlink.  `vulpea-vault-semantic-root' is the one
+place that needs the truename spelling — the org-semantic server keys its
+vaults that way — and owns that conversion itself.  Do not fold it in
+here: a `close' sent under the wrong spelling closes nothing and reports
+success."
+  (file-name-as-directory (expand-file-name dir)))
+
+
 ;;;; Is this a vault, and which scheme does it follow
 
 (defvar-local vulpea-vault-version nil

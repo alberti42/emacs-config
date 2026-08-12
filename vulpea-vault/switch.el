@@ -97,9 +97,7 @@ its own) or because it no longer declares a `vulpea-vault-version' (a
 
 The first time of all, the list is the escape alone: nothing has been
 opened yet and nothing is configured, so there is nothing else to say."
-  (let ((known (delete-dups
-                (mapcar (lambda (d) (file-name-as-directory (expand-file-name d)))
-                        vulpea-vault-history))))
+  (let ((known (delete-dups (mapcar #'vulpea-vault-root vulpea-vault-history))))
     (append (seq-filter (lambda (d)
                           (and (not (equal d vulpea-config-notes-directory))
                                (vulpea-vault-p d)))
@@ -176,7 +174,7 @@ vault by mistake is the error this guards against.
 A vault with no index yet is scanned in the background, so the switch
 returns before its notes are findable."
   (interactive (list (vulpea-vault--read)))
-  (let ((root (file-name-as-directory (expand-file-name root))))
+  (let ((root (vulpea-vault-root root)))
     (unless (file-directory-p root)
       (user-error "Not a directory: %s" root))
     (when (equal root vulpea-config-notes-directory)
@@ -243,7 +241,7 @@ and is treated as one — the warning has been given, and refusing to see
 it would help nobody."
   (when (and buffer-file-name vulpea-vault-version)
     (when-let* ((root (locate-dominating-file default-directory dir-locals-file))
-                (root (file-name-as-directory (expand-file-name root))))
+                (root (vulpea-vault-root root)))
       (vulpea-vault-version-check vulpea-vault-version root)
       root)))
 

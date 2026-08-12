@@ -113,7 +113,10 @@ The settings it owns are the reason a vault cannot simply be re-pointed
 by hand: three of them belong to other packages, `org-attach' and vulpea
 read plain values, and vulpea opens its database from
 `vulpea-db-location' as it finds it."
-  (let* ((root (file-name-as-directory (expand-file-name root)))
+  ;; `vulpea-vault-root' for the one spelling every root carries — absolute,
+  ;; trailing slash — which the equality tests in `vulpea-vault/switch.el' and
+  ;; `vulpea-vault/git.el' depend on, this being where most of them get it.
+  (let* ((root (vulpea-vault-root root))
          ;; The store's name and the cache's location are both the vault's to
          ;; choose (declared in `vulpea-vault/scheme.el' as
          ;; `vulpea-vault-data-directory' and `vulpea-vault-db-location'), read
