@@ -314,7 +314,18 @@ which on macOS returns uppercase; `org-id-locations' is an
   ;; `org-attach-id-dir' is set by `vulpea-config-apply-vault', which follows
   ;; the vault.  Attach by ID rather than by an explicit :DIR: property, so a
   ;; note's attachments follow it through renames and moves.
-  (setq org-attach-preferred-new-method 'id))
+  (setq org-attach-preferred-new-method 'id)
+  ;; One store per *note*, not per heading.  A converted note carries its :ID:
+  ;; in the file-level property drawer, while its `attachment:' links sit under
+  ;; whatever heading the text put them ("* Program", "* Slides", …).  With the
+  ;; default `selective' -- and `org-use-property-inheritance' nil, as it is
+  ;; here -- `org-attach-dir' looks only at the entry at point, finds no ID,
+  ;; returns nil, and `org-attach-expand' falls back to resolving the filename
+  ;; against the note's own directory: "No such file: <vault>/08 Conferences/
+  ;; <attachment>.pdf".  `t' lets the search walk up to the file level, which
+  ;; is where the key lives.  It also makes `org-attach' add new files to that
+  ;; same store instead of minting an ID for the heading at point.
+  (setq org-attach-use-inheritance t))
 
 ;; Cross-note attachment links.  Stock `attachment:' carries only a filename,
 ;; which `org-attach-expand' resolves against the *current* node, so there is no
