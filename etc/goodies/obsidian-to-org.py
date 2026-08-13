@@ -1007,14 +1007,19 @@ def run_pandoc(markdown: str) -> str:
     proc = subprocess.run(
         # gfm_auto_identifiers off: otherwise every heading gains a
         # :PROPERTIES: :CUSTOM_ID: drawer derived from its text, which is pure
-        # noise here.  wrap=preserve keeps the original line breaks so the
+        # noise here.  autolink_bare_uris off: a bare URI is linkified wherever
+        # it stands, including inside a link *label*, and `[https://x](https://x)'
+        # then comes out as the nested `[[https://x][[[https://x]]]]', which org
+        # renders literally.  Without the extension a bare URI stays plain text,
+        # which org follows and fontifies anyway, and the label above collapses
+        # to `[[https://x]]'.  wrap=preserve keeps the original line breaks so the
         # output stays diffable against the markdown.  The lua filter shifts
         # headings so the shallowest is level 1; it works on pandoc's AST
         # because a "# comment" inside a shell fence is not a heading and no
         # regexp over the markdown can reliably tell the difference.
         [
             "pandoc",
-            "--from=gfm-gfm_auto_identifiers",
+            "--from=gfm-gfm_auto_identifiers-autolink_bare_uris",
             "--to=org",
             "--wrap=preserve",
             f"--lua-filter={HEADING_FILTER}",
