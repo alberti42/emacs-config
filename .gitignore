@@ -1,2 +1,3 @@
 *.zwc
 /.agent-shell/
+**/__pycache__/

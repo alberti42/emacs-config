@@ -20,11 +20,18 @@ into `[[https://x]]' and `[[mailto:x@y][x@y]]', which is what the fixed
 importer writes today.
 
 Only a nested link pointing at the *same* target as the one enclosing it is
-unwrapped, since that is the signature of an autolinked label.  A nested link
-pointing somewhere else is a real construct org cannot express -- an image
-used as a link description, `[![](thumb.jpg)](doc.pdf)' -- which the importer
-still produces and which needs a human decision.  Those are reported, not
-touched.
+unwrapped, since that is the signature of an autolinked label.
+
+A description that is nothing but a link to an image is the other way to nest,
+and predates this bug: `[![](thumb.jpg)](page)' is a thumbnail one clicks to
+reach a page, which org has no syntax for either and the importer still
+produces.  There the image is the part worth keeping, so the wrapper is
+dropped and the bare image link is left behind.
+
+    [[page][[[thumb.jpg]]]]         ->  [[thumb.jpg]]
+
+Anything else nested -- a description linking somewhere else that is not an
+image -- is reported and left alone.
 
 Every write restores the original mtime (and atime): mtime is a sort key in
 dired and Finder, and vulpea extracts `modified-at' from it at sync time.
@@ -130,6 +137,15 @@ def scan_links(text: str):
         i = link.end
 
 
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp")
+
+
+def is_image(target: str) -> bool:
+    """Does TARGET name an image?  Query and fragment are not part of the name."""
+    path = target.split("?", 1)[0].split("#", 1)[0].lower()
+    return path.endswith(IMAGE_SUFFIXES)
+
+
 def repair(link: Link) -> str | None:
     """Return the repaired form of LINK, or None if there is nothing to fix."""
     if link.desc is None:
@@ -137,12 +153,22 @@ def repair(link: Link) -> str | None:
     nested = [p for p in link.desc if isinstance(p, Link)]
     if not nested:
         return None
-    if any(normalize(n.target) != normalize(link.target) for n in nested):
-        return None  # not an autolinked label -- leave it to a human
-    desc = link.text()  # nested links flatten to their own text
-    if desc == link.target:
-        return f"[[{link.target}]]"
-    return f"[[{link.target}][{desc}]]"
+
+    if all(normalize(n.target) == normalize(link.target) for n in nested):
+        desc = link.text()  # nested links flatten to their own text
+        if desc == link.target:
+            return f"[[{link.target}]]"
+        return f"[[{link.target}][{desc}]]"
+
+    # A thumbnail standing on its own as the description: keep the image,
+    # whole, including a description of its own if it carries one.
+    if len(link.desc) == 1 and is_image(nested[0].target):
+        image = nested[0]
+        if image.desc is None:
+            return f"[[{image.target}]]"
+        return f"[[{image.target}][{image.text()}]]"
+
+    return None
 
 
 def main() -> int:
