@@ -32,8 +32,13 @@
 ;;   for a note and answers nothing for `*scratch*', a project file, or an
 ;;   agenda buffer.  The active vulpea vault is the answer in that case: `C-c
 ;;   n s' means "search my notes" from wherever it is pressed, exactly as
-;;   `C-c n f' does.  A buffer that *is* in an org-semantic vault keeps its
-;;   own — the fallback runs only when the question came back empty.
+;;   `C-c n f' does.  A buffer that *is* in a declared vault keeps its own,
+;;   since a declaration is answered first.
+;;
+;;   This is `org-semantic-vault-root', set to a function in
+;;   `org-semantic-config.el' — not advice.  It was advice until org-semantic
+;;   could hold a function, and the difference is worth naming: an answer that
+;;   package asks for, rather than one taken behind its back.
 ;;
 ;; - KEEPING UP.  `org-semantic-auto-reindex-mode' hears about a note through
 ;;   `after-save-hook', which is every change made in this Emacs by editing and
@@ -70,10 +75,10 @@
 ;;   update, where this hook fires after it.
 ;;   `org-semantic-auto-reindex-touch' is deliberately independent of that mode.
 ;;
-;; Nothing here loads org-semantic.  Every entry point into it is autoloaded
-;; and the advice is installed under `with-eval-after-load', so a session that
-;; never searches pays nothing, and a switch in such a session does nothing at
-;; all.  The reindex hook is the one exception in spirit and not in fact: it
+;; Nothing here loads org-semantic.  Every entry point into it is autoloaded,
+;; and what this file installs is a hook and a function's name, so a session
+;; that never searches pays nothing and a switch in such a session does nothing
+;; at all.  The reindex hook is the one exception in spirit and not in fact: it
 ;; runs on every file vulpea indexes, and does nothing at all until something
 ;; has loaded org-semantic.  It does not need its `-auto-reindex-mode', which is
 ;; why that mode can stay off here.
@@ -142,19 +147,27 @@ to build instead of with hits."
 (add-hook 'vulpea-vault-leave-functions #'vulpea-vault-semantic-close)
 (add-hook 'vulpea-vault-enter-functions #'vulpea-vault-semantic-check)
 
-(defun vulpea-vault-semantic-vault (&rest _)
+(defun vulpea-vault-semantic-vault ()
   "Return the active vulpea vault, spelled as org-semantic keys it.
 
-Advice of the `:after-until' kind on `org-semantic-vault', so it is
-consulted only when the buffer itself belongs to no org-semantic vault
-— which is every buffer that is not a note.  With no vault open it
-returns nil in turn, leaving `org-semantic-vault-or-error' to say there
-is no vault here, which is the truth."
+The value of `org-semantic-vault-root', set in `org-semantic-config.el',
+which is why this takes no arguments and is not advice.  org-semantic
+asks it for every buffer that carries no declaration of its own — which
+is every buffer that is not a note: `*scratch*\=', an agenda, a file in
+some other project.  A note inside a declared vault keeps that vault,
+since a declaration is answered before this is asked.
+
+So `C-c n s\=' means "search my notes" wherever it is pressed, exactly as
+`C-c n f\=' does, and it follows `vulpea-vault-switch\=' rather than naming
+one vault for the session.  With none open it returns nil, which
+org-semantic reads as no vault here and reports as such — the truth.
+
+It was `:after-until\=' advice on `org-semantic-vault\=' until that
+package could hold a function, which is the better arrangement for the
+obvious reason: this is an answer it asks for, not a decision taken
+behind its back."
   (when vulpea-vault-directory
     (vulpea-vault-semantic-root vulpea-vault-directory)))
-
-(with-eval-after-load 'org-semantic
-  (advice-add 'org-semantic-vault :after-until #'vulpea-vault-semantic-vault))
 
 (defun vulpea-vault-semantic-touch (path &optional _count)
   "Tell org-semantic that PATH, whose vulpea rows have just changed, changed.

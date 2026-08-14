@@ -115,14 +115,16 @@ session."
   ;; without this configuration gets.  See the Commentary for the symlink that
   ;; keeps the development build in that first place.
   ;;
-  ;; Nil on purpose, and kept here to say so.  This would be the vault to search
-  ;; from a buffer that is in none — `*scratch*', an agenda, a file in some other
-  ;; project — but that job belongs to `vulpea-vault-semantic-vault', which
-  ;; answers with the vault currently switched to rather than a fixed one.  Any
-  ;; value here would beat it, since that advice is `:after-until' and runs only
-  ;; when the question comes back empty.  So a different default, if one is ever
-  ;; wanted, goes inside the advice: (or vulpea-vault-directory "~/org/Other").
-  (org-semantic-vault-root nil)
+  ;; Which vault a buffer that declares none belongs to — `*scratch*', an
+  ;; agenda, a file in some other project.  A fixed directory is the wrong
+  ;; answer here, because `vulpea-vault-switch' moves between vaults during a
+  ;; session, so this names the function that follows it.  A note inside a
+  ;; declared vault keeps that vault: a declaration is answered first.
+  ;;
+  ;; The function lives in `vulpea-vault/semantic.el', which is where everything
+  ;; the two packages have to agree on lives.  It was `:after-until' advice on
+  ;; `org-semantic-vault' until this setting could hold a function.
+  (org-semantic-vault-root #'vulpea-vault-semantic-vault)
 
   ;; Build both indexes on `M-x org-semantic-reindex': the lexical one is
   ;; seconds on top of a semantic run, and `M-s' / `M-l' in the results buffer
