@@ -35,10 +35,41 @@
 ;;   `C-c n f' does.  A buffer that *is* in an org-semantic vault keeps its
 ;;   own — the fallback runs only when the question came back empty.
 ;;
+;; - KEEPING UP.  `org-semantic-auto-reindex-mode' hears about a note through
+;;   `after-save-hook', which is every change made in this Emacs by editing and
+;;   none of the others: a rename or a delete in Dired, a `git pull', a file
+;;   arriving from a sync.  vulpea hears about all of them — it watches the
+;;   tree with filenotify or fswatch, because its own database has the same
+;;   problem — so what it already knows is passed on with
+;;   `org-semantic-auto-reindex-touch'.  Two indexes over one tree, one
+;;   watcher.
+;;
+;;   WHICH file changed is not passed on, and does not need to be: a reindex is
+;;   a vault-wide incremental scan, so a rename is caught by the arrival of the
+;;   new name alone — the same scan finds the old one gone.  That is why the
+;;   quieter half of a rename, the removal, is worth catching only for its own
+;;   sake, a note deleted and nothing put in its place.
+;;
+;;   A save is reported by the watcher like any other write, so
+;;   `org-semantic-auto-reindex-mode' — whose whole content is an
+;;   `after-save-hook' — is left OFF in `org-semantic-config.el'.  It would be
+;;   a second signal for the case already covered, and the weaker of the two.
+;;   `org-semantic-auto-reindex-touch' is deliberately independent of it.
+;;
 ;; Nothing here loads org-semantic.  Every entry point into it is autoloaded
 ;; and the advice is installed under `with-eval-after-load', so a session that
 ;; never searches pays nothing, and a switch in such a session does nothing at
-;; all.
+;; all.  The reindex hooks are the one exception in spirit and not in fact:
+;; they run on every file vulpea indexes, and do nothing at all until something
+;; has loaded org-semantic.  They do not need its `-auto-reindex-mode', which is
+;; why that mode can stay off here.
+;;
+;; - WHEN IT BREAKS.  Two of the three signals are `advice-add' on vulpea's own
+;;   functions, and one of those is private.  `advice-add' on a name vulpea has
+;;   since renamed succeeds, advises nothing, and reports nothing — so the
+;;   deletions, or the edits, would simply stop arriving.  The two checks at the
+;;   foot of this file turn that into a warning, since the alternative is an
+;;   index that quietly stops being updated and looks exactly like one that is.
 
 ;;; Code:
 
@@ -47,6 +78,7 @@
 (require 'vulpea-vault-switch)
 
 (declare-function org-semantic-canonical-vault "org-semantic" (dir))
+(declare-function org-semantic-auto-reindex-touch "org-semantic" (&optional vault))
 
 (defun vulpea-vault-semantic-root (root)
   "Return ROOT spelled as the org-semantic server keys it.
@@ -116,6 +148,119 @@ is no vault here, which is the truth."
 
 (with-eval-after-load 'org-semantic
   (advice-add 'org-semantic-vault :after-until #'vulpea-vault-semantic-vault))
+
+(defun vulpea-vault-semantic-touch (path)
+  "Tell org-semantic that PATH, which vulpea has just indexed or dropped, changed.
+
+A no-op until org-semantic is loaded — `featurep' rather than
+`fboundp', since the function is autoloaded and calling it would load
+the package on the first file vulpea syncs.  So a session that never
+searches pays one variable lookup per file vulpea indexes.
+
+It does NOT require `org-semantic-auto-reindex-mode', which is off
+here, and that is load-bearing rather than incidental: the mode is
+that package's own `after-save-hook' and not a policy switch, so
+gating the touch on it would demand the very hook this file makes
+redundant.  What the touch does take from the mode is its manners —
+the debounce, the silence on success, and the refusal to *build* an
+index that does not exist.
+
+The vault is the active one and not PATH's own: vulpea watches the
+directories `vulpea-vault-apply' gave it, which are that vault, so a
+path from its watcher is in it by construction.  The containment check
+is for the case of somebody widening `vulpea-db-sync-directories' by
+hand — a tree synced but not the vault would otherwise reindex the
+notes and say it worked, which is the mistake
+`org-semantic-auto-reindex--on-save' guards against on its own side."
+  (when (and (featurep 'org-semantic)
+             path
+             vulpea-vault-directory
+             (file-in-directory-p path vulpea-vault-directory))
+    (org-semantic-auto-reindex-touch
+     (vulpea-vault-semantic-root vulpea-vault-directory))))
+
+(defun vulpea-vault-semantic-touch-updated (path &rest _)
+  "Touch org-semantic for PATH, whose notes vulpea has just written.
+
+An `:after' advice on `vulpea-db-update-file', which is where a file's
+rows are written whatever brought it there: the sync queue, a vulpea
+command, `vulpea-utils-with-note-sync'.  A file whose hash matched does
+not reach it, so an unchanged file costs nothing.
+
+This is the signal that actually fires here.  The queue only uses the
+background worker when `vulpea-db-async-extraction' is on, and it is
+off by default — so `vulpea-db-worker-done-functions', the declared
+extension point, never runs in this configuration.  The hook below is
+kept for the day that changes; between them the two cover both
+branches, and a file that somehow reached both costs one run, not two."
+  (vulpea-vault-semantic-touch path))
+
+(defun vulpea-vault-semantic-touch-indexed (path status _count)
+  "Touch org-semantic for PATH when vulpea's worker really wrote it.
+
+On `vulpea-db-worker-done-functions', which runs only while
+`vulpea-db-async-extraction' is on.  STATUS `applied' is the only one
+that means the file's content is new to vulpea, and therefore the only
+one worth a scan: `unchanged' is a file whose hash matched, and the
+rest (`stale', `requeued', `missing', `error') are a dispatch that
+ended without a result, its retry to come.
+
+A file arriving under a new name — the loud half of a rename — reaches
+here as `applied', because a path vulpea has no row for is new whatever
+its content used to be called."
+  (when (eq status 'applied)
+    (vulpea-vault-semantic-touch path)))
+
+(defun vulpea-vault-semantic-touch-removed (path &rest _)
+  "Touch org-semantic for PATH, which vulpea has just forgotten.
+
+An `:after' advice on `vulpea-db-sync--handle-removed-file', which is
+where vulpea's watcher lands a `deleted' event and the vacating half of
+a `renamed' one.  Private, deliberately: it is the only signal that a
+note is gone, and it comes from a watcher, so it sees a deletion made
+by any means — `dired-do-delete', `rm', a `git pull' — where an advice
+on `delete-file' would see only this Emacs.  An upstream rename
+silently costs the deletion signal and nothing else, since every other
+change still arrives through the hook above."
+  (vulpea-vault-semantic-touch path))
+
+(advice-add 'vulpea-db-update-file :after #'vulpea-vault-semantic-touch-updated)
+(add-hook 'vulpea-db-worker-done-functions #'vulpea-vault-semantic-touch-indexed)
+(advice-add 'vulpea-db-sync--handle-removed-file :after
+            #'vulpea-vault-semantic-touch-removed)
+
+(defun vulpea-vault-semantic--check-signal (fn what)
+  "Warn unless FN, which this file advises, is still defined by vulpea.
+
+WHAT names what stops reaching org-semantic if it is not, and is
+written to finish the sentence \"will no longer hear about\".
+
+`advice-add' on a name that no longer exists is not an error: it
+records the advice against an unbound symbol, where nothing will ever
+call it.  Nothing fails, nothing is logged, and the index simply stops
+being told about a class of change — which is indistinguishable from an
+index that is up to date.  Hence a warning, which is the cheapest thing
+that is not silence.
+
+Checked under `with-eval-after-load' of the file that defines FN, not
+at load: these are autoloaded, so `fboundp' here would answer nil for a
+function that is merely not needed yet and warn on every startup."
+  (unless (fboundp fn)
+    (display-warning
+     'vulpea-vault
+     (format (concat "vulpea no longer defines `%s', so org-semantic will no "
+                     "longer hear about %s.  Re-point the advice in "
+                     "vulpea-vault/semantic.el.")
+             fn what)
+     :warning)))
+
+(with-eval-after-load 'vulpea-db-extract
+  (vulpea-vault-semantic--check-signal 'vulpea-db-update-file
+                                       "notes that were edited"))
+
+(with-eval-after-load 'vulpea-db-sync
+  (vulpea-vault-semantic--check-signal 'vulpea-db-sync--handle-removed-file
+                                       "notes that were deleted or renamed away"))
 
 (provide 'vulpea-vault-semantic)
 ;;; semantic.el ends here

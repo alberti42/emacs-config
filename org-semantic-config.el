@@ -82,6 +82,32 @@
   :bind (("C-c n s" . org-semantic-find)
          ("C-c n S" . org-semantic-find-at-point)
          ("C-c n R" . org-semantic-reindex))
+  :init
+  ;; The indexes are kept current, but NOT by `org-semantic-auto-reindex-mode',
+  ;; which is left off.  That mode is one trigger and not the policy: its whole
+  ;; content is an `after-save-hook', and vulpea's file watcher already reports
+  ;; a save — along with everything a save cannot report, a rename or a delete
+  ;; in Dired, a `git pull', a folder arriving from a sync.  One watcher for
+  ;; two indexes; turning the mode on as well would sign the same change twice
+  ;; and add nothing.  The wiring is in `vulpea-vault/semantic.el', and it
+  ;; calls `org-semantic-auto-reindex-touch', which is independent of the mode.
+  ;;
+  ;; What is done here is loading the package, because a touch does nothing
+  ;; until something has: the guard on vulpea's side is `featurep', so that a
+  ;; session which opens no note pays for none of this.  The first org buffer
+  ;; is where that stops being true — and is quiet, unlike the middle of a save
+  ;; — so the load happens there, once, from a hook that removes itself.
+  ;;
+  ;; To go back to save-driven reindexing, enable the mode here instead: the
+  ;; two are additive, and a change signalled twice still costs one run.
+  (defun org-semantic-config-load-on-first-note ()
+    "Load org-semantic, once, when the first org buffer appears.
+So that the reindex touches from `vulpea-vault/semantic.el', which do
+nothing until the package is loaded, are live for the rest of the
+session."
+    (remove-hook 'org-mode-hook #'org-semantic-config-load-on-first-note)
+    (require 'org-semantic))
+  (add-hook 'org-mode-hook #'org-semantic-config-load-on-first-note)
   :custom
   ;; `org-semantic-executable' and `org-semantic-install-directory' are both
   ;; left at their defaults: the binary is looked for in
