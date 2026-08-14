@@ -5,8 +5,9 @@
 ;; Enable and persist a list of recently visited files.
 ;;
 ;; Note: this config repo is intended to be symlinked into user-emacs-directory
-;; (e.g. ~/.config/emacs). To avoid writing state into the git worktree, store
-;; the recentf file under XDG cache (or ~/.cache).
+;; (e.g. ~/.config/emacs). To avoid writing state into the git worktree, the
+;; recentf file goes under `emacs-config-cache-dir' like every other
+;; machine-local file this config persists.
 ;;
 
 ;;; Code:
@@ -15,11 +16,7 @@
   :straight nil
   :demand t
   :init
-  (let* ((cache-home (or (getenv "XDG_CACHE_HOME")
-                         (expand-file-name "~/.cache")))
-         (dir (expand-file-name "emacs" cache-home)))
-    (make-directory dir t)
-    (setq recentf-save-file (expand-file-name "recentf.eld" dir)))
+  (setq recentf-save-file (emacs-config-cache-file "recentf.eld"))
   (setq recentf-max-saved-items 200
         recentf-max-menu-items 50
         recentf-auto-cleanup 'mode

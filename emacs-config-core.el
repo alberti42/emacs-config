@@ -21,6 +21,34 @@
   (file-name-directory (file-truename (or load-file-name user-init-file user-emacs-directory)))
   "Directory containing this Emacs configuration.")
 
+;; Where this config's machine-local state goes.
+;;
+;; `user-emacs-directory' is a symlink into a git worktree here, so anything a
+;; package persists by default (recentf's list, `org-id-locations', treemacs's
+;; workspaces, …) would land in the repository.  None of it is configuration:
+;; it is per-machine state, regenerable, and never worth committing.  It goes
+;; under `$XDG_CACHE_HOME/emacs/' instead.
+;;
+;; This lives in core, beside `emacs-config-dir', because it is the same kind
+;; of fact — where this configuration keeps its files — and because core is
+;; loaded before every module, so any of them may use it.
+(defconst emacs-config-cache-dir
+  (expand-file-name "emacs" (or (getenv "XDG_CACHE_HOME")
+                                (expand-file-name "~/.cache")))
+  "Directory for this configuration's machine-local state.
+Never inside `emacs-config-dir', which is a git worktree.
+Use `emacs-config-cache-file' rather than expanding against this
+directly, so the directory is created before anything writes to it.")
+
+(defun emacs-config-cache-file (name)
+  "Return the path of NAME inside `emacs-config-cache-dir'.
+Creates that directory, so the caller may hand the result straight to a
+package that will write there without checking first.  Called at load
+time by the modules that set such a path, so the cost is one `mkdir -p'
+per setting."
+  (make-directory emacs-config-cache-dir t)
+  (expand-file-name name emacs-config-cache-dir))
+
 (defun emacs-config-load-module (module warning)
   "Load local MODULE from `emacs-config-dir`.
 

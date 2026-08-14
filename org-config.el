@@ -97,6 +97,17 @@
           (:exports . "both")   ; includes both the code block and the results in the exported file
           )))
 
+(use-package org-id
+  :straight nil
+  :after org
+  :init
+  ;; Out of the repository and into the cache: `org-id-locations' is a map from
+  ;; ID to file path on THIS machine, rebuilt by rescanning, and it spans every
+  ;; org file this Emacs knows.  (A vulpea vault's own index is a different
+  ;; thing and lives inside the vault — see `vulpea-db-location'.  Keeping the
+  ;; two in step is `vulpea-vault/ids.el'.)
+  (setq org-id-locations-file (emacs-config-cache-file "org-id-locations.eld")))
+
 ;; Enables automatic visibility toggling of various Org elements depending on
 ;; cursor position.  It supports automatic toggling of emphasis markers, links,
 ;; subscripts and superscripts, entities, and keywords.  By default, toggling is
