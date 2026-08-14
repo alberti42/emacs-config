@@ -55,7 +55,7 @@
 ;;   were `advice-add' and one of those was on a private function: an advice on
 ;;   a name vulpea had since renamed would have succeeded, advised nothing and
 ;;   reported nothing, leaving the index quietly out of date.  That whole
-;;   hazard, and the `boundp' check that guarded it, went with them.
+;;   hazard went with them, and so did the `fboundp' checks that guarded it.
 ;;
 ;;   WHICH file changed is not passed on, and does not need to be: a reindex is
 ;;   a vault-wide incremental scan, so a rename is caught by the arrival of the
@@ -192,20 +192,7 @@ notes and say it worked, which is the mistake
     (org-semantic-auto-reindex-touch
      (vulpea-vault-semantic-root vulpea-vault-directory))))
 
-(with-eval-after-load 'vulpea-db
-  ;; Checked before the `add-hook', which is the only order that works:
-  ;; `add-hook' creates a void hook variable as nil, so afterwards `boundp'
-  ;; answers yes whether vulpea defines it or not.  A vulpea too old to have
-  ;; the hook would then take our handler and never call it -- an index quietly
-  ;; out of date, which is the failure this whole section exists to avoid.
-  (unless (boundp 'vulpea-db-updated-functions)
-    (display-warning
-     'vulpea-vault
-     (concat "This vulpea has no `vulpea-db-updated-functions', so org-semantic "
-             "will not hear about changed notes.  Update vulpea, or turn on "
-             "`org-semantic-auto-reindex-mode' to cover saves at least.")
-     :warning))
-  (add-hook 'vulpea-db-updated-functions #'vulpea-vault-semantic-touch))
+(add-hook 'vulpea-db-updated-functions #'vulpea-vault-semantic-touch)
 
 (provide 'vulpea-vault-semantic)
 ;;; semantic.el ends here
