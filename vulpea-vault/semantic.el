@@ -46,6 +46,8 @@
 (require 'vulpea-vault-core)
 (require 'vulpea-vault-switch)
 
+(declare-function org-semantic-canonical-vault "org-semantic" (dir))
+
 (defun vulpea-vault-semantic-root (root)
   "Return ROOT spelled as the org-semantic server keys it.
 
@@ -58,8 +60,14 @@ says so with a cheerful message about zero entries dropped.
 Hence NOT `vulpea-vault-root', which is how every other root here is
 spelled: absolute, trailing slash, symlinks left alone.  This function is
 the boundary between the two spellings, and the only place the truename
-one is used."
-  (directory-file-name (file-truename (expand-file-name root))))
+one is used.
+
+The spelling itself is org-semantic's to define, so it is asked rather
+than reproduced: a copy of those three calls here would go on working
+after theirs changed, and the failure is silent — a `close' that drops
+nothing.  Only call this once org-semantic is loaded, which every caller
+below already checks."
+  (org-semantic-canonical-vault root))
 
 (defun vulpea-vault-semantic-close (root)
   "Tell the org-semantic server we are finished with the vault at ROOT.
