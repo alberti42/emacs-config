@@ -16,17 +16,34 @@
 ;;   editing it), and
 ;; - the settings and key bindings.
 ;;
-;; Which vault is searched is NOT decided here.  A vault says so itself, in its
-;; own `.dir-locals.el':
+;; Which vault is searched is mostly NOT decided here.  A vault says so itself,
+;; in its own `.dir-locals.el':
 ;;
 ;;   ((nil . ((org-semantic-vault-root . t))))
 ;;
-;; and failing that the nearest directory above holding `.org-semantic' is the
-;; vault.  The note vaults of `vulpea-config.el' are wired to this in
-;; `vulpea-vault/semantic.el': the vault being left is closed on the server
-;; when `vulpea-vault-switch' switches away from it, and a buffer that belongs
-;; to no org-semantic vault at all falls back to the active vulpea vault, so
-;; `C-c n s' searches the notes from anywhere.
+;; and Emacs applies that when a note is opened, so a note carries its vault
+;; before anything has been indexed.  That is the only thing that finds a vault:
+;; the `.org-semantic' directory is derived data and is never consulted, since
+;; where it lives is not the vault's to promise — it may be moved out of a synced
+;; folder entirely.
+;;
+;; The *same* variable set globally — below — is the answer for a buffer that
+;; declares nothing: `*scratch*', an agenda, a file in some project.
+;;
+;; The note vaults of `vulpea-config.el' are wired to this in
+;; `vulpea-vault/semantic.el': the vault being left is closed on the server when
+;; `vulpea-vault-switch' switches away from it, and a buffer that belongs to no
+;; org-semantic vault falls back to the active vulpea vault, so `C-c n s'
+;; searches the notes from anywhere.
+;;
+;; NOTE THAT THE TWO FALLBACKS COMPETE, and the global setting wins.  That
+;; advice is `:after-until', which runs only when `org-semantic-vault' comes back
+;; empty — and with the setting below it never does.  So `C-c n s' from
+;; `*scratch*' searches the vault named there rather than the vault currently
+;; switched to.  To have the active vault keep winning, leave the setting nil and
+;; put the constant inside the advice instead:
+;;
+;;   (or vulpea-vault-directory "~/org/Work")
 ;;
 ;; The Lisp comes from the checkout; the *binary* deliberately does not.  It is
 ;; found where org-semantic looks for one by itself —
@@ -75,9 +92,16 @@
   ;; without this configuration gets.  See the Commentary for the symlink that
   ;; keeps the development build in that first place.
   ;;
+  ;; The vault to search from a buffer that is in none: `*scratch*', an agenda,
+  ;; a file in some other project.  A note in either notes vault carries its own
+  ;; root from that vault's `.dir-locals.el', so this never overrides one of
+  ;; those — but it does pre-empt the vulpea fallback, which only runs when the
+  ;; question comes back empty.  See the Commentary.
+  (org-semantic-vault-root "~/org/Work")
+
   ;; Build both indexes on `M-x org-semantic-reindex': the lexical one is
-  ;; seconds on top of a semantic run, and `m' in the results buffer swaps
-  ;; between them, which is only useful when both exist.
+  ;; seconds on top of a semantic run, and `M-s' / `M-l' in the results buffer
+  ;; choose between them, which is only useful when both exist.
   (org-semantic-index-mode "both")
 
   ;; The indexing policy, stated whole.  It is compared whole, so a setting left
