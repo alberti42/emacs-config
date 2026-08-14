@@ -153,18 +153,18 @@ to build instead of with hits."
 The value of `org-semantic-vault-root', set in `org-semantic-config.el',
 which is why this takes no arguments and is not advice.  org-semantic
 asks it for every buffer that carries no declaration of its own — which
-is every buffer that is not a note: `*scratch*\=', an agenda, a file in
-some other project.  A note inside a declared vault keeps that vault,
-since a declaration is answered before this is asked.
+is every buffer that is not a note: the scratch buffer, an agenda, a
+file in some other project.  A note inside a declared vault keeps that
+vault, since a declaration is answered before this is asked.
 
-So `C-c n s\=' means "search my notes" wherever it is pressed, exactly as
-`C-c n f\=' does, and it follows `vulpea-vault-switch\=' rather than naming
-one vault for the session.  With none open it returns nil, which
+So searching means search my notes wherever it is asked for, exactly as
+`vulpea-find' does, and it follows `vulpea-vault-switch' rather than
+naming one vault for the session.  With none open it returns nil, which
 org-semantic reads as no vault here and reports as such — the truth.
 
-It was `:after-until\=' advice on `org-semantic-vault\=' until that
-package could hold a function, which is the better arrangement for the
-obvious reason: this is an answer it asks for, not a decision taken
+It was `:after-until' advice on `org-semantic-vault' until that package
+could hold a function, which is the better arrangement for the obvious
+reason: this is an answer that package asks for, not a decision taken
 behind its back."
   (when vulpea-vault-directory
     (vulpea-vault-semantic-root vulpea-vault-directory)))
