@@ -26,8 +26,8 @@ its header for the conversion invariants.
 published**: generic mechanism, nothing in it naming a machine or a
 directory, usable for anyone's vault. `vulpea-config.el` is *this user
 on this machine* configuring it — straight recipes, key bindings, the
-module list, and one host fact (the GitLab token that lets the rollup
-push over HTTPS).
+module list, and one host fact (the forge tokens that let the rollup push
+over HTTPS — GitLab at MPCDF, GitHub for the private vault).
 
 One test for anything added later: **would this be wrong on another
 machine or for another vault?** Then it belongs in `vulpea-config.el`;
@@ -35,9 +35,15 @@ otherwise in `vulpea-vault/`, under the `vulpea-vault-` prefix.
 
 The seam is already built into the code in the one place it is crossed:
 `git.el` *declares* `vulpea-vault-git-rollup-environment` (a socket),
-and `vulpea-config.el` *plugs into it* with the MPCDF function. Add new
-host-specific behaviour the same way rather than putting a hostname
-inside a module.
+and `vulpea-config.el` *plugs into it* with
+`vulpea-config-git-rollup-environment`, driven by the table
+`vulpea-config-git-rollup-credentials` — one row per forge: the
+`~/.config/envs/*.sh` file holding the token, the variable name in it,
+the SSH remote prefix, and the HTTPS replacement (`oauth2:<token>` for
+GitLab, `x-access-token:<token>` for a GitHub PAT). Adding a forge is
+adding a row; a row whose token file is absent is skipped, leaving that
+remote on SSH. Add new host-specific behaviour the same way rather than
+putting a hostname inside a module.
 
 Two consequences that look like inconsistencies but are not:
 
@@ -688,9 +694,10 @@ active one — `vulpea-vault-git--vault-file-p` tests membership in
 `vulpea-vault-git--known-vaults`), and `magit-wip` records to whichever
 repository the file lives in, so no per-vault wiring is needed. The
 rollup subprocess environment (`vulpea-vault-git-rollup-environment`,
-e.g. the MPCDF HTTPS-token rewrite) is applied to every vault's rollup;
-it only rewrites the one remote it names, so it is inert on a vault
-whose remote it does not match.
+the HTTPS-token rewrites for gitlab.mpcdf.mpg.de and github.com) is
+applied to every vault's rollup; each mapping only rewrites the one
+remote prefix it names, so it is inert on a vault whose remote it does
+not match.
 
 **How a vault enters the backup set (note for a future agent).** The set
 is `vulpea-vault-git--known-vaults` = `vulpea-vault-history` + the active

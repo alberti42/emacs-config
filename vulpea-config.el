@@ -8,7 +8,7 @@
 ;;
 ;; This file is the *configuration*: which packages to install, which vault to
 ;; resume, which keys to bind, and the one thing true only of this machine (how
-;; the vault's rollups reach gitlab.mpcdf.mpg.de).  Everything else — what a
+;; the vaults' rollups reach gitlab.mpcdf.mpg.de and github.com).  Everything else — what a
 ;; vault is, what it may declare, what follows from opening one — is in
 ;; vulpea-vault/, written as a package that happens not to be published:
 ;; nothing in there names a machine or a directory, and it would work for
@@ -92,22 +92,22 @@
   ;; leaving vulpea on its defaults: the database in `user-emacs-directory'
   ;; and the watch list at `org-directory' (~/org), wider than any one vault.
   (setq ;; Parse in one reused buffer without re-running `org-mode' per file.
-        ;; The default `temp-buffer' re-runs it WITH hooks, so a full scan fires
-        ;; `org-mode-hook' once per note — here that means `org-appear-mode',
-        ;; the latex-to-svg setup, and lsp-ltex-plus trying to attach to a
-        ;; buffer that is not visiting a file, 1000 times over.
-        ;;
-        ;; Safe for these notes: vulpea reads `#+filetags:' from the parsed
-        ;; syntax tree rather than from `org-file-tags' (which mode init would
-        ;; set), no note uses per-file `#+TODO:', `#+PROPERTY:', `#+TAGS:',
-        ;; `#+SETUPFILE:' or `:DIR:', and `org-attach-id-dir' is global.
-        vulpea-db-parse-method 'single-temp-buffer
+   ;; The default `temp-buffer' re-runs it WITH hooks, so a full scan fires
+   ;; `org-mode-hook' once per note — here that means `org-appear-mode',
+   ;; the latex-to-svg setup, and lsp-ltex-plus trying to attach to a
+   ;; buffer that is not visiting a file, 1000 times over.
+   ;;
+   ;; Safe for these notes: vulpea reads `#+filetags:' from the parsed
+   ;; syntax tree rather than from `org-file-tags' (which mode init would
+   ;; set), no note uses per-file `#+TODO:', `#+PROPERTY:', `#+TAGS:',
+   ;; `#+SETUPFILE:' or `:DIR:', and `org-attach-id-dir' is global.
+   vulpea-db-parse-method 'single-temp-buffer
 
-        ;; Silence the routine "Vulpea: Syncing N files... / Sync complete"
-        ;; echoes, which autosync fires on every save.  Only these status
-        ;; reports go through `vulpea-db-sync--message'; errors and warnings
-        ;; call `message' directly and are unaffected.
-        vulpea-db-sync-verbose nil)
+   ;; Silence the routine "Vulpea: Syncing N files... / Sync complete"
+   ;; echoes, which autosync fires on every save.  Only these status
+   ;; reports go through `vulpea-db-sync--message'; errors and warnings
+   ;; call `message' directly and are unaffected.
+   vulpea-db-sync-verbose nil)
   :config
   ;; Watch the tree and index in the background.  Guarded twice over, so both
   ;; "no vault opened yet" and "a vault whose tree is not there" degrade to
@@ -183,44 +183,68 @@
  "vulpea-vault/git"
  "Could not load vulpea-vault/git.el; note saves will not be recorded in git.")
 
-;; Push the vault's rollups over HTTPS with a GitLab token rather than over
-;; SSH.  The remote is `git@gitlab.mpcdf.mpg.de:…', which authenticates through
-;; the 1Password SSH agent — fine for the occasional interactive push, but the
-;; rollup timer would wake it every six hours, unattended.  So only the rollup
-;; subprocess rewrites the remote, and only in its own environment: Magit and
-;; the shell keep using SSH, and nothing on disk changes.
+;; Push the vaults' rollups over HTTPS with a forge token rather than over SSH.
+;; The remotes are `git@gitlab.mpcdf.mpg.de:…' and `git@github.com:…', which
+;; authenticate through the 1Password SSH agent — fine for the occasional
+;; interactive push, but the rollup timer would wake it every six hours,
+;; unattended.  So only the rollup subprocess rewrites the remotes, and only in
+;; its own environment: Magit and the shell keep using SSH, and nothing on disk
+;; changes.
 ;;
-;; The token lives outside this repository, in the file the shell already
-;; sources, and is read fresh at each rollup by `my/env-file-value' — nothing
+;; The tokens live outside this repository, in the files the shell already
+;; sources, and are read fresh at each rollup by `my/env-file-value' — nothing
 ;; secret is committed and nothing is baked into a variable at load time.  The
 ;; parser is in utils.el because reading such a file is not a vulpea concern;
 ;; only knowing which file, and which name in it, is.  `url.<https>.insteadOf'
 ;; does the rewrite through git's own GIT_CONFIG_* environment protocol, so no
-;; on-disk git config is touched either.  This is host-specific and so lives
-;; here, not in the (vault-agnostic) git module.
-(defun vulpea-config-mpcdf-git-environment ()
-  "Environment that pushes the vault to gitlab.mpcdf.mpg.de over HTTPS.
-Rewrites the SSH remote to an HTTPS URL carrying an oauth2 token, so the
-rollup's push authenticates with the token instead of an SSH key.
-Returns nil when no token is available, leaving the push on SSH.
+;; on-disk git config is touched either.  A mapping whose remote no vault uses
+;; costs nothing: git rewrites only URLs that match its prefix.  All of this is
+;; host-specific and so lives here, not in the (vault-agnostic) git module.
 
-The file is read at each rollup through `my/env-file-value' (utils.el, one
-of the plain `KEY=VALUE' files the shell sources), so the token is never
-baked into a variable at load time and an absent file simply leaves the
-push on SSH.  Called from the rollup timer, long after utils.el is loaded,
-so the reference costs no load-order constraint."
-  (when-let* ((token (my/env-file-value
-                      (expand-file-name "~/.config/envs/gitlab_mpcdf.sh")
-                      "GITLAB_MPCDF_TOKEN")))
-    (list "GIT_CONFIG_COUNT=1"
-          (format
-           "GIT_CONFIG_KEY_0=url.https://oauth2:%s@gitlab.mpcdf.mpg.de/.insteadOf"
-           token)
-          "GIT_CONFIG_VALUE_0=git@gitlab.mpcdf.mpg.de:")))
+(defconst vulpea-config-git-rollup-credentials
+  '(("~/.config/envs/gitlab_mpcdf.sh" "GITLAB_MPCDF_TOKEN"
+     "git@gitlab.mpcdf.mpg.de:" "https://oauth2:%s@gitlab.mpcdf.mpg.de/")
+    ("~/.config/envs/github_org-vault.sh" "GITHUB_TOKEN"
+     "git@github.com:" "https://x-access-token:%s@github.com/"))
+  "How the rollup authenticates to each forge it may have to push to.
+
+Each entry is (ENV-FILE VAR SSH-PREFIX HTTPS-FORMAT): the plain
+`KEY=VALUE' file the shell sources, the name holding the token in it, the
+SSH remote prefix to rewrite, and the HTTPS replacement with a single %s
+for the token.  GitLab wants the token as the password of the `oauth2'
+user; GitHub accepts a personal access token (classic or fine-grained,
+with `contents: write' on the repository) as the password of any user, by
+convention `x-access-token'.
+
+An entry whose file or name is missing is simply skipped, leaving that
+remote on SSH — an unconfigured forge is not an error.")
+
+(defun vulpea-config-git-rollup-environment ()
+  "Environment that pushes the vaults to their forges over HTTPS.
+Rewrites each SSH remote named in `vulpea-config-git-rollup-credentials'
+to an HTTPS URL carrying a token, so the rollup's push authenticates with
+the token instead of an SSH key.  Returns nil when no token at all is
+available, leaving every push on SSH.
+
+The files are read at each rollup through `my/env-file-value' (utils.el),
+so a token is never baked into a variable at load time and rotating one
+needs no restart.  Called from the rollup timer, long after utils.el is
+loaded, so the reference costs no load-order constraint."
+  (let ((count 0)
+        (settings nil))
+    (pcase-dolist (`(,file ,var ,ssh ,https) vulpea-config-git-rollup-credentials)
+      (when-let* ((token (my/env-file-value (expand-file-name file) var)))
+        (push (format "GIT_CONFIG_KEY_%d=url.%s.insteadOf"
+                      count (format https token))
+              settings)
+        (push (format "GIT_CONFIG_VALUE_%d=%s" count ssh) settings)
+        (setq count (1+ count))))
+    (when (> count 0)
+      (cons (format "GIT_CONFIG_COUNT=%d" count) (nreverse settings)))))
 
 (with-eval-after-load 'vulpea-vault-git
   (setq vulpea-vault-git-rollup-environment
-        #'vulpea-config-mpcdf-git-environment))
+        #'vulpea-config-git-rollup-environment))
 
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here
