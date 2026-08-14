@@ -35,7 +35,7 @@
 ;; unwise value loses its tags, its templates and its version too — it stops
 ;; being a vault at all.  A rule about what a sensible value looks like
 ;; therefore belongs where it can be reported and recovered from, which is the
-;; deriving side (`vulpea-config-apply-vault'), never here.
+;; deriving side (`vulpea-vault-apply'), never here.
 ;;
 ;; Where each declaration is *used* is named in its docstring; this file only
 ;; states the contract and recognises a vault by it.  What a vault says is read
@@ -47,7 +47,7 @@
 ;;   `vulpea-vault-template'.
 ;;
 ;; - plain `defvar' — read once from the vault root by
-;;   `vulpea-config-apply-vault', which derives a global setting belonging to
+;;   `vulpea-vault-apply' (core.el), which derives a global setting belonging to
 ;;   another package from it: `vulpea-vault-data-directory',
 ;;   `vulpea-vault-db-location'.  A per-folder value would be meaningless,
 ;;   there being one store and one index per vault.
@@ -58,9 +58,9 @@
 ;; modules load.  Declarations only, so loading it early costs nothing and
 ;; needs nothing — no module of ours, and of org nothing at all.
 ;;
-;; Where the vault *is* stays in the configuration
-;; (`vulpea-config-notes-directory').  Something has to know that much before
-;; it can read anything the vault says about itself.
+;; Where the vault *is* is not here either: that is `vulpea-vault-directory'
+;; (core.el).  Something has to know that much before it can read anything the
+;; vault says about itself.
 
 ;;; Code:
 
@@ -83,7 +83,7 @@ A vault declaring something else is reported by
 Absolute, with a trailing slash.
 
 One spelling, because equality depends on it: a candidate is hidden from
-the switch prompt by `equal' against `vulpea-config-notes-directory', the
+the switch prompt by `equal' against `vulpea-vault-directory', the
 active root and the remembered ones are folded together with
 `delete-dups' before backup, and `file-in-directory-p' decides which
 buffers belong to a vault.  Two spellings of one directory would show it
@@ -93,7 +93,7 @@ itself as a spelling problem.
 Normalisation only.  Every caller already holds an absolute path
 \=(a `default-directory', a `locate-dominating-file' result, an entry of
 `vulpea-vault-history', which is only ever written from
-`vulpea-config-notes-directory'), so this expands `~' and `..' and settles
+`vulpea-vault-directory'), so this expands `~' and `..' and settles
 the trailing slash; it is not the relative-to-absolute step.  A relative
 DIR does resolve against `default-directory', which is what a Lisp caller
 of `vulpea-vault-switch' would mean by one.
@@ -143,7 +143,7 @@ value, it MUST match the converter's --attach-dir
 (`etc/goodies/obsidian-to-org.py'): the two are one contract, and a
 mismatch yields an empty attachment directory rather than an error.
 
-Read from the root by `vulpea-config-apply-vault', which expands it into
+Read from the root by `vulpea-vault-apply', which expands it into
 `org-attach-id-dir'; the store wiring that then resolves an
 `attachment:' link through it is `vulpea-vault/attachments.el'.
 
@@ -172,7 +172,7 @@ it, which made a vault naming an absolute store lose its whole
 `vulpea-vault-version' that makes it a vault at all — silently, over a
 setting no other declaration depends on.  A predicate is read as a safety
 gate by Emacs and cannot report anything; the preference belongs where it
-can warn, and does: `vulpea-config-apply-vault'.  Same admission rule as
+can warn, and does: `vulpea-vault-apply'.  Same admission rule as
 `vulpea-vault-db-location-p', so all three declared paths now accept the
 same shapes."
   (and (stringp value)
@@ -193,11 +193,11 @@ own cache belongs:
   ((nil . ((vulpea-vault-db-location . \"./.vulpea/vulpea.db\"))))
 
 Resolved with `expand-file-name' against the vault root by
-`vulpea-config-apply-vault': a relative value (the default) lands inside
+`vulpea-vault-apply': a relative value (the default) lands inside
 the vault -- encrypted-at-rest and unmounting with it on an encrypted
 disk -- while an absolute value or a `~'-path is taken as-is, for a
 per-machine local cache when the vault is shared.  Its directory becomes
-`vulpea-config-state-directory' and is created if absent; keep it hidden
+`vulpea-vault-state-directory' and is created if absent; keep it hidden
 (a leading dot) so vulpea's scanner, which skips any path containing
 \"/.\", neither indexes nor watches the cache.
 

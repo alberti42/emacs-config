@@ -10,7 +10,7 @@
 ;; goes on watching the tree you have left.
 ;;
 ;; `vulpea-vault-switch' does the whole sequence: stop the watcher, close the
-;; database, re-point everything through `vulpea-config-apply-vault', start
+;; database, re-point everything through `vulpea-vault-apply', start
 ;; the watcher again.  vulpea reopens the database lazily at the new location
 ;; and scans the new tree, so a vault opened for the first time indexes
 ;; itself.
@@ -34,6 +34,8 @@
 
 (require 'seq)
 (require 'vulpea-vault-scheme)
+(require 'vulpea-vault-core)
+(require 'vulpea-vault-ids)
 
 (defvar vulpea-vault-history nil
   "Vault roots opened in this Emacs, most recently opened first.
@@ -44,7 +46,7 @@ by typing its path need not be typed again.
 
 This is the whole of what Emacs knows about which vaults exist — no
 directory is named in the configuration — and it is also what
-`vulpea-config--initial-vault' resumes at startup.
+`vulpea-vault-resume' resumes at startup.
 
 Persisted across sessions through `savehist' — the list is registered in
 `savehist-additional-variables' below — and truncated to
@@ -57,7 +59,7 @@ Persisted across sessions through `savehist' — the list is registered in
   "Abnormal hook run with the root of the vault being left.
 
 Run by `vulpea-vault-switch' after that vault's buffers have been closed
-and before anything is re-pointed, so `vulpea-config-notes-directory'
+and before anything is re-pointed, so `vulpea-vault-directory'
 still names it and its state can be found where it lives — inside the
 vault.  Not run at startup: resuming a vault leaves none.
 
@@ -72,7 +74,7 @@ Run by `vulpea-vault-switch' once every setting has been re-pointed and
 the database is watching again, so a function on it sees the new vault
 fully in place.
 
-Not run at startup either: `vulpea-config-apply-vault' assigns the
+Not run at startup either: `vulpea-vault-apply' assigns the
 resumed vault directly, and the point of this configuration is that a
 fresh Emacs starts no more processes than it must.  A consumer that
 wants to act on the vault it resumed does so on its own terms.")
@@ -99,10 +101,10 @@ The first time of all, the list is the escape alone: nothing has been
 opened yet and nothing is configured, so there is nothing else to say."
   (let ((known (delete-dups (mapcar #'vulpea-vault-root vulpea-vault-history))))
     (append (seq-filter (lambda (d)
-                          (and (not (equal d vulpea-config-notes-directory))
+                          (and (not (equal d vulpea-vault-directory))
                                (vulpea-vault-p d)))
                         known)
-            (delq nil (list vulpea-config-notes-directory
+            (delq nil (list vulpea-vault-directory
                             vulpea-vault-choose-directory)))))
 
 (defun vulpea-vault--collection (candidates)
@@ -177,7 +179,7 @@ returns before its notes are findable."
   (let ((root (vulpea-vault-root root)))
     (unless (file-directory-p root)
       (user-error "Not a directory: %s" root))
-    (when (equal root vulpea-config-notes-directory)
+    (when (equal root vulpea-vault-directory)
       (user-error "Already in %s" root))
     ;; The declaration is the whole of what makes a vault, and an explicit
     ;; switch is the one path with no other signal that a directory is one:
@@ -196,26 +198,26 @@ returns before its notes are findable."
     (let (;; With no vault open there was nothing to watch, so the watcher
           ;; being off says nothing about whether it is wanted — only a vault
           ;; left with it deliberately off keeps it off.
-          (watching (or vulpea-db-autosync-mode (null vulpea-config-notes-directory)))
+          (watching (or vulpea-db-autosync-mode (null vulpea-vault-directory)))
           ;; Closed before re-pointing, while this still names the vault being
           ;; left — and before the watcher stops, so a save made here is still
           ;; picked up by the index it belongs to.
-          (closed (if vulpea-config-notes-directory
-                      (vulpea-vault--close-buffers vulpea-config-notes-directory)
+          (closed (if vulpea-vault-directory
+                      (vulpea-vault--close-buffers vulpea-vault-directory)
                     0)))
-      (when vulpea-config-notes-directory
+      (when vulpea-vault-directory
         (run-hook-with-args 'vulpea-vault-leave-functions
-                            vulpea-config-notes-directory))
+                            vulpea-vault-directory))
       (when watching (vulpea-db-autosync-mode -1))
       (vulpea-db-close)
-      (vulpea-config-apply-vault root)
+      (vulpea-vault-apply root)
       (when watching (vulpea-db-autosync-mode +1))
       ;; Register whatever the new vault's index already holds.  A vault
       ;; indexed on a previous visit reports every file unchanged, so the hook
       ;; that normally feeds `org-id' stays quiet and `[[id:…]]' links would
       ;; fail until something re-scanned; a vault being indexed for the first
       ;; time has nothing here yet and is covered by that hook instead.
-      (vulpea-config-update-id-locations)
+      (vulpea-vault-update-id-locations)
       ;; Recorded only once the switch has gone through, so a directory that
       ;; turned out not to be openable is not offered again.  The binding is
       ;; what makes `add-to-history' move an already-known vault to the front
@@ -259,14 +261,14 @@ With no vault active the note's own is simply opened; there is nothing
 to weigh up."
   (when (derived-mode-p 'org-mode)
     (when-let* ((vault (vulpea-vault--buffer-vault)))
-      (unless (equal vault vulpea-config-notes-directory)
-        (if (null vulpea-config-notes-directory)
+      (unless (equal vault vulpea-vault-directory)
+        (if (null vulpea-vault-directory)
             (vulpea-vault-switch vault)
           (pcase (car (read-multiple-choice
                        (format "%s belongs to vault %s, not the active %s"
                                (file-name-nondirectory buffer-file-name)
                                (abbreviate-file-name vault)
-                               (abbreviate-file-name vulpea-config-notes-directory))
+                               (abbreviate-file-name vulpea-vault-directory))
                        '((?s "switch" "Activate that vault, closing this one's buffers")
                          (?o "open anyway" "Read it as it is; attachment: links will not resolve")
                          (?c "cancel" "Do not open the file"))))

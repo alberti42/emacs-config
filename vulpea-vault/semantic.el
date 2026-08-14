@@ -43,9 +43,8 @@
 ;;; Code:
 
 (require 'seq)
+(require 'vulpea-vault-core)
 (require 'vulpea-vault-switch)
-
-(defvar vulpea-config-notes-directory)
 
 (defun vulpea-vault-semantic-root (root)
   "Return ROOT spelled as the org-semantic server keys it.
@@ -104,8 +103,8 @@ consulted only when the buffer itself belongs to no org-semantic vault
 — which is every buffer that is not a note.  With no vault open it
 returns nil in turn, leaving `org-semantic-vault-or-error' to say there
 is no vault here, which is the truth."
-  (when vulpea-config-notes-directory
-    (vulpea-vault-semantic-root vulpea-config-notes-directory)))
+  (when vulpea-vault-directory
+    (vulpea-vault-semantic-root vulpea-vault-directory)))
 
 (with-eval-after-load 'org-semantic
   (advice-add 'org-semantic-vault :after-until #'vulpea-vault-semantic-vault))

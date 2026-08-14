@@ -49,6 +49,7 @@
 
 (require 'rx)
 (require 'vulpea-vault-scheme)
+(require 'vulpea-vault-core)
 (require 'vulpea-vault-modified-stamp)
 (require 'vulpea-vault-directories)
 
@@ -93,9 +94,9 @@ not index, and nil inside the attachment store, which holds attachments
 rather than notes.  Nil too when no vault is open, there being no inside
 to be in."
   (let ((dir (expand-file-name default-directory)))
-    (and vulpea-config-notes-directory
-         (file-in-directory-p dir vulpea-config-notes-directory)
-         (not (file-in-directory-p dir vulpea-config-attach-directory))
+    (and vulpea-vault-directory
+         (file-in-directory-p dir vulpea-vault-directory)
+         (not (file-in-directory-p dir vulpea-vault-attach-directory))
          dir)))
 
 (defun vulpea-vault--file-base (title)
@@ -119,7 +120,7 @@ file name since there is nothing to name it after."
          ;; one case here that cannot be worked around, only reported.
          (fallback (if daily
                        (expand-file-name (concat year "/") daily)
-                     (vulpea-config-vault-or-error)))
+                     (vulpea-vault-or-error)))
          ;; Anywhere in the daily tree means the note's own year, not the year
          ;; of whichever note happened to be open: reading a 2024 daily note
          ;; must not file a note dated today under 2024.

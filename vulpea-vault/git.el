@@ -57,6 +57,7 @@
 ;; For `vulpea-vault-root': the roots below are compared with `equal' and folded
 ;; with `delete-dups', so they must carry the one spelling it defines.
 (require 'vulpea-vault-scheme)
+(require 'vulpea-vault-core)
 
 (declare-function magit-wip-commit-buffer-file "magit-wip")
 (declare-function magit-wip-commit-initial-backup "magit-wip")
@@ -77,8 +78,8 @@ this file; `bound-and-true-p' guards the case of this module loaded on
 its own."
   (delete-dups
    (mapcar #'vulpea-vault-root
-           (append (and vulpea-config-notes-directory
-                        (list vulpea-config-notes-directory))
+           (append (and vulpea-vault-directory
+                        (list vulpea-vault-directory))
                    (bound-and-true-p vulpea-vault-history)))))
 
 (defun vulpea-vault-git--vault-file-p ()
@@ -267,7 +268,7 @@ A prefix argument is passed through to `magit-wip-log-current', where a
 negative value shows the saves alone."
   (interactive)
   (require 'magit-wip)
-  (let ((default-directory (vulpea-config-vault-or-error)))
+  (let ((default-directory (vulpea-vault-or-error)))
     (unless (file-directory-p (expand-file-name ".git" default-directory))
       (user-error "%s is not a git repository; nothing records its saves"
                   (abbreviate-file-name default-directory)))

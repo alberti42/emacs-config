@@ -20,6 +20,36 @@ renames.
 The tree itself is produced by `etc/goodies/obsidian-to-org.py` — see
 its header for the conversion invariants.
 
+## The package / config seam
+
+`vulpea-vault/` is written as **a package that happens not to be
+published**: generic mechanism, nothing in it naming a machine or a
+directory, usable for anyone's vault. `vulpea-config.el` is *this user
+on this machine* configuring it — straight recipes, key bindings, the
+module list, and one host fact (the GitLab token that lets the rollup
+push over HTTPS).
+
+One test for anything added later: **would this be wrong on another
+machine or for another vault?** Then it belongs in `vulpea-config.el`;
+otherwise in `vulpea-vault/`, under the `vulpea-vault-` prefix.
+
+The seam is already built into the code in the one place it is crossed:
+`git.el` *declares* `vulpea-vault-git-rollup-environment` (a socket),
+and `vulpea-config.el` *plugs into it* with the MPCDF function. Add new
+host-specific behaviour the same way rather than putting a hostname
+inside a module.
+
+Two consequences that look like inconsistencies but are not:
+
+- `org-attach-preferred-new-method 'id` and `org-attach-use-inheritance
+  t` live in `attachments.el`, not here — they are not taste, they follow
+  from the ID-keyed store layout the scheme and the converter agreed on.
+- `org-id` is not configured here **at all**. The mechanism that keeps it
+  in step with vulpea's db is `ids.el`; where `org-id-locations-file`
+  lives is an org-wide, per-machine choice and sits with the rest of org,
+  in `org-config.el` — via `emacs-config-cache-file`, the one helper every
+  module uses to keep state out of this git worktree.
+
 ## The vault ↔ config boundary
 
 Everything a vault can state about itself, it states in its own
@@ -35,12 +65,12 @@ vaults exist.
 
 ### Startup
 
-`vulpea-config--initial-vault` resumes the most recent entry of
+`vulpea-vault-resume` (`core.el`) opens the most recent entry of
 `vulpea-vault-history`, walking down past any vault whose directory is
 missing right now — an unmounted volume is a reason to open something
 else, not a reason to fail. The vault actually resumed is then pushed to
-the front of the history at the foot of the file, so skipping an
-unreachable one is recorded as what it is.
+the front of the history, so skipping an unreachable one is recorded as
+what it is.
 
 Reading the history that early works because of a load-order fact worth
 knowing:
@@ -49,15 +79,16 @@ knowing:
   plain `setq`;
 - `vulpea-config.el` is loaded at **init.el:636**, well after;
 - `vulpea-vault/switch.el`, which owns the variable, is loaded at the
-  *foot* of `vulpea-config.el` — so its `defvar` runs last of all, and
-  leaves an already-bound value alone.
+  *foot* of `vulpea-config.el`, while `core.el` (which reads it) is
+  loaded at the head — so the `defvar` runs last of all, and leaves an
+  already-bound value alone.
 
 Hence `bound-and-true-p` at the call site: the variable may legitimately
 not exist yet.
 
 ### No vault open is a supported state
 
-`vulpea-config-notes-directory` nil is ordinary — a first run with an
+`vulpea-vault-directory` nil is ordinary — a first run with an
 empty history. Autosync stays off with a message, and the first note
 opened from a vault activates it through the `find-file-hook` guard.
 
@@ -67,11 +98,11 @@ Consumers split two ways:
   entry, just the escape), `vulpea-vault-switch` (nothing to close),
   `vulpea-vault-special-directory`, `vulpea-vault--context-directory`.
 - **Refuse cleanly** — `vulpea-vault-orphans`,
-  `vulpea-config-update-id-locations` and note creation with no daily
-  folder go through `vulpea-config-vault-or-error`, so nil fails as one
+  `vulpea-vault-update-id-locations` and note creation with no daily
+  folder go through `vulpea-vault-or-error`, so nil fails as one
   `user-error` instead of a wrong-type-argument deep inside.
 
-## `vulpea-config-apply-vault`
+## `vulpea-vault-apply`
 
 Derives five settings from a root and assigns them. Called at load and
 by `vulpea-vault-switch`:
@@ -79,8 +110,8 @@ by `vulpea-vault-switch`:
 | Setting                        | Value                        |
 | ------------------------------ | ---------------------------- |
 | `vulpea-db-location`           | `expand-file-name(<db>, <root>)` |
-| `vulpea-config-state-directory` | directory of `vulpea-db-location` |
-| `vulpea-config-attach-directory` | `<root>/<data>/`           |
+| `vulpea-vault-state-directory` | directory of `vulpea-db-location` |
+| `vulpea-vault-attach-directory` | `<root>/<data>/`           |
 | `org-attach-id-dir`            | = attach directory           |
 | `vulpea-db-sync-directories`   | `(<root>)`                   |
 
@@ -99,12 +130,14 @@ value into the global another package reads:
   against the root — see
   [Cache location](#cache-location--vulpea-vault-db-location). So a
   relative value lands inside the vault and an absolute one is taken
-  as-is, and `vulpea-config-state-directory` follows its directory part.
+  as-is, and `vulpea-vault-state-directory` follows its directory part.
 
-`org-id` locations live under `$XDG_CACHE_HOME/emacs/` instead — they
-span every org file Emacs knows, not one vault. The database defaults to
-the vault's own `.vulpea/`, so the index travels with the notes unless
-the vault points it elsewhere.
+`org-id` locations are not among them: they live under
+`emacs-config-cache-dir` (`$XDG_CACHE_HOME/emacs/`, set in
+`org-config.el`) because they span every org file Emacs knows, not one
+vault. The vulpea database, by contrast, defaults to the vault's own
+`.vulpea/`, so the index travels with the notes unless the vault points
+it elsewhere.
 
 ## Switching vaults live
 
@@ -132,7 +165,7 @@ directory like `~/org` as a vault. A directory that declares a
 *non-nil but unrecognised* version is still a vault and is opened with a
 warning, as everywhere else — only the *absence* of the declaration is
 refused. The same `vulpea-vault-p` test guards the startup resume
-(`vulpea-config--initial-vault`), so a stale non-vault entry left in the
+(`vulpea-vault-resume`), so a stale non-vault entry left in the
 history is skipped rather than resumed.
 
 Modified notes are offered for saving before the kill, `save-some-buffers`
@@ -228,7 +261,7 @@ implies more:
 1. **Note creation in a non-live vault would not be indexed.**
    `vulpea-create` writes the file; the db learns of it only through the
    live watcher/worker. So `org-id` auto-registration
-   (`vulpea-config-register-ids`, fired from
+   (`vulpea-vault-register-ids`, fired from
    `vulpea-db-worker-done-functions`) also misses it. → A redesign must
    make **creation promote its target vault to live**.
 2. **Schema/version skew kills the "read-only connection pool" shortcut.**
@@ -244,7 +277,7 @@ implies more:
    rollup timer iterating a vault list is the obvious half; the easy one
    to forget is that the **per-save `magit-wip-*` hook** in
    `vulpea-vault/git.el` is *also* single-vault (it gates on
-   `vulpea-config-notes-directory`). Editing a note in a non-live vault
+   `vulpea-vault-directory`). Editing a note in a non-live vault
    would record no per-save history unless that buffer-local hook keys
    off "under **any** registered vault." Git backup is genuinely
    independent of the db/watcher question and could be improved on its
@@ -374,7 +407,7 @@ org-attach store under the root. Behind `vulpea-vault-data-directory-p`
 `"00 Meta/data"` files it under a folder.
 
 An **absolute** value (or a `~`-path) is honoured as declared, but
-`vulpea-config--store-name` warns — a store holds content and travels
+`vulpea-vault--store-name` warns — a store holds content and travels
 with the notes, so outside the vault is nearly always a mistake, yet it
 remains the vault's statement to make. See [Shape vs
 policy](#shape-vs-policy-where-a-rule-about-a-value-belongs) for why the
@@ -398,7 +431,7 @@ attachments (a stray `.org` under it would be indexed as a note).
 Where the vault's SQLite index lives (default `"./.vulpea/vulpea.db"`).
 `apply-vault` `expand-file-name`s it against the root, so a **relative**
 value lands inside the vault and an **absolute** value (or a `~`-path) is
-taken as-is; `vulpea-config-state-directory` becomes its directory and is
+taken as-is; `vulpea-vault-state-directory` becomes its directory and is
 created if absent. Behind `vulpea-vault-db-location-p` (non-empty
 string), and — like `vulpea-vault-data-directory` — declared in
 `scheme.el` and read from the root by `apply-vault`.
@@ -434,7 +467,7 @@ switch prompt, the `find-file-hook` guard and the backup's vault list.
 
 **Equality depends on it**, which is why it is a named function and not an
 inline idiom: a candidate is hidden from the switch prompt by `equal`
-against `vulpea-config-notes-directory`, the active root and the
+against `vulpea-vault-directory`, the active root and the
 remembered ones are folded with `delete-dups` before backup, and
 `file-in-directory-p` decides which buffers belong to a vault. Two
 spellings of one directory would list it twice, back it up twice, or fail
@@ -444,7 +477,7 @@ problem.
 It is *normalisation*, not relative-to-absolute resolution: every caller
 already holds an absolute path (a `default-directory`, a
 `locate-dominating-file` result, a `vulpea-vault-history` entry — only
-ever written from `vulpea-config-notes-directory`), so it expands `~` and
+ever written from `vulpea-vault-directory`), so it expands `~` and
 `..` and settles the trailing slash.
 
 **The one exception is deliberate.** `vulpea-vault-semantic-root` uses
@@ -572,12 +605,12 @@ seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
 - **vulpea does not hook `org-id`.** Its own commands resolve through
   the db, but a plain `[[id:…]]` link goes through `org-id-locations`,
   which nothing populates automatically. Run
-  `M-x vulpea-config-update-id-locations` after a conversion.
-  (`vulpea-config-register-ids` on `vulpea-db-worker-done-functions`
+  `M-x vulpea-vault-update-id-locations` after a conversion.
+  (`vulpea-vault-register-ids` on `vulpea-db-worker-done-functions`
   keeps the two in step for files indexed later.)
 - **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
   mismatch yields an *empty* attachment directory rather than an error.
-  Likewise `vulpea-config-notes-directory` versus its `DEFAULT_OUT`. The
+  Likewise `vulpea-vault-directory` versus its `DEFAULT_OUT`. The
   store name is now the vault's to choose — see [Attachment store](#attachment-store--vulpea-vault-data-directory)
   — which makes keeping the two ends in step the vault's responsibility.
 - **The watcher does not survive a bulk external edit.** Rewriting all
@@ -593,20 +626,21 @@ seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
   Reach for the prefix argument whenever what changed is *about* the
   files rather than *in* them.
 
-## Other behaviour owned here
+## Other behaviour
 
-- **IDs are minted by an `:override` on `org-id-new`** returning
-  `(uuid-to-string (uuid-v4))`. Org 9.8.7 still forks
+- **IDs are minted by an `:override` on `org-id-new`** (`ids.el`)
+  returning `(uuid-to-string (uuid-v4))`. Org 9.8.7 still forks
   `org-id-uuid-program`, which is uppercase on macOS, and ID lookup is
   case-sensitive.
-- **Cross-note attachment links.** Stock `attachment:` carries only a
-  filename, resolved against the *current* node, so there is no
-  cross-reference syntax. An `attachment:<uuid>/file` form is added via
-  advice on `org-attach-expand` — the one choke point shared by
-  following, inline preview and export. The converter emits 51 of them.
-- **Autosync is guarded on the tree existing**, so a not-yet-run
-  conversion degrades to "installed but idle" rather than erroring at
-  startup.
+- **Cross-note attachment links** (`attachments.el`). Stock
+  `attachment:` carries only a filename, resolved against the *current*
+  node, so there is no cross-reference syntax. An `attachment:<uuid>/file`
+  form is added via advice on `org-attach-expand` — the one choke point
+  shared by following, inline preview and export. The converter emits 51
+  of them.
+- **Autosync is guarded on the tree existing** (`vulpea-config.el`), so a
+  not-yet-run conversion degrades to "installed but idle" rather than
+  erroring at startup.
 
 ## History of the notes
 
@@ -753,17 +787,28 @@ One concern per file, loaded from `vulpea-config.el` the way
 
 | File                  | Concern                                                        |
 | --------------------- | -------------------------------------------------------------- |
-| `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
 | `scheme.el`           | the contract: every variable a vault may declare (defaults + safe predicates), the schema version and its check, `vulpea-vault-p`, `vulpea-vault-root` |
+| `core.el`             | which vault is in use (`vulpea-vault-directory`), the five settings derived from it (`vulpea-vault-apply`), `vulpea-vault-or-error`, `vulpea-vault-resume` |
+| `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
+| `select.el`           | dates and sorting in the note-selection UI                      |
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |
-| `attachments.el`      | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
+| `ids.el`              | keeps `org-id` in step with vulpea's db: the index hook, `M-x vulpea-vault-update-id-locations`, the lowercase-UUID `org-id-new` override |
+| `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
+| `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
 | `bibdesk.el`          | the `x-bdsk:` link type                                         |
 | `pdffile.el`          | the `pdffile:` link type                                        |
 | `message.el`          | the `message:` link type                                        |
 | `switch.el`           | live vault switching, the history, the wrong-vault guard        |
+| `semantic.el`         | ties the vault's org-semantic index to the switch               |
 | `git.el`              | records every save on a git work-in-progress ref; `C-c n l` to read it |
+
+Load order matters only where a module `require`s a sibling:
+`scheme` → `core` (both loaded before the `use-package` forms, since a
+`safe-local-variable` predicate must exist before the resume reads a
+vault's `.dir-locals.el`), then `attachments` before `orphans`, `ids`
+before `switch`, `switch` before `semantic`.
 
 ## Keys and commands
 
@@ -774,4 +819,4 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `C-c n b`                             | `vulpea-find-backlink`               |
 | `M-x vulpea-vault-switch`             | open another vault, live             |
 | `M-x vulpea-vault-orphans`            | the vault health report              |
-| `M-x vulpea-config-update-id-locations` | repair `org-id-locations` from the db |
+| `M-x vulpea-vault-update-id-locations` | repair `org-id-locations` from the db |

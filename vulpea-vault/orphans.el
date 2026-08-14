@@ -1,4 +1,4 @@
-;;; attachments.el --- Find orphans in the vault -*- lexical-binding: t; -*-
+;;; orphans.el --- Find dangling links and unreferenced files -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -37,8 +37,9 @@
 ;;; Code:
 
 (require 'org)
-(require 'org-attach)
 (require 'seq)
+(require 'vulpea-vault-core)
+(require 'vulpea-vault-attachments)
 
 (defconst vulpea-vault-checkable-link-types
   '("attachment" "id" "file" "pdffile" "fuzzy")
@@ -119,9 +120,9 @@ would pass.  An entry here means \"no anchor of any kind\"."
 
 (defun vulpea-vault--attachment-file (note dest)
   "Resolve an `attachment:' DEST written in NOTE to an absolute file.
-Mirrors `vulpea-config-attach-expand': a leading UUID names another
+Mirrors `vulpea-vault-attach-expand': a leading UUID names another
 note's store, otherwise the store belongs to NOTE itself."
-  (if (string-match vulpea-config-crossref-regexp dest)
+  (if (string-match vulpea-vault-attach-crossref-regexp dest)
       (expand-file-name (match-string 2 dest)
                         (org-attach-dir-from-id (match-string 1 dest)))
     (expand-file-name dest (org-attach-dir-from-id (vulpea-note-id note)))))
@@ -175,11 +176,11 @@ skips paths containing \"/.\"."
 (defun vulpea-vault--internal-p (entry)
   "Non-nil if ENTRY's dangling target belongs to the vault.
 An `id:' target is a note, so always internal; a file target is judged by
-whether it lives under `vulpea-config-notes-directory'."
+whether it lives under `vulpea-vault-directory'."
   (let ((link (nth 1 entry))
         (target (nth 2 entry)))
     (or (member (plist-get link :type) '("id" "fuzzy"))
-        (file-in-directory-p target vulpea-config-notes-directory))))
+        (file-in-directory-p target vulpea-vault-directory))))
 
 (defun vulpea-vault--insert-dangling (heading entries)
   "Insert a section HEADING listing dangling ENTRIES, sorted by note path."
@@ -209,7 +210,7 @@ so it is invisible from the report's own buffer and has to be fetched.
 Group parents count as declared: they are entries of the alist like any
 other, even though no note is tagged with them."
   (with-temp-buffer
-    (setq default-directory vulpea-config-notes-directory)
+    (setq default-directory vulpea-vault-directory)
     (hack-dir-local-variables-non-file-buffer)
     (seq-filter #'stringp
                 (mapcar #'car (append org-tag-alist org-tag-persistent-alist)))))
@@ -267,7 +268,7 @@ which cannot be judged without the file: those notes are read once each,
 in a second pass."
   (interactive)
   (let* ((start (current-time))
-         (notes (vulpea-db-query-by-directory (vulpea-config-vault-or-error)))
+         (notes (vulpea-db-query-by-directory (vulpea-vault-or-error)))
          (ids (make-hash-table :test 'equal))
          (referenced (make-hash-table :test 'equal))
          (skipped (make-hash-table :test 'equal))
@@ -358,5 +359,5 @@ in a second pass."
       ;; should dismiss it without going looking for its window first.
       (pop-to-buffer buffer))))
 
-(provide 'vulpea-vault-attachments)
-;;; attachments.el ends here
+(provide 'vulpea-vault-orphans)
+;;; orphans.el ends here
