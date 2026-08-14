@@ -114,8 +114,13 @@ the new title.  Runs with the shell buffer current (see
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
   :after agent-shell
+  ;; Rendering is driven by the buffer-local `agent-shell-math-renderer-mode',
+  ;; which must be turned on from `agent-shell-mode-hook'.
+  :hook (agent-shell-mode . agent-shell-math-renderer-mode)
   :config
-  (setq agent-shell-math-renderer-enabled t)
+  ;; Re-tint cached equations when the OS appearance flips the theme.
+  (add-hook 'enable-theme-functions
+            #'agent-shell-math-renderer-on-theme-change) 
   (setq agent-shell-math-renderer-render-submitted-prompts t)
   ;; Size multipliers on top of the engine's global `latex-to-svg-backend-font-scale':
   ;; display equations a bit larger than inline.
