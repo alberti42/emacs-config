@@ -101,7 +101,13 @@
         ;; syntax tree rather than from `org-file-tags' (which mode init would
         ;; set), no note uses per-file `#+TODO:', `#+PROPERTY:', `#+TAGS:',
         ;; `#+SETUPFILE:' or `:DIR:', and `org-attach-id-dir' is global.
-        vulpea-db-parse-method 'single-temp-buffer)
+        vulpea-db-parse-method 'single-temp-buffer
+
+        ;; Silence the routine "Vulpea: Syncing N files... / Sync complete"
+        ;; echoes, which autosync fires on every save.  Only these status
+        ;; reports go through `vulpea-db-sync--message'; errors and warnings
+        ;; call `message' directly and are unaffected.
+        vulpea-db-sync-verbose nil)
   :config
   ;; Watch the tree and index in the background.  Guarded twice over, so both
   ;; "no vault opened yet" and "a vault whose tree is not there" degrade to
