@@ -12,12 +12,19 @@
 ;;
 ;; Two things close the gap, and they cover different cases:
 ;;
-;; - `vulpea-vault-register-ids' on `vulpea-db-worker-done-functions', so a
-;;   note arriving from outside Emacs becomes followable as it is indexed;
+;; - `vulpea-vault-register-ids' on `vulpea-db-updated-functions', so a note
+;;   arriving from outside Emacs becomes followable as it is indexed, and a
+;;   note deleted stops being followable;
 ;;
 ;; - `vulpea-vault-update-id-locations', a repair command for the one case
 ;;   that misses — `org-id-locations' lost while vulpea's db is current, so
-;;   every file reports `unchanged' and the hook stays quiet.
+;;   every file is unchanged and the hook stays quiet.
+;;
+;; The hook used to be `vulpea-db-worker-done-functions', which is the
+;; extraction worker's: it does not run at all unless
+;; `vulpea-db-async-extraction' is on, and that is off by default — so on this
+;; machine it never ran, and neither did any of this.  Nothing said so, which
+;; is what that class of mistake looks like.
 ;;
 ;; Where `org-id-locations-file' lives is not decided here: it spans every org
 ;; file Emacs knows, not this vault alone, so it is set with the rest of org
@@ -35,19 +42,42 @@
 (require 'uuid)
 (require 'vulpea-vault-core)
 
-(defun vulpea-vault-register-ids (path status _count)
-  "Register the IDs vulpea just indexed in PATH with `org-id'.
+(defun vulpea-vault-register-ids (path count)
+  "Keep `org-id' in step with the notes vulpea wrote or dropped in PATH.
 
-Added to `vulpea-db-worker-done-functions', which vulpea's file watcher
-runs after indexing a file.  STATUS is `applied' when notes were written;
-the other statuses (`unchanged', `stale', `requeued', `missing', `error')
-mean there is nothing new to register.
+On `vulpea-db-updated-functions', vulpea's single data-changed hook,
+called with (PATH COUNT) once per file whose database content changed and
+after the transaction commits — so the database is already the authority
+by the time this reads it.  COUNT is the number of notes written, and 0
+when PATH's notes were dropped: the file was deleted, or it left the
+tracked set.
 
-The IDs come from vulpea's own database rather than from re-parsing the
-file — it has just extracted them.  `org-id-add-location' is a single
-`puthash'; `org-id-update-id-locations' is not usable here because it
-clears `org-id-locations' and rescans every known file."
-  (when (eq status 'applied)
+A write registers each ID from vulpea's database rather than by
+re-parsing the file, which vulpea has just extracted.
+`org-id-add-location' is a single `puthash'; `org-id-update-id-locations'
+is not usable here because it clears `org-id-locations' and rescans every
+known file.
+
+A removal drops the IDs that point at PATH.  `org-id' has no removal API
+and never prunes, so a deleted note otherwise leaves its ID pointing at a
+dead path, and following such a link fails with a missing file rather
+than an unknown ID.  Paths are compared abbreviated, which is how
+`org-id' stores them, and the table is loaded first for the same reason
+`org-id-add-location' loads it.
+
+This is the per-file half of what `vulpea-vault-update-id-locations' does
+for the whole tree.  It became possible only when this hook replaced
+`vulpea-db-worker-done-functions', which reported a removal as a dispatch
+that ended without a result and, being the worker's, did not run at all
+unless the worker did."
+  (if (and (numberp count) (zerop count))
+      (progn
+        (unless org-id-locations (org-id-locations-load))
+        (let ((dead (abbreviate-file-name path))
+              (stale nil))
+          (maphash (lambda (id file) (when (equal file dead) (push id stale)))
+                   org-id-locations)
+          (dolist (id stale) (remhash id org-id-locations))))
     (dolist (note (vulpea-db-query-by-file-path path))
       (org-id-add-location (vulpea-note-id note) path))))
 
@@ -100,7 +130,7 @@ the case of the ones already indexed.  `uuid-v4' returns a struct, hence
 
 (advice-add 'org-id-new :override #'vulpea-vault-org-id-new)
 
-(add-hook 'vulpea-db-worker-done-functions #'vulpea-vault-register-ids)
+(add-hook 'vulpea-db-updated-functions #'vulpea-vault-register-ids)
 
 (provide 'vulpea-vault-ids)
 ;;; ids.el ends here
