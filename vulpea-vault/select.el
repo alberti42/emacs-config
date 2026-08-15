@@ -82,7 +82,7 @@ it would only cost width."
          (modified (and vulpea-vault-select-show-modified
                         (vulpea-vault-select-modified note)))
          (modified (and modified (not (equal modified date))
-                        (concat "\u2192" modified)))
+                        (concat "\u2192 " modified)))
          (stock (vulpea-select-annotate note)))
     (concat (if date (concat " " date) "")
             (if modified (concat " " modified) "")
