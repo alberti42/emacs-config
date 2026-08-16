@@ -131,6 +131,23 @@ session."
   ;; choose between them, which is only useful when both exist.
   (org-semantic-index-mode "both")
 
+  ;; Never answer from an index that is being rebuilt.  Off by default, and on
+  ;; here because the indexes are kept current automatically: a note saved a
+  ;; moment ago is exactly the one being looked for, and a list drawn from the
+  ;; version before it is the wrong answer rather than merely an old one.
+  ;;
+  ;; The cost lands almost entirely on runs that are seconds long, because that
+  ;; is what the watcher makes: `org-semantic-auto-reindex-touch' reaches
+  ;; `org-semantic-index', so those runs belong to this Emacs and the search is
+  ;; simply held until the run replies.  Nothing polls, and it cannot hang — the
+  ;; reply arrives whether the run works or fails.  A deliberate `C-c n R' is
+  ;; the case that costs minutes, and there the wait is the point.
+  ;;
+  ;; A run in another program — a shell, a cron job, a second Emacs — is refused
+  ;; instead, since this Emacs cannot know when that one finishes.  The buffer
+  ;; then says so and asks for the search again.
+  (org-semantic-require-fresh-index t)
+
   ;; The indexing policy, stated whole.  It is compared whole, so a setting left
   ;; out is not left alone — it takes its default — and a policy that disagrees
   ;; with the one an index was built under fails the search rather than
