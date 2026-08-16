@@ -146,16 +146,16 @@ session."
   ;; is silently accepted as far as Emacs is concerned.
   (org-semantic-config
    '(:languages ["en-US" "de-DE" "it-IT"]
-     :fold_diacritics :json-false
-     :blocks (:src     (:semantic "placeholder" :lexical t)
-              :example (:semantic "placeholder" :lexical t)
-              :results (:semantic :json-false   :lexical t)
-              :quote   (:semantic t             :lexical t)
-              :verse   (:semantic t             :lexical t))
-     :planning_line (:semantic :json-false :lexical t)
-     :chunk (:semantic_tokens 350 :lexical_chars 1500)
-     :exclude_tagged ["noexport" "ARCHIVE"]
-     :todo_keywords ["TODO" "DONE"])))
+                :fold_diacritics :json-false
+                :blocks (:src     (:semantic "placeholder" :lexical t)
+                                  :example (:semantic "placeholder" :lexical t)
+                                  :results (:semantic :json-false   :lexical t)
+                                  :quote   (:semantic t             :lexical t)
+                                  :verse   (:semantic t             :lexical t))
+                :planning_line (:semantic :json-false :lexical t)
+                :chunk (:semantic_tokens 350 :lexical_chars 1500)
+                :exclude_tagged ["noexport" "ARCHIVE"]
+                :todo_keywords ["TODO" "DONE"])))
 
 (provide 'org-semantic-config)
 ;;; org-semantic-config.el ends here
