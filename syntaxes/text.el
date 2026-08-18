@@ -23,7 +23,8 @@
                 (add-hook 'completion-at-point-functions
                           #'emacs-config-cape-prose nil t)
 
-                (setq-local fill-column 72)
+                (setq-local fill-column 100)
+                (setq-local soft-wrap-default-centered t)
                 (soft-wrap-mode 1)))))
 
 (provide 'syntaxes-text)

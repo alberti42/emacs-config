@@ -28,7 +28,7 @@
   ;; (add-hook 'git-rebase-mode-hook
   ;;           (lambda ()
   ;;             (display-line-numbers-mode -1)))
-)
+  )
 
-  (provide 'syntaxes-magit)
+(provide 'syntaxes-magit)
 ;;; syntaxes/magit.el ends here
