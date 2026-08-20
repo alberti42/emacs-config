@@ -180,5 +180,70 @@ buffer-locally before the adaptor turns on the shared core."
   :init
   (add-hook 'org-mode-hook #'org-config--latex-to-svg-setup))
 
+;;; -- Two-column table -> description list ----------------------------------
+
+;; A two-column table whose second column is prose is a description list
+;; wearing a table's clothes: the alignment has to be maintained by hand, the
+;; long column cannot wrap, and export has to be told how wide to make it.
+;; This converts it back.  Rows wrapped with `org-table-wrap-region' (an empty
+;; first field continuing the row above) are rejoined into one description.
+
+(defun org-config--table-cookie-row-p (row)
+  "Non-nil when ROW holds only width/alignment cookies, e.g. `<10>' or `<r>'."
+  (cl-every (lambda (field)
+              (string-match-p "\\`<[lrc]?[0-9]*>\\'" (string-trim field)))
+            row))
+
+(defun my/org-table-to-description-list (&optional keep-header)
+  "Replace the Org table at point with a description list.
+
+Each row becomes `- FIRST :: SECOND'.  Horizontal rules and width/alignment
+cookie rows are dropped.  A row with an empty first field continues the
+description of the row above, so cells split with `org-table-wrap-region'
+survive as one entry.
+
+The first row is treated as a header and dropped when a rule follows it;
+with a prefix argument KEEP-HEADER it becomes an entry like any other.
+
+The table must have exactly two columns."
+  (interactive "P")
+  (unless (org-at-table-p)
+    (user-error "Point is not in an Org table"))
+  (when (org-at-table.el-p)
+    (user-error "This is a table.el table; convert it with `C-c ~' first"))
+  (let* ((beg (org-table-begin))
+         (end (org-table-end))
+         ;; Drop cookie rows first: a leading one would otherwise hide the
+         ;; "first row followed by a rule" shape that marks a header.
+         (table (seq-remove (lambda (row)
+                              (and (listp row)
+                                   (org-config--table-cookie-row-p row)))
+                            (org-table-to-lisp)))
+         (header-p (and (not keep-header)
+                        (listp (car table))
+                        (eq 'hline (nth 1 table))))
+         (rows (seq-remove (lambda (row) (eq row 'hline)) table))
+         items)
+    (dolist (row rows)
+      (unless (= (length row) 2)
+        (user-error "Table has %d column(s); this command needs exactly 2"
+                    (length row))))
+    (when header-p (setq rows (cdr rows)))
+    (dolist (row rows)
+      (let ((term (string-trim (nth 0 row)))
+            (desc (string-trim (nth 1 row))))
+        (cond
+         ;; Continuation of the entry above.
+         ((and (string-empty-p term) items)
+          (unless (string-empty-p desc)
+            (setcar items (concat (car items) " " desc))))
+         ((and (string-empty-p term) (string-empty-p desc)) nil)
+         (t (push (format "- %s :: %s" term desc) items)))))
+    (unless items
+      (user-error "Nothing to convert"))
+    (delete-region beg end)
+    (goto-char beg)
+    (insert (mapconcat #'identity (nreverse items) "\n") "\n")))
+
 (provide 'org-config)
 ;;; org-config.el ends here
