@@ -1,20 +1,5 @@
 ;;; org-config.el --- Built-in Org with LaTeX preview and Python babel -*- lexical-binding: t; -*-
 
-;; Uses the Org that ships with Emacs (`:straight (org :type built-in)'), not the tecosaur
-;; fork.  That fork carried karthink's live `org-latex-preview' (auto-preview,
-;; real-time updates while editing a fragment, dvisvgm SVG) which never made it
-;; upstream, and the fork is now effectively unmaintained.  The previous
-;; fork-based configuration is preserved, unloaded, in `org-karthink-config.el'.
-;;
-;; Math rendering here is done by the homegrown `org-latex-to-svg' package (a
-;; front-end over the `latex-to-svg' engine, wired up at the end of this file),
-;; NOT by built-in Org's classic `org-latex-preview'.  It compiles each unique
-;; equation once (content-addressed) and re-tints / re-scales from cache on a
-;; theme switch or text zoom with no LaTeX recompile — the ergonomics the
-;; tecosaur fork provided, without depending on the fork.  Built-in Org's
-;; classic `org-latex-preview' stays available (dvisvgm) as a fallback when
-;; `org-latex-to-svg-mode' is off.
-
 ;; NOTE: this must register Org as built-in with `:type built-in' rather than a
 ;; bare `:straight nil'.  `org-appear' declares `(org "9.3")' in its
 ;; Package-Requires, so straight resolves `org' as a dependency; without an
@@ -27,55 +12,51 @@
   :defer t
   :custom
   ;; Display inline images (e.g. babel plot output) when opening a file.
-  ;; (LaTeX-math previews are handled by `org-latex-to-svg-mode', not Org's
-  ;; `org-startup-with-latex-preview'.)
   (org-startup-with-link-previews t)
-  ;; Cap the maximum size of images.  List form `(N)' (not bare N or t) keeps
-  ;; the per-image `#+ATTR_ORG: :width Npx' / `#+ATTR_HTML:' override fallback.
+  ;; Cap the maximum size of images.  List form `(N)' (not bare N or t) honors
+  ;; the per-image attributes `#+ATTR_ORG: :width Npx' / `#+ATTR_HTML:'.
   (org-image-actual-width '(800))
-  ;; Classic preview pipeline: convert LaTeX fragments to SVG via dvisvgm.
+  ;; Which backend Org's own `org-latex-preview' uses.  Stock default is
+  ;; `dvipng' (PNG); dvisvgm gives SVG instead.  Note this is a fallback that is
+  ;; almost never used: every Org buffer enables `latex-to-svg-for-org-mode',
+  ;; which shadows C-c C-x C-l (org-latex-preview).  To reach the setting below,
+  ;; one needs to turn `latex-to-svg-for-org-mode' off and call M-x
+  ;; org-latex-preview by name.
   (org-preview-latex-default-process 'dvisvgm)
   ;; Display LaTeX entity macros and sub/superscripts as Unicode in prose and
-  ;; headings (e.g. \alpha → α, H_2O → H₂O).  Outside math fragments (which get
-  ;; the SVG preview), this fills in everywhere else.
-  (org-pretty-entities nil)
-  ;; Heading editing/insertion ergonomics.
+  ;; headings (e.g. \alpha → α, H_2O → H₂O).  `org-fontify-entities' guards only
+  ;; on `org-at-comment-p', NOT on LaTeX fragments, so `\alpha' composes to `α'
+  ;; inside math too -- visible while editing a fragment that
+  ;; `latex-to-svg-for-org-mode' has un-previewed.  Set to nil if that bites.
+  (org-pretty-entities t)
+  ;; C-a/C-e stop at the end of the heading text (before tags) on the first
+  ;; press, at the true line bounds on the second.
   (org-special-ctrl-a/e t)
-  (org-insert-heading-respect-content t)
+  ;; Check if in invisible region before inserting or deleting a character.
   (org-catch-invisible-edits 'show-and-error)
   ;; Compact fold ellipsis.
   (org-ellipsis "…")
   :hook
-  ;; Number sections as overlays rather than as text in the heading.  The notes
-  ;; imported from Obsidian carried their numbers literally ("5.4.2. TensorFlow
-  ;; with TensorRT support"), which put the number inside every link target, so
-  ;; inserting a section broke every link below it.  With the numbers drawn
-  ;; instead, they renumber themselves and a `[[*Heading]]' link never holds one.
+  ;; Number sections as overlays rather than as text in the heading.
   (org-mode . org-num-mode)
   :bind (:map org-mode-map
               ("C-c t l" . org-toggle-link-display))
   :config
-  ;; Keep the classic `org-latex-preview' (available as a fallback when
-  ;; `org-latex-to-svg-mode' is off) on the dvisvgm backend.  The live
-  ;; recolour/rescale hooks that used to live here are obsolete —
-  ;; `org-latex-to-svg' does that from the shared engine cache without a
-  ;; recompile.
-
   ;; Show inline images after evaluating babel blocks.
   (add-hook 'org-babel-after-execute-hook #'org-display-inline-images)
 
-  ;; Structure-template expansion: `<s TAB' → #+BEGIN_SRC … #+END_SRC, `<q',
-  ;; `<e', etc.  Not auto-loaded since Org 9.2.
+  ;; Structure-template expansion: `<s' → #+BEGIN_SRC … #+END_SRC,
+  ;; `<q' → #+BEGIN_QUOTE … #+END_QUOTE, `<e' → `#+BEGIN_EXAMPLE' … `#+END_EXAMPLE'
   (require 'org-tempo)
 
-  ;; `C-c '' (org-edit-special) opens the src block in a dedicated language
-  ;; buffer — this is where LSP (basedpyright, etc.) actually runs for
-  ;; python blocks.  Tuning the edit experience:
-  ;;   - Reuse the current window instead of rearranging the frame.
-  ;;   - Let the language's own TAB (indent) behavior apply inside the edit
-  ;;     buffer, so Python indentation works naturally.
-  ;;   - Preserve the source block's leading whitespace on round-trip so
-  ;;     exiting `C-c '' does not reflow indentation.
+  ;; C-c ' (org-edit-special) opens the src block in a dedicated language buffer.
+  ;; This is where LSP (basedpyright, etc.) actually runs for python blocks.
+  ;; Tuning the edit experience:
+  ;; - Reuse the current window instead of rearranging the frame.
+  ;; - Let the language's own TAB (indent) behavior apply inside the edit buffer;
+  ;;   thus, Python indentation works naturally.
+  ;; - Preserve the source block's leading whitespace on round-trip so exiting C-c '
+  ;;   does not reflow indentation.
   (setq org-src-window-setup 'current-window
         org-src-tab-acts-natively t
         org-src-preserve-indentation t)
@@ -89,24 +70,26 @@
   ;; Set to a function if you want selective confirmation.
   (setq org-confirm-babel-evaluate nil)
 
-  ;; General-purpose Python defaults.  Matplotlib-specific setup (Agg backend,
-  ;; SVG savefig format, imports, rcParams) lives in per-file setup blocks or
-  ;; yasnippets, not here.
+  ;; General-purpose Python defaults.
   (setq org-babel-default-header-args:python
         '((:results . "output") ; captures the entire stdout as produced by a Python REPL
           (:exports . "both")   ; includes both the code block and the results in the exported file
           )))
 
+;;; -- org-id ------------------------------------------------------------------
+
 (use-package org-id
   :straight nil
   :after org
   :init
-  ;; Out of the repository and into the cache: `org-id-locations' is a map from
-  ;; ID to file path on THIS machine, rebuilt by rescanning, and it spans every
-  ;; org file this Emacs knows.  (A vulpea vault's own index is a different
-  ;; thing and lives inside the vault — see `vulpea-db-location'.  Keeping the
-  ;; two in step is `vulpea-vault/ids.el'.)
+  ;; `org-id-locations' is a map from ID to file path on THIS machine, rebuilt
+  ;; by rescanning, and it spans every org file this Emacs knows.  It is stored
+  ;; in a cache file.  Remember: indexes owned by vulpea are a different thing
+  ;; and live inside the vault. — see `vulpea-db-location'.  Keeping the two in
+  ;; step is done by `vulpea-vault/ids.el'.
   (setq org-id-locations-file (emacs-config-cache-file "org-id-locations.eld")))
+
+;;; -- org-appear --------------------------------------------------------------
 
 ;; Enables automatic visibility toggling of various Org elements depending on
 ;; cursor position.  It supports automatic toggling of emphasis markers, links,
@@ -120,7 +103,9 @@
   :bind (:map org-mode-map
               ("C-c t e" . my/org-toggle-emphasis-markers))
   :custom
+  ;; Non-nil enables automatic toggling of links.
   (org-appear-autolinks t)
+  ;; Non-nil enables automatic toggling of subscript and superscript markers.
   (org-appear-autosubmarkers t)
   ;; Reveal markers at point
   (org-appear-autoemphasis t)
@@ -151,13 +136,11 @@
   (advice-add 'org-appear--show-with-lock
               :before-while #'my/org-appear-not-mouse-p))
 
+;;; -- latex-to-svg-for-org: render math in every Org buffer -------------------
+
 ;; SVG-math preview for Org: the Org adaptor of the shared
 ;; `latex-to-svg-frontend' core.  Replaces built-in Org's classic
-;; `org-latex-preview' for in-buffer math — compiles each equation once
-;; (content-addressed) and re-tints on theme switch / re-scales on text zoom
-;; straight from cache, no LaTeX recompile.  The adaptor supplies Org's
-;; code/comment exclusions and `org-fold-show-context' as the jump-reveal;
-;; detection uses the core's universal scanner (not `org-element').
+;; `org-latex-preview' for in-buffer math.
 ;;
 ;; The engine (`latex-to-svg-backend') and core (`latex-to-svg-frontend')
 ;; recipes are registered in `latex-to-svg-config.el' (loaded first in init.el),
@@ -176,11 +159,10 @@ buffer-locally before the adaptor turns on the shared core."
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-org.el"))
-  ;; Render math in every Org buffer (replaces `org-startup-with-latex-preview').
   :init
   (add-hook 'org-mode-hook #'org-config--latex-to-svg-setup))
 
-;;; -- Two-column table -> description list ----------------------------------
+;;; -- Two-column table -> description list ------------------------------------
 
 ;; A two-column table whose second column is prose is a description list
 ;; wearing a table's clothes: the alignment has to be maintained by hand, the
@@ -188,7 +170,7 @@ buffer-locally before the adaptor turns on the shared core."
 ;; This converts it back.  Rows wrapped with `org-table-wrap-region' (an empty
 ;; first field continuing the row above) are rejoined into one description.
 
-(defun org-config--table-cookie-row-p (row)
+(defun my/org--table-cookie-row-p (row)
   "Non-nil when ROW holds only width/alignment cookies, e.g. `<10>' or `<r>'."
   (cl-every (lambda (field)
               (string-match-p "\\`<[lrc]?[0-9]*>\\'" (string-trim field)))
@@ -217,7 +199,7 @@ The table must have exactly two columns."
          ;; "first row followed by a rule" shape that marks a header.
          (table (seq-remove (lambda (row)
                               (and (listp row)
-                                   (org-config--table-cookie-row-p row)))
+                                   (my/org--table-cookie-row-p row)))
                             (org-table-to-lisp)))
          (header-p (and (not keep-header)
                         (listp (car table))
