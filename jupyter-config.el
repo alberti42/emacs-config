@@ -83,8 +83,12 @@ returns immediately when the module is already in place."
 ;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
-  :straight (jupyter :host github :repo "alberti42/fork-emacs-jupyter"
-                     :branch "fix-monads-macro-ordering")
+  :straight (jupyter
+             :type git
+             :host github
+             :repo "alberti42/fork-emacs-jupyter"
+             :branch "fix-org-key-filter-in-non-org-buffer"
+             :local-repo "/Users/andrea/Documents/Programming/Others/fork-emacs-jupyter")
   :config
   (setq jupyter-eval-use-overlays t)
 
