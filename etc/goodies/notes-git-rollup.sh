@@ -56,8 +56,47 @@ git -C "$repo" add -A
 # Nothing staged means nothing changed since the last run; leave no commit
 # behind to say so.  The push below still runs: a commit made while the
 # network was away is waiting whether or not there is anything new today.
+# Signed by a key this script can read, or not signed at all.
+#
+# `ssh-keygen -Y sign' signs locally when it can load the private key it is
+# given, and otherwise asks an *agent* to sign for the matching public key.
+# That fallback is the trap: a rollup fires with nobody at the keyboard, so an
+# agent that wants unlocking answers "agent refused operation" and the commit
+# -- the point of the run -- is lost.  Naming a key here by an absolute path
+# keeps signing a local computation that cannot prompt; a relative or
+# `~'-prefixed one is a single HOME resolution away from the agent, so it is
+# rejected rather than tried.
+#
+# Which key is not this script's business, nor this repository's: it is read at
+# each run from an environment file outside the repository -- the same plain
+# `KEY=VALUE' form the shell sources, so `~' expands as it would there.  No
+# file, no key, no signature: unsigned beats a dialog nobody will answer.  The
+# repository's own configuration is neither consulted for this nor altered.
+signing_key_file=${NOTES_GIT_SIGNING_KEY_FILE:-\
+${XDG_CONFIG_HOME:-$HOME/.config}/envs/git-signing-key.sh}
+key=${GIT_ROLLUP_SIGNING_KEY:-}
+if [ -z "$key" ] && [ -r "$signing_key_file" ]; then
+    # shellcheck disable=SC1090
+    . "$signing_key_file"
+    key=${GIT_ROLLUP_SIGNING_KEY:-}
+fi
+
+sign="-c commit.gpgsign=false"
+if [ -n "$key" ]; then
+    case $key in
+        /*) [ -r "$key" ] && sign="-c commit.gpgsign=true -c gpg.format=ssh
+                                  -c user.signingkey=$key" ;;
+    esac
+    if [ "$sign" = "-c commit.gpgsign=false" ]; then
+        echo "notes-git-rollup: ignoring the configured signing key" \
+             "(not an absolute readable path); committing unsigned" >&2
+    fi
+fi
+
 if ! git -C "$repo" diff --cached --quiet; then
-    git -C "$repo" commit -q -m "notes $(date '+%Y-%m-%d %H:%M')"
+    # Unquoted on purpose: $sign is a word list of git options, not one word.
+    # shellcheck disable=SC2086
+    git -C "$repo" $sign commit -q -m "notes $(date '+%Y-%m-%d %H:%M')"
 
     # The saves are now contained in the commit above.  Deleting the refs is
     # what keeps the repository from carrying every keystroke of every day
