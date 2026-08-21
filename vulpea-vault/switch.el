@@ -225,7 +225,7 @@ returns before its notes are findable."
       (let ((history-delete-duplicates t))
         (add-to-history 'vulpea-vault-history root))
       (run-hook-with-args 'vulpea-vault-enter-functions root)
-      (message "Vault: %s — %d buffer%s closed"
+      (message "Vault: %s · %d buffer%s closed"
                (abbreviate-file-name root) closed (if (= closed 1) "" "s")))))
 
 ;;;; Opening a note from a vault that is not the active one
