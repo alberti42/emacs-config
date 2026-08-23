@@ -38,6 +38,14 @@
 ;; a deeper directory key replaces the value of a shallower one outright
 ;; rather than merging into it.
 ;;
+;; The date lives in the file name only.  A note in a dated folder is called
+;; "<date> <title>.org" — what the migrated notes look like, and what keeps a
+;; directory listing in chronological order — while `#+title:' carries the
+;; bare title.  Repeating the date there only made every completion candidate,
+;; backlink and heading link longer without saying anything the file name and
+;; `:CREATED:' do not.  A title typed with a leading ISO date is read the same
+;; way: the date files the note, the remainder titles it.
+;;
 ;; The title reaches the file name as a `:context' value instead of being
 ;; spliced into the template string.  vulpea expands `%(elisp)' in a template
 ;; before substituting data, precisely so that data is never evaluated, and
@@ -129,12 +137,14 @@ file name since there is nothing to name it after."
                     (t here)))
          (tpl (vulpea-vault--template dir))
          (tags (plist-get tpl :tags))
-         (title (if (and title (not dated)
-                         (if (plist-member tpl :dated)
-                             (plist-get tpl :dated)
-                           t))
-                    (concat (format-time-string "%F ") title)
-                  title)))
+         ;; Whether today's date opens the file name — the file name only,
+         ;; never `#+title:'.  Not when the folder declares otherwise, and not
+         ;; when the title already opens with a date, which would date it
+         ;; twice.
+         (datedp (and (not dated)
+                      (if (plist-member tpl :dated)
+                          (plist-get tpl :dated)
+                        t))))
     (append
      ;; Both stamps open at the same instant; vulpea expands `%<…>' in a
      ;; property value as it does in a template, so the format string is the
@@ -153,7 +163,11 @@ file name since there is nothing to name it after."
      (if title
          (list :title title
                :file-name (expand-file-name "${fname}.org" dir)
-               :context (list :fname (vulpea-vault--file-base title)))
+               :context (list :fname (vulpea-vault--file-base
+                                      (if datedp
+                                          (concat (format-time-string "%F")
+                                                  " " title)
+                                        title))))
        (list :file-name (expand-file-name "${timestamp}.org" dir))))))
 
 (setq vulpea-create-default-function #'vulpea-vault-create-defaults)

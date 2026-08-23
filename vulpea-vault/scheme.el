@@ -266,7 +266,8 @@ using its directory keys.  Keys, all optional:
   :tags   list of filetags
   :head   keywords added after `#+title:' and `#+filetags:'
   :body   initial content, written a blank line below the keywords
-  :dated  nil to leave the title alone; otherwise today's date opens it
+  :dated  nil to name the file after the title alone; otherwise today's
+          date opens the file name (never the `#+title:')
 
 An entry carries only what makes its folder differ.  Emacs replaces the
 value of a shallower directory key rather than merging into it, so a

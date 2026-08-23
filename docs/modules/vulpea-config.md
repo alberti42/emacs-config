@@ -602,9 +602,12 @@ The daily tree is the one exception to following `default-directory`:
 its subdirectory is the note's *year* rather than a topic, so creating
 from a 2024 daily note still files under the new note's own year.
 
-The note is named after its title, opens with today's date, and is
-seeded with `:CREATED:` / `:MODIFIED:` plus the folder's
-`vulpea-vault-template`.
+The file is named `<date> <title>.org` (the date only when the folder's
+`:dated` allows it, which is the default) while `#+title:` carries the
+title as typed — the date stays out of it, since the file name and
+`:CREATED:` already say it and every completion candidate, backlink and
+heading link would otherwise repeat it. The note is then seeded with
+`:CREATED:` / `:MODIFIED:` plus the folder's `vulpea-vault-template`.
 
 ## Two gotchas that cost real time
 
