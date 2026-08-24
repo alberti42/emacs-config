@@ -71,17 +71,6 @@ Use `n'/`p' for whole-page jumps."
     (dotimes (_ pdf-tools-config-page-key-step)
       (pdf-view-previous-line-or-previous-page 1)))
 
-  :custom
-  ;; `pdf-annot-latex-header' defaults via an initializer that reads
-  ;; `org-format-latex-header'.  tecosaur's org-latex-preview fork
-  ;; (pinned in `org-config.el') reorganized that variable out of
-  ;; existence, so the initializer crashes inside `pdf-tools-install'.
-  ;; Provide a literal preamble to bypass the initializer.
-  (pdf-annot-latex-header
-   "\\documentclass{article}
-\\usepackage[usenames]{color}
-\\pagestyle{empty}
-\\setlength{\\textwidth}{12cm}")
   :config
   (pdf-loader-install))
 
