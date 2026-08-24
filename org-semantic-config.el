@@ -27,8 +27,8 @@
 ;; where it lives is not the vault's to promise — it may be moved out of a synced
 ;; folder entirely.
 ;;
-;; The same variable set globally — below, and nil — would be the answer for a
-;; buffer that declares nothing: `*scratch*', an agenda, a file in some project.
+;; The same variable set globally — below — is the answer for a buffer that
+;; declares nothing: `*scratch*', an agenda, a file in some project.
 ;;
 ;; The note vaults of `vulpea-config.el' are wired to this in
 ;; `vulpea-vault/semantic.el': the vault being left is closed on the server when
@@ -36,11 +36,11 @@
 ;; org-semantic vault falls back to the active vulpea vault, so `C-c n s'
 ;; searches the notes from anywhere.
 ;;
-;; THE TWO WOULD COMPETE, and the global setting would win: that advice is
-;; `:after-until', which runs only when `org-semantic-vault' comes back empty.
-;; So the setting below is left nil deliberately — the vault switched to is a
-;; better answer than a fixed one — and a default, if ever wanted, goes inside
-;; the advice rather than here.
+;; THAT FALLBACK IS THE GLOBAL SETTING, which is why the two do not compete: it
+;; holds the function `vulpea-vault-semantic-vault' rather than a directory, so
+;; the answer follows `vulpea-vault-switch' instead of naming one vault for the
+;; session.  A fixed default, if ever wanted, goes inside that function — a
+;; directory here would replace the fallback rather than sit beside it.
 ;;
 ;; The Lisp comes from the checkout; the *binary* deliberately does not.  It is
 ;; found where org-semantic looks for one by itself —
@@ -127,8 +127,9 @@ session."
   ;; declared vault keeps that vault: a declaration is answered first.
   ;;
   ;; The function lives in `vulpea-vault/semantic.el', which is where everything
-  ;; the two packages have to agree on lives.  It was `:after-until' advice on
-  ;; `org-semantic-vault' until this setting could hold a function.
+  ;; the two packages have to agree on lives.  A setting rather than advice on
+  ;; `org-semantic-vault': an answer that package asks for, not one taken behind
+  ;; its back.
   (org-semantic-vault-root #'vulpea-vault-semantic-vault)
 
   ;; Build both indexes on `M-x org-semantic-reindex': the lexical one is

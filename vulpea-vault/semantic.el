@@ -36,9 +36,8 @@
 ;;   since a declaration is answered first.
 ;;
 ;;   This is `org-semantic-vault-root', set to a function in
-;;   `org-semantic-config.el' — not advice.  It was advice until org-semantic
-;;   could hold a function, and the difference is worth naming: an answer that
-;;   package asks for, rather than one taken behind its back.
+;;   `org-semantic-config.el' — not advice, and the difference is worth naming:
+;;   an answer that package asks for, rather than one taken behind its back.
 ;;
 ;; - KEEPING UP.  `org-semantic-auto-reindex-mode' hears about a note through
 ;;   `after-save-hook', which is every change made in this Emacs by editing and
@@ -162,10 +161,9 @@ So searching means search my notes wherever it is asked for, exactly as
 naming one vault for the session.  With none open it returns nil, which
 org-semantic reads as no vault here and reports as such — the truth.
 
-It was `:after-until' advice on `org-semantic-vault' until that package
-could hold a function, which is the better arrangement for the obvious
-reason: this is an answer that package asks for, not a decision taken
-behind its back."
+A setting rather than advice on `org-semantic-vault', which is the
+better arrangement for the obvious reason: this is an answer that
+package asks for, not a decision taken behind its back."
   (when vulpea-vault-directory
     (vulpea-vault-semantic-root vulpea-vault-directory)))
 
