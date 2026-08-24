@@ -34,13 +34,8 @@
              :files (:defaults "README" ("build" "Makefile") ("build" "server")))
   :magic ("%PDF" . pdf-view-mode)
   :hook ((pdf-view-mode . pdf-view-roll-minor-mode)
-         (pdf-view-mode . (lambda () (display-line-numbers-mode -1))))
-  ;; The vertical wheel is left to `pixel-scroll-precision-mode' (enabled
-  ;; globally in `scroll-config.el'), which `pdf-view-roll-minor-mode' is built
-  ;; for: it kills any buffer-local binding of that mode so the global one
-  ;; applies, and `pdf-roll-pre-redisplay' recognizes the pixel-scroll commands
-  ;; by name.
-  ;;
+         (pdf-view-mode . (lambda () (display-line-numbers-mode -1)))
+         (pdf-view-mode . pdf-tools-config--wheel-to-pdf-roll))
   ;; The horizontal wheel is bound here because the global binding
   ;; (`scroll-config-horizontal') scrolls by columns, which an image buffer has
   ;; none of.  No minor mode binds it, so the major-mode map suffices.
@@ -58,6 +53,35 @@
 Use `n'/`p' for whole-page jumps."
     :type 'integer
     :group 'pdf-tools)
+
+  (defvar pdf-tools-config--wheel-override t
+    "Flag keying the wheel keymap in `minor-mode-overriding-map-alist'.
+An entry there needs a mode symbol whose value is non-nil; this one exists so
+`pdf-tools-config--wheel-to-pdf-roll' does not have to name a real minor mode.")
+
+  (defun pdf-tools-config--wheel-to-pdf-roll ()
+    "Send the vertical wheel to `mwheel-scroll' in this buffer.
+`pdf-view-roll-minor-mode' points `mwheel-scroll-up-function' and its companion
+at its own scroll commands, whose redisplay hook keeps `window-start', the
+vscroll and `window-point' in step.  `pixel-scroll-precision' moves the first
+two but never point, so redisplay recenters on the page's character and undoes
+the scroll.
+
+`pixel-scroll-precision-mode' binds the wheel in a minor-mode keymap, which
+outranks `pdf-view-mode-map'; only `minor-mode-overriding-map-alist' outranks
+that.  An entry there replaces the whole keymap of the mode it names, so it
+names `pdf-tools-config--wheel-override' and leaves the rest of the
+pixel-scroll bindings alone.
+
+The wheel events also have to be coalesced: `mwheel-scroll' scrolls
+`mouse-wheel-scroll-amount' times `event-line-count' lines, and macOS reports a
+line count of 0 for the one or two pixel deltas of a gentle trackpad gesture."
+    (setq-local mwheel-coalesce-scroll-events t)
+    (let ((map (make-sparse-keymap)))
+      (define-key map [wheel-up]   #'mwheel-scroll)
+      (define-key map [wheel-down] #'mwheel-scroll)
+      (push (cons 'pdf-tools-config--wheel-override map)
+            minor-mode-overriding-map-alist)))
 
   (defun pdf-tools-config-scroll-up-lines ()
     "Scroll down a few lines, simulating repeated arrow-down presses."
