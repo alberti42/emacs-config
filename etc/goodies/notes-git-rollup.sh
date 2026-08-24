@@ -35,6 +35,16 @@
 
 set -eu
 
+# No agent, in either of the two roles one could play here.  A rollup fires on
+# a timer with nobody at the keyboard, and an SSH agent that wants unlocking
+# turns both of its roles into a dialog: it is asked to *sign* the commit, and
+# asked to *authenticate* the push.  Taking it out of the environment makes
+# that dialog impossible rather than merely unlikely -- the commit signs from a
+# key file below, and the push carries credentials of its own.  A credential
+# that is missing then fails loudly, which is the right failure: waiting on a
+# prompt nobody will answer costs the backup.
+unset SSH_AUTH_SOCK
+
 repo=${1:?usage: notes-git-rollup.sh REPO [MIN-INTERVAL-SECONDS] [STALE-DAYS]}
 min_interval=${2:-0}
 stale_days=${3:-3}
@@ -58,19 +68,15 @@ git -C "$repo" add -A
 # network was away is waiting whether or not there is anything new today.
 # Signed by a key this script can read, or not signed at all.
 #
-# `ssh-keygen -Y sign' signs locally when it can load the private key it is
-# given, and otherwise asks an *agent* to sign for the matching public key.
-# That fallback is the trap: a rollup fires with nobody at the keyboard, so an
-# agent that wants unlocking answers "agent refused operation" and the commit
-# -- the point of the run -- is lost.  Naming a key here by an absolute path
-# keeps signing a local computation that cannot prompt; a relative or
-# `~'-prefixed one is a single HOME resolution away from the agent, so it is
-# rejected rather than tried.
+# `ssh-keygen -Y sign' signs locally from a private key file, and otherwise
+# asks an agent to sign for the matching public key.  There being no agent
+# here, that second path leads nowhere: a key this script cannot read costs the
+# commit rather than raising a prompt.  Hence the readability test, and
+# unsigned in preference to sorry when it fails.
 #
 # Which key is not this script's business, nor this repository's: it is read at
 # each run from an environment file outside the repository -- the same plain
-# `KEY=VALUE' form the shell sources, so `~' expands as it would there.  No
-# file, no key, no signature: unsigned beats a dialog nobody will answer.  The
+# `KEY=VALUE' form the shell sources, so `~' expands as it would there.  The
 # repository's own configuration is neither consulted for this nor altered.
 signing_key_file=${NOTES_GIT_SIGNING_KEY_FILE:-\
 ${XDG_CONFIG_HOME:-$HOME/.config}/envs/git-signing-key.sh}
@@ -81,16 +87,12 @@ if [ -z "$key" ] && [ -r "$signing_key_file" ]; then
     key=${GIT_ROLLUP_SIGNING_KEY:-}
 fi
 
-sign="-c commit.gpgsign=false"
-if [ -n "$key" ]; then
-    case $key in
-        /*) [ -r "$key" ] && sign="-c commit.gpgsign=true -c gpg.format=ssh
-                                  -c user.signingkey=$key" ;;
-    esac
-    if [ "$sign" = "-c commit.gpgsign=false" ]; then
-        echo "notes-git-rollup: ignoring the configured signing key" \
-             "(not an absolute readable path); committing unsigned" >&2
-    fi
+if [ -n "$key" ] && [ -r "$key" ]; then
+    sign="-c commit.gpgsign=true -c gpg.format=ssh -c user.signingkey=$key"
+else
+    sign="-c commit.gpgsign=false"
+    [ -n "$key" ] && echo "notes-git-rollup: cannot read the configured" \
+                          "signing key; committing unsigned" >&2
 fi
 
 if ! git -C "$repo" diff --cached --quiet; then

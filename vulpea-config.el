@@ -184,68 +184,11 @@
  "vulpea-vault/git"
  "Could not load vulpea-vault/git.el; note saves will not be recorded in git.")
 
-;; Push the vaults' rollups over HTTPS with a forge token rather than over SSH.
-;; The remotes are `git@gitlab.mpcdf.mpg.de:…' and `git@github.com:…', which
-;; authenticate through the 1Password SSH agent — fine for the occasional
-;; interactive push, but the rollup timer would wake it every six hours,
-;; unattended.  So only the rollup subprocess rewrites the remotes, and only in
-;; its own environment: Magit and the shell keep using SSH, and nothing on disk
-;; changes.
-;;
-;; The tokens live outside this repository, in the files the shell already
-;; sources, and are read fresh at each rollup by `my/env-file-value' — nothing
-;; secret is committed and nothing is baked into a variable at load time.  The
-;; parser is in utils.el because reading such a file is not a vulpea concern;
-;; only knowing which file, and which name in it, is.  `url.<https>.insteadOf'
-;; does the rewrite through git's own GIT_CONFIG_* environment protocol, so no
-;; on-disk git config is touched either.  A mapping whose remote no vault uses
-;; costs nothing: git rewrites only URLs that match its prefix.  All of this is
-;; host-specific and so lives here, not in the (vault-agnostic) git module.
-
-(defconst vulpea-config-git-rollup-credentials
-  '(("~/.config/envs/gitlab_mpcdf.sh" "GITLAB_MPCDF_TOKEN"
-     "git@gitlab.mpcdf.mpg.de:" "https://oauth2:%s@gitlab.mpcdf.mpg.de/")
-    ("~/.config/envs/github_org-vault.sh" "GITHUB_TOKEN"
-     "git@github.com:" "https://x-access-token:%s@github.com/"))
-  "How the rollup authenticates to each forge it may have to push to.
-
-Each entry is (ENV-FILE VAR SSH-PREFIX HTTPS-FORMAT): the plain
-`KEY=VALUE' file the shell sources, the name holding the token in it, the
-SSH remote prefix to rewrite, and the HTTPS replacement with a single %s
-for the token.  GitLab wants the token as the password of the `oauth2'
-user; GitHub accepts a personal access token (classic or fine-grained,
-with `contents: write' on the repository) as the password of any user, by
-convention `x-access-token'.
-
-An entry whose file or name is missing is simply skipped, leaving that
-remote on SSH — an unconfigured forge is not an error.")
-
-(defun vulpea-config-git-rollup-environment ()
-  "Environment that pushes the vaults to their forges over HTTPS.
-Rewrites each SSH remote named in `vulpea-config-git-rollup-credentials'
-to an HTTPS URL carrying a token, so the rollup's push authenticates with
-the token instead of an SSH key.  Returns nil when no token at all is
-available, leaving every push on SSH.
-
-The files are read at each rollup through `my/env-file-value' (utils.el),
-so a token is never baked into a variable at load time and rotating one
-needs no restart.  Called from the rollup timer, long after utils.el is
-loaded, so the reference costs no load-order constraint."
-  (let ((count 0)
-        (settings nil))
-    (pcase-dolist (`(,file ,var ,ssh ,https) vulpea-config-git-rollup-credentials)
-      (when-let* ((token (my/env-file-value (expand-file-name file) var)))
-        (push (format "GIT_CONFIG_KEY_%d=url.%s.insteadOf"
-                      count (format https token))
-              settings)
-        (push (format "GIT_CONFIG_VALUE_%d=%s" count ssh) settings)
-        (setq count (1+ count))))
-    (when (> count 0)
-      (cons (format "GIT_CONFIG_COUNT=%d" count) (nreverse settings)))))
-
-(with-eval-after-load 'vulpea-vault-git
-  (setq vulpea-vault-git-rollup-environment
-        #'vulpea-config-git-rollup-environment))
+;; Nothing is configured for the rollup's push.  Both vaults' remotes are SSH
+;; and both keys sit on disk, so the rollup — which runs with no SSH agent in
+;; its environment, see etc/goodies/notes-git-rollup.sh — authenticates from
+;; the key file and asks nobody anything.  `vulpea-vault-git-rollup-environment'
+;; is there for a machine where that is not true.
 
 (provide 'vulpea-config)
 ;;; vulpea-config.el ends here
