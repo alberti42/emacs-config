@@ -79,8 +79,13 @@
   ;; written to match — it never loads this package, it only acts when
   ;; something else already has.
   :defer t
+  ;; `s' and `S' are the pair grep and `consult-ripgrep' established: the
+  ;; capital is the same search, narrowed to the directory point is in.  It
+  ;; is `s' with a `dir:' predicate already in the prompt, so the scope is
+  ;; text that can be widened or deleted there rather than a hidden argument.
   :bind (("C-c n s" . org-semantic-find)
-         ("C-c n S" . org-semantic-find-at-point)
+         ("C-c n S" . org-semantic-find-in-directory)
+         ("C-c n ." . org-semantic-find-at-point)
          ("C-c n R" . org-semantic-reindex))
   :init
   ;; The indexes are kept current, but NOT by `org-semantic-auto-reindex-mode',
