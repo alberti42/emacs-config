@@ -3,7 +3,7 @@
 ;; Shared Skim revert/open helpers (also used by typst-config.el).
 (require 'pdf-preview)
 
-(defcustom latex-config-pdf-viewer 'pdf-tools
+(defcustom latex-config-pdf-viewer 'skim
   "Which PDF viewer AUCTeX uses for output-pdf jobs.
 Choices:
   `auto'      – pdf-tools in GUI frames, Skim in TTY frames (decided

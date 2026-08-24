@@ -205,8 +205,7 @@ monitor."
 ;; workaround: it pre-approves this specific pair so Emacs skips the
 ;; prompt.
 (setq safe-local-variable-values
-      '((nil . nil)
-        (TeX-engine . pdflatex)
+      '((TeX-engine . pdflatex)
         (elisp-lint-indent-specs (git-gutter:awhen . 1))
         (buffer-file-coding-system . utf-8-unix)))
 
