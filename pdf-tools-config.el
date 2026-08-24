@@ -20,7 +20,18 @@
 ;;; Code:
 
 (use-package pdf-tools
-  :straight t
+  ;; Pinned to the fork while vedang/pdf-tools#361 is open: it stops `pdf-roll'
+  ;; from claiming Emacs's region-highlight overlay as the one holding a page,
+  ;; which left a rendered page painted over selections in other buffers.
+  ;; `:files' mirrors the MELPA recipe -- without it the `build/' tree that
+  ;; `pdf-tools-install' compiles `epdfinfo' from is missing.
+  :straight (pdf-tools
+             :type git
+             :host github
+             :repo "alberti42/fork-pdf-tools"
+             :branch "fix/roll-region-overlay-adoption"
+             :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
+             :files (:defaults "README" ("build" "Makefile") ("build" "server")))
   :magic ("%PDF" . pdf-view-mode)
   :hook ((pdf-view-mode . pdf-view-roll-minor-mode)
          (pdf-view-mode . (lambda () (display-line-numbers-mode -1))))
