@@ -21,6 +21,10 @@
 ;;
 ;; Which vault is in use is `vulpea-vault-directory' (core.el).  Something has
 ;; to know that much before it can read anything the vault says about itself.
+;;
+;; The root itself is the one folder a vault never has to declare, so getting
+;; to it is a command here rather than a role: `vulpea-vault-dired' opens it,
+;; from wherever it is called.
 
 ;;; Code:
 
@@ -44,6 +48,21 @@ Nil as well when no vault is open: no vault, no roles."
       (when-let* ((dir (alist-get role alist)))
         (file-name-as-directory
          (expand-file-name dir vulpea-vault-directory))))))
+
+;;;###autoload
+(defun vulpea-vault-dired ()
+  "Open Dired on the root of the vault in use.
+
+From anywhere: the vault is `vulpea-vault-directory' and not something
+read off the current buffer, so this means the same thing in a note, in
+the agenda and in `*scratch*' — as `vulpea-find' and `C-c n s' do.
+
+With no vault open it says so, since there is no sensible directory to
+fall back to and `default-directory' would be an arbitrary one."
+  (interactive)
+  (dired (vulpea-vault-or-error)))
+
+(keymap-global-set "C-c n d" #'vulpea-vault-dired)
 
 (provide 'vulpea-vault-directories)
 ;;; directories.el ends here

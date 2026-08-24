@@ -797,7 +797,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `core.el`             | which vault is in use (`vulpea-vault-directory`), the five settings derived from it (`vulpea-vault-apply`), `vulpea-vault-or-error`, `vulpea-vault-resume` |
 | `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
 | `select.el`           | dates and sorting in the note-selection UI                      |
-| `directories.el`      | `vulpea-vault-special-directories` — role → folder              |
+| `directories.el`      | `vulpea-vault-special-directories` — role → folder; `C-c n d` opens Dired on the vault root |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |
 | `ids.el`              | keeps `org-id` in step with vulpea's db: the index hook, `M-x vulpea-vault-update-id-locations`, the lowercase-UUID `org-id-new` override |
@@ -823,6 +823,8 @@ before `switch`, `switch` before `semantic`.
 | `C-c n f`                             | `vulpea-find`                        |
 | `C-c n i`                             | `vulpea-insert`                      |
 | `C-c n b`                             | `vulpea-find-backlink`               |
-| `M-x vulpea-vault-switch`             | open another vault, live             |
+| `C-c n d`                             | `vulpea-vault-dired` — the vault root |
+| `C-c n l`                             | `vulpea-vault-log-saves` — the history with every save |
+| `C-c n v`                             | `vulpea-vault-switch` — open another vault, live |
 | `M-x vulpea-vault-orphans`            | the vault health report              |
 | `M-x vulpea-vault-update-id-locations` | repair `org-id-locations` from the db |
