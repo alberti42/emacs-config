@@ -179,29 +179,32 @@ remembered geometry, so fall back to the `emacs-config-frame-width' /
 Skip frames whose `fullscreen' state already fixes both dimensions
 \(maximized or fullboth): repositioning them only shifts them off the
 screen corner."
-  (when (display-graphic-p)
-    (let* ((frame (or frame (selected-frame)))
-           (fs (frame-parameter frame 'fullscreen))
-           (wa (and (fboundp 'frame-monitor-workarea)
-                    (frame-monitor-workarea frame))))
-      ;; Fullscreen/maximized frames are sized and positioned by the window
-      ;; manager; calling `set-frame-position' on them only shoves the
-      ;; already-full-size frame partly off-screen.  Leave them alone.
-      (when (and wa
-                 (not (memq fs '(fullboth fullscreen maximized)))
-                 (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
-        (let* ((mx (nth 0 wa))
-               (my (nth 1 wa))
-               (mw (nth 2 wa))
-               (mh (nth 3 wa))
-               (fw (frame-outer-width frame))
-               (fh (frame-outer-height frame))
-               (y (if (eq fs 'fullheight)
-                      my
-                    (+ my (/ (- mh fh) 2)))))
-          (set-frame-position frame
-                              (+ mx (/ (- mw fw) 2))
-                              y))))))
+  (let* ((frame (or frame (selected-frame))))
+    ;; A deferred timer can fire after FRAME is gone (e.g. the frame is
+    ;; closed before the 0-second timer runs); querying a dead frame's
+    ;; monitor signals.
+    (when (and (frame-live-p frame) (display-graphic-p frame))
+      (let* ((fs (frame-parameter frame 'fullscreen))
+             (wa (and (fboundp 'frame-monitor-workarea)
+                      (frame-monitor-workarea frame))))
+        ;; Fullscreen/maximized frames are sized and positioned by the window
+        ;; manager; calling `set-frame-position' on them only shoves the
+        ;; already-full-size frame partly off-screen.  Leave them alone.
+        (when (and wa
+                   (not (memq fs '(fullboth fullscreen maximized)))
+                   (fboundp 'frame-outer-width) (fboundp 'frame-outer-height))
+          (let* ((mx (nth 0 wa))
+                 (my (nth 1 wa))
+                 (mw (nth 2 wa))
+                 (mh (nth 3 wa))
+                 (fw (frame-outer-width frame))
+                 (fh (frame-outer-height frame))
+                 (y (if (eq fs 'fullheight)
+                        my
+                      (+ my (/ (- mh fh) 2)))))
+            (set-frame-position frame
+                                (+ mx (/ (- mw fw) 2))
+                                y)))))))
 
 (defun emacs-config-setup-frame (&optional frame)
   "Apply per-frame settings to FRAME.
