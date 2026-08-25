@@ -101,7 +101,53 @@ the new title.  Runs with the shell buffer current (see
               (agent-shell-subscribe-to
                :shell-buffer (current-buffer)
                :event 'session-title-changed
-               :on-event #'my/agent-shell-sync-buffer-name))))
+               :on-event #'my/agent-shell-sync-buffer-name)))
+
+  ;; Keep our own turns flush left.  `agent-shell-chat-mode' indents user
+  ;; input two columns to align it with the agent's response body, and marks
+  ;; the live prompt with a "❯".  The boxed `Me' label already says whose turn
+  ;; it is, and the indent arrives unevenly: it lands on the live prompt's
+  ;; first line but not on the rest of a multi-line draft, then jumps onto the
+  ;; whole turn once submitted.  Flush left throughout is steadier to type in;
+  ;; the agent's responses stay indented, which still separates the two.
+  ;;
+  ;; This also sidesteps a redisplay bug in stock chat-mode: the marker is
+  ;; drawn as a `line-prefix', which belongs to the whole line being typed
+  ;; into, so Emacs re-lays that line out on every keystroke and the input
+  ;; visibly paints unindented before jumping right.  Fixed upstream by
+  ;; drawing it as the covered prompt's `display' instead (PR against
+  ;; xenodium/agent-shell); this advice matches the marker in either place, so
+  ;; it keeps working once that lands.
+  ;;
+  ;; Purely personal taste -- the indent and the marker are deliberate design
+  ;; upstream, so this stays here rather than going into that PR.
+  (defvar my/agent-shell-chat-marker ""
+    "What to show where `agent-shell-chat-mode' would show its \"❯\" marker.
+Empty keeps the live prompt's first line flush left with the rest of the
+draft.  Use \"  \" to restore the two-column alignment with the response
+body.")
+
+  (defun my/agent-shell-chat-flush-left (&rest _)
+    "Strip chat-mode's marker and indent from this buffer's user turns.
+Runs after `agent-shell-chat--relabel', which rebuilds these overlays."
+    (dolist (overlay (overlays-in (point-min) (point-max)))
+      (let ((prefix (overlay-get overlay 'line-prefix))
+            (display (overlay-get overlay 'display)))
+        (cond
+         ;; The live prompt: its marker rides `line-prefix' (stock) or
+         ;; `display' (patched).
+         ((or (and (stringp prefix) (string-match-p "❯" prefix))
+              (and (stringp display) (string-match-p "❯" display)))
+          (overlay-put overlay 'display my/agent-shell-chat-marker)
+          (overlay-put overlay 'line-prefix "")
+          (overlay-put overlay 'wrap-prefix ""))
+         ;; A submitted turn's input, indented to align with the response.
+         ((eq (overlay-get overlay 'category) 'agent-shell-chat-me-input)
+          (overlay-put overlay 'line-prefix "")
+          (overlay-put overlay 'wrap-prefix ""))))))
+
+  (advice-add 'agent-shell-chat--relabel :after
+              #'my/agent-shell-chat-flush-left))
 
 ;; The `latex-to-svg-backend' rendering engine (this renderer's dependency) is
 ;; registered and configured centrally in `latex-to-svg-config.el', which
