@@ -99,8 +99,13 @@ Scans the first 10 lines of the buffer, case-insensitively.
         (funcall orig arg-list)
       (wrong-type-argument nil)))
   
-  ;; Show the compilation output buffer only on errors.
+  ;; Never pop up the raw process buffer while the job runs.
   (setq TeX-show-compilation nil)
+  ;; Instead, after a run that produced errors, open the *TeX errors*
+  ;; overview listing file/line/message.  `TeX-debug-warnings' and
+  ;; `TeX-debug-bad-boxes' stay nil, so warnings and overfull boxes are
+  ;; filtered out and a clean run shows nothing.
+  (setq TeX-error-overview-open-after-TeX-run t)
   ;; Save the buffer automatically before compiling without asking.
   (setq TeX-save-query nil)
 
