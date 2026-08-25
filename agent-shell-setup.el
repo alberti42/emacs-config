@@ -5,14 +5,14 @@
 ;; Requires shell-maker and acp as dependencies.
 
 (use-package agent-shell
-  ;; :straight (agent-shell
-  ;;            :type git
-  ;;            ;;:host github
-  ;;            :local-repo "~/Documents/Programming/Others/fork-agent-shell"
-  ;;            ;; :branch "fork/angle-bracket-link-destinations"
-  ;;            ;; :branch "main"
-  ;;            :branch "expose-ui-section-to-render-functions"
-  ;;            :repo "xenodium/agent-shell")
+  :straight (agent-shell
+             :type git
+             ;;:host github
+             :local-repo "~/Documents/Programming/Others/fork-agent-shell"
+             ;; :branch "fork/angle-bracket-link-destinations"
+             ;; :branch "main"
+             :branch "fix-live-prompt-marker-flicker"
+             :repo "alberti42/fork-agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
   (agent-shell-session-restore-verbosity 'full)
