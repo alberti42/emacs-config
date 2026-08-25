@@ -22,7 +22,7 @@
   "Shared PDF viewer selection for document modes."
   :group 'text)
 
-(defcustom pdf-preview-viewer 'skim
+(defcustom pdf-preview-viewer 'pdf-tools
   "Which viewer `pdf-preview-open' uses.
 Choices:
   `auto'       – pdf-tools in GUI frames, Skim in TTY frames (macOS),
