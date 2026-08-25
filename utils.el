@@ -674,6 +674,21 @@ start of a line, which pandoc reserves for headings alone."
     (unless (save-excursion (forward-line 1) (looking-at-p (rx (* (in " \t")) eol)))
       (insert "\n"))))
 
+(defcustom my/yank-markdown-as-org-strip-numbering t
+  "Whether `my/yank-markdown-as-org' drops section numbers from headings.
+Org numbers headings itself, so numbering carried over from the Markdown
+is duplication.  See `my/org-strip-heading-numbering' for what counts as
+a section number."
+  :type 'boolean
+  :group 'convenience)
+
+(defcustom my/yank-markdown-as-org-blank-lines t
+  "Whether `my/yank-markdown-as-org' follows each heading with a blank line.
+Pandoc sets a heading\='s body flush against it, where org leaves a blank
+line.  See `my/org-blank-line-after-headings'."
+  :type 'boolean
+  :group 'convenience)
+
 ;; `gfm_auto_identifiers' is off because the gfm reader has it on: with it,
 ;; every heading arrives carrying a :PROPERTIES: :CUSTOM_ID: drawer.
 (defun my/yank-markdown-as-org (&optional arg)
@@ -689,8 +704,9 @@ section it was pasted into.
 
 Section numbers on the pasted headings are dropped, Org numbering its
 own headings, and each heading is given the blank line after it that org
-writes and pandoc does not; see `my/org-strip-heading-numbering' and
-`my/org-blank-line-after-headings'."
+writes and pandoc does not.  Either pass can be turned off through
+`my/yank-markdown-as-org-strip-numbering' and
+`my/yank-markdown-as-org-blank-lines'."
   (interactive "P")
   (let* ((shift (and arg (derived-mode-p 'org-mode) (org-current-level)))
          (command (concat "pandoc -f gfm-gfm_auto_identifiers -t org --wrap=preserve"
@@ -698,8 +714,10 @@ writes and pandoc does not; see `my/org-strip-heading-numbering' and
     (with-temp-buffer
       (yank)
       (shell-command-on-region (point-min) (point-max) command t t)
-      (my/org-strip-heading-numbering)
-      (my/org-blank-line-after-headings)
+      (when my/yank-markdown-as-org-strip-numbering
+        (my/org-strip-heading-numbering))
+      (when my/yank-markdown-as-org-blank-lines
+        (my/org-blank-line-after-headings))
       ;; `kill-new', not `kill-region': the latter appends to the previous
       ;; entry when the command before this one was a kill, so the Markdown
       ;; would be yanked back along with its conversion.
