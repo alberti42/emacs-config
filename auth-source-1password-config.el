@@ -78,9 +78,7 @@ reference, so only the resolved item ID is encoded in the path."
   :straight (auth-source-1password
              :type git
              :host github
-             :local-repo  "/Users/andrea/Documents/Programming/Others/fork-auth-source-1password"
-             :branch "fix/return-nil-on-failed-op-read"
-             :repo "alberti42/fork-auth-source-1password")
+             :repo "dlobraico/auth-source-1password")
   :demand t
   :custom
   (auth-source-1password-vault "Personal")
