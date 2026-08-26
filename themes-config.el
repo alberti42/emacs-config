@@ -94,8 +94,8 @@
   (setq zac-load-theme-callback
         (lambda (appearance)
           (load-theme (if (eq appearance :light)
-                          'doom-one-light
-                        'doom-one) t)
+                          'doom-acario-light
+                        'doom-material) t)
           )))
 
 (provide 'themes-config)
