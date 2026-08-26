@@ -54,5 +54,14 @@
   (setq consult-source-recent-file
         (plist-put consult-source-recent-file :sort nil)))
 
+(use-package consult-xref-stack
+  :straight (consult-xref-stack
+             :type git
+             :host github
+             :repo "brett-lempereur/consult-xref-stack")
+  ;; Browse the xref back/forward history (the stack behind `xref-go-back') with
+  ;; preview.  Narrow with `b'/`f' to one direction.
+  :bind ("C-c s x" . consult-xref-stack))
+
 (provide 'completions-consult)
 ;;; consult.el ends here
