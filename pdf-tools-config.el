@@ -20,16 +20,20 @@
 ;;; Code:
 
 (use-package pdf-tools
-  ;; Pinned to the fork while vedang/pdf-tools#361 is open: it stops `pdf-roll'
-  ;; from claiming Emacs's region-highlight overlay as the one holding a page,
-  ;; which left a rendered page painted over selections in other buffers.
+  ;; Pinned to the fork while vedang/pdf-tools#361 and #362 are open.  #361
+  ;; stops `pdf-roll' from claiming Emacs's region-highlight overlay as the one
+  ;; holding a page, which left a rendered page painted over selections in
+  ;; other buffers.  #362 keeps a page render from writing to the overlays a
+  ;; revert replaced under it -- the revert AUCTeX runs when a LaTeX
+  ;; compilation finishes arrives in the middle of one.  Each PR has its own
+  ;; branch off master; `merged' carries both.
   ;; `:files' mirrors the MELPA recipe -- without it the `build/' tree that
   ;; `pdf-tools-install' compiles `epdfinfo' from is missing.
   :straight (pdf-tools
              :type git
              :host github
              :repo "alberti42/fork-pdf-tools"
-             :branch "fix/roll-region-overlay-adoption"
+             :branch "merged"
              :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
              :files (:defaults "README" ("build" "Makefile") ("build" "server")))
   :magic ("%PDF" . pdf-view-mode)
