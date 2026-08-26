@@ -35,7 +35,15 @@
              :repo "alberti42/fork-pdf-tools"
              :branch "merged"
              :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
-             :files (:defaults "README" ("build" "Makefile") ("build" "server")))
+             :files (:defaults "README" ("build" "Makefile") ("build" "server"))
+             ;; A rebuild reconstructs the build directory from `:files', which
+             ;; drops the `epdfinfo' binary `pdf-tools-install' compiled into
+             ;; it; `pdf-view-mode' then fails and PDFs open as raw bytes.
+             ;; Recompile it here.  `-D' leaves the Homebrew dependencies
+             ;; (poppler, automake) alone, and `autobuild' cds to its own
+             ;; directory, so the relative path works from the repo root.
+             :post-build ("./server/autobuild" "-D" "-i"
+                          "/Users/andrea/.config/emacs/straight/build/pdf-tools/"))
   :magic ("%PDF" . pdf-view-mode)
   :hook ((pdf-view-mode . pdf-view-roll-minor-mode)
          (pdf-view-mode . (lambda () (display-line-numbers-mode -1)))
