@@ -95,7 +95,7 @@
         (lambda (appearance)
           (load-theme (if (eq appearance :light)
                           'doom-acario-light
-                        'doom-material) t)
+                        'doom-challenger-deep) t)
           )))
 
 (provide 'themes-config)
