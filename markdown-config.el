@@ -615,27 +615,29 @@ is needed."
   ;; context-sensitive: outside a table it promotes/demotes the heading;
   ;; inside a table the higher-priority `markdown-ts-in-table-mode-map'
   ;; takes over and moves the current column.
-  :bind (:map markdown-ts-mode-map
-              ("C-c C-o"      . markdown-config-follow-link-at-point) ; Follow link at point
-              ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
-              ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
-              ("M-<right>"    . nil)
-              ("C-c C-x <left>"  . markdown-ts-promote)
-              ("C-c C-x <right>" . markdown-ts-demote)
-              ;; Fill table cells to a max width, then realign the table.
-              ("C-c C-x t"       . (lambda ()
-                                     (interactive)
-                                     (call-interactively #'markdown-ts-table-fill-cells)
-                                     (call-interactively #'markdown-ts-table-align-table)))
+  ;; :bind (:map markdown-ts-mode-map
+  ;;             ("C-c C-o"      . markdown-config-follow-link-at-point) ; Follow link at point
+  ;;             ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
+  ;;             ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
+  ;;             ("M-<right>"    . nil)
+  ;;             ("C-c C-x <left>"  . markdown-ts-promote)
+  ;;             ("C-c C-x <right>" . markdown-ts-demote)
 
-              ;; Inside a table this minor-mode map shadows the major-mode map
-              ;; above.  Restore word navigation on M-<left>/M-<right> and put
-              ;; the column-move commands on the symmetric C-c C-x arrows.
-              :map markdown-ts-in-table-mode-map
-              ("M-<left>"        . left-word)
-              ("M-<right>"       . right-word)
-              ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
-              ("C-c C-x <right>" . markdown-ts-table-move-column-right)))
+  ;;             ;; Fill table cells to a max width, then realign the table.
+  ;;             ("C-c C-x t"       . (lambda ()
+  ;;                                    (interactive)
+  ;;                                    (call-interactively #'markdown-ts-table-fill-cells)
+  ;;                                    (call-interactively #'markdown-ts-table-align-table)))
+
+  ;;             ;; Inside a table this minor-mode map shadows the major-mode map
+  ;;             ;; above.  Restore word navigation on M-<left>/M-<right> and put
+  ;;             ;; the column-move commands on the symmetric C-c C-x arrows.
+  ;;             :map markdown-ts-in-table-mode-map
+  ;;             ("M-<left>"        . left-word)
+  ;;             ("M-<right>"       . right-word)
+  ;;             ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
+  ;;             ("C-c C-x <right>" . markdown-ts-table-move-column-right))
+  )
 
 ;; Collapse code-fence lines (```lang opener, closing ```) when markup is
 ;; hidden, and let stock `reveal-mode' un-collapse the one point is on so it
