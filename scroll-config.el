@@ -64,15 +64,67 @@ it during an active scroll and restores it afterwards (see
 (define-key pixel-scroll-precision-mode-map (kbd "<prior>") nil)
 
 ;; Scroll by a fixed number of lines (current and other window).
-(let ((num-lines 10))
-  (pcase-dolist (`(,key . ,fn)
-                 '(("C-v" . scroll-up)      ("<next>"  . scroll-up)
-                   ("M-v" . scroll-down)    ("<prior>" . scroll-down)
-                   ("M-<next>"  . scroll-other-window)
-                   ("M-<prior>" . scroll-other-window-down)
-                   ("C-M-v"   . scroll-other-window)
-                   ("C-M-S-v" . scroll-other-window-down)))
-    (global-set-key (kbd key) (lambda () (interactive) (funcall fn num-lines)))))
+(defvar scroll-config-lines 10
+  "How many lines the fixed-step scroll commands below move.")
+
+(defun scroll-config--resolve (command)
+  "Return what COMMAND has been remapped to in this buffer, following the chain.
+The commands below take their key from `global-map' and then call a scroll
+command themselves, so they stand where `scroll-up-command' and its siblings
+would otherwise have stood.  Command remapping is applied by the command loop
+to the symbol a key is bound to -- `[remap scroll-up-command]' fires only for a
+key bound to `scroll-up-command' -- so a mode that substitutes its own
+scrolling is skipped once these commands are in the way, and the generic
+command runs in a buffer that cannot take it.  In `pdf-view-mode' with
+`pdf-view-roll-minor-mode', plain `scroll-up' moves `window-start' across the
+placeholder text holding the page overlays and `pdf-roll-pre-redisplay' puts it
+back, so the view returns to the top of the current page and stays there.
+
+Following the chain rather than taking one step is deliberate, and goes further
+than Emacs itself: remapping is not recursive, and a key press gets exactly one
+substitution (`Fcommand_remapping\' in src/keymap.c -- \"you can\'t remap a
+remapped command\").  One step from `scroll-up-command\' stops at
+`pdf-view-scroll-up-or-next-page\', which scrolls through `image-scroll-up\'
+and knows nothing about page boundaries; the second reaches
+`pdf-roll-scroll-forward\', which walks from page to page."
+  (let ((seen (list command))
+        next)
+    (while (and (setq next (command-remapping command))
+                (not (memq next seen)))
+      (push next seen)
+      (setq command next))
+    command))
+
+(defun scroll-config-up ()
+  "Scroll this window up `scroll-config-lines' lines."
+  (interactive)
+  (funcall (scroll-config--resolve 'scroll-up-command) scroll-config-lines))
+
+(defun scroll-config-down ()
+  "Scroll this window down `scroll-config-lines' lines."
+  (interactive)
+  (funcall (scroll-config--resolve 'scroll-down-command) scroll-config-lines))
+
+;; The other-window pair does not resolve: a remapping is looked up in the
+;; current buffer, and the buffer being scrolled is in another window.
+(defun scroll-config-other-up ()
+  "Scroll the other window up `scroll-config-lines' lines."
+  (interactive)
+  (scroll-other-window scroll-config-lines))
+
+(defun scroll-config-other-down ()
+  "Scroll the other window down `scroll-config-lines' lines."
+  (interactive)
+  (scroll-other-window-down scroll-config-lines))
+
+(global-set-key (kbd "C-v")       #'scroll-config-up)
+(global-set-key (kbd "<next>")    #'scroll-config-up)
+(global-set-key (kbd "M-v")       #'scroll-config-down)
+(global-set-key (kbd "<prior>")   #'scroll-config-down)
+(global-set-key (kbd "M-<next>")  #'scroll-config-other-up)
+(global-set-key (kbd "C-M-v")     #'scroll-config-other-up)
+(global-set-key (kbd "M-<prior>") #'scroll-config-other-down)
+(global-set-key (kbd "C-M-S-v")   #'scroll-config-other-down)
 
 ;; Horizontal trackpad/mouse scrolling (Magic Trackpad, Magic Mouse).
 ;; pixel-scroll only covers vertical; we replicate its pixel-delta approach here.
