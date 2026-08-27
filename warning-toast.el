@@ -27,7 +27,8 @@
 (use-package popon
   :straight (popon
              :type git
-             :repo "https://codeberg.org/akib/emacs-popon.git")
+             :repo "https://codeberg.org/alberti42/emacs-popon.git"
+             :branch "fix/make-framebuffer-invisible-loop")
   :defer t)
 
 (defgroup warning-toast nil
