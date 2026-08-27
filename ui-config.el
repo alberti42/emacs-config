@@ -28,10 +28,11 @@
 (setq use-file-dialog nil)
 
 ;; Window dividers (GUI)
-;; The vertical divider between treemacs and the buffer is drawn by Emacs's
+;; The vertical divider between two windows is drawn by Emacs's
 ;; window-divider-mode (right side).  Enable bottom-only dividers to get a
 ;; matching 2px bar between the mode-line and the minibuffer.
-(setq window-divider-default-places 'bottom-only)
+(setq window-divider-default-places t)
+(setq window-divider-default-right-width 2)
 (setq window-divider-default-bottom-width 2)
 (window-divider-mode 1)
 
