@@ -40,10 +40,28 @@ eshell, term, and ghostel.")
   "Ordered vector of the 16 standard ANSI color faces (since Emacs 28).
 Index matches the ANSI color number (0–15).")
 
+(defun theme-harmonize--real-frame-p (&optional frame)
+  "Return non-nil unless FRAME sits on the daemon initial pseudo-terminal.
+That frame has no real display behind it: it reports zero color cells and a
+`background-mode' unrelated to the active theme, so face values read from it
+are meaningless."
+  (not (equal (terminal-name (frame-terminal (or frame (selected-frame))))
+              "initial_terminal")))
+
 (defun theme-harmonize-theme (&rest _)
   "Synchronize package faces with the active theme.
 Called after every theme change and on new frame creation.
-Add face propagation here as new packages need harmonizing."
+Add face propagation here as new packages need harmonizing.
+
+Does nothing on the daemon initial pseudo-frame: every override in
+`theme-harmonize--apply' is written globally (FRAME nil) from values read off
+the selected frame, and that frame would supply garbage.  The
+`after-make-frame-functions' hook below harmonizes the first real frame."
+  (when (theme-harmonize--real-frame-p)
+    (theme-harmonize--apply)))
+
+(defun theme-harmonize--apply ()
+  "Propagate the active theme colors to the faces that need harmonizing."
   ;; Override line-number background for both TTY and GUI to ensure a single
   ;; consistent visual style (e.g. Catppuccin) regardless of frame type.
   ;; This also prevents daemon mode from producing different results depending
