@@ -160,13 +160,17 @@ the selected frame, and that frame would supply garbage.  The
 ;; Fire on every theme change (Emacs 29+).
 (add-hook 'enable-theme-functions #'theme-harmonize-theme)
 
-;; Fire on new frame creation so that emacsclient GUI frames (connecting to a
-;; daemon that may have initialized without a graphical frame) and TTY frames
-;; opened alongside an existing GUI session both receive the correct faces.
-(add-hook 'after-make-frame-functions
-          (lambda (frame)
-            (with-selected-frame frame
-              (theme-harmonize-theme))))
+;; Fire when a client frame appears, so that a daemon whose theme loaded with no
+;; real frame available (see `theme-harmonize--real-frame-p') harmonizes as soon
+;; as the first emacsclient frame exists, and so a TTY frame opened alongside a
+;; GUI session re-reads the theme through its own display.
+;;
+;; `server-after-make-frame-hook' runs with the new frame already selected and
+;; its parameters settled, which `after-make-frame-functions' does not guarantee.
+;; Frames created from inside Emacs (C-x 5 2) do not run it and need not: every
+;; override in `theme-harmonize--apply' is written globally, with FRAME nil, so
+;; frames made later inherit it.
+(add-hook 'server-after-make-frame-hook #'theme-harmonize-theme)
 
 (provide 'theme-harmonize)
 ;;; theme-harmonize.el ends here
