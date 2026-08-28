@@ -94,7 +94,7 @@
   (setq zac-load-theme-callback
         (lambda (appearance)
           (load-theme (if (eq appearance :light)
-                          'doom-acario-light
+                          'doom-opera-light
                         'doom-challenger-deep) t)
           )))
 
