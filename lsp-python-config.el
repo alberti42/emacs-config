@@ -28,6 +28,9 @@
 
   ;; Settings can affect performance and stability
   (setq lsp-pyright-use-library-code-for-types nil)
+  ;; Whether pyright analyzes (and reports errors for) all files in the
+  ;; workspace, as indicated by the config file. Valid choices: openFilesOnly,
+  ;; workspace.
   (setq lsp-pyright-diagnostic-mode "openFilesOnly")
   (setq lsp-pyright-auto-import-completions nil)
   
