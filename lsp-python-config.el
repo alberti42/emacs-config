@@ -15,6 +15,15 @@
   ;; not on the PATH that env-config.el imports from the shell env cache file.
   (add-to-list 'exec-path (expand-file-name "bin" lsp-python-basedpyright-venv))
   (setq lsp-pyright-langserver-command "basedpyright")
+  ;; One server per project root, each with a single workspace folder.  Must be
+  ;; set in `:init': `lsp-register-client' is a top-level form in lsp-pyright.el
+  ;; and captures `:multi-root' by value at load time, so a `:config' setting
+  ;; arrives too late and the client stays multi-root.  Multi-root pyright keeps
+  ;; one shared server and accumulates every Python root ever visited in
+  ;; `server-id->folders', all of which get sent as `workspaceFolders' on
+  ;; `initialize' — basedpyright then spawns a service instance per folder and
+  ;; scans each one (site-packages and iCloud directories included).
+  (setq lsp-pyright-multi-root nil)
   :config
   (add-to-list 'lsp-disabled-clients 'ruff-lsp)
   (add-to-list 'lsp-disabled-clients 'ruff)
@@ -33,9 +42,7 @@
   ;; workspace.
   (setq lsp-pyright-diagnostic-mode "openFilesOnly")
   (setq lsp-pyright-auto-import-completions nil)
-  
-  ;; Disable multi-root if it's causing project detection issues
-  (setq lsp-pyright-multi-root nil))
+  )
 
 ;; Activate basedpyright on every Python buffer.  The lambda is held in a
 ;; local `let' binding rather than a global `defun' to keep it out of the
