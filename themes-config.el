@@ -93,10 +93,16 @@
   ;; the module so the watcher picks it up on first application.
   (setq zac-load-theme-callback
         (lambda (appearance)
-          (load-theme (if (eq appearance :light)
-                          'doom-opera-light
-                        'doom-challenger-deep) t)
-          )))
+          (let ((theme (if (eq appearance :light)
+                           'doom-opera-light
+                         'doom-challenger-deep)))
+            ;; `load-theme' layers the new theme on top of the old one instead of
+            ;; replacing it: any face the incoming theme does not define keeps the
+            ;; outgoing theme's value.  Disable every other enabled theme first so
+            ;; no stale face survives the switch.  On a new frame the appearance is
+            ;; unchanged, so there is nothing to disable and no flash.
+            (mapc #'disable-theme (remq theme custom-enabled-themes))
+            (load-theme theme t)))))
 
 (provide 'themes-config)
 ;;; themes-config.el ends here
