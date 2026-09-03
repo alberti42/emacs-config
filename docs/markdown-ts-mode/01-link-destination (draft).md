@@ -14,7 +14,7 @@ Prose below is deliberately unwrapped, one line per paragraph, so it can be past
 
 ### Summary
 
-CommonMark lets a link destination be wrapped in pointy brackets, and *requires* that wrapping when the destination contains spaces ([spec 0.31.2, section 6.3 "Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never removes the wrapper, so the brackets are carried into the destination everywhere it is used. Two consequences, one of them surprising:
+CommonMark lets a link destination be wrapped in pointy brackets, and *requires* that wrapping when the destination contains spaces ([spec 0.31.2, section 6.3 "Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never removes the wrapper, so the brackets are carried into the destination everywhere it is used. Two consequences follow, the second one easy to miss:
 
 - `[a](<my file.md>)` — the only spec-legal way to link a file whose name has a space — is passed to `find-file` as the literal string `<my file.md>`, which creates a new empty buffer named `<my file.md>` instead of opening the existing file.
 - `[a](<https://example.com/x?a=1&b=2>)` is passed to **`find-file`** rather than `browse-url`. The scheme test in `markdown-ts--make-link-button` is `(string-match-p "\`[a-z]+:" url)`, and with the brackets still attached the string starts with `<`, so a perfectly ordinary bracketed URL is treated as a relative file name.

@@ -48,11 +48,12 @@ instead of opening the file. There is no bracket-stripping or `url-unhex`
 anywhere in the file. CommonMark *requires* the `<…>` form when a destination
 contains spaces, so this is the documented spelling failing.
 
-A third symptom, found while drafting and worth leading with: a **bracketed
-URL** goes to `find-file` rather than `browse-url`, because the scheme test in
-`markdown-ts--make-link-button` runs on the still-bracketed string and so never
-matches `\`[a-z]+:`. `[a](<https://ex.com/x?a=1&b=2>)` opens a buffer visiting
-a nonsense relative path.
+The same root cause has a third symptom, which is the one to cite for severity:
+a **bracketed URL** goes to `find-file` rather than `browse-url`. The scheme
+test in `markdown-ts--make-link-button` runs on the still-bracketed string, so
+it never matches `\`[a-z]+:` and the destination falls through to the local-file
+branch — `[a](<https://ex.com/x?a=1&b=2>)` opens a buffer visiting a nonsense
+relative path, and saving it would create the file.
 
 Fix: normalize the destination once — strip a matched `<…>` pair, and
 percent-decode only when a `%XX` escape is actually present, so a literal `%`
