@@ -68,19 +68,52 @@ outline-overlay artifact), so this path is not testable headless.
 
 ### 3. `link_title` is not hidden under `markdown-ts-hide-markup`
 
-*Verified live. No existing issue.*
+*Verified live. No existing issue. Low severity — cosmetic, and only affects
+documents that use link titles.*
 
 The brackets, parens and `link_destination` of an `inline_link` all get
-`invisible 'markdown-ts--markup`; `link_title` only gets a face, so
-`[a](url "title")` leaves the title dangling when markup is hidden.
+`invisible 'markdown-ts--markup`; `link_title` only gets a face. With
+hide-markup on, this source
 
 ```
-hide-markup: link_title invisible=nil / link_destination invisible=markdown-ts--markup
+See [label](https://ex.com "the title") and [plain](https://ex.com) here.
+
+[lab]: https://ex.com "ref title"
 ```
 
-Fix: one query line — route `(inline_link (link_title))` through
-`markdown-ts--fontify-delimiter` instead of the plain
-`markdown-ts-link-destination` face.
+renders as
+
+```
+See label "the title" and plain here.
+
+lab "ref title"
+```
+
+where it should render as `See label and plain here.` / `lab`.
+
+Why this is a defect and not a preference:
+
+- Two identical constructs render differently — `[label](url "title")` keeps
+  visible text that `[plain](url)` does not, purely because metadata is
+  attached, while the URL is hidden in both.
+- CommonMark makes the title the HTML `title` attribute, i.e. a tooltip. No
+  renderer displays it inline, so showing it contradicts what hide-markup is
+  for. The same argument applies to the destination, which upstream already
+  hides, so "keep it visible while editing" is not a coherent counter-position.
+- Upstream gives `link_title` the *same* face as the destination
+  (`@markdown-ts-link-destination`), i.e. classifies it as destination-category
+  markup — and hides the destination. That reads as an oversight.
+
+Two sites, not one: `link_reference_definition` has the same gap
+(`markdown-ts--fontify-link-ref-label` hides the brackets and colon,
+`markdown-ts--fontify-link-ref-destination` hides the URL, the title survives).
+
+Fix: route both `(inline_link (link_title))` and
+`(link_reference_definition (link_title))` through
+`markdown-ts--fontify-delimiter`. Not quite a one-liner: the whitespace between
+`link_destination` and `link_title` belongs to neither node, so hiding only the
+title leaves a stray space behind (`label  and` with two spaces). The fix has
+to cover the inter-node whitespace as well — or hide the whole `( … )` span.
 
 ### 4. No inline rendering inside pipe-table cells
 
