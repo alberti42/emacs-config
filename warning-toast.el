@@ -73,8 +73,11 @@ logged to the `*Warnings*' buffer); emergencies keep their window."
   :type 'boolean)
 
 (defface warning-toast
-  '((t :inherit (warning highlight)))
-  "Face applied to the warning toast block.")
+  '((t :inherit (warning tooltip)))
+  "Face applied to the warning toast block.
+Foreground comes from `warning', background from `tooltip' — the face
+themes design for popups, unlike `highlight', whose background is tuned
+to pair with its own foreground.")
 
 (defvar warning-toast--popon nil
   "The currently displayed toast popon, or nil.")
