@@ -58,11 +58,8 @@ Grammar-level problems are the exception: they cannot be fixed in the mode at
 all, so they belong to `tree-sitter-markdown`, tracked in the lab repo at
 [issue #5](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
 
-Two formatting notes. The drafts here are written GitHub-flavoured; debbugs is
-plain-text email, so flatten any table before sending that copy. And since this
-is Emacs core, FSF copyright assignment applies to anything past the trivial
-(~15 line) threshold. Not a constraint here: assignment is on file, so patch
-size is a non-issue and the question need not be raised.
+One formatting note: the drafts here are written GitHub-flavoured, and debbugs
+is plain-text email, so flatten any table before sending that copy.
 
 ## Status of this list
 

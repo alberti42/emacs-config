@@ -18,6 +18,8 @@ Prose below is deliberately unwrapped, one line per paragraph, so it pastes into
 
 ## Body
 
+Starting here rather than on debbugs, since that's the way you prefer to hash things out — happy to send it to `bug-gnu-emacs` once you're happy with the shape of it. There's a working patch at the bottom, but treat it as a proposal; I'd rather change it now than argue about it in a mail thread later.
+
 ### Summary
 
 CommonMark lets a link destination be wrapped in pointy brackets, and *requires* that wrapping when the destination contains spaces ([spec 0.31.2, section 6.3 "Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never removes the wrapper, so the brackets travel with the destination everywhere it is used. Two consequences, the second easy to miss:
@@ -29,13 +31,13 @@ CommonMark lets a link destination be wrapped in pointy brackets, and *requires*
 
 ### Why it matters
 
-At the Markdown level a file name containing a space has no other spelling. Leaving the space bare does not produce an inline link at all — `[a](my file.md)` parses as the shortcut link `[a]`, which the grammar is right to do — so `<...>` is the only way to write it, and it is the one that does not work.
+In Markdown there's no other way to write a file name with a space in it. Leave the space bare and you don't get an inline link at all — `[a](my file.md)` parses as the shortcut link `[a]`, which the grammar is right to do — so `<...>` is the only spelling available, and it's the one that doesn't work.
 
-The bracketed-URL case is worse than a link that fails to open, because `find-file` on a URL-shaped string is not inert: it visits a nonsense relative path, and saving that buffer would create the file.
+The bracketed-URL case is worse than a link that just fails to open: `find-file` on a URL-shaped string isn't inert. You end up visiting a nonsense relative path, and saving that buffer would create it.
 
-### Recipe
+### Reproducing
 
-`destination-repro.el` is attached; it stubs `find-file` and `browse-url`, so nothing is opened or browsed. `emacs -Q --batch -l destination-repro.el` against the current build:
+`destination-repro.el` is attached. It stubs `find-file` and `browse-url`, so running it opens nothing and browses nowhere. `emacs -Q --batch -l destination-repro.el` on current master gives:
 
 ```
  #  destination as written       handed to
@@ -51,11 +53,11 @@ The bracketed-URL case is worse than a link that fails to open, because `find-fi
 
 (Cases 2, 3 and 10 in that reproducer concern percent-encoding and belong to the other report; they are unaffected by this patch.)
 
-By hand: create a file called `my target.md`, put `[a](<my target.md>)` in a sibling `.md` buffer, and press `RET` on the label. Expected: the file opens. Actual: an empty buffer named `<my target.md>`.
+Or by hand: make a file called `my target.md`, put `[a](<my target.md>)` in a sibling `.md` buffer, and hit `RET` on the label. You get an empty buffer named `<my target.md>` instead of the file.
 
 ### Suggested fix
 
-Attached as `01-destination-brackets.diff`. One helper and two call sites:
+Attached as `01-destination-brackets.diff` — one helper and two call sites:
 
 - `markdown-ts--unbracket-destination` strips a matched `<...>` pair.
 - `markdown-ts--make-link-button` unwraps **once at the top**, before the cond. That is what fixes the bracketed-URL case, since the scheme test then sees `https:`, and it also makes `help-echo` show the destination rather than its delimiters. Doing it here rather than at each extraction site covers inline links, reference links and autolinks in one change, because they all build their button through this function.
@@ -63,4 +65,4 @@ Attached as `01-destination-brackets.diff`. One helper and two call sites:
 
 With the patch, cases 1, 6, 8 and 9 above become `PASS` and the controls are unchanged.
 
-This cannot make anything worse: a `<...>`-wrapped string is never a usable destination as it stands, so no working link changes behaviour.
+I don't think this can break anything: a `<...>`-wrapped string is never usable as a destination as it stands, so nothing that works today changes behaviour.
