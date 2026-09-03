@@ -19,9 +19,26 @@ Both places, and the two are not alternatives:
   its debbugs link, and closed lab issues carry the number in the title —
   `#55 … (bug#81524)`, `#35 … (bug#81195)`, `#60 … (bug#81771)`.
 
-Order: file with `report-emacs-bug` first, so the bug number exists and the
-patch is on record, then open the lab issue with `(bug#NNNNN)` appended to its
-title and link the two together.
+Order, as the project itself does it: **debbugs first, with the patch
+attached**, then the lab issue as a discussion mirror. Two lab issues show the
+pattern outright —
+
+- [#26](https://github.com/LionyxML/markdown-ts-mode-lab/issues/26): "@shipmints
+  already submitted a patch: https://debbugs.gnu.org/…bug=81199". An outside
+  contributor filed the patch at debbugs; the maintainer opened the lab issue
+  pointing at it. That is this situation exactly.
+- [#60](https://github.com/LionyxML/markdown-ts-mode-lab/issues/60): the body is
+  just "Original title: bug#81771: …" plus the debbugs link — a mirror of an
+  existing bug.
+
+There is no step where a bug is filed empty and the patch follows separately,
+and nothing is ever "reposted": a debbugs bug is a mail thread, so a revised
+patch is a reply to `NNNNN@debbugs.gnu.org` and stays on the same bug.
+
+The exception is a fix with an open design question rather than an obvious one —
+items 4, 5 and 7 below. There it is worth raising the approach in a lab issue
+before writing the patch, so the maintainer's view shapes it instead of
+arriving after a v1 is on record.
 
 Grammar-level problems are the exception: they cannot be fixed in the mode at
 all, so they belong to `tree-sitter-markdown`, tracked in the lab repo at
@@ -30,8 +47,8 @@ all, so they belong to `tree-sitter-markdown`, tracked in the lab repo at
 Two formatting notes. The drafts here are written GitHub-flavoured; debbugs is
 plain-text email, so flatten any table before sending that copy. And since this
 is Emacs core, FSF copyright assignment applies to anything past the trivial
-(~15 line) threshold — already on file here, via the merged `xdisp.c` margin
-patch.
+(~15 line) threshold. Not a constraint here: assignment is on file, so patch
+size is a non-issue and the question need not be raised.
 
 ## Status of this list
 

@@ -4,7 +4,7 @@ Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (
 
 Percent-encoded destinations are a **separate** submission — see `02-destination-percent-encoding (draft).md`. This one is pure CommonMark conformance with no option and no trade-off; that one is a convention borrowed from URIs and needs a user option. Keeping them apart means this patch can go in on its own merits.
 
-Goes to two places, per `00-upstream-candidates (unfiled).md`: file it with `M-x report-emacs-bug` (the patch can only land via debbugs, since the mode is Emacs core), then open a lab issue with `(bug#NNNNN)` in the title for the discussion the maintainers prefer to have there.
+Goes to two places, per `00-upstream-candidates (unfiled).md`: file it with `M-x report-emacs-bug` **with the patch attached** (the mode is Emacs core, so only debbugs can carry a fix to a commit), then open a lab issue titled with `(bug#NNNNN)` as the discussion mirror — the way lab #26 and #60 do it. Revised patches are replies to `NNNNN@debbugs.gnu.org`, not new filings.
 
 Prose below is deliberately unwrapped, one line per paragraph, so it pastes into a GitHub issue without hard-wrap artifacts. For the debbugs copy, send plain text — flatten any table and drop the link syntax.
 
