@@ -4,7 +4,9 @@ Item 2 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (
 
 Deliberately separate from the bracket report. Removing `<...>` is CommonMark syntax and has no downside; percent-decoding is a URI reading of the destination that CommonMark does not ask for, so it is a policy question, needs a user option, and carries one irreducible ambiguity. Bundling the two would make the uncontroversial half hostage to this one.
 
-Prose below is deliberately unwrapped, one line per paragraph, so it can be pasted into a GitHub issue without hard-wrap artifacts.
+Goes to two places, per `00-upstream-candidates (unfiled).md`: file it with `M-x report-emacs-bug` (the patch can only land via debbugs, since the mode is Emacs core), then open a lab issue with `(bug#NNNNN)` in the title for the discussion the maintainers prefer to have there.
+
+Prose below is deliberately unwrapped, one line per paragraph, so it pastes into a GitHub issue without hard-wrap artifacts. For the debbugs copy, send plain text — flatten any table and drop the link syntax.
 
 ---
 
@@ -26,11 +28,11 @@ Percent-encoding local paths is what several Markdown tools emit, so files writt
 
 Measured over a 972-note Obsidian vault:
 
-| destination form | occurrences |
-| --- | --- |
-| percent-encoded, `](…%XX…)` | 696 |
-| bracketed, `](<…>)` | 0 |
-| both together | 0 |
+```
+percent-encoded, ](...%XX...)   696
+bracketed,       ](<...>)         0
+both together                     0
+```
 
 63 of those 696 are image embeds, which is the `markdown-ts--fontify-image` half. The escapes are not only `%20`: that vault uses `%20` (2718), `%3A` (355), and UTF-8 sequences such as `%CC%88` for a combining diaeresis — which matters for the implementation, below.
 

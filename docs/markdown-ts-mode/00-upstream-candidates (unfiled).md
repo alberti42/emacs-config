@@ -5,18 +5,33 @@ currently works around locally, and that belong upstream rather than in
 `markdown-config.el`. Opinionated local policy is deliberately excluded (see
 "Not candidates" at the end).
 
-Two destinations:
+## Where these go
 
-- **Emacs** (`bug-gnu-emacs`, via `M-x report-emacs-bug`) for anything fixable
-  in `lisp/textmodes/markdown-ts-mode.el`.
-- **`tree-sitter-markdown`** for grammar node-range problems, which the mode
-  can only mitigate, not fix. Per the maintainers these are still worth
-  reporting; the lab repo tracks them in
-  [issue #5](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
+Both places, and the two are not alternatives:
 
-Triage/discussion happens in the lab repo,
-<https://github.com/LionyxML/markdown-ts-mode-lab/issues>, which is where a
-duplicate would show up first.
+- **The Emacs bug tracker** (`M-x report-emacs-bug`, which mails
+  `bug-gnu-emacs`) is where a fix must be filed. `markdown-ts-mode` is
+  `lisp/textmodes/markdown-ts-mode.el` in Emacs core, so debbugs is the only
+  place a patch can land and be tracked to a commit.
+- **A lab issue** at <https://github.com/LionyxML/markdown-ts-mode-lab/issues>
+  is where the maintainers prefer the discussion to happen, and it is how the
+  mode's own history is kept. Their `patches.md` tracks every submission with
+  its debbugs link, and closed lab issues carry the number in the title —
+  `#55 … (bug#81524)`, `#35 … (bug#81195)`, `#60 … (bug#81771)`.
+
+Order: file with `report-emacs-bug` first, so the bug number exists and the
+patch is on record, then open the lab issue with `(bug#NNNNN)` appended to its
+title and link the two together.
+
+Grammar-level problems are the exception: they cannot be fixed in the mode at
+all, so they belong to `tree-sitter-markdown`, tracked in the lab repo at
+[issue #5](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
+
+Two formatting notes. The drafts here are written GitHub-flavoured; debbugs is
+plain-text email, so flatten any table before sending that copy. And since this
+is Emacs core, FSF copyright assignment applies to anything past the trivial
+(~15 line) threshold — already on file here, via the merged `xdisp.c` margin
+patch.
 
 ## Status of this list
 
