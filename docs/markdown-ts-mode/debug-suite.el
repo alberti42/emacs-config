@@ -1,4 +1,4 @@
-;;; debug-markdown-ts-mode.el --- Test suite for markdown-ts-mode bugs -*- lexical-binding: t; -*-
+;;; debug-suite.el --- Test suite for markdown-ts-mode bugs -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -12,7 +12,7 @@
 ;; file):
 ;;
 ;;   emacs -Q -L /path/to/dir-with-markdown-ts-mode/ \
-;;             --load /path/to/debug-markdown-ts-mode.el \
+;;             --load /path/to/debug-suite.el \
 ;;             --eval "(markdown-ts-test-NNN)"
 ;;
 ;; Replace NNN with the test number (currently only 001).  Tests can
@@ -129,5 +129,5 @@ Paragraph below the thematic break.
       (read-only-mode 1)
       (goto-char (point-min)))))
 
-(provide 'debug-markdown-ts-mode)
-;;; debug-markdown-ts-mode.el ends here
+(provide 'markdown-ts-debug-suite)
+;;; debug-suite.el ends here

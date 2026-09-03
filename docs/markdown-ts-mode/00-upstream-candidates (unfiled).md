@@ -28,7 +28,7 @@ Three are adjacent to existing issues and should cross-reference them.
 
 "Verified live" means reproduced in `emacs -Q --batch` against the installed
 build. Reproducers for the two background items are in
-`docs/markdown-ts-mode-background.el`.
+`docs/markdown-ts-mode/background-artifacts-repro.el`.
 
 When filing, unwrap the prose to one line per paragraph — GitHub and the Emacs
 bug tracker soft-wrap, and hard wraps render badly.
@@ -39,13 +39,20 @@ bug tracker soft-wrap, and hard wraps render badly.
 
 ### 1. Link destinations are used verbatim, never unwrapped or percent-decoded
 
-*Verified live. No existing issue.*
+*Verified live. No existing issue. **Drafted** —
+`01-link-destination (draft).md`, with reproducer and tested patch.*
 
 `[a](<my file.md>)` hands `find-file` the literal `<my file.md>`;
 `[a](my%20file.md)` hands it `my%20file.md`. Both create an empty buffer
 instead of opening the file. There is no bracket-stripping or `url-unhex`
 anywhere in the file. CommonMark *requires* the `<…>` form when a destination
 contains spaces, so this is the documented spelling failing.
+
+A third symptom, found while drafting and worth leading with: a **bracketed
+URL** goes to `find-file` rather than `browse-url`, because the scheme test in
+`markdown-ts--make-link-button` runs on the still-bracketed string and so never
+matches `\`[a-z]+:`. `[a](<https://ex.com/x?a=1&b=2>)` opens a buffer visiting
+a nonsense relative path.
 
 Fix: normalize the destination once — strip a matched `<…>` pair, and
 percent-decode only when a `%XX` escape is actually present, so a literal `%`
@@ -54,7 +61,8 @@ in a filename survives. Local equivalent:
 
 ### 2. The same raw text breaks image rendering
 
-*Source-level. No existing issue.*
+*Source-level. No existing issue. **Drafted together with item 1** —
+`01-link-destination (draft).md`.*
 
 `markdown-ts--fontify-image` resolves the destination with
 `(expand-file-name (treesit-node-text dest t))`, so a bracketed or
@@ -164,7 +172,7 @@ So the newline is the only character still showing the block face. Give
 `markdown-ts-html-block` a background with `:extend t` and a row of HTML
 comments renders with its text on the default background and the rest of the
 row running to the window edge in the block colour. Reproducer: example 1 in
-`docs/markdown-ts-mode-background.el`.
+`docs/markdown-ts-mode/background-artifacts-repro.el`.
 
 This is the mode's own layering, not the grammar — a block node carrying its
 own newline is conventional.
@@ -241,7 +249,7 @@ indented_code_block range 27..61 = "    indented code\n    more code\n\n\n"
 CommonMark is explicit that blank lines *following* an indented code block are
 not part of it, so the grammar deviates from the spec and the mode faithfully
 faces the range it is handed — the code-block background leaks onto the empty
-lines below. Reproducer: example 2 in `docs/markdown-ts-mode-background.el`.
+lines below. Reproducer: example 2 in `docs/markdown-ts-mode/background-artifacts-repro.el`.
 
 Lower priority because it is not directly fixable in the mode. Add it to
 [lab #5, the grammar issue tracker](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
@@ -269,7 +277,7 @@ the face to the last non-blank line.
   implies a stale-inline-parser bug, but bug#81019 and bug#81195 have landed
   since. Needs a fresh reproducer before filing anything.
 - **Background bugs already reported** — the two items in
-  `docs/markdown-ts-mode-background.el` were sent to the maintainers on
+  `docs/markdown-ts-mode/background-artifacts-repro.el` were sent to the maintainers on
   2026-06-14 with no reply. Both still reproduce, and they are items 5 and 8
   above; filing them properly (Emacs for 5, the grammar tracker for 8) is the
   way to unstick them. Item 5's original framing is probably why it drew no

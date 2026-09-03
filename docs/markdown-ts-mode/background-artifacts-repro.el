@@ -1,8 +1,8 @@
-;;; markdown-ts-mode-background.el --- Reproduce code-block background artifacts -*- lexical-binding: t; -*-
+;;; background-artifacts-repro.el --- Reproduce code-block background artifacts -*- lexical-binding: t; -*-
 
 ;; Run with:
 ;;
-;;     emacs -Q -l markdown-ts-mode-background.el
+;;     emacs -Q -l background-artifacts-repro.el
 ;;
 ;; This opens a buffer that reproduces two background-rendering
 ;; inconsistencies in `markdown-ts-mode' (Emacs 31, grammar v0.4.x).
@@ -82,4 +82,4 @@
 ;;   gray, so the code-block background leaks past the block into the empty
 ;;   lines that follow.
 
-;;; markdown-ts-mode-background.el ends here
+;;; background-artifacts-repro.el ends here
