@@ -21,11 +21,16 @@ CommonMark lets a link destination be wrapped in pointy brackets, and *requires*
 
 The same raw node text is used by `markdown-ts--fontify-image`, which resolves it with a bare `expand-file-name`, so `![a](<my pic.png>)` fails the `file-exists-p` guard and the image silently never renders.
 
-Separately and more mildly, a percent-encoded destination (`[a](my%20file.md)`) is not decoded either, so it does not reach `my file.md`. This half is a convenience rather than a conformance issue and has a trade-off — see "On percent-decoding" below — so it may be worth applying only the bracket half.
+The same destination is also never percent-decoded, so `[a](my%20file.md)` does not reach `my file.md` either. These are two independent axes rather than one feature, and both spellings occur in the wild:
+
+- **Brackets are Markdown syntax.** In `<my file.md>` the destination *is* `my file.md`; the `<>` are delimiters the parser is obliged to strip. No interpretation is involved.
+- **`%20` is URI syntax.** In `my%20file.md` the destination is literally `my%20file.md`; naming `my file.md` means reading the destination as a URI reference and mapping it onto a path. CommonMark does not ask you to do that.
+
+They compose — `<my%20file.md>` is bracketed *and* encoded — and the attached patch handles all three spellings. They are worth distinguishing anyway, because only the bracket half is trade-off-free; see "On percent-decoding" below.
 
 ### Why it matters
 
-A file name with a space has no other spelling. Percent-encoding it is not portable across Markdown tools, and leaving the space bare makes it not a link at all (the grammar does not parse `[a](my file.md)` as an inline link, correctly). So `<...>` is the spelling, and it currently does not work — the one thing a user with spaces in file names must write is the one thing that fails.
+At the Markdown level a file name with a space has no other spelling. Leaving the space bare does not make an inline link at all — `[a](my file.md)` parses as the shortcut link `[a]`, which the grammar is right to do — so the bracket form is the only way to write it, and it is the one that fails. Percent-encoding is a workaround borrowed from URIs; it is not portable across Markdown tools, and it does not work here either.
 
 The bracketed-URL case is worse than a non-working link, because `find-file` on a URL-shaped string is not a no-op: it opens a buffer visiting a nonsense relative path, and a subsequent save would create it.
 
@@ -34,15 +39,19 @@ The bracketed-URL case is worse than a non-working link, because `find-file` on 
 Reproducer attached (`01-link-destination-repro.el`); it stubs `find-file` and `browse-url`, so nothing is opened or browsed. `emacs -Q --batch -l 01-link-destination-repro.el` against the current build prints:
 
 ```
- #  destination as written             handed to                  ok?
- -- ---------------------------------- -------------------------- ---
- 1  <my target.md>                     find-file "<my target.md>" FAIL   bracketed name with a space
- 2  my%20target.md                     find-file "my%20target.md" FAIL   percent-encoded name with a space
- 3  plain.md                           find-file "plain.md"       PASS   control: plain relative name
- 4  <https://ex.com/x?a=1&b=2>         find-file "<https://ex.com/x?a=1&b=2>" FAIL   bracketed URL
- 5  https://ex.com/q?s=a%20b           browse-url "https://ex.com/q?s=a%20b" PASS   control: URL with a %20 escape
- 6  <50% off.md>                       find-file "<50% off.md>"   FAIL   bracketed name with a literal %
- 7  <100%25 done.md>                   find-file "<100%25 done.md>" FAIL   bracketed name literally containing %25
+ #  destination as written       handed to
+ -- ---------------------------- ------------------------ ----
+ 1  <my target.md>               find-file "<my target.md>" FAIL   bracketed name with a space
+ 2  my%20target.md               find-file "my%20target.md" FAIL   percent-encoded name with a space
+ 3  <my%20target.md>             find-file "<my%20target.md>" FAIL   bracketed AND percent-encoded
+ 4  my target.md                 find-file "d"            PASS   control: bare space cannot name the file
+ 5  plain.md                     find-file "plain.md"     PASS   control: plain relative name
+ 6  <https://ex.com/x?a=1&b=2>   find-file "<https://ex.com/x?a=1&b=2>" FAIL   bracketed URL
+ 7  https://ex.com/q?s=a%20b     browse-url "https://ex.com/q?s=a%20b" PASS   control: URL keeps its escapes
+ 8  <50% off.md>                 find-file "<50% off.md>" FAIL   bracketed name with a literal %
+ 9  <100%25 done.md>             find-file "<100%25 done.md>" FAIL   bracketed name literally containing %25
+
+6 of 9 cases fail.
 ```
 
 By hand: create a file called `my target.md`, put `[a](<my target.md>)` in a sibling `.md` buffer, and press `RET` on the label. Expected: the file opens. Actual: an empty buffer named `<my target.md>`.
@@ -58,16 +67,16 @@ Attached as `01-link-destination.diff` (against `ab1d6868ed3`). Two small helper
 
 Unbracketing inside `markdown-ts--make-link-button` rather than at each extraction site means reference links and autolinks are covered by the same change, since they all build their button through it.
 
-With the patch, the same reproducer prints `PASS` for cases 1–6.
+With the patch the same reproducer reports **1 of 9 cases failing** instead of 6 — everything but case 9, which is inherent (below).
 
 ### On percent-decoding
 
-Case 7 in the reproducer still fails with the patch, and that is inherent rather than a flaw in it: a file whose name literally contains `%25` cannot be distinguished from an encoded `%` once you decide to decode local destinations at all. The `%XX`-present guard keeps the common literal-`%` name working (case 6, `50% off.md`) but cannot save case 7.
+Case 9 in the reproducer still fails with the patch, and that is inherent rather than a flaw in it: a file whose name literally contains `%25` cannot be distinguished from an encoded `%` once you decide to decode local destinations at all. The `%XX`-present guard keeps the common literal-`%` name working (case 8, `50% off.md`) but cannot save case 9.
 
 So the two halves have different characters, and splitting them is reasonable:
 
-- **Unbracketing** is pure spec conformance with no trade-off. It fixes cases 1, 4 and 6 and cannot make anything worse, because `<...>`-wrapped text is never a valid destination as-is.
-- **Percent-decoding** fixes case 2 and is what most Markdown editors do, but it is a policy choice with the case-7 ambiguity attached. If the maintainers would rather not take it, the bracket half stands alone.
+- **Unbracketing** is pure spec conformance with no trade-off. It fixes cases 1, 6 and 8 and cannot make anything worse, because `<...>`-wrapped text is never a valid destination as-is.
+- **Percent-decoding** fixes cases 2 and 3, and is what most Markdown editors do, but it is a policy choice with the case-9 ambiguity attached. If the maintainers would rather not take it, the bracket half stands alone.
 
 ---
 
