@@ -144,7 +144,7 @@ Two `:around` advices, sharing `markdown-config--normalize-link-path`:
   same policy as the dispatcher. URLs, `mailto:` and `#fragment` targets
   keep the stock action.
 
-## Link rendering (markdown-ts-mode only)
+## Rendering (markdown-ts-mode only)
 
 `markdown-ts-mode-hook` runs
 `markdown-config--markdown-ts-mode-setup`, which adds the table-cell
@@ -154,13 +154,21 @@ and URL under `markdown-ts-hide-markup` and make the label a button.
 
 ### Inline links inside tables — font-lock keyword
 
-The bundled inline-link rules only fire where the `markdown-inline`
-parser runs, and its range rule embeds it in `(inline)` nodes only. The
-grammar parses **table-cell** content as raw block-level tokens instead,
-so a cell like `| [DESCRIPTION](DESCRIPTION) | … |` exposes no
-`inline_link` node — `treesitter-explore` shows
-`(pipe_table_cell [ . _ . ] ( . _ . ))`, where a paragraph shows
-`(inline … (inline_link …))`. Nothing upstream renders inside a table.
+The bundled inline-link rules only fire where a **local**
+`markdown-inline` parser runs, and the range rule embeds one on host
+`(inline)` nodes only — `((inline) @markdown-inline)`. A
+`pipe_table_cell` is not an `inline` node: `treesitter-explore` shows
+`(pipe_table_cell [ . _ . ] ( . _ . ))` where a paragraph shows
+`(inline … (inline_link …))`. So no local parser covers a cell and
+nothing upstream renders inside a table — verified: a cell's label gets
+`button=no` and its destination stays visible under hide-markup, where a
+paragraph's label is a button with the destination hidden.
+
+Note the qualifier. The *global* `markdown-inline` parser does parse the
+whole buffer text and a whole-buffer query against it will happily
+return an `inline_link` inside a table row. That is a different parser
+instance from the ones font-lock uses, so it proves nothing about
+rendering — don't let it mislead you into thinking the gap is closed.
 
 `markdown-config--table-inline-link-fontify` closes the gap with a
 parser-agnostic mechanism: a `re-search-forward`
@@ -190,7 +198,90 @@ gate: paragraph links never reach this matcher's body, so prose keeps
 the bundled `invisible` collapse (no reserved gap — correct for prose),
 and only table links reserve width. No per-link configuration.
 
-### Performance
+### Code-fence collapse + reveal-on-edit
+
+With `markdown-ts-hide-markup` on, the bundled fontifier marks only the
+fence delimiter *text* invisible and leaves the line's newline live, so
+every hidden fence leaves a stray blank row. (Upstream collapses whole
+fence lines in `markdown-ts-view-mode` only.)
+`markdown-config--collapse-fence-line`, `:after` advice on
+`markdown-ts--fontify-delimiter`, hides the whole physical line —
+newline included — with an overlay `display` of `""`, which renders the
+range as nothing and pulls the next line up. It also drops the host's
+`invisible` text property on the node, so a revealed fence shows its
+real text including the language tag.
+
+> **Why an overlay `display` and not the `invisible` property.**
+> `reveal-mode` reveals *overlays* only (it scans `overlays-at`), and
+> only those hidden via ellipsis-`invisible` or a `display` property
+> carrying a `reveal-toggle-invisible` function. A plain `invisible`
+> overlay or property is invisible to it, and ellipsis would render a
+> literal `…` on the row. `display` `""` plus a toggle function is the
+> only form that both fully removes the line and is revealable.
+
+Both of a block's fence overlays are created together from parse-tree
+positions and cross-linked via `markdown-config-fence-sibling`, so
+opener and closer reveal and re-collapse as a pair — and so the closer's
+overlay exists even before that line has been fontified or scrolled into
+view. The sibling link is stored at fontify time, where the parse tree
+is solid, rather than looked up inside the toggle: a toggle-time treesit
+lookup fails when the closing fence has not been fontified yet, and
+`reveal-mode`'s `with-demoted-errors` swallows the error, so the opener
+toggles and the closer silently does not.
+
+`markdown-config--prune-fence-overlays`, a `treesit-parser` notifier,
+drops overlays in a reparsed region whose `fenced_code_block` is gone.
+
+Skipped entirely in `markdown-ts-view-mode`: that read-only mode already
+hides whole fence lines via the host's `invisible` property, and
+swapping it for an overlay `display` would break off-screen consumers
+that extract the buffer with `buffer-substring` — notably `lsp-mode`'s
+hover and signature rendering, which does not capture overlays.
+
+## Table cell filling
+
+`markdown-ts-table-fill-cells` reflows the data rows of the table at
+point so no cell exceeds a chosen column width (prompted, defaulting to
+`markdown-ts-table-fill-cell`). Each cell is wrapped with the standard
+`fill-region` machinery; a row whose widest cell needs N lines becomes N
+physical lines, one column fragment per line, empty where a column ran
+out of fragments. Header and `|---|` delimiter rows are untouched — only
+`pipe_table_row` nodes are rewritten.
+
+No padding or alignment is applied; follow up with
+`markdown-ts-table-align-table`, which pads each column to its widest
+now-wrapped cell. Deliberately a standalone command rather than an
+extension of the align command, so filling and re-aligning stay
+independent. Edits are collected then applied bottom-to-top, so
+rewriting a lower row leaves the positions of higher rows valid.
+
+The names sit in the upstream `markdown-ts-table-` namespace for
+consistency with the built-in table commands, verified free of
+collisions against the bundled mode. Upstream has no equivalent;
+[lab issue #41](https://github.com/LionyxML/markdown-ts-mode-lab/issues/41)
+is an open request for it (plus an unwrap direction this does not have).
+
+## SVG math preview
+
+`latex-to-svg-for-markdown` is the Markdown adaptor of the shared
+`latex-to-svg-frontend` core, enabled in every Markdown buffer via
+`markdown-config--latex-to-svg-setup`. The core detects `$…$`, `$$…$$`,
+`\(…\)`, `\[…\]` and `\begin{env}…\end{env}` with a
+blank-line-bounded scanner and overlays each with an SVG compiled once
+(content-addressed), re-tinting on theme switch and re-scaling on text
+zoom straight from cache — no LaTeX recompile. The adaptor supplies
+Markdown's code and verbatim exclusions.
+
+Per-mode sizing is buffer-local and set here before the adaptor turns
+the core on: `latex-to-svg-frontend-inline-rescale` 1.20 and
+`latex-to-svg-frontend-display-rescale` 1.25, on top of the engine's
+global `latex-to-svg-backend-font-scale`.
+
+`latex-to-svg-config.el` registers the engine and core recipes and
+`init.el` loads it first, so straight resolves this adaptor's
+dependencies from the local `latex-to-svg` checkout.
+
+## Performance
 
 - Inline links (paragraphs): entirely the bundled tree-sitter rules,
   reusing nodes the parser already built. Nothing added here.

@@ -1,0 +1,260 @@
+# markdown-ts-mode: upstream submission candidates
+
+Defects and gaps in the bundled `markdown-ts-mode` that this configuration
+currently works around locally, and that belong upstream rather than in
+`markdown-config.el`. Opinionated local policy is deliberately excluded (see
+"Not candidates" at the end).
+
+Two destinations:
+
+- **Emacs** (`bug-gnu-emacs`, via `M-x report-emacs-bug`) for anything fixable
+  in `lisp/textmodes/markdown-ts-mode.el`.
+- **`tree-sitter-markdown`** for grammar node-range problems, which the mode
+  can only mitigate, not fix. Per the maintainers these are still worth
+  reporting; the lab repo tracks them in
+  [issue #5](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
+
+Triage/discussion happens in the lab repo,
+<https://github.com/LionyxML/markdown-ts-mode-lab/issues>, which is where a
+duplicate would show up first.
+
+## Status of this list
+
+Checked against upstream `origin/master` at `ab1d6868ed3` (2026-09-03); the
+installed build carries the same `markdown-ts-mode` bar one unrelated one-line
+fix (`5919ac3fac6`, bare-URL `mailto:` prefix). All 59 lab issues (open and
+closed) were fetched and grepped: **none of the items below is already filed.**
+Three are adjacent to existing issues and should cross-reference them.
+
+"Verified live" means reproduced in `emacs -Q --batch` against the installed
+build. Reproducers for the two background items are in
+`docs/markdown-ts-mode-background.el`.
+
+When filing, unwrap the prose to one line per paragraph — GitHub and the Emacs
+bug tracker soft-wrap, and hard wraps render badly.
+
+---
+
+## Mode-fixable — file against Emacs
+
+### 1. Link destinations are used verbatim, never unwrapped or percent-decoded
+
+*Verified live. No existing issue.*
+
+`[a](<my file.md>)` hands `find-file` the literal `<my file.md>`;
+`[a](my%20file.md)` hands it `my%20file.md`. Both create an empty buffer
+instead of opening the file. There is no bracket-stripping or `url-unhex`
+anywhere in the file. CommonMark *requires* the `<…>` form when a destination
+contains spaces, so this is the documented spelling failing.
+
+Fix: normalize the destination once — strip a matched `<…>` pair, and
+percent-decode only when a `%XX` escape is actually present, so a literal `%`
+in a filename survives. Local equivalent:
+`markdown-config--normalize-link-path`.
+
+### 2. The same raw text breaks image rendering
+
+*Source-level. No existing issue.*
+
+`markdown-ts--fontify-image` resolves the destination with
+`(expand-file-name (treesit-node-text dest t))`, so a bracketed or
+`%20`-encoded path fails the `file-exists-p` guard and the image silently
+never renders.
+
+Same root cause as #1 — one shared helper fixes both, and they should be filed
+together. Read from the source rather than reproduced: the batch harness
+renders no image at all (a valid control also fails, apparently an
+outline-overlay artifact), so this path is not testable headless.
+
+### 3. `link_title` is not hidden under `markdown-ts-hide-markup`
+
+*Verified live. No existing issue.*
+
+The brackets, parens and `link_destination` of an `inline_link` all get
+`invisible 'markdown-ts--markup`; `link_title` only gets a face, so
+`[a](url "title")` leaves the title dangling when markup is hidden.
+
+```
+hide-markup: link_title invisible=nil / link_destination invisible=markdown-ts--markup
+```
+
+Fix: one query line — route `(inline_link (link_title))` through
+`markdown-ts--fontify-delimiter` instead of the plain
+`markdown-ts-link-destination` face.
+
+### 4. No inline rendering inside pipe-table cells
+
+*Verified live. No existing issue; adjacent to #42.*
+
+In a table cell, `[lnk](t.md)` gets no button and no markup hiding, and
+`**bold**` / `` `code` `` get no faces:
+
+```
+| [lnk]     label: face=(markdown-ts-table-cell markdown-ts-table) button=no  dest-invisible=nil
+Para [lnk]  label: face=…                                          button=YES dest-invisible=markdown-ts--markup
+```
+
+Cause is the range rule, not the grammar: `((inline) @markdown-inline)` embeds
+a local inline parser on host `(inline)` nodes only, and a `pipe_table_cell` is
+not one. (The *global* `markdown-inline` parser does see the construct, which
+is why a whole-buffer query finds `inline_link` inside a row — a different
+parser instance from the ones font-lock uses.)
+
+Fix: extend the range rules to cover table cells. Worth raising in the same
+report: hiding markup inside a cell with plain `invisible` collapses it to zero
+width and misaligns the table, so cells need width-preserving hiding — the
+local workaround uses a `(space :width N)` `display` property. This also
+interacts with
+[#42, table prettification under hide-markup](https://github.com/LionyxML/markdown-ts-mode-lab/issues/42).
+
+Highest-impact item: an upstream fix removes the local table workaround
+entirely.
+
+### 5. An `html_block`'s trailing newline keeps the block face while its text loses it
+
+*Verified live. No existing issue; same family as #31.*
+
+```
+#1 html_block: text-face=font-lock-comment-face  newline-face=markdown-ts-html-block
+```
+
+Two layers with mismatched extents:
+
+- `((html_block) @markdown-ts-html-block)` faces the whole node, its trailing
+  newline included.
+- The mode also embeds the HTML grammar over that same node
+  (`:embed html :host markdown … '((html_block) @html)`), and `html-ts-mode`
+  faces the `comment` node — which covers `<!-- … -->` but *not* the newline —
+  and **replaces** rather than combines.
+
+So the newline is the only character still showing the block face. Give
+`markdown-ts-html-block` a background with `:extend t` and a row of HTML
+comments renders with its text on the default background and the rest of the
+row running to the window edge in the block colour. Reproducer: example 1 in
+`docs/markdown-ts-mode-background.el`.
+
+This is the mode's own layering, not the grammar — a block node carrying its
+own newline is conventional.
+
+Cross-reference
+[#31 "Wrong html colors"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/31):
+same base-face-not-overridden family, different mechanism (there an `ERROR`
+node leaves `html-ts-mode`'s queries nothing to match, so a whole closing tag
+keeps the block face). A fix that makes the two layers agree on extent and
+combination would likely cover both.
+
+Two fixes are possible, and the report should present both rather than assume
+one:
+
+- **Stop applying `markdown-ts-html-block` to the trailing newline.** Simple,
+  and it makes the row consistent. Cost: a `markdown-ts-html-block`
+  background can then never fill a row.
+- **Have the embedded HTML faces combine with the block face rather than
+  replace it.** The comment text keeps the block background and gains a
+  comment foreground; the newline already matches. Keeps the face usable for
+  what it is for.
+
+Whichever is chosen, flag that the first must **not** be generalized to block
+faces at large: a fenced code block *needs* its trailing newline faced, since
+that is what extends the background across the full row, and
+`markdown-ts-code-block`'s docstring documents background usage as intended.
+
+### 6. Inline images break pixel-precision scrolling
+
+*No existing issue.*
+
+`markdown-ts--fontify-image` attaches the image as an `after-string` prefixed
+with `"\n"`. An after-string has no buffer position, so that newline creates a
+phantom display line `pixel-scroll-precision-mode` cannot anchor `window-start`
+to, and scrolling jumps by a whole image height — the bug#64252 family.
+
+Fix direction, as used locally for embeds: put the image in a `display`
+property on a single buffer position and hide the remaining markup, so
+`window-start` has nowhere to park. A wide `display` span is nearly as bad as
+the after-string, because `window-start` can land deep inside it.
+
+### 7. Fence lines leave a stray blank row while editing
+
+*Enhancement — needs a design pitch, not a bug report. No existing issue.*
+
+Whole-line fence collapse exists in `markdown-ts-view-mode` only. In an
+editable buffer with `markdown-ts-hide-markup` on, only the delimiter *text* is
+marked invisible, so the line's newline stays live and every hidden fence
+leaves an empty row.
+
+The in-code comment in `markdown-ts--fontify-delimiter` says editing buffers
+were skipped deliberately, over hide-markup UX hazards (point movement,
+backspace across invisible regions). So this has to be pitched as an answer to
+that objection rather than as an oversight: collapse the line with an overlay
+`display` of `""` and let stock `reveal-mode` open the fence point is on for
+editing. Only `display` + a `reveal-toggle-invisible` function is both fully
+collapsing and revealable — a plain `invisible` overlay is invisible to
+`reveal-mode`, and ellipsis-`invisible` renders a literal `…` on the row.
+
+---
+
+## Grammar — file against `tree-sitter-markdown`, lower priority
+
+### 8. `indented_code_block` absorbs trailing blank lines
+
+*Verified live. No existing issue; belongs on lab #5.*
+
+The node range swallows the blank lines that follow the block:
+
+```
+indented_code_block range 27..61 = "    indented code\n    more code\n\n\n"
+```
+
+CommonMark is explicit that blank lines *following* an indented code block are
+not part of it, so the grammar deviates from the spec and the mode faithfully
+faces the range it is handed — the code-block background leaks onto the empty
+lines below. Reproducer: example 2 in `docs/markdown-ts-mode-background.el`.
+
+Lower priority because it is not directly fixable in the mode. Add it to
+[lab #5, the grammar issue tracker](https://github.com/LionyxML/markdown-ts-mode-lab/issues/5).
+
+A mitigation is available in the mode meanwhile, and is worth mentioning so
+"the grammar's fault" is not read as "nothing can be done": replace the plain
+`@markdown-ts-indented-code-block` face capture with a fontifier that clamps
+the face to the last non-blank line.
+
+---
+
+## Not candidates
+
+- **Revealing non-Markdown link targets in `dired`** — local policy, not a
+  defect. Upstream's `find-file`-for-everything is a defensible default.
+- **Wiki links and `![[embeds]]`** — Obsidian flavour, outside upstream's
+  CommonMark + GFM scope. Kept in `markdown-obsidian.el`.
+- **`markdown-ts-table-fill-cells`** — a missing feature, not a defect, so not
+  a bug report. But
+  [#41 "Pipe table wrap/unwrap cell text"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/41)
+  is an open request for exactly this, including the unwrap direction this
+  implementation does not have. Offering the implementation there is the
+  natural move.
+- **`my/md-recreate-inline-parser-at-point`** — the maintainer's debug helper
+  implies a stale-inline-parser bug, but bug#81019 and bug#81195 have landed
+  since. Needs a fresh reproducer before filing anything.
+- **Background bugs already reported** — the two items in
+  `docs/markdown-ts-mode-background.el` were sent to the maintainers on
+  2026-06-14 with no reply. Both still reproduce, and they are items 5 and 8
+  above; filing them properly (Emacs for 5, the grammar tracker for 8) is the
+  way to unstick them. Item 5's original framing is probably why it drew no
+  reply: `markdown-ts-html-block` carries no background by default and no
+  built-in theme gives it one, so the artifact only *shows* once you set one.
+  The mismatched extents underneath are real regardless, and that is what the
+  report should lead with.
+
+## Related open issues worth tracking
+
+Not ours to file, but they bear on local configuration:
+
+- [#39 "Refine URIs as buttons behavior"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/39)
+  — `button-map` takes `RET` ahead of `markdown-ts-mode-map`, which is annoying
+  when editing a URL. Proposes a user option to gate `push-button` on
+  `markdown-ts-hide-markup`. `markdown-config--link-keymap` deliberately
+  mirrors the button gestures (`RET`, `mouse-1`, `mouse-2`) for the links that
+  never become buttons, so it should follow whatever upstream settles on.
+- [#42 "Prettify pipe tables when hiding markup"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/42)
+  — overlay-based table prettification; overlaps the width-preservation
+  question in item 4.
