@@ -3,10 +3,33 @@
 ;;; Commentary:
 ;;
 ;; `markdown-ts-mode' (tree-sitter backed, bundled with Emacs 31) is the
-;; only Markdown major mode configured here.  Out of the box it lacks
-;; wiki-link parsing, link-following, and full markup-hiding plumbing for
-;; standard inline links; this file adds all of that.  See
+;; only Markdown major mode configured here.  See
 ;; `docs/modules/markdown-config.md' for the design and invariants.
+;;
+;; What this file adds, and why each piece is still needed — upstream has
+;; grown a lot, so anything it now handles has been removed from here:
+;;
+;; - Local-file link policy.  `markdown-ts--make-link-button' opens every
+;;   schemeless destination with `find-file', so clicking an image link lands
+;;   a JPEG in `image-mode'.  Rerouted so markdown opens in a buffer and
+;;   anything else lands in `dired' with point on the file.
+;; - Bracketed and percent-encoded image paths.  `markdown-ts--fontify-image'
+;;   resolves the raw node text with a bare `expand-file-name', so
+;;   `![a](<path with spaces>)' and `%20'-encoded paths silently never render.
+;; - Inline links inside table cells.  The grammar's range rule embeds
+;;   `markdown-inline' in `(inline)' nodes only, and a `pipe_table_cell' is
+;;   not one, so no `inline_link' node ever exists there and the mode's own
+;;   inline-link rules never fire in a table.
+;; - Collapsing code-fence lines while editing.  Upstream hides whole fence
+;;   lines in `markdown-ts-view-mode' only; in an editable buffer it marks
+;;   just the delimiter text invisible, leaving a stray blank row per fence.
+;; - `markdown-ts-table-fill-cells', which upstream has no equivalent of.
+;; - SVG math preview, via the shared `latex-to-svg' front-end.
+;;
+;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
+;; `![[embeds]]' are not, and live entirely in `markdown-obsidian.el',
+;; loaded from the bottom of this file only when
+;; `markdown-config-enable-obsidian' is non-nil.
 ;;
 ;; Note: classic `markdown-mode' is not configured or used here at all —
 ;; no `:mode' entry, no hooks, no custom variables, and no preview package
@@ -21,12 +44,11 @@
 ;;; -- Link helpers -----------------------------------------------------------
 
 (defun markdown-config--follow-local-link (url)
-  "Resolve URL as a local path symmetrically with wiki-link following.
+  "Resolve URL as a local path and open it according to its type.
 Called by `markdown-config-follow-link-at-point' for `[label](path)'
-inline-link destinations.  Returns non-nil when handled.  Full URLs
-(with a scheme such as http://) return nil so the caller can fall
-back to `browse-url'.  Local paths follow the same rules as wiki
-links:
+inline-link destinations, and by the rerouted link buttons.  Returns
+non-nil when handled.  Full URLs (with a scheme such as http://) return
+nil so the caller can fall back to `browse-url'.  Local paths:
 - Markdown files (.md, .markdown): open with `find-file'.
 - Other files: open `dired' with the target highlighted.
 - Non-existent files: signal an error with the resolved path."
@@ -46,83 +68,6 @@ links:
                   (dired (file-name-directory full-path))
                   (dired-goto-file full-path))))
             t))))))
-
-(defun markdown-config--obsidian-vault-root (dir)
-  "Return the Obsidian vault root at or above DIR, or nil if none.
-The vault root is the nearest ancestor directory containing a
-`.obsidian' subdirectory; nil is returned when no such ancestor
-exists (DIR is not inside an Obsidian vault)."
-  (when-let* ((root (locate-dominating-file
-                     dir
-                     (lambda (d)
-                       (file-directory-p (expand-file-name ".obsidian" d))))))
-    (file-name-as-directory (expand-file-name root))))
-
-(defun markdown-config--follow-wiki-link (name &optional other)
-  "Custom wiki-link follower for Obsidian-style notes.
-Resolves NAME to a file and opens it.  Spaces are kept verbatim, and
-\".md\" is appended only when NAME has no file extension.
-
-NAME is resolved against a base directory chosen by its shape:
-- NAME containing a `/' is a vault-relative path: it resolves from the Obsidian
-  vault root, i.e. the nearest ancestor directory of the current file that
-  contains a `.obsidian' subdirectory.  When the current file lives outside any
-  Obsidian vault (no such ancestor), it resolves from the current file's
-  directory instead.
-- A bare NAME (no `/') always resolves from the current file's directory.
-
-Once resolved to FULL-PATH:
-- Markdown targets (.md, .markdown): open with `find-file'.
-- Other file types: open `dired' with the target highlighted.
-- Non-existent targets: signal an error showing FULL-PATH.
-- Never creates empty files."
-  (unless buffer-file-name
-    (user-error "Must be visiting a file"))
-  (let* ((wp (file-name-directory buffer-file-name))
-         (filename (if (file-name-extension name)
-                       name
-                     (concat name ".md")))
-         ;; Obsidian paths with a slash are vault-relative; bare names resolve
-         ;; against the current file's directory.  Fall back to the current
-         ;; directory when no vault root is found.
-         (base (or (and (string-search "/" filename)
-                        (markdown-config--obsidian-vault-root wp))
-                   wp))
-         (full-path (expand-file-name filename base)))
-    (if (not (file-exists-p full-path))
-        (user-error "Wiki link target not found: %s" full-path)
-      (let ((ext (downcase (or (file-name-extension full-path) ""))))
-        (if (member ext '("md" "markdown"))
-            (if other
-                (find-file-other-window full-path)
-              (find-file full-path))
-          ;; Non-markdown file: open its containing directory in dired
-          ;; and move point to the file so the user can act on it.
-          (let ((dir (file-name-directory full-path)))
-            (if other
-                (dired-other-window dir)
-              (dired dir))
-            (dired-goto-file full-path)))))))
-
-(defun markdown-config--resolve-wiki-path (name)
-  "Resolve a wiki/embed NAME to an absolute path; nil with no visiting file.
-Uses the same base-directory rule as `markdown-config--follow-wiki-link' (a
-NAME containing `/' is vault-relative — the Obsidian vault root, else the
-current file's directory; a bare NAME is relative to the current file's
-directory) but appends no `.md': an embed names its target as written, image
-extension included."
-  (when buffer-file-name
-    (let* ((wp (file-name-directory buffer-file-name))
-           (base (or (and (string-search "/" name)
-                          (markdown-config--obsidian-vault-root wp))
-                     wp)))
-      (expand-file-name name base))))
-
-(defconst markdown-config--wiki-link-regexp
-  "\\[\\[\\([^]|\n]+?\\)\\(?:|[^]\n]*?\\)?\\]\\]"
-  "Match `[[name]]' or `[[name|label]]'; group 1 is the resolvable name.
-The tree-sitter-markdown grammar does not expose wiki links as a node
-type, so detection is text-level even under `markdown-ts-mode'.")
 
 (defconst markdown-config--inline-link-regexp
   "\\[\\([^]\n]+\\)\\](\\(<[^>\n]*>\\|[^)\n]+\\))"
@@ -183,14 +128,27 @@ hint, `treesit-node-at' returns a node from the host tree where
               (text (treesit-node-text dest t)))
     (markdown-config--strip-pointy-brackets text)))
 
+(defvar markdown-config-follow-link-functions nil
+  "Abnormal hook of non-CommonMark link syntaxes to try first.
+Each function is called with no arguments and returns non-nil once it has
+followed a link at point, nil to let the next one try.  The extension
+point exists so an optional module can add a link syntax of its own
+without this file knowing what that syntax is.")
+
 (defun markdown-config-follow-link-at-point ()
-  "Follow the wiki link, inline link, or URL at point.
-Bound on `markdown-ts-mode-map' and on `markdown-config--link-keymap'
-(used by both wiki-link and inline-link mouse text properties)."
+  "Follow the inline link or URL at point.
+Bound on `markdown-config--link-keymap', which is attached as a `keymap'
+text property to the CommonMark links that never become upstream buttons
+— inline links inside table cells.  Everything the mode itself renders
+\(inline links in paragraphs, autolinks, bare URLs) is already a real
+text button whose own `button-map' follows it on RET and mouse-1, so it
+never reaches this command.
+
+Syntaxes registered on `markdown-config-follow-link-functions' are tried
+first; the rest is CommonMark."
   (interactive)
   (cond
-   ((thing-at-point-looking-at markdown-config--wiki-link-regexp)
-    (markdown-config--follow-wiki-link (match-string-no-properties 1)))
+   ((run-hook-with-args-until-success 'markdown-config-follow-link-functions))
    ((when-let* ((dest (markdown-config--inline-link-destination-at-point)))
       (or (markdown-config--follow-local-link dest)
           (browse-url dest))))
@@ -275,216 +233,28 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
   (advice-add 'markdown-ts--make-link-button :around
               #'markdown-config--reroute-link-button))
 
-;;; -- markdown-ts-mode link rendering -----------------------------------------
-;;
-;; Two gaps in the bundled `markdown-ts-mode' to close:
-;;
-;;   1. Wiki links `[[name]]' / `[[name|alias]]' aren't a grammar node type,
-;;      so neither face nor markup hiding nor click-to-follow apply.  We add
-;;      all three with a single font-lock keyword layered on top of the
-;;      treesit-driven rules (one bounded single-line regex per window —
-;;      negligible).
-;;
-;;   2. Inline links `[label](url)' ARE in the grammar (the bundled mode
-;;      applies `link' face to the label), but it does NOT hide the
-;;      brackets/parens/URL when `markdown-ts-hide-markup' is on — only
-;;      headings, code spans, and a few other constructs are — and it does
-;;      NOT make the label clickable.  We extend `treesit-font-lock-settings'
-;;      with one rule whose queries run the bundled
-;;      `markdown-ts--fontify-delimiter' over `[' `]' `(' `)' /
-;;      `link_destination' / `link_title' (giving us face + invisibility
-;;      against the `markdown-ts--markup' spec) and our own fontifier over
-;;      `link_text' (giving us mouse-1 / mouse-2 click-to-follow via the
-;;      shared link keymap).  Both wiki links and inline links route their
-;;      clicks through `markdown-config-follow-link-at-point' — same
-;;      dispatcher, same destination resolution.
-
-(defface markdown-config-wiki-link-face
-  '((t :inherit link))
-  "Face for Obsidian-style wiki links in `markdown-ts-mode'."
-  :group 'markdown-ts)
+;;; -- click-to-follow keymap --------------------------------------------------
 
 (defvar markdown-config--link-keymap
   (let ((map (make-sparse-keymap)))
-    ;; mouse-2 follows; mouse-1 also follows because `[follow-link]' is
-    ;; bound to `mouse-face' (the standard Emacs convention activated by
-    ;; `mouse-1-click-follows-link').
+    ;; The same three gestures `button-map' gives the links the mode renders
+    ;; as real text buttons: RET and mouse-2 follow, and mouse-1 follows too
+    ;; because `[follow-link]' is bound to `mouse-face' (the standard Emacs
+    ;; convention activated by `mouse-1-click-follows-link').
+    (define-key map (kbd "RET")   #'markdown-config-follow-link-at-point)
     (define-key map [mouse-2]     #'markdown-config-follow-link-at-point)
     (define-key map [follow-link] 'mouse-face)
     map)
   "Keymap installed via the `keymap' text property on link labels.
-Shared between wiki-link labels (`[[…]]', via the regex font-lock
-keyword) and inline-link labels (`[label](url)', via the treesit
-fontifier).  The keymap is parser-agnostic — the bound command,
-`markdown-config-follow-link-at-point', dispatches based on what's
-actually at point.")
+Covers the links that never become upstream buttons: inline links inside
+table cells, plus whatever an optional link-syntax module attaches it to.
+Nothing here duplicates the mode's own buttons, which carry `button-map'
+already — which is also why no separate follow-link chord is needed on
+`markdown-ts-mode-map': RET works on both kinds.
 
-(defcustom markdown-config-inline-embed-images t
-  "When non-nil, render Obsidian-style `![[file]]' embeds as inline images.
-The image is shown in place of the markup and the embed's alias (if any) is
-surfaced on hover (`help-echo'), not as buffer text.  When nil, an embed is
-left as its literal `![[file|alias]]' markup -- still faced, clickable, and
-with the target on hover, but neither rendered as an image nor markup-hidden --
-so the vanilla, un-rendered behavior can be inspected and compared.
-
-Image rendering also requires `markdown-ts-inline-images' (the bundled image
-toggle, flipped by `markdown-ts-toggle-inline-images') to be on."
-  :type 'boolean
-  :group 'markdown-ts)
-
-(defun markdown-config--render-wiki-embed-image (embed-beg end target caption)
-  "Render an inline image for an `![[TARGET]]' embed spanning EMBED-BEG..END.
-EMBED-BEG is the position of the leading `!'.  CAPTION is the embed's explicit
-alias (the `|alias' part) or nil for a bare `![[file]]'; when non-blank it is
-surfaced as the image's `help-echo' so hovering or pointing at the image shows
-it.  A bare embed with no alias gets no hover label.
-
-Any prior embed-image overlay in range is cleared first so a refontify does
-not stack duplicates; then, when `markdown-ts-inline-images' is on (the flag
-`markdown-ts-toggle-inline-images' flips) and TARGET resolves to a displayable
-local image, the image is shown via a `display' overlay on the embed's first
-character, and the remainder of the `![[...]]' markup is hidden with a second
-`invisible' overlay — so only the image shows, in place of the markup, on the
-embed's own line.
-
-Two overlays rather than one wide `display' overlay, for smooth scrolling.
-The image is a `display' overlay rather than an `after-string': an
-after-string has no buffer position, and prefixing it with a newline (the
-\"image on its own line\" idiom that `markdown-ts--fontify-image' uses) puts
-the image on a phantom display line that `pixel-scroll-precision-mode' cannot
-anchor `window-start' to, so scrolling jumps by a whole image height (Emacs
-bug#64252).  But a `display' overlay spanning the *whole* markup is nearly as
-bad: these embed paths are ~180 chars, and a wide display span lets
-`window-start' park deep inside the image region, reviving the same one-image
-jump on scroll-up.  Confining the image to a single buffer position (with the
-rest hidden) leaves `window-start' nowhere to park, so scrolling stays smooth.
-This is also why the label is not rendered as a separate caption line — it
-would need a phantom line too; the caption is shown on hover instead.
-
-Both overlays are tagged `markdown-ts-image' so the toggle's
-`markdown-ts--remove-image-overlays' clears embed images together with the
-grammar-node ones, and the image overlay carries the shared link keymap so
-clicking the image follows the embed exactly like clicking its label."
-  (dolist (ov (overlays-in embed-beg (min (1+ end) (point-max))))
-    (when (overlay-get ov 'markdown-config-wiki-embed-image)
-      (delete-overlay ov)))
-  (when (and markdown-config-inline-embed-images
-             markdown-ts-inline-images (display-images-p))
-    (when-let* ((path (markdown-config--resolve-wiki-path target))
-                ((not (file-remote-p path)))
-                ((file-exists-p path))
-                ((image-supported-file-p path))
-                (max-w (if (eq markdown-ts-image-max-width 'window)
-                           (window-body-width nil t)
-                         markdown-ts-image-max-width))
-                (img (create-image path nil nil :max-width max-w :scale 1)))
-      ;; Put the image on a SINGLE buffer position and hide the rest of the
-      ;; markup, rather than spreading `display' over the whole `![[...]]' span.
-      ;; A wide display overlay lets `window-start' park deep inside the image
-      ;; region, which reintroduces the bug#64252 one-image scroll-up jump (the
-      ;; embed paths here are ~180 chars).  A one-char image plus an invisible
-      ;; tail keeps the same "image in place of the markup" look while leaving
-      ;; `window-start' nowhere to park, so scrolling stays smooth.
-      (let ((img-ov (make-overlay embed-beg (1+ embed-beg) nil t nil)))
-        (overlay-put img-ov 'markdown-config-wiki-embed-image t)
-        (overlay-put img-ov 'markdown-ts-image t)
-        (overlay-put img-ov 'display img)
-        (overlay-put img-ov 'keymap markdown-config--link-keymap)
-        (overlay-put img-ov 'mouse-face 'highlight)
-        (when (and caption (string-match-p "[^[:space:]]" caption))
-          (overlay-put img-ov 'help-echo caption))
-        (overlay-put img-ov 'evaporate t)
-        (when (> end (1+ embed-beg))
-          (let ((hide-ov (make-overlay (1+ embed-beg) end nil t nil)))
-            (overlay-put hide-ov 'markdown-config-wiki-embed-image t)
-            (overlay-put hide-ov 'markdown-ts-image t)
-            (overlay-put hide-ov 'invisible t)
-            (overlay-put hide-ov 'evaporate t)))))))
-
-(defun markdown-config--wiki-link-fontify (limit)
-  "Font-lock MATCHER for `[[name]]', `[[name|alias]]' and `![[name|alias]]'.
-Restricts match data to the visible label so the keyword's face applies
-to that region only.  Adds clickability (`keymap', `mouse-face',
-`help-echo') to the WHOLE link span — brackets and the embed `!'
-included — so the link is followable by click regardless of whether
-`markdown-ts-hide-markup' is on (with markup shown the brackets are
-visible and must be clickable too; with markup hidden the hidden
-brackets simply carry harmless, undisplayed properties).  When
-`markdown-ts-hide-markup' is on, also
-sets `invisible' on the surrounding markup using the bundled
-`markdown-ts--markup' spec — `markdown-ts-toggle-hide-markup' calls
-`font-lock-flush' which re-runs this matcher with the new value.
-
-A leading `!' marks an Obsidian embed: the `!' joins the hidden markup,
-and when `markdown-ts-inline-images' is on the target image is rendered
-in place of the markup via `markdown-config--render-wiki-embed-image'."
-  (when (re-search-forward "\\[\\[\\([^]\n]+\\)\\]\\]" limit t)
-    (let* ((beg       (match-beginning 0))
-           (end       (match-end 0))
-           (inner-beg (match-beginning 1))
-           (inner-end (match-end 1))
-           (inner     (match-string-no-properties 1))
-           (pipe      (string-match-p "|" inner))
-           (label-beg (if pipe (+ inner-beg pipe 1) inner-beg))
-           (label-end inner-end)
-           (target    (if pipe (substring inner 0 pipe) inner))
-           (embedp    (and (> beg (point-min)) (eq (char-before beg) ?!)))
-           (markup-beg (if embedp (1- beg) beg)))
-      ;; Clickability covers the entire link span (markup-beg..end), not just
-      ;; the label, so a click anywhere on `[[name]]' / `![[name]]' follows it
-      ;; whether or not `markdown-ts-hide-markup' has hidden the brackets.
-      (add-text-properties markup-beg end
-                           (list 'mouse-face 'highlight
-                                 'keymap markdown-config--link-keymap
-                                 'help-echo (concat (if embedp "Embed → " "Wiki link → ")
-                                                    target)))
-      ;; Hide the surrounding markup when `markdown-ts-hide-markup' is on.  An
-      ;; embed only hides its markup when it is actually rendered as an image
-      ;; (`markdown-config-inline-embed-images'); otherwise its literal
-      ;; `![[...]]' markup is left visible for inspection.
-      (when (and markdown-ts-hide-markup
-                 (or (not embedp) markdown-config-inline-embed-images))
-        (put-text-property markup-beg label-beg 'invisible 'markdown-ts--markup)
-        (put-text-property label-end end       'invisible 'markdown-ts--markup))
-      ;; Always call the renderer for embeds: it clears any prior embed-image
-      ;; overlays (so toggling the option off removes a previously shown image)
-      ;; and only draws a new one when `markdown-config-inline-embed-images' is on.
-      (when embedp
-        (markdown-config--render-wiki-embed-image
-         markup-beg end target
-         ;; Only an explicit alias (the `|alias' part) is a real caption;
-         ;; a bare `![[file]]' has no caption, so pass nil (no hover label).
-         (and pipe (buffer-substring-no-properties label-beg label-end))))
-      (set-match-data (list label-beg label-end))
-      t)))
-
-(defun markdown-config--inline-link-text-fontify (node _override _start _end &rest _)
-  "Treesit fontifier: add clickability to a `link_text' NODE.
-
-Attaches `mouse-face', `keymap' (the shared `markdown-config--link-keymap'),
-and a `help-echo' that previews the link's destination.  The bundled
-mode already applies the `link' face to this region; we only add the
-text properties.  All other arguments are part of the treesit
-fontifier signature and unused.
-
-The destination is read from the parent `inline_link' node's
-`link_destination' child — angle brackets are stripped for display
-so the help-echo shows a plain path even for the pointy-bracket
-form."
-  (let* ((node-beg (treesit-node-start node))
-         (node-end (treesit-node-end   node))
-         (parent   (treesit-node-parent node))
-         (dest     (and parent
-                        (string= (treesit-node-type parent) "inline_link")
-                        (markdown-config--inline-link-destination-node parent)))
-         (target   (and dest
-                        (markdown-config--strip-pointy-brackets
-                         (treesit-node-text dest t)))))
-    (add-text-properties
-     node-beg node-end
-     (list 'mouse-face 'highlight
-           'keymap     markdown-config--link-keymap
-           'help-echo  (if target (concat "Link → " target) "Link")))))
+The keymap is parser-agnostic — the bound command,
+`markdown-config-follow-link-at-point', dispatches on what is actually
+at point.")
 
 (defun markdown-config--in-table-cell-p (pos)
   "Return non-nil when POS lies inside a `pipe_table'.
@@ -531,52 +301,18 @@ table stays aligned."
     matched))
 
 (defun markdown-config--markdown-ts-mode-setup ()
-  "Wire wiki-link rendering and inline-link extras.
-
-Adds two layers on top of the bundled `markdown-ts-mode' rules — see
-the section commentary above for what each layer does and why each
-is needed."
-  ;; --- Wiki-link font-lock keyword (regex-based) ---------------------------
+  "Render table-cell inline links and enable fence collapse in this buffer."
+  ;; --- Inline links inside table cells (regex-based) -----------------------
+  ;; The treesit path cannot reach them (no `inline_link' node inside a
+  ;; `pipe_table_cell'), so they go through a font-lock keyword instead.
   (setq-local font-lock-extra-managed-props
               (append font-lock-extra-managed-props
-                      '(invisible display mouse-face keymap help-echo)))
+                      '(display mouse-face keymap help-echo)))
   (font-lock-add-keywords
    nil
-   '((markdown-config--wiki-link-fontify
-      (0 'markdown-config-wiki-link-face prepend))
-     ;; Inline links `[label](url)' inside table cells: the treesit path
-     ;; cannot reach them (no `inline_link' node in a `pipe_table_cell'),
-     ;; so render them via the same parser-agnostic keyword mechanism.
-     (markdown-config--table-inline-link-fontify
+   '((markdown-config--table-inline-link-fontify
       (0 'link prepend)))
    'append)
-  ;; --- Inline-link extras: hiding + click-to-follow (treesit-based) -------
-  ;; Reuse the bundled `markdown-ts--fontify-delimiter' on the brackets,
-  ;; parens, `link_destination' and `link_title' so face + invisibility
-  ;; behave like the rest of the mode's hidden markup.  Add our own
-  ;; fontifier on `link_text' to attach `mouse-face' / `keymap' /
-  ;; `help-echo' so the label is clickable via the shared link keymap.
-  ;; The feature symbol is registered in level 3 so it activates at the
-  ;; default `treesit-font-lock-level' of 3.
-  (setq-local treesit-font-lock-settings
-              (append treesit-font-lock-settings
-                      (treesit-font-lock-rules
-                       :language 'markdown-inline
-                       :feature 'markdown-config-inline-link-extras
-                       :override 'append
-                       '((inline_link [ "[" "]" "(" ")" ]
-                                      @markdown-ts--fontify-delimiter)
-                         (inline_link (link_destination)
-                                      @markdown-ts--fontify-delimiter)
-                         (inline_link (link_title)
-                                      @markdown-ts--fontify-delimiter)
-                         (inline_link (link_text)
-                                      @markdown-config--inline-link-text-fontify)))))
-  (setq-local treesit-font-lock-feature-list
-              (treesit-merge-font-lock-feature-list
-               treesit-font-lock-feature-list
-               '(() () (markdown-config-inline-link-extras))))
-  (treesit-font-lock-recompute-features)
   ;; --- Code-fence collapse + reveal-on-edit -------------------------------
   ;; `markdown-config--collapse-fence-line' (advice) hides each fence line with
   ;; a `display' overlay; `reveal-mode' opens the one point is on for editing;
@@ -608,36 +344,7 @@ is needed."
          ("\\.markdown\\'" . markdown-ts-mode))
   :custom
   (markdown-ts-hide-markup t)
-  :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup)
-  ;; Keep M-<left>/M-<right> as word navigation everywhere (Emacs default
-  ;; `left-word'/`right-word') and route structural left/right onto
-  ;; `C-c C-x <left>'/`<right>' instead.  The chord is symmetric and
-  ;; context-sensitive: outside a table it promotes/demotes the heading;
-  ;; inside a table the higher-priority `markdown-ts-in-table-mode-map'
-  ;; takes over and moves the current column.
-  ;; :bind (:map markdown-ts-mode-map
-  ;;             ("C-c C-o"      . markdown-config-follow-link-at-point) ; Follow link at point
-  ;;             ("C-c C-x RET"  . markdown-ts-toggle-hide-markup)
-  ;;             ("M-<left>"     . nil)    ; Free M-<left>/M-<right> for word navigation
-  ;;             ("M-<right>"    . nil)
-  ;;             ("C-c C-x <left>"  . markdown-ts-promote)
-  ;;             ("C-c C-x <right>" . markdown-ts-demote)
-
-  ;;             ;; Fill table cells to a max width, then realign the table.
-  ;;             ("C-c C-x t"       . (lambda ()
-  ;;                                    (interactive)
-  ;;                                    (call-interactively #'markdown-ts-table-fill-cells)
-  ;;                                    (call-interactively #'markdown-ts-table-align-table)))
-
-  ;;             ;; Inside a table this minor-mode map shadows the major-mode map
-  ;;             ;; above.  Restore word navigation on M-<left>/M-<right> and put
-  ;;             ;; the column-move commands on the symmetric C-c C-x arrows.
-  ;;             :map markdown-ts-in-table-mode-map
-  ;;             ("M-<left>"        . left-word)
-  ;;             ("M-<right>"       . right-word)
-  ;;             ("C-c C-x <left>"  . markdown-ts-table-move-column-left)
-  ;;             ("C-c C-x <right>" . markdown-ts-table-move-column-right))
-  )
+  :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup))
 
 ;; Collapse code-fence lines (```lang opener, closing ```) when markup is
 ;; hidden, and let stock `reveal-mode' un-collapse the one point is on so it
@@ -946,6 +653,29 @@ before the adaptor turns on the shared core."
   ;; Render math in every Markdown buffer (sets rescales, then enables).
   :init
   (add-hook 'markdown-ts-mode-hook #'markdown-config--latex-to-svg-setup))
+
+;;; -- Obsidian wiki links and embeds (optional) ------------------------------
+
+(defcustom markdown-config-enable-obsidian nil
+  "When non-nil, load `markdown-obsidian.el' for Obsidian link syntaxes.
+That module renders and follows `[[wiki links]]' and renders `![[embeds]]'
+as inline images, resolving slash-bearing names against the `.obsidian'
+vault root.  None of it is CommonMark, and none of it is needed for
+Markdown files that are not part of an Obsidian vault.
+
+Read at load time only: set it in `custom.el' or before this module is
+loaded.  Toggling it in a running Emacs has no effect, since the module
+installs a `markdown-ts-mode-hook' and a follow-link handler on load."
+  :type 'boolean
+  :group 'markdown-ts)
+
+;; Loaded last, so every name it borrows from this file
+;; (`markdown-config--link-keymap', `markdown-config-follow-link-functions')
+;; is already defined and it needs no `require' back into here.
+(when markdown-config-enable-obsidian
+  (emacs-config-load-module
+   'markdown-obsidian
+   "Could not load markdown-obsidian.el; Obsidian wiki links are disabled."))
 
 (provide 'markdown-config)
 ;;; markdown-config.el ends here

@@ -1,10 +1,33 @@
 # markdown-config.el
 
 Markdown reading and authoring. Configures `markdown-ts-mode`
-(tree-sitter backed, bundled with Emacs 31) and adds wiki-link
-support, link-following, and markup hiding for inline links — including
-inline links inside table cells, which the grammar leaves unparsed — on
-top of the bundled rules.
+(tree-sitter backed, bundled with Emacs 31) and adds the handful of
+things the bundled mode still does not do, all of them CommonMark:
+
+- **Local-file link policy.** `markdown-ts--make-link-button` opens every
+  schemeless destination with `find-file`, so clicking an image link
+  lands a JPEG in `image-mode`. Rerouted so Markdown opens in a buffer
+  and anything else lands in `dired` with point on the file.
+- **Bracketed and percent-encoded image paths.**
+  `markdown-ts--fontify-image` resolves the raw node text with a bare
+  `expand-file-name`, so `![a](<path with spaces>)` and `%20`-encoded
+  paths silently never render.
+- **Inline links inside table cells**, which the grammar leaves out of
+  the `markdown-inline` parser entirely.
+- **Collapsing code-fence lines while editing** — upstream hides whole
+  fence lines in `markdown-ts-view-mode` only.
+- **`markdown-ts-table-fill-cells`**, which has no upstream equivalent.
+- **SVG math preview**, via the shared `latex-to-svg` front-end.
+
+Anything upstream has since grown its own version of is **not** here:
+inline-link markup hiding and click-to-follow are the mode's own job now
+(`markdown-ts--fontify-link-node` makes real text buttons,
+`markdown-ts--fontify-link-destination` hides the URL).
+
+Obsidian's `[[wiki links]]` and `![[embeds]]` are not CommonMark and are
+not here either — they live in `markdown-obsidian.el`, loaded from the
+bottom of this file when `markdown-config-enable-obsidian` is non-nil.
+See `docs/modules/markdown-obsidian.md`.
 
 External packages: none. `markdown-ts-mode` is built-in and used as-is
 (no vendored copy). No `markdown-mode` configuration block exists in this
@@ -46,25 +69,26 @@ mapping (README.md is handled the same as any other `.md`).
 
 ## Link helpers
 
-- `markdown-config--follow-wiki-link` — resolves an Obsidian-style name
-  relative to the current buffer; `.md`/`.markdown` open via
-  `find-file`, other files open `dired` with point on the target,
-  missing paths signal `user-error`. **Never creates empty files.**
-- `markdown-config--follow-local-link` — same rules for `[label](path)`
-  destinations. Returns `t` when handled (local) and `nil` for full URLs
-  so the caller can fall back to `browse-url`.
-- `markdown-config--inline-link-destination-at-point` — walks up to
-  the `inline_link` ancestor of the node at point, reads the
-  `link_destination` child's text, and **strips a leading `<` and
-  trailing `>`** from CommonMark's pointy-bracket form
-  (`[label](<url with spaces>)`). Returns nil when not on a link.
-- `markdown-config-follow-link-at-point` — dispatcher bound on
-  `markdown-ts-mode-map` and on `markdown-config--link-keymap`
-  (used by both wiki-link and inline-link mouse text properties).
-  Cond order:
-  1. `[[wiki]]` / `[[wiki|label]]` via `thing-at-point-looking-at` and
-     `markdown-config--wiki-link-regexp` (the grammar does **not**
-     expose wiki links — see invariant below).
+- `markdown-config--follow-local-link` — resolves a `[label](path)`
+  destination as a local path and opens it by type: `.md`/`.markdown` via
+  `find-file`, other files via `dired` with point on the target, missing
+  paths as `user-error`. Returns `t` when handled (local) and `nil` for
+  full URLs so the caller can fall back to `browse-url`. **Never creates
+  empty files.** Used both by the dispatcher and by the rerouted link
+  buttons, so a click and a keystroke land in the same place.
+- `markdown-config--normalize-link-path` — strips a `<…>` wrapper and
+  percent-decodes, but only when the path actually contains a `%XX`
+  escape, so a plain path is returned unchanged and a literal `%` in a
+  filename is left alone.
+- `markdown-config--inline-link-destination-at-point` — walks up to the
+  `inline_link` ancestor of the node at point, reads the
+  `link_destination` child's text, and strips a matched `<…>` pair.
+  Returns nil when not on a link.
+- `markdown-config-follow-link-at-point` — the dispatcher on
+  `markdown-config--link-keymap`. Cond order:
+  1. `markdown-config-follow-link-functions` via
+     `run-hook-with-args-until-success` — the extension point where an
+     optional module registers a non-CommonMark syntax of its own.
   2. `[label](path)` via the treesit helper above (paragraphs).
   3. `[label](path)` via `thing-at-point-looking-at` and
      `markdown-config--inline-link-regexp` — a regex fallback for
@@ -76,108 +100,78 @@ mapping (README.md is handled the same as any other `.md`).
 
 ## Keybindings
 
-| Key         | Command                                  |
-| ----------- | ---------------------------------------- |
-| `C-c C-o`   | `markdown-config-follow-link-at-point`   |
-| `mouse-1` / `mouse-2` on a wiki link or inline link | `markdown-config-follow-link-at-point` |
+None are added to `markdown-ts-mode-map`. Following a link is the
+bundled mode's own gesture: `markdown-ts--fontify-link-node` makes every
+inline link, reference link, autolink and bare URL a real text button,
+and `button-map` binds `RET` and `mouse-2` to `push-button` with
+`mouse-1` following via `mouse-1-click-follows-link`.
+
+`markdown-config--link-keymap` gives the *same three gestures* to the
+links that never become buttons — table-cell links here, plus whatever an
+optional link-syntax module attaches it to:
+
+| Key | Command |
+| --- | ------- |
+| `RET`, `mouse-1`, `mouse-2` on such a link | `markdown-config-follow-link-at-point` |
+
+Reaching for a separate chord (`C-c C-o` and the like) would be a second
+way to do what `RET` already does, so there isn't one.
+
+## Bundled link and image fixes
+
+Two `:around` advices, sharing `markdown-config--normalize-link-path`:
+
+- **`markdown-ts--fontify-image`** resolves an image's
+  `link_destination` with a bare `expand-file-name` on the raw node text,
+  so `![a](<path with spaces>)` keeps its literal `<>` and a `%20`-encoded
+  path keeps its escapes — both then fail the `file-exists-p` guard and
+  the image silently never renders. The advice normalizes the
+  destination by rebinding the one `treesit-node-text` call the fontifier
+  makes, guarded to `link_destination` nodes, for the dynamic extent of
+  the original.
+
+  > **Why hook `treesit-node-text` and not `expand-file-name`.**
+  > `expand-file-name` is a C primitive, and redefining it forces
+  > native-comp trampoline rebuilds on every fontify pass.
+  > `treesit-node-text` is a native-compiled Lisp function
+  > (`subr-native-elisp-p`), so rebinding it needs no trampoline.
+
+- **`markdown-ts--make-link-button`** gives every schemeless destination
+  a stock `find-file` action, so clicking an image or link button opens
+  the target in a buffer (a JPEG in `image-mode`) whatever its type. The
+  advice builds the stock button, then reroutes schemeless (local-file)
+  buttons through `markdown-config--follow-local-link` so they obey the
+  same policy as the dispatcher. URLs, `mailto:` and `#fragment` targets
+  keep the stock action.
 
 ## Link rendering (markdown-ts-mode only)
 
 `markdown-ts-mode-hook` runs
-`markdown-config--markdown-ts-mode-setup`, which closes two gaps in
-the bundled mode.
-
-### Wiki links — font-lock keyword
-
-The grammar does not expose `[[name]]` / `[[name|alias]]`, so neither
-face nor markup hiding nor click apply out of the box. A **single
-font-lock keyword** layered on top of the tree-sitter rules handles
-all three:
-
-1. Splits the inner content on `|` to identify the visible label
-   (alias when present, name otherwise).
-2. Restricts match data to the label range so
-   `markdown-config-wiki-link-face` (inherits from the built-in
-   `link` face) applies to that range only.
-3. Adds `mouse-face`, `keymap`, and `help-echo` text properties over the
-   **whole link span** — the `[[` `]]` brackets and an embed's leading
-   `!` included, not just the label — so `mouse-1` / `mouse-2` follow
-   the link via the existing dispatcher (the keymap binds
-   `[follow-link]` to `mouse-face` so `mouse-1-click-follows-link`
-   activates). Spanning the brackets is what makes a click land
-   regardless of `markdown-ts-hide-markup`: with markup shown the
-   brackets are visible and must be clickable; with markup hidden they
-   carry harmless, undisplayed properties. (The face from step 2 still
-   covers only the label, since it is driven by the match data.)
-4. When `markdown-ts-hide-markup` is non-nil, marks the surrounding
-   markup (`[[name|` prefix and `]]` suffix) `invisible` against the
-   `markdown-ts--markup` invisibility spec — the same spec used by
-   the bundled mode's other hidden markup.
-   `markdown-ts-toggle-hide-markup` calls `font-lock-flush`, which
-   re-runs the matcher with the new value of `markdown-ts-hide-markup`.
-
-### Inline links — treesit rule extension
-
-`[label](url)` IS a grammar node. The bundled mode applies `link`
-face to the label and `font-lock-string-face` to the URL, but two
-things are missing:
-
-1. The brackets, parens, URL, and optional title aren't hidden when
-   `markdown-ts-hide-markup` is on — only headings, code spans,
-   emphasis, and a few other constructs are.
-2. The label has no clickability — no `mouse-face`, no `keymap`,
-   no `help-echo`. `mouse-1` / `mouse-2` do nothing useful.
-
-We close both gaps by appending **one** tree-sitter font-lock rule
-that runs four queries against the `markdown-inline` parser:
-
-- `(inline_link [ "[" "]" "(" ")" ] @markdown-ts--fontify-delimiter)`
-- `(inline_link (link_destination)  @markdown-ts--fontify-delimiter)`
-- `(inline_link (link_title)        @markdown-ts--fontify-delimiter)`
-- `(inline_link (link_text)         @markdown-config--inline-link-text-fontify)`
-
-The first three reuse the bundled `markdown-ts--fontify-delimiter`,
-which applies face AND invisibility against `markdown-ts--markup`
-— so toggle and refontification behave exactly like the rest of
-the mode's hidden markup. With hide-markup on, the brackets, parens,
-URL, and title disappear; the label remains.
-
-The fourth runs `markdown-config--inline-link-text-fontify` over
-the label. That fontifier doesn't apply a face (the bundled rule
-already gives the label `link` face); it only attaches text
-properties: `mouse-face 'highlight`, `keymap
-markdown-config--link-keymap`, and a `help-echo` of the form
-`"Link → <destination>"` with angle brackets stripped.
-`markdown-config--link-keymap` is the **same** keymap used for
-wiki-link labels, so all link clicks across the buffer route
-through the same `markdown-config-follow-link-at-point` dispatcher.
-
-The feature symbol (`markdown-config-inline-link-extras`) is merged
-into `treesit-font-lock-feature-list` at level 3 so it activates at
-the default `treesit-font-lock-level`.
-`treesit-font-lock-recompute-features` is called once after the
-buffer-local settings are extended.
+`markdown-config--markdown-ts-mode-setup`, which adds the table-cell
+keyword and turns on the code-fence collapse machinery. Inline links in
+prose need nothing from it — the bundled rules hide the brackets, parens
+and URL under `markdown-ts-hide-markup` and make the label a button.
 
 ### Inline links inside tables — font-lock keyword
 
-The treesit rule above only fires where the `markdown-inline` parser
-runs. The grammar parses **table-cell** content as raw block-level
-tokens and does **not** route it through `markdown-inline`, so a cell
-like `| [DESCRIPTION](DESCRIPTION) | … |` exposes no `inline_link`
-node — `treesitter-explore` shows `(pipe_table_cell [ . _ . ] ( . _ . ))`,
-where a paragraph shows `(inline … (inline_link …))`. The treesit
-rule therefore renders nothing inside tables.
+The bundled inline-link rules only fire where the `markdown-inline`
+parser runs, and its range rule embeds it in `(inline)` nodes only. The
+grammar parses **table-cell** content as raw block-level tokens instead,
+so a cell like `| [DESCRIPTION](DESCRIPTION) | … |` exposes no
+`inline_link` node — `treesitter-explore` shows
+`(pipe_table_cell [ . _ . ] ( . _ . ))`, where a paragraph shows
+`(inline … (inline_link …))`. Nothing upstream renders inside a table.
 
-`markdown-config--table-inline-link-fontify` closes this gap with the
-same parser-agnostic mechanism as wiki links: a `re-search-forward`
+`markdown-config--table-inline-link-fontify` closes the gap with a
+parser-agnostic mechanism: a `re-search-forward`
 font-lock keyword over `markdown-config--inline-link-regexp`. It scans
 the whole buffer, but **every effect is gated on
 `markdown-config--in-table-cell-p`** (which walks up the `markdown`
 block tree looking for a `pipe_table` ancestor). For each match:
 
 1. The label gets `link` face, `mouse-face`, `keymap`
-   (`markdown-config--link-keymap` — the shared one), and a
-   `help-echo`, so it is clickable via the same dispatcher.
+   (`markdown-config--link-keymap`), and a `help-echo`, so `RET` and a
+   click follow it the way they do on an upstream button.
 2. When `markdown-ts-hide-markup` is non-nil, the surrounding `[` and
    `](url)` are blanked with a **width-preserving** `display`
    `(space :width N)` — **not** `invisible`.
@@ -198,13 +192,11 @@ and only table links reserve width. No per-link configuration.
 
 ### Performance
 
-- Wiki links: one bounded single-line regex (`\[\[[^]\n]+\]\]`) per
-  visible window via `jit-lock`. Not measurable.
-- Inline links (paragraphs): a tree-sitter query reusing nodes the
-  parser already built. No extra parse, no buffer scan.
+- Inline links (paragraphs): entirely the bundled tree-sitter rules,
+  reusing nodes the parser already built. Nothing added here.
 - Inline links (tables): one bounded single-line regex per visible
   window via `jit-lock`, plus a cheap `pipe_table` ancestor check per
-  match. Like wiki links, not measurable.
+  match. Not measurable.
 
 The reasons `markdown-mode` is slow on large files do not apply here:
 
@@ -213,33 +205,7 @@ The reasons `markdown-mode` is slow on large files do not apply here:
 - No `markdown-syntax-propertize` pass.
 - No multiline regex keywords scanning the buffer.
 
-### Why not extend the tree-sitter grammar instead?
-
-For wiki links specifically: forking `tree-sitter-markdown` to add a
-`wiki_link` node would mean owning merge conflicts forever, building
-the parser `.so` on every machine, and isolating us from the rest of
-the tree-sitter ecosystem (Helix, nvim-treesitter, GitHub) which
-wouldn't see our node. The regex cost is invisible; the grammar cost
-is structural and ongoing.
-
 ## Invariants — do not change without reading
-
-### Wiki links are detected by regex, not tree-sitter
-
-`tree-sitter-markdown` (both the upstream master and our `split_parser`
-branch) does **not** expose `[[name]]` as a node type. Two places
-match wiki links by regex:
-
-1. The dispatcher (`markdown-config-follow-link-at-point`) uses
-   `markdown-config--wiki-link-regexp` to pick the link out of the
-   text around point.
-2. The font-lock matcher (`markdown-config--wiki-link-fontify`) uses
-   the equivalent regex inside `re-search-forward` to fontify and add
-   click behavior.
-
-Don't rewrite either branch as a treesit query — the grammar will
-silently return no nodes. See "Why not extend the tree-sitter grammar
-instead?" above.
 
 ### Inline links are detected via treesit, not regex — except in tables
 
@@ -263,39 +229,39 @@ removes the angle brackets on follow. Don't try to make the table path
 use treesit — there is nothing to query. See "Inline links inside
 tables" above.
 
-### Inline-link hiding reuses `markdown-ts--fontify-delimiter`
+### Advices name internal (double-underscore) upstream functions
 
-The treesit rule we append uses the bundled (internal,
-double-underscore) function so face + invisibility behave identically
-to the rest of the mode. If a future Emacs version renames that
-function, our rule has to follow. The risk is low (the symbol has
-been stable since Emacs 30.x); the alternative would be to inline a
-copy of the function, which then drifts from upstream.
+`markdown-ts--fontify-image`, `markdown-ts--make-link-button` and
+`markdown-ts--fontify-delimiter` are all internal symbols. Advising them
+is deliberate — the alternative is inlining copies that drift from
+upstream — but it means a rename upstream breaks this file loudly rather
+than silently. The advices are the first thing to check after an Emacs
+upgrade.
 
-### Inline-link fontification relies on the `markdown-inline` grammar
+### Inline-link handling relies on the `markdown-inline` grammar
 
-Inline-link work in this module — bundled `link` face on `[label]`,
-our `markdown-config-inline-link-extras` rule (hiding **and**
-click-to-follow), and the dispatcher's treesit branch — all depend
-on `markdown-inline` seeing complete `inline_link` constructs. Early
-Emacs 31 builds fragmented that view (the `markdown-inline` embedding
-used `:range-fn #'treesit-range-fn-exclude-children`, so `inline_link`
-never assembled); this was fixed upstream and the bundled mode now
-assembles inline links correctly. If a future regression breaks
-inline-link fontification/hiding/`C-c C-o` while wiki links (regex
-only) keep working, suspect the `markdown-inline` range setup rather
-than this module.
+The bundled `link` face, the markup hiding, the buttons, and this file's
+`markdown-config--inline-link-destination-at-point` all depend on
+`markdown-inline` seeing complete `inline_link` constructs. If
+inline-link fontification, hiding or following breaks while the
+table-cell path (regex only) keeps working, suspect the
+`markdown-inline` range setup rather than this module.
 
-### `:bind` in the `markdown-ts-mode` block
+### Adding a link syntax means using the extension point
 
-`markdown-ts-mode` is built-in (`:straight nil`). use-package's
-`:bind` defers loading correctly for built-ins via autoload
-registration. Don't replace it with an `eval-after-load` form
-unless you have a specific reason — `:bind` is the canonical
-pattern in this repo.
+A new non-CommonMark syntax registers on
+`markdown-config-follow-link-functions` and adds its own font-lock
+keyword from its own `markdown-ts-mode-hook` entry, the way
+`markdown-obsidian.el` does. Don't add a branch to
+`markdown-config-follow-link-at-point` — the point of the hook is that
+this file stays CommonMark-only and an unused syntax leaves no trace.
 
 ## Cross-module touchpoints
 
+- `markdown-obsidian.el` — optional, loaded from the bottom of this file
+  under `markdown-config-enable-obsidian`. It borrows the click keymap
+  and the follow-link hook; nothing here names it back. See
+  `docs/modules/markdown-obsidian.md`.
 - `treesitter-config.el` provides the `split_parser` grammar pair
   (`markdown` + `markdown-inline`). Removing either entry breaks this
   module. There is no `markdown-mode → markdown-ts-mode` remap — file
