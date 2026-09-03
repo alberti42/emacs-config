@@ -19,26 +19,40 @@ Both places, and the two are not alternatives:
   its debbugs link, and closed lab issues carry the number in the title —
   `#55 … (bug#81524)`, `#35 … (bug#81195)`, `#60 … (bug#81771)`.
 
-Order, as the project itself does it: **debbugs first, with the patch
-attached**, then the lab issue as a discussion mirror. Two lab issues show the
-pattern outright —
+Order: **lab issue first**, offering the patch, then debbugs once the
+maintainers have weighed in.
 
-- [#26](https://github.com/LionyxML/markdown-ts-mode-lab/issues/26): "@shipmints
-  already submitted a patch: https://debbugs.gnu.org/…bug=81199". An outside
-  contributor filed the patch at debbugs; the maintainer opened the lab issue
-  pointing at it. That is this situation exactly.
-- [#60](https://github.com/LionyxML/markdown-ts-mode-lab/issues/60): the body is
-  just "Original title: bug#81771: …" plus the debbugs link — a mirror of an
-  existing bug.
+That is the opposite of what the bug-numbered lab issues suggest at a glance,
+so the reasoning matters. Every lab issue carrying a `bug#NNNNN` was opened by
+a maintainer — Rahul Martim Juliato (LionyxML, the `Maintainer:` header) or
+Stéphane Marks (shipmints, co-maintainer, though the file header does not name
+him). [#26](https://github.com/LionyxML/markdown-ts-mode-lab/issues/26)
+recording "@shipmints already submitted a patch" to debbugs is therefore a
+maintainer filing into their own patch queue, not a model for an outside
+contributor. The genuinely outside reports —
+[#51](https://github.com/LionyxML/markdown-ts-mode-lab/issues/51),
+[#57](https://github.com/LionyxML/markdown-ts-mode-lab/issues/57),
+[#59](https://github.com/LionyxML/markdown-ts-mode-lab/issues/59) — are plain
+reports with no patch and no bug number, and the maintainers route things to
+debbugs from there.
 
-There is no step where a bug is filed empty and the patch follows separately,
-and nothing is ever "reposted": a debbugs bug is a mail thread, so a revised
-patch is a reply to `NNNNN@debbugs.gnu.org` and stays on the same bug.
+Two further reasons to ask before filing:
 
-The exception is a fix with an open design question rather than an obvious one —
-items 4, 5 and 7 below. There it is worth raising the approach in a lab issue
-before writing the patch, so the maintainer's view shapes it instead of
-arriving after a v1 is on record.
+- The maintainers said outright that they want discussion in the lab repo
+  because email threads are harder to follow.
+- `patches.md` carries an unsubmitted **"Improve link handling in
+  'markdown-ts-mode'"** entry. Its stated contents (reference links, autolinks,
+  link-reference-definition fontification) are already in master, so the file
+  looks stale — but a link-handling patch sitting in their queue is adjacent
+  enough to items 1 and 2 that it is worth one question rather than a
+  surprise collision.
+
+Once they agree, debbugs is still where the fix has to land: `markdown-ts-mode`
+is `lisp/textmodes/markdown-ts-mode.el` in Emacs core, so only a bug there can
+carry a patch to a commit, and the lab issue then gets `(bug#NNNNN)` appended
+to its title the way the maintainers' own do. Nothing is ever "reposted": a
+debbugs bug is a mail thread, so a revised patch is a reply to
+`NNNNN@debbugs.gnu.org` on the same bug.
 
 Grammar-level problems are the exception: they cannot be fixed in the mode at
 all, so they belong to `tree-sitter-markdown`, tracked in the lab repo at
