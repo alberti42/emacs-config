@@ -40,7 +40,7 @@ bug tracker soft-wrap, and hard wraps render badly.
 ### 1. Link destinations are used verbatim, never unwrapped or percent-decoded
 
 *Verified live. No existing issue. **Drafted** —
-`01-link-destination (draft).md`, with reproducer and tested patch.*
+`01-destination-brackets (draft).md`, with reproducer and tested patch.*
 
 `[a](<my file.md>)` hands `find-file` the literal `<my file.md>`;
 `[a](my%20file.md)` hands it `my%20file.md`. Both create an empty buffer
@@ -55,15 +55,18 @@ it never matches `\`[a-z]+:` and the destination falls through to the local-file
 branch — `[a](<https://ex.com/x?a=1&b=2>)` opens a buffer visiting a nonsense
 relative path, and saving it would create the file.
 
-Fix: normalize the destination once — strip a matched `<…>` pair, and
-percent-decode only when a `%XX` escape is actually present, so a literal `%`
-in a filename survives. Local equivalent:
-`markdown-config--normalize-link-path`.
+Fix: strip a matched `<…>` pair at the top of `markdown-ts--make-link-button`
+(so the scheme test sees `https:`, which also fixes the bracketed URL) and at
+`markdown-ts--fontify-image`'s extraction. Local equivalent, minus the
+decoding half: `markdown-config--normalize-link-path`.
 
 ### 2. The same raw text breaks image rendering
 
-*Source-level. No existing issue. **Drafted together with item 1** —
-`01-link-destination (draft).md`.*
+*Verified live. No existing issue. **Drafted separately** —
+`02-destination-percent-encoding (draft).md`. Split from item 1 because
+unbracketing is CommonMark syntax with no trade-off, while decoding is a URI
+reading the spec does not ask for: it needs a user option and cannot resolve a
+name literally containing `%25`. The image symptom appears under both.*
 
 `markdown-ts--fontify-image` resolves the destination with
 `(expand-file-name (treesit-node-text dest t))`, so a bracketed or

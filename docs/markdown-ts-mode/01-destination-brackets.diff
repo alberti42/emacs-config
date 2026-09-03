@@ -1,0 +1,42 @@
+--- a/lisp/textmodes/markdown-ts-mode.el
++++ b/lisp/textmodes/markdown-ts-mode.el
+@@ -886,6 +886,15 @@
+ 
+ (defvar url-mail-command) ; url/url-vars.el
+ 
++(defun markdown-ts--unbracket-destination (url)
++  "Return URL without CommonMark's optional pointy-bracket wrapper.
++A link destination may be enclosed in `<...>', and must be when it
++contains spaces (CommonMark 0.31.2, section 6.3 \"Links\").  The brackets
++are delimiters, not part of the destination."
++  (if (and (string-prefix-p "<" url) (string-suffix-p ">" url))
++      (substring url 1 -1)
++    url))
++
+ (defun markdown-ts--make-link-button (beg end url)
+   "Make the region from BEG to END a clickable button for URL.
+ For mailto: URIs, use `url-mail-command'.  For other schemes
+@@ -900,7 +909,12 @@
+ heading face."
+   ;; NOTE: URI scheme and host name are case-insensitive per RFC 3986
+   ;; and RFC 7230.
+-  (let ((case-fold-search nil))
++  ;; Unwrap before anything else, so the scheme test below sees `https:'
++  ;; rather than `<https:' -- otherwise a bracketed URL never matches a
++  ;; scheme and is opened as a relative file name -- and so `help-echo'
++  ;; shows the destination rather than its delimiters.
++  (let ((url (markdown-ts--unbracket-destination url))
++        (case-fold-search nil))
+     (make-text-button beg end
+                       'action (lambda (_button)
+                                 (cond
+@@ -1715,7 +1729,8 @@
+                ;; with the folded display.
+                (not (markdown-ts--outline-invisible-p node-start)))
+       (let* ((dest (treesit-search-subtree node "\\`link_destination\\'"))
+-             (url (and dest (treesit-node-text dest t)))
++             (url (and dest (markdown-ts--unbracket-destination
++                             (treesit-node-text dest t))))
+              (remotep (and url (string-match-p "\\`https?://" url)))
+              (displayable
+               (when url

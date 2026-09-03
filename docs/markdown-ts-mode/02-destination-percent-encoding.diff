@@ -1,0 +1,75 @@
+--- a/lisp/textmodes/markdown-ts-mode.el
++++ b/lisp/textmodes/markdown-ts-mode.el
+@@ -313,6 +313,25 @@
+   :type '(choice (const :tag "Skip remote images" nil)
+                  (const :tag "Download remote images" download))
+   :version "31.1"
++  :package-version "1.0")
++
++(defcustom markdown-ts-percent-decode-destinations t
++  "Non-nil means percent-decode a local link destination before opening it.
++CommonMark takes a link destination as written: `my%20file.md' names
++exactly that, and only reading the destination as a URI reference makes
++it name `my file.md'.  Many Markdown tools write local paths
++percent-encoded all the same -- Obsidian does -- so this is on by
++default.
++
++Set it to nil if one of your file names contains a literal `%' followed
++by two hexadecimal digits, which decoding would misread.
++
++This option does not affect CommonMark's `<...>' destination wrapper.
++Those brackets are syntax rather than part of the destination, and are
++always removed."
++  :type 'boolean
++  :safe #'booleanp
++  :version "32.1"
+   :package-version "1.0")
+ 
+ (defcustom markdown-ts-unordered-list-marker '(("● " . "- ")
+@@ -895,6 +914,24 @@
+       (substring url 1 -1)
+     url))
+ 
++(defun markdown-ts--destination-file-name (url)
++  "Return URL as a local file name.
++Removes the pointy-bracket wrapper, then percent-decodes when
++`markdown-ts-percent-decode-destinations' is non-nil and URL actually
++contains a %XX escape -- so a literal `%' in a file name is left alone.
++`[a](<my file.md>)', `[a](my%20file.md)' and `[a](<my%20file.md>)' then
++all name the file `my file.md'.
++
++Percent-escapes encode UTF-8 bytes, so the unhexed string is decoded
++back to characters.  Without that step `Fo%CC%88rster.md' still finds
++its file, but visits it under the mojibake buffer name
++`Fo\\314\\210rster.md'."
++  (let ((path (markdown-ts--unbracket-destination url)))
++    (if (and markdown-ts-percent-decode-destinations
++             (string-match-p "%[0-9A-Fa-f][0-9A-Fa-f]" path))
++        (decode-coding-string (url-unhex-string path) 'utf-8)
++      path)))
++
+ (defun markdown-ts--make-link-button (beg end url)
+   "Make the region from BEG to END a clickable button for URL.
+ For mailto: URIs, use `url-mail-command'.  For other schemes
+@@ -927,7 +964,10 @@
+                                             "\\`mailto:" "" url)))
+                                  ((string-match-p "\\`[a-z]+:" url)
+                                   (browse-url url))
+-                                 (t (find-file url))))
++                                 ;; Only a local file name is decoded; a
++                                 ;; URL must keep its escapes intact.
++                                 (t (find-file
++                                     (markdown-ts--destination-file-name url)))))
+                       'help-echo url)))
+ 
+ (defun markdown-ts--fontify-link-destination (node override start end &rest _)
+@@ -1743,7 +1783,8 @@
+                           (set-buffer-multibyte nil)
+                           (url-insert-file-contents url)
+                           (buffer-string))))
+-                  (let ((file (expand-file-name url)))
++                  (let ((file (expand-file-name
++                               (markdown-ts--destination-file-name url))))
+                     (and (not (file-remote-p file))
+                          (file-exists-p file)
+                          (image-supported-file-p file)
