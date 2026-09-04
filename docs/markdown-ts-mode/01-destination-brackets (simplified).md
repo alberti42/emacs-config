@@ -36,14 +36,18 @@ The bracketed-URL case is worse than a link that just fails to open: `find-file`
 on a URL-shaped string isn't inert. You end up visiting a nonsensical relative
 path, and saving that buffer would create it.
 
-### Related issues on markdown-ts-mode-lab
+### Checked for duplicates
 
-I checked on
+I could not find anything already filed about angle-bracketed destinations, in
+either place:
 
-https://github.com/LionyxML/markdown-ts-mode-lab/issues
-
-but I could not find any issue related to destinations wrapped by angle
-brackets.
+- All 33 Emacs bugs whose subject mentions `markdown-ts` (open and archived).
+  The nearest neighbours are #80625 (which introduced the clickable links) and
+  #81703 (bare URLs getting a `mailto:` prefix), neither of which touches the
+  destination wrapper.
+- The development tracker,
+  https://github.com/LionyxML/markdown-ts-mode-lab/issues (all 59 issues, open
+  and closed).
 
 ### Patch
 
