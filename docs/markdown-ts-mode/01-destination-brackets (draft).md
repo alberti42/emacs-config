@@ -1,6 +1,6 @@
 # Draft: pointy-bracket link destinations `<...>` are not recognised
 
-Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `01-destination-brackets.patch` (`git format-patch` output, so it carries the ChangeLog commit message — attach this to the bug as-is). Committed on `fix/markdown-ts-destination-brackets` in the local fork as `6ea1e89da16`, a single commit directly over `master` at `2d5657b9dcb`.
+Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `01-destination-brackets.patch` (`git format-patch` output, so it carries the ChangeLog commit message — attach this to the bug as-is). **Filed 2026-09-04 as [bug#81797](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=81797).** Committed on `fix/markdown-ts-destination-brackets` as `8faf29071ed`, a single commit over `master` at `2d5657b9dcb`. What was actually sent is the shorter `01-destination-brackets (simplified).md`; this longer version is the working analysis behind it.
 
 Percent-encoded destinations are a **separate** submission — see `02-destination-percent-encoding (draft).md`. This one is pure CommonMark conformance with no option and no trade-off; that one is a convention borrowed from URIs and needs a user option. Keeping them apart means this patch can go in on its own merits.
 
