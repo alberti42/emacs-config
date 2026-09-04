@@ -4,7 +4,7 @@ Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (
 
 Percent-encoded destinations are a **separate** submission — see `02-destination-percent-encoding (draft).md`. This one is pure CommonMark conformance with no option and no trade-off; that one is a convention borrowed from URIs and needs a user option. Keeping them apart means this patch can go in on its own merits.
 
-Route, per `00-upstream-candidates (unfiled).md`: open this as a **lab issue first**, offering the patch, since the maintainers asked for discussion there and `patches.md` has an unsubmitted link-handling entry this could collide with. Once they agree, file it at debbugs with the patch attached (only a bug there can carry a fix into Emacs core) and add `(bug#NNNNN)` to the lab issue title. Revised patches are replies to `NNNNN@debbugs.gnu.org`, never new filings.
+Route, per `00-upstream-candidates (unfiled).md`: send the body below to debbugs via `M-x report-emacs-bug` with `01-destination-brackets.patch` attached — that is the maintainer's stated preference, the lab repo being "less recommended" for filing. Then mirror the same body into a lab issue titled with `(bug#NNNNN)`, for the discussion they do prefer to have on GitHub. Revised patches are replies to `NNNNN@debbugs.gnu.org`, never new filings.
 
 Prose below is deliberately unwrapped, one line per paragraph, so it pastes into a GitHub issue without hard-wrap artifacts. For the debbugs copy, send plain text — flatten any table and drop the link syntax.
 
@@ -18,7 +18,7 @@ Prose below is deliberately unwrapped, one line per paragraph, so it pastes into
 
 ## Body
 
-Starting here rather than on debbugs, since that's the way you prefer to hash things out — happy to send it to `bug-gnu-emacs` once you're happy with the shape of it. There's a working patch at the bottom, but treat it as a proposal; I'd rather change it now than argue about it in a mail thread later.
+Patch attached. Happy to keep the discussion on the lab tracker if that's easier to follow than a mail thread — treat the patch as a proposal rather than a finished thing, and say if you'd rather it were shaped differently.
 
 ### Summary
 

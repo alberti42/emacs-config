@@ -4,7 +4,7 @@ Item 2 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (
 
 Deliberately separate from the bracket report. Removing `<...>` is CommonMark syntax and has no downside; percent-decoding is a URI reading of the destination that CommonMark does not ask for, so it is a policy question, needs a user option, and carries one irreducible ambiguity. Bundling the two would make the uncontroversial half hostage to this one.
 
-Route, per `00-upstream-candidates (unfiled).md`: open this as a **lab issue first**, offering the patch, since the maintainers asked for discussion there and `patches.md` has an unsubmitted link-handling entry this could collide with. Once they agree, file it at debbugs with the patch attached (only a bug there can carry a fix into Emacs core) and add `(bug#NNNNN)` to the lab issue title. Revised patches are replies to `NNNNN@debbugs.gnu.org`, never new filings.
+Route, per `00-upstream-candidates (unfiled).md`: debbugs via `M-x report-emacs-bug` with the patch attached, then a lab issue mirroring it under `(bug#NNNNN)` for discussion. This one carries a real design choice (the option and its default), so it is worth flagging in the report that you would rather settle that on the lab issue than in a mail thread.
 
 Prose below is deliberately unwrapped, one line per paragraph, so it pastes into a GitHub issue without hard-wrap artifacts. For the debbugs copy, send plain text — flatten any table and drop the link syntax.
 
@@ -16,7 +16,7 @@ Prose below is deliberately unwrapped, one line per paragraph, so it pastes into
 
 ## Body
 
-Same as the bracket one — keeping it here first so it's easier to follow, and I'll file it at `bug-gnu-emacs` whenever you say. Patch is written and tested, but there's a real design choice in it (the option and its default), which is exactly the sort of thing worth settling here rather than on debbugs.
+Patch attached, and a companion to the bracket one. There's a genuine design choice in it — whether to decode at all, and what the option should default to — so I'm happy to hash that out on the lab tracker if that's easier than a mail thread.
 
 ### Summary
 
