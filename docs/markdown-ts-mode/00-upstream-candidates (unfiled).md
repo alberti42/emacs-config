@@ -339,6 +339,35 @@ Not ours to file, but they bear on local configuration:
   `markdown-ts-hide-markup`. `markdown-config--link-keymap` deliberately
   mirrors the button gestures (`RET`, `mouse-1`, `mouse-2`) for the links that
   never become buttons, so it should follow whatever upstream settles on.
+- [#47 "Common prose [punctuation] turned into links"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/47)
+  — an unresolved `[foo]` is treated as a link. Two things we can contribute
+  there:
+
+  **It is worse than the issue says.** With `markdown-ts-hide-markup` on, the
+  brackets are hidden too, so `Using it wrong [sic] in prose.` *displays* as
+  `Using it wrong sic in prose.` That is altered visible text, not merely an
+  unwanted link face.
+
+  **No option is needed.** LionyxML proposes a defcustom to suppress the
+  fontification and Stéphane Marks asks for it to be buffer-local. But
+  CommonMark already says what should happen: a shortcut or collapsed reference
+  link is a link *only* if a matching `[foo]: /url` definition exists in the
+  document, and is literal text otherwise. Gate on resolution and prose stops
+  being linkified while real reference links keep working — nothing left to
+  toggle. Resolution itself is already implemented and correct
+  (`markdown-ts--resolve-link-ref`, buffer-local cache, case-insensitive,
+  order-independent); the defect is only the `(or (markdown-ts--resolve-link-ref
+  label) label)` fallback in `markdown-ts--fontify-link-node`, which uses the
+  label as the destination when lookup fails.
+
+  **Implementation catch.** Two independent paths treat `[foo]` as a link, so
+  gating one is not enough: `(shortcut_link (link_text))` →
+  `markdown-ts--fontify-link-node` (face + button), and
+  `(shortcut_link [ "[" "]" ])` → `markdown-ts--fontify-delimiter` (the bracket
+  hiding). The shared delimiter fontifier cannot know whether the label
+  resolves, so the check belongs either in a dedicated reference-delimiter
+  fontifier or in a predicate on that query.
+
 - [#42 "Prettify pipe tables when hiding markup"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/42)
   — overlay-based table prettification; overlaps the width-preservation
   question in item 4.
