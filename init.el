@@ -209,6 +209,10 @@ monitor."
         (elisp-lint-indent-specs (git-gutter:awhen . 1))
         (buffer-file-coding-system . utf-8-unix)))
 
+;; Declare safe projects
+(add-to-list 'safe-local-variable-directories
+             "~/Programming/Websites/alberti42.github.io/")
+
 ;; Accept t or nil for AUCTeX's interactive-run toggle.
 (put 'TeX-interactive-mode 'safe-local-variable #'booleanp)
 
