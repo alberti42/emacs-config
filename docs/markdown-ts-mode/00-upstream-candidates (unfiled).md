@@ -82,8 +82,9 @@ bug tracker soft-wrap, and hard wraps render badly.
 
 ### 1. Link destinations are used verbatim, never unwrapped or percent-decoded
 
-*Verified live. No existing issue. **Drafted** —
-`01-destination-brackets (draft).md`, with reproducer and tested patch.*
+*Verified live. No existing issue. **Drafted and committed** —
+`01-destination-brackets (draft).md`; patch on `fix/markdown-ts-destination-brackets`
+(`d4aef366bd6`) in the local Emacs fork, over `master` at `2d5657b9dcb`.*
 
 `[a](<my file.md>)` hands `find-file` the literal `<my file.md>`;
 `[a](my%20file.md)` hands it `my%20file.md`. Both create an empty buffer

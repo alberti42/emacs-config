@@ -1,0 +1,83 @@
+From d4aef366bd6f1da13b0b38313ee2d69c60fd839a Mon Sep 17 00:00:00 2001
+From: Andrea Alberti <a.alberti82@gmail.com>
+Date: Fri, 4 Sep 2026 15:13:46 +0200
+Subject: [PATCH] Recognise pointy-bracket link destinations in
+ markdown-ts-mode
+
+CommonMark lets a link destination be wrapped in '<...>', and requires
+that wrapping when the destination contains spaces (spec 0.31.2,
+section 6.3 "Links").  The wrapper was never removed, so the brackets
+travelled with the destination: '[a](<my file.md>)' was handed to
+'find-file' as the literal string "<my file.md>", opening an empty
+buffer of that name rather than the file.
+
+A bracketed URL fared worse.  The scheme test in
+'markdown-ts--make-link-button' ran on the still-wrapped string, which
+begins with '<', so no scheme ever matched and
+'[a](<https://example.com/x?a=1>)' was opened with 'find-file' as a
+relative file name instead of being passed to 'browse-url'.
+
+'markdown-ts--fontify-image' read the same node text and resolved it
+with a bare 'expand-file-name', so '![a](<my pic.png>)' failed the
+'file-exists-p' guard and the image silently never rendered.
+
+Unwrapping in 'markdown-ts--make-link-button' rather than at each
+extraction site covers inline links, reference links and autolinks at
+once, since they all build their button through it.
+
+* lisp/textmodes/markdown-ts-mode.el
+(markdown-ts--unbracket-destination): New function.
+(markdown-ts--make-link-button): Unwrap URL before dispatching on it,
+so the scheme test sees the destination rather than its delimiters.
+(markdown-ts--fontify-image): Unwrap the image destination.
+---
+ lisp/textmodes/markdown-ts-mode.el | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/lisp/textmodes/markdown-ts-mode.el b/lisp/textmodes/markdown-ts-mode.el
+index 0ab60f79dc3..e8cb6f041f6 100644
+--- a/lisp/textmodes/markdown-ts-mode.el
++++ b/lisp/textmodes/markdown-ts-mode.el
+@@ -886,6 +886,15 @@ markdown-ts--fontify-atx-delimiter
+ 
+ (defvar url-mail-command) ; url/url-vars.el
+ 
++(defun markdown-ts--unbracket-destination (url)
++  "Return URL without CommonMark's optional pointy-bracket wrapper.
++A link destination may be enclosed in `<...>', and must be when it
++contains spaces (CommonMark 0.31.2, section 6.3 \"Links\").  The brackets
++are delimiters, not part of the destination."
++  (if (and (string-prefix-p "<" url) (string-suffix-p ">" url))
++      (substring url 1 -1)
++    url))
++
+ (defun markdown-ts--make-link-button (beg end url)
+   "Make the region from BEG to END a clickable button for URL.
+ For mailto: URIs, use `url-mail-command'.  For other schemes
+@@ -900,7 +909,12 @@ markdown-ts--make-link-button
+ heading face."
+   ;; NOTE: URI scheme and host name are case-insensitive per RFC 3986
+   ;; and RFC 7230.
+-  (let ((case-fold-search nil))
++  ;; Unwrap before anything else, so the scheme test below sees `https:'
++  ;; rather than `<https:' -- otherwise a bracketed URL never matches a
++  ;; scheme and is opened as a relative file name -- and so `help-echo'
++  ;; shows the destination rather than its delimiters.
++  (let ((url (markdown-ts--unbracket-destination url))
++        (case-fold-search nil))
+     (make-text-button beg end
+                       'action (lambda (_button)
+                                 (cond
+@@ -1715,7 +1729,8 @@ markdown-ts--fontify-image
+                ;; with the folded display.
+                (not (markdown-ts--outline-invisible-p node-start)))
+       (let* ((dest (treesit-search-subtree node "\\`link_destination\\'"))
+-             (url (and dest (treesit-node-text dest t)))
++             (url (and dest (markdown-ts--unbracket-destination
++                             (treesit-node-text dest t))))
+              (remotep (and url (string-match-p "\\`https?://" url)))
+              (displayable
+               (when url
+-- 
+2.55.0
+

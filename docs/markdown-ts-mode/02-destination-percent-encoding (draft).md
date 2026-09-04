@@ -1,6 +1,6 @@
 # Draft: percent-encoded local link destinations are never decoded
 
-Item 2 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `02-destination-percent-encoding.diff`, which applies **on top of** `01-destination-brackets.diff`.
+Item 2 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `02-destination-percent-encoding.diff`, which applies **on top of** `01-destination-brackets.patch`.
 
 Deliberately separate from the bracket report. Removing `<...>` is CommonMark syntax and has no downside; percent-decoding is a URI reading of the destination that CommonMark does not ask for, so it is a policy question, needs a user option, and carries one irreducible ambiguity. Bundling the two would make the uncontroversial half hostage to this one.
 
@@ -42,7 +42,7 @@ So in practice the two spellings aren't interchangeable — a tool picks one, an
 
 ### Reproducing
 
-`destination-repro.el` is attached (it stubs `find-file` and `browse-url`, so it opens nothing). With the bracket patch applied but not this one:
+`destination-repro.el` is attached (it stubs `find-file` and `browse-url`, so it opens nothing). With the bracket patch applied (branch `fix/markdown-ts-destination-brackets`) but not this one:
 
 ```
  #  destination as written       handed to

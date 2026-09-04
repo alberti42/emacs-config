@@ -1,6 +1,6 @@
 # Draft: pointy-bracket link destinations `<...>` are not recognised
 
-Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `01-destination-brackets.diff` (patch against `origin/master` `ab1d6868ed3`).
+Item 1 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `01-destination-brackets.patch` (`git format-patch` output, so it carries the ChangeLog commit message — attach this to the bug as-is). Committed on `fix/markdown-ts-destination-brackets` in the local fork as `d4aef366bd6`, over `master` at `2d5657b9dcb`.
 
 Percent-encoded destinations are a **separate** submission — see `02-destination-percent-encoding (draft).md`. This one is pure CommonMark conformance with no option and no trade-off; that one is a convention borrowed from URIs and needs a user option. Keeping them apart means this patch can go in on its own merits.
 
@@ -57,7 +57,7 @@ Or by hand: make a file called `my target.md`, put `[a](<my target.md>)` in a si
 
 ### Suggested fix
 
-Attached as `01-destination-brackets.diff` — one helper and two call sites:
+Attached as `01-destination-brackets.patch` — one helper and two call sites:
 
 - `markdown-ts--unbracket-destination` strips a matched `<...>` pair.
 - `markdown-ts--make-link-button` unwraps **once at the top**, before the cond. That is what fixes the bracketed-URL case, since the scheme test then sees `https:`, and it also makes `help-echo` show the destination rather than its delimiters. Doing it here rather than at each extraction site covers inline links, reference links and autolinks in one change, because they all build their button through this function.
