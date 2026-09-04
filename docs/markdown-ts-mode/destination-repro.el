@@ -28,6 +28,14 @@
 ;;                     literally `my%20file.md', and naming `my file.md'
 ;;                     requires reading it as a URI reference.
 ;;
+;; Note that case 3's expectation is provisional.  It currently expects
+;; `<my%20target.md>' to resolve to `my target.md' -- unbracket, then decode.
+;; The settled design is that a bracketed destination is taken verbatim, which
+;; makes the expected value `my%20target.md' and turns the trailing `%25' case
+;; into a pass.  See the design note in
+;; `02-destination-percent-encoding (draft).md'; the numbers printed here still
+;; describe the drafted patch, not that rule.
+;;
 ;; They compose: `<my%20file.md>' is bracketed *and* encoded.  A bare
 ;; `my file.md' is neither, and is not a link at all -- the grammar is right to
 ;; refuse it, which is what makes the bracket form the only Markdown-level

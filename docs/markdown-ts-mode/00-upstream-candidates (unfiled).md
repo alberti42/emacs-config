@@ -97,11 +97,15 @@ decoding half: `markdown-config--normalize-link-path`.
 
 ### 2. The same raw text breaks image rendering
 
-*Verified live. No existing issue. **Drafted separately** —
+*Verified live. No existing issue. **Drafted but PARKED** —
 `02-destination-percent-encoding (draft).md`. Split from item 1 because
 unbracketing is CommonMark syntax with no trade-off, while decoding is a URI
-reading the spec does not ask for: it needs a user option and cannot resolve a
-name literally containing `%25`. The image symptom appears under both.*
+reading the spec does not ask for. Narrower than it first looked: it concerns
+destinations written *without* angle brackets. Parked because the settled
+design — a bracketed destination is taken verbatim, so decoding applies only to
+unbracketed ones — is not what the drafted patch does. That rule also makes a
+name literally containing `%25` reachable by writing it in brackets, which the
+draft had written off as unfixable. The image symptom appears under both items.*
 
 `markdown-ts--fontify-image` resolves the destination with
 `(expand-file-name (treesit-node-text dest t))`, so a bracketed or

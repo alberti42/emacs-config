@@ -1,8 +1,10 @@
-# Draft: percent-encoded local link destinations are never decoded
+# Draft (PARKED): percent-encoded local link destinations are never decoded
 
 Item 2 of `00-upstream-candidates (unfiled).md`. Files: `destination-repro.el` (shared reproducer) and `02-destination-percent-encoding.diff`, which applies **on top of** `01-destination-brackets.patch`.
 
-Deliberately separate from the bracket report. Removing `<...>` is CommonMark syntax and has no downside; percent-decoding is a URI reading of the destination that CommonMark does not ask for, so it is a policy question, needs a user option, and carries one irreducible ambiguity. Bundling the two would make the uncontroversial half hostage to this one.
+**Parked — do not file as it stands.** The patch decodes after unbracketing, which the design note at the end rejects; it needs reworking first.
+
+Deliberately separate from the bracket report, and the scope is narrower than the title suggests: it concerns destinations written *without* angle brackets. Removing `<...>` is CommonMark syntax and has no downside; percent-decoding is a URI reading of the destination that CommonMark does not ask for, so it is a policy question, needs a user option, and carries one irreducible ambiguity. Bundling the two would make the uncontroversial half hostage to this one.
 
 Route, per `00-upstream-candidates (unfiled).md`: debbugs via `M-x report-emacs-bug` with the patch attached, then a lab issue mirroring it under `(bug#NNNNN)` for discussion. This one carries a real design choice (the option and its default), so it is worth flagging in the report that you would rather settle that on the lab issue than in a mail thread.
 
@@ -12,7 +14,7 @@ Prose below is deliberately unwrapped, one line per paragraph, so it pastes into
 
 ## Title
 
-`markdown-ts-mode`: percent-encoded local link destinations are not decoded, so Obsidian-style links and image embeds do not resolve
+`markdown-ts-mode`: percent-encoded local link destinations (written without angle brackets) are not decoded, so Obsidian-style links and image embeds do not resolve
 
 ## Body
 
@@ -78,3 +80,25 @@ A file whose name literally contains `%25` is indistinguishable from an encoded 
 ```
 
 That's inherent rather than a flaw in the patch, and it's really the reason for the option — anyone with names like that sets it to `nil` and keeps correct behaviour. It's also why I split this from the bracket fix, which has no such corner.
+
+---
+
+## Design note: brackets mean verbatim (supersedes the option below)
+
+An angle-bracketed destination should be taken **verbatim** — no percent-decoding inside `<...>`. Decoding then applies only to destinations written *without* brackets. The two forms stop overlapping and each says something definite:
+
+| written | reading | resolves to |
+| --- | --- | --- |
+| `[a](my%20file.md)` | no brackets, so a URI reference | `my file.md` |
+| `[a](<my file.md>)` | brackets, so verbatim | `my file.md` |
+| `[a](<my%20file.md>)` | brackets, so verbatim | `my%20file.md` |
+| `[a](<100%25 done.md>)` | brackets, so verbatim | `100%25 done.md` |
+
+This is worth more than the `markdown-ts-percent-decode-destinations` option, because it fixes the case the option only worked around. A file whose name literally contains `%25` becomes reachable by writing it in brackets — the document carries the disambiguation, per link, instead of a global flag forcing one answer on every link in every file. The option may still be wanted by someone who objects to decoding at all, but it stops being the escape hatch for that corner.
+
+Two honest caveats for the report:
+
+- **This is a convention, not something CommonMark states.** The spec gives `<...>` no "verbatim" semantics; it is only a delimiter form that permits spaces and parens. So the argument has to be made on utility, not conformance — unlike the bracket fix, which is pure conformance.
+- **It costs nothing in practice.** The combined form `<…%XX…>` does not occur in the 972-note vault measured above (0 of 696), and it is pointless to write anyway, since brackets already allow a literal space. So no existing document changes meaning.
+
+Consequences for the attached patch, which does **not** implement this yet: `markdown-ts--destination-file-name` currently unbrackets and *then* decodes, so it resolves `<my%20file.md>` to `my file.md`. Under this rule it must decode only when no brackets were present — which also means the reproducer's case 3 expectation flips to `my%20target.md`, and case 9 becomes a `PASS` rather than the known-unfixable failure.
