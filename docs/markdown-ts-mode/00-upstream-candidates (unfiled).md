@@ -340,8 +340,16 @@ Not ours to file, but they bear on local configuration:
   mirrors the button gestures (`RET`, `mouse-1`, `mouse-2`) for the links that
   never become buttons, so it should follow whatever upstream settles on.
 - [#47 "Common prose [punctuation] turned into links"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/47)
-  — an unresolved `[foo]` is treated as a link. Two things we can contribute
-  there:
+  — an unresolved `[foo]` is treated as a link. **Commented on 2026-09-04**
+  (`alberti42`), arguing the gate-on-resolution position below; awaiting a reply
+  from either maintainer. The comment quotes the three spec passages, concludes
+  that `[foo]` "is a link **only** when it is resolved", and offers either to
+  suggest code or to leave the implementation to them. Deliberately left out of
+  it: the hide-markup finding (first item below) and anything about the code —
+  both held back, the former as a follow-up if the design point needs
+  strengthening.
+
+  Two things we can contribute there:
 
   **It is worse than the issue says.** With `markdown-ts-hide-markup` on, the
   brackets are hidden too, so `Using it wrong [sic] in prose.` *displays* as
