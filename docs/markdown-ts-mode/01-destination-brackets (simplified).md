@@ -1,6 +1,6 @@
 <!-- ltex: language=en-US -->
 
-## The bug in one line
+### The bug in one line
 
 `markdown-ts-mode`: link destinations wrapped in `<...>` are not recognized (a
 bracketed URL is opened with `find-file`).
@@ -9,14 +9,15 @@ bracketed URL is opened with `find-file`).
 
 CommonMark lets a link destination be wrapped in pointy brackets, and *requires*
 that wrapping when the destination contains spaces ([spec 0.31.2, section 6.3
-"Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never removes the wrapper. Thus, the angle brackets
-remain in the destination string. As a consequence, this gives rise to two
-directly related bugs, and a third similar bug in the image path:
+"Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never
+removes the wrapper. Thus, the angle brackets remain in the destination
+string. As a consequence, this gives rise to two directly related bugs and a
+third similar bug in the image path:
 
 - `[a](<my file.md>)` is passed to `find-file` as the literal string `<my
   file.md>`, which opens a new empty buffer under that name instead of the
   existing file.
-- `[a](<https://example.com/x?a=1&b=2>)` is passed to **`find-file`** rather
+- `[a](<https://example.com/x?a=1&b=2> )` is passed to **`find-file`** rather
   than `browse-url`. The scheme test in `markdown-ts--make-link-button` is
   `(string-match-p "\`[a-z]+:" url)`, and with the brackets attached the string
   begins with `<`, so no scheme ever matches and an ordinary bracketed URL is
@@ -28,14 +29,14 @@ pic.png>)` fails the `file-exists-p` guard and the image silently never renders.
 
 ### On the relevance of the fix
 
-In Markdown there's no other official way to write a file name with a space in
-it. Quoting the [official specs](https://spec.commonmark.org/0.31.2/):
+In Markdown there's **one only official way** to write a file name with a space
+in it. Quoting the [official specs](https://spec.commonmark.org/0.31.2/):
 
 > The destination can only contain spaces if it is enclosed in pointy brackets
 
-The bracketed-URL case is worse than a link that just fails to open: `find-file`
-on a URL-shaped string isn't inert. You end up visiting a nonsensical relative
-path, and saving that buffer would create it.
+The bracketed-URL case, which is in today's master, has worse effects than just
+a link failing to open. In fact, `find-file` ends up visiting a nonsensical
+relative path, and saving that buffer would create it.
 
 ### Checked for duplicates
 
@@ -57,4 +58,5 @@ The patch is attached. "Unbracketing" is performed in
 directly covers inline links, reference links and autolinks at once, since they
 all build their button through it.
 
-Please treat the patch as a proposal rather than a finished thing. I am happy to change it following the maintainers' advice.
+Please treat the patch as a proposal rather than a finished thing. I am happy to
+change it following the maintainers' advice.
