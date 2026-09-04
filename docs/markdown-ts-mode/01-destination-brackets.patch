@@ -1,8 +1,7 @@
-From 7ce8e347e17d9884a43a9bf3045948e69556e68b Mon Sep 17 00:00:00 2001
+From 2a256d2e0fd97b5c0130bfd9f0f85eabe87cfe33 Mon Sep 17 00:00:00 2001
 From: Andrea Alberti <a.alberti82@gmail.com>
 Date: Fri, 4 Sep 2026 15:18:04 +0200
-Subject: [PATCH] Recognise pointy-bracket link destinations in
- markdown-ts-mode
+Subject: [PATCH] markdown-ts-mode: Recognize pointy-bracket link destinations
 
 CommonMark lets a link destination be wrapped in '<...>', and requires
 that wrapping when the destination contains spaces (spec 0.31.2, section

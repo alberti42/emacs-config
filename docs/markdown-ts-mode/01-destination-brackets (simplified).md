@@ -9,8 +9,9 @@ bracketed URL is opened with `find-file`).
 
 CommonMark lets a link destination be wrapped in pointy brackets, and *requires*
 that wrapping when the destination contains spaces ([spec 0.31.2, section 6.3
-"Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never
-removes the wrapper. Thus, the angle brackets remain in the destination string. As a consequence, this gives rise to three related bugs:   
+"Links"](https://spec.commonmark.org/0.31.2/#links)). `markdown-ts-mode` never removes the wrapper. Thus, the angle brackets
+remain in the destination string. As a consequence, this gives rise to two
+directly related bugs, and a third similar bug in the image path:
 
 - `[a](<my file.md>)` is passed to `find-file` as the literal string `<my
   file.md>`, which opens a new empty buffer under that name instead of the
