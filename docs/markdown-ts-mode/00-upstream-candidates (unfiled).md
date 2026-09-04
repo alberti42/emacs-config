@@ -84,7 +84,7 @@ bug tracker soft-wrap, and hard wraps render badly.
 
 *Verified live. No existing issue. **Drafted and committed** —
 `01-destination-brackets (draft).md`; patch on `fix/markdown-ts-destination-brackets`
-(`f7409df273e`) in the local Emacs fork, over `master` at `2d5657b9dcb`.*
+(`7ce8e347e17`) in the local Emacs fork, over `master` at `2d5657b9dcb`.*
 
 `[a](<my file.md>)` hands `find-file` the literal `<my file.md>`;
 `[a](my%20file.md)` hands it `my%20file.md`. Both create an empty buffer

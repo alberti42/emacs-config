@@ -1,4 +1,4 @@
-From f7409df273eed0d4f3be8d36ad3499693ae2ab4c Mon Sep 17 00:00:00 2001
+From 7ce8e347e17d9884a43a9bf3045948e69556e68b Mon Sep 17 00:00:00 2001
 From: Andrea Alberti <a.alberti82@gmail.com>
 Date: Fri, 4 Sep 2026 15:18:04 +0200
 Subject: [PATCH] Recognise pointy-bracket link destinations in
@@ -20,16 +20,16 @@ relative file name instead of being passed to 'browse-url'.
 with a bare 'expand-file-name', so '![a](<my pic.png>)' failed the
 'file-exists-p' guard and the image silently never rendered.
 
-Unwrapping in 'markdown-ts--make-link-button' rather than at each
+Unbracketing in 'markdown-ts--make-link-button' rather than at each
 extraction site covers inline links, reference links and autolinks at
 once, since they all build their button through it.
 
 * lisp/textmodes/markdown-ts-mode.el
-(markdown-ts--unbracket-destination): New function for unbracketing.
+(markdown-ts--unbracket-destination): New function.
 (markdown-ts--make-link-button): Unbracket URL before dispatching on it,
 thus ensuring that the scheme test sees the destination without bracket
 delimiters.
-(markdown-ts--fontify-image): Unwrap the image destination too.
+(markdown-ts--fontify-image): Unbracket the image destination too.
 ---
  lisp/textmodes/markdown-ts-mode.el | 18 ++++++++++++++++--
  1 file changed, 16 insertions(+), 2 deletions(-)
