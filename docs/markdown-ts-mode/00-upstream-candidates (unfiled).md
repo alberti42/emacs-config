@@ -7,6 +7,19 @@ currently works around locally, and that belong upstream rather than in
 
 ## Where these go
 
+> **Contested in practice (2026-09-04).** After bug#81797 was filed this way,
+> Stéphane Marks replied that "the 'official' list of bugs and feature requests
+> is on gh for now", i.e. the GitHub tracker, treating the debbugs report as a
+> near-duplicate of the lab discussion. So the written guidance quoted below and
+> the maintainers' working preference do not currently agree. Both of his
+> objections traced to reading lab #47 (shortcut links) and bug#81797 (the `<...>`
+> wrapper) as one topic — he also quoted "I wanted to have your feedback first"
+> from the #47 comment while replying on the bug. A reply was sent citing the two
+> written sources and asking for them to be updated either way; the outcome is
+> still open. **Until it is settled, expect to be questioned about the venue
+> whichever route is taken, and say up front which thread a submission belongs
+> to.**
+
 **debbugs first, with the patch; the lab repo second, for discussion.** The
 maintainer states the order in the deprecation notice of the superseded
 package, [LionyxML/markdown-ts-mode](https://github.com/LionyxML/markdown-ts-mode/blob/main/README.org#deprecation-notice):
