@@ -17,7 +17,7 @@ third similar bug in the image path:
 - `[a](<my file.md>)` is passed to `find-file` as the literal string `<my
   file.md>`, which opens a new empty buffer under that name instead of the
   existing file.
-- `[a](<https://example.com/x?a=1&b=2> )` is passed to **`find-file`** rather
+- `[a](<https://example.com/x?a=1&b=2>)` is passed to **`find-file`** rather
   than `browse-url`. The scheme test in `markdown-ts--make-link-button` is
   `(string-match-p "\`[a-z]+:" url)`, and with the brackets attached the string
   begins with `<`, so no scheme ever matches and an ordinary bracketed URL is
@@ -29,7 +29,7 @@ pic.png>)` fails the `file-exists-p` guard and the image silently never renders.
 
 ### On the relevance of the fix
 
-In Markdown there's **one only official way** to write a file name with a space
+In Markdown there's **only one official way** to write a file name with a space
 in it. Quoting the [official specs](https://spec.commonmark.org/0.31.2/):
 
 > The destination can only contain spaces if it is enclosed in pointy brackets
