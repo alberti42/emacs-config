@@ -350,15 +350,51 @@ Not ours to file, but they bear on local configuration:
 
   **No option is needed.** LionyxML proposes a defcustom to suppress the
   fontification and Stéphane Marks asks for it to be buffer-local. But
-  CommonMark already says what should happen: a shortcut or collapsed reference
-  link is a link *only* if a matching `[foo]: /url` definition exists in the
-  document, and is literal text otherwise. Gate on resolution and prose stops
-  being linkified while real reference links keep working — nothing left to
-  toggle. Resolution itself is already implemented and correct
-  (`markdown-ts--resolve-link-ref`, buffer-local cache, case-insensitive,
-  order-independent); the defect is only the `(or (markdown-ts--resolve-link-ref
-  label) label)` fallback in `markdown-ts--fontify-link-node`, which uses the
-  label as the destination when lookup fails.
+  CommonMark already settles it, definitionally. From `spec.txt` at tag
+  `0.31.2`, section 6.3 "Links":
+
+  > A **shortcut reference link** consists of a [link label] that [matches] a
+  > [link reference definition] elsewhere in the document and is not followed by
+  > `[]` or a link label. The contents of the link label are parsed as inlines,
+  > which are used as the link's text. The link's URI and title are provided by
+  > the matching link reference definition. Thus, `[foo]` is equivalent to
+  > `[foo][]`.
+
+  > A **collapsed reference link** consists of a [link label] that [matches] a
+  > [link reference definition] elsewhere in the document, followed by the
+  > string `[]`.
+
+  The load-bearing word is `matches`, itself a defined term:
+
+  > One label **matches** another just in case their normalized forms are equal.
+  > To normalize a label, strip off the opening and closing brackets, perform the
+  > *Unicode case fold*, strip leading and trailing spaces, tabs, and line
+  > endings, and collapse consecutive internal spaces, tabs, and line endings to
+  > a single space. If there are multiple matching reference link definitions,
+  > the one that comes first in the document is used. (It is desirable in such
+  > cases to emit a warning.)
+
+  A shortcut reference link therefore *consists of* a label that matches a
+  definition: no matching definition means it is not a shortcut reference link,
+  hence not a link, hence literal text. Note the rule is definitional rather
+  than phrased as a prohibition, and every example in that section of the spec
+  happens to include a definition — so there is no "unmatched label" example to
+  cite, and the argument rests on the wording above. The CommonMark dingus
+  rendering `[sic]` as plain text, which the issue already reports, is the
+  practical confirmation.
+
+  That same "matches" paragraph also accounts for two behaviours the mode
+  already gets right: `[FOO]` finding `[foo]:` (Unicode case fold), and a
+  definition working whether it precedes or follows the use ("elsewhere in the
+  document").
+
+  So: gate on resolution and prose stops being linkified while real reference
+  links keep working — nothing left to toggle. Resolution itself is already
+  implemented and correct (`markdown-ts--resolve-link-ref`, buffer-local cache,
+  case-insensitive, order-independent); the defect is only the
+  `(or (markdown-ts--resolve-link-ref label) label)` fallback in
+  `markdown-ts--fontify-link-node`, which uses the label as the destination when
+  lookup fails.
 
   **Implementation catch.** Two independent paths treat `[foo]` as a link, so
   gating one is not enough: `(shortcut_link (link_text))` →
