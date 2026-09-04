@@ -83,6 +83,20 @@ That's inherent rather than a flaw in the patch, and it's really the reason for 
 
 ---
 
+## The option must be buffer-local
+
+If item 02 keeps an option at all, it has to be declared `:local t` alongside `:safe #'booleanp`. The drafted patch has only `:safe`, which is not enough.
+
+This is the maintainers' stated preference. On [lab #47](https://github.com/LionyxML/markdown-ts-mode-lab/issues/47), LionyxML proposes a defcustom to suppress shortcut-link fontification and Stéphane Marks answers:
+
+> If a new option, it should be buffer local one so each document can have the override in its file or directory locals.
+
+The convention is narrow but real: of 24 options in the mode, exactly two are declared that way — `markdown-ts-hide-markup` and `markdown-ts-inline-images` — and the latter was *retrofitted* into that shape by bug#80978 ("Make 'markdown-ts-inline-images' buffer local and test for GUI"). So it is the direction of travel, not an accident.
+
+It also happens to be the right shape for the use case that motivates this item. An Obsidian vault can switch decoding on in its own `.dir-locals.el` while Markdown elsewhere stays strict — which is a better answer than a global default, and it composes with the bracket-means-verbatim rule above: brackets settle it per link, directory locals settle it per corpus.
+
+---
+
 ## Design note: brackets mean verbatim (supersedes the option below)
 
 An angle-bracketed destination should be taken **verbatim** — no percent-decoding inside `<...>`. Decoding then applies only to destinations written *without* brackets. The two forms stop overlapping and each says something definite:
