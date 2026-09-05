@@ -55,17 +55,24 @@
 
 (defun my/maybe-unmark-modified ()
   "Clear the modified flag if buffer content matches the saved file.
-Runs in `kill-buffer-query-functions' before the kill prompt fires."
+Runs in `kill-buffer-query-functions' before the kill prompt fires.
+`buffer-file-name' can carry a spurious trailing slash (e.g. through a
+symlink chain that used to end in a directory); `directory-file-name'
+strips it so `insert-file-contents' doesn't fail with \"Not a directory\".
+Any remaining `file-error' (permissions, a race with deletion) is caught
+so it can't abort the kill outright — it just skips the optimization."
   (when (and buffer-file-name
              (buffer-modified-p)
              (file-readable-p buffer-file-name))
-    (let* ((file buffer-file-name)
-           (buf-text (buffer-substring-no-properties (point-min) (point-max)))
-           (file-text (with-temp-buffer
-                        (insert-file-contents file)
-                        (buffer-substring-no-properties (point-min) (point-max)))))
-      (when (string= buf-text file-text)
-        (set-buffer-modified-p nil))))
+    (condition-case nil
+        (let* ((file (directory-file-name buffer-file-name))
+               (buf-text (buffer-substring-no-properties (point-min) (point-max)))
+               (file-text (with-temp-buffer
+                            (insert-file-contents file)
+                            (buffer-substring-no-properties (point-min) (point-max)))))
+          (when (string= buf-text file-text)
+            (set-buffer-modified-p nil)))
+      (file-error nil)))
   t)
 
 (add-hook 'kill-buffer-query-functions #'my/maybe-unmark-modified)
