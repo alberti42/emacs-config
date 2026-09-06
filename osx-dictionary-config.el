@@ -18,7 +18,9 @@
 ;; `osx-dictionary-allowed-dictionaries' below narrows which dictionaries
 ;; that command offers, and in what order -- edit it freely;
 ;; `M-: (osx-dictionary-get-all-dictionaries)' lists every name Dictionary.app
-;; reports.
+;; reports. An entry can be just that real name, or a (REAL . DISPLAY) cons
+;; when the real name is too unwieldy to show, as for the two Italian
+;; dictionaries below.
 
 ;;; Code:
 
@@ -41,10 +43,11 @@
   (osx-dictionary-last-dictionary-file
    (emacs-config-cache-file "osx-dictionary-last-dictionary"))
   (osx-dictionary-allowed-dictionaries
-   '("New Oxford American Dictionary"
-     "Oxford Dictionary of English"
+   '("Oxford Dictionary of English"
      "Oxford Thesaurus of English"
-     "Duden-Wissensnetz deutsche Sprache"))
+     "Duden-Wissensnetz deutsche Sprache"
+     ("Dizionario italiano da un affiliato di Oxford University Press" . "Oxford Italian Dictionary ")
+     ("Oxford Paravia Il Dizionario inglese - italiano/italiano - inglese" . "Oxford Paravia Italiano/Inglese")))
   :bind-keymap ("C-c d" . osx-dictionary-config-map))
 
 ;; Vertico re-sorts every prompt's candidates by default (see
