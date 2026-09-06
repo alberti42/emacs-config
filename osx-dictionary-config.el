@@ -35,8 +35,8 @@
   :init
   (defvar-keymap osx-dictionary-config-map
     "d" #'osx-dictionary-search-word-at-point
-    "i" #'osx-dictionary-search-input
-    "s" #'osx-dictionary-select-dictionary)
+    "s" #'osx-dictionary-search-input
+    "S" #'osx-dictionary-select-dictionary)
   :custom
   (osx-dictionary-last-dictionary-file
    (emacs-config-cache-file "osx-dictionary-last-dictionary"))
