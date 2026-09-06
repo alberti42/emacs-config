@@ -673,6 +673,12 @@ monitor."
  'code-cells-config
  "Could not load code-cells-config.el; cell-aware navigation is disabled.")
 
+;; Word lookup via macOS Dictionary.app (Core Services API, no bundled data)
+(when (eq system-type 'darwin)
+  (emacs-config-load-module
+   'osx-dictionary-config
+   "Could not load osx-dictionary-config.el; word lookup is disabled."))
+
 ;; lua-mode: major mode for editing Lua.
 (use-package lua-mode)
 
