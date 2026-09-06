@@ -82,6 +82,22 @@
 (with-eval-after-load 'marginalia
   (themes-config--fix-marginalia-doc-contrast))
 
+;; `magit-header-line' (the "commit HASH" bar in e.g. `magit-revision-mode',
+;; remapped in via that buffer's `face-remapping-alist') is
+;; `:background dark-blue :foreground base8' in `doom-opera-light'. `base8' =
+;; #424242, a near-black dark gray meant for emphasis text on the theme's
+;; light background — not for a colored bar. Against `dark-blue' (#5272AF)
+;; that's ~2.2:1 contrast, well under WCAG's 4.5:1. `doom-challenger-deep'
+;; doesn't have this clash, so scope to the light theme only. Same re-apply
+;; story as the fixes above.
+(defun themes-config--fix-magit-header-line-contrast (&rest _)
+  (when (and (facep 'magit-header-line)
+             (custom-theme-enabled-p 'doom-opera-light))
+    (set-face-attribute 'magit-header-line nil :foreground "#fafafa")))
+(add-hook 'enable-theme-functions #'themes-config--fix-magit-header-line-contrast)
+(with-eval-after-load 'magit
+  (themes-config--fix-magit-header-line-contrast))
+
 ;; Propagate theme face values to packages that need harmonizing (e.g.
 ;; git-gutter background matching the line-number column).  Defined here so
 ;; it is ready before zac-theme-autodetection calls it.
