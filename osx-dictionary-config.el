@@ -25,12 +25,12 @@
 ;;; Code:
 
 (use-package osx-dictionary
-  :straight (osx-dictionary
-             :type git
-             :host github
-             :repo "alberti42/fork-osx-dictionary.el"
-             :local-repo "~/Programming/Others/fork-osx-dictionary.el"
-             :branch "dictionary-selection")
+  ;; :straight (osx-dictionary
+  ;;            :type git
+  ;;            :host github
+  ;;            :repo "alberti42/fork-osx-dictionary.el"
+  ;;            :local-repo "~/Programming/Others/fork-osx-dictionary.el"
+  ;;            :branch "dictionary-selection")
   :commands (osx-dictionary-search-word-at-point
              osx-dictionary-search-input
              osx-dictionary-select-dictionary)
