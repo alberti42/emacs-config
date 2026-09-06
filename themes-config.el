@@ -62,6 +62,26 @@
 (with-eval-after-load 'markdown-ts-mode
   (themes-config--harmonize-markdown-headings))
 
+;; `marginalia-documentation' (the short docstring Marginalia appends to e.g.
+;; `describe-function' candidates) inherits `font-lock-doc-face', whose
+;; `doom-opera-light' color (~#b6b6b6, lightened from `base5') is nearly the
+;; same lightness as `vertico-current''s selection background (`region' =
+;; `base4' = #bdbdbd) — the annotation on the currently-selected candidate is
+;; unreadable. `vertico-current' only sets `:background' (added with `append',
+;; i.e. lowest priority), so it never overrides the annotation's own
+;; `:foreground' — the fix has to change the annotation's color, not the
+;; selection background. `doom-challenger-deep' has no such clash (its
+;; `doc-comments' is far lighter than its darker `region'), so this is scoped to
+;; the light theme only. Same re-apply story as the fixes above.
+(defun themes-config--fix-marginalia-doc-contrast (&rest _)
+  (when (and (facep 'marginalia-documentation)
+             (custom-theme-enabled-p 'doom-opera-light))
+    (set-face-attribute 'marginalia-documentation nil
+                        :inherit 'unspecified :foreground "#454545")))
+(add-hook 'enable-theme-functions #'themes-config--fix-marginalia-doc-contrast)
+(with-eval-after-load 'marginalia
+  (themes-config--fix-marginalia-doc-contrast))
+
 ;; Propagate theme face values to packages that need harmonizing (e.g.
 ;; git-gutter background matching the line-number column).  Defined here so
 ;; it is ready before zac-theme-autodetection calls it.
