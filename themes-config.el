@@ -43,6 +43,25 @@
 (with-eval-after-load 'markdown-ts-mode
   (themes-config--clear-markdown-html-block-bg))
 
+;; The bundled `markdown-ts-heading-1' .. `-6' all inherit the same face
+;; (`font-lock-function-name-face'), so every heading level renders in the
+;; same color.  Org gets distinct per-level colors from `org-level-1' ..
+;; `-8' (via `doom-themes-org-config'); reuse those for markdown headings.
+;; Same re-apply-on-`enable-theme-functions' story as the html-block fix
+;; above: `zac-load-theme-callback' disables every other enabled theme
+;; (including `user') on each switch, which would wipe a `custom-set-faces'
+;; override. `intern-soft' + `facep' guard the case where `markdown-ts-mode'
+;; (autoloaded) hasn't defined its faces yet the first time this hook runs.
+(defun themes-config--harmonize-markdown-headings (&rest _)
+  (dolist (n (number-sequence 1 6))
+    (let ((md (intern-soft (format "markdown-ts-heading-%d" n)))
+          (org (intern (format "org-level-%d" n))))
+      (when (facep md)
+        (set-face-attribute md nil :inherit org :weight 'unspecified)))))
+(add-hook 'enable-theme-functions #'themes-config--harmonize-markdown-headings)
+(with-eval-after-load 'markdown-ts-mode
+  (themes-config--harmonize-markdown-headings))
+
 ;; Propagate theme face values to packages that need harmonizing (e.g.
 ;; git-gutter background matching the line-number column).  Defined here so
 ;; it is ready before zac-theme-autodetection calls it.
