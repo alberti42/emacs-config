@@ -62,25 +62,24 @@
 (with-eval-after-load 'markdown-ts-mode
   (themes-config--harmonize-markdown-headings))
 
-;; `marginalia-documentation' (the short docstring Marginalia appends to e.g.
-;; `describe-function' candidates) inherits `font-lock-doc-face', whose
-;; `doom-opera-light' color (~#b6b6b6, lightened from `base5') is nearly the
-;; same lightness as `vertico-current''s selection background (`region' =
-;; `base4' = #bdbdbd) — the annotation on the currently-selected candidate is
-;; unreadable. `vertico-current' only sets `:background' (added with `append',
-;; i.e. lowest priority), so it never overrides the annotation's own
-;; `:foreground' — the fix has to change the annotation's color, not the
-;; selection background. `doom-challenger-deep' has no such clash (its
-;; `doc-comments' is far lighter than its darker `region'), so this is scoped to
-;; the light theme only. Same re-apply story as the fixes above.
-(defun themes-config--fix-marginalia-doc-contrast (&rest _)
-  (when (and (facep 'marginalia-documentation)
-             (custom-theme-enabled-p 'doom-opera-light))
-    (set-face-attribute 'marginalia-documentation nil
-                        :inherit 'unspecified :foreground "#454545")))
-(add-hook 'enable-theme-functions #'themes-config--fix-marginalia-doc-contrast)
+;; In the minibuffer `marginalia-documentation', `completions-annotations' (used
+;; by e.g. org-semantic's `:annotation-function') are lighter gray; they are
+;; rendered distinct from the dark gray candidate text. The selected candidate
+;; `vertico-current' highlights with a `:background', which in
+;; `doom-opera-light' is set to `base4' = #bdbdbd; this creates little contrast
+;; between the annotation text and the background itself. There is not a simple
+;; way around without forcing a different background for the selected candidate.
+(defun themes-config--fix-annotation-contrast (&rest _)
+  (when (custom-theme-enabled-p 'doom-opera-light)
+    (when (facep 'completions-annotations)
+      (set-face-attribute 'completions-annotations nil :foreground "#8e8e8e"))
+    (when (facep 'marginalia-documentation)
+      (set-face-attribute 'marginalia-documentation nil
+                          :inherit 'unspecified :foreground "#8e8e8e"))))
+(add-hook 'enable-theme-functions #'themes-config--fix-annotation-contrast)
+(themes-config--fix-annotation-contrast)
 (with-eval-after-load 'marginalia
-  (themes-config--fix-marginalia-doc-contrast))
+  (themes-config--fix-annotation-contrast))
 
 ;; `magit-header-line' (the "commit HASH" bar in e.g. `magit-revision-mode',
 ;; remapped in via that buffer's `face-remapping-alist') is
