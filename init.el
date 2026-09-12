@@ -736,6 +736,11 @@ monitor."
  'navigation-config
  "Could not load navigation-config.el; smart Home/End keys are disabled.")
 
+;; Label-based jumping to any visible text (tmux-thumbs style): M-j / M-J
+(emacs-config-load-module
+ 'avy-config
+ "Could not load avy-config.el; label-based jumping is disabled.")
+
 ;; Scrolling
 (emacs-config-load-module
  'scroll-config
@@ -768,3 +773,4 @@ monitor."
  'tetris-config
  "Could not load tetris-config.el; Tetris speed tuning is disabled.")
 
+(put 'narrow-to-region 'disabled nil)
