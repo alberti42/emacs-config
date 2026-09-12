@@ -12,10 +12,10 @@
 ;; vault they disagree — 289 notes have a `:MODIFIED:' more than 90 days after
 ;; their note date:
 ;;
-;;   note date   - the day the note is about, taken from the file name.  This
-;;                 is the copy the strip removed, and the file name is what it
-;;                 provably matched (in every one of the 905 stripped notes),
-;;                 unlike `:CREATED:', which drifted during the import.
+;;   note date   - the day the note was written, from `:CREATED:' in the
+;;                 file-level property drawer.  955 of the vault's 957 notes
+;;                 carry it; the two that do not fall back to the date leading
+;;                 the file name, which is how the imported notes are named.
 ;;   :MODIFIED:  - the day the note was last edited, refreshed on save by
 ;;                 modified-stamp.el.  Drives the sort, so a note touched two
 ;;                 weeks ago is near the top and need not be dated by hand.
@@ -44,13 +44,13 @@ carries two dates per candidate and is the more crowded of the two.")
 (defun vulpea-vault-select-note-date (note)
   "Return NOTE's own date as a YYYY-MM-DD string, or nil.
 
-Taken from the file name, which is authoritative in this vault: it
-matched the date stripped from every title, whereas `:CREATED:' did not.
-Falls back to `:CREATED:' for a note whose file name carries no date."
-  (let ((file (file-name-nondirectory (or (vulpea-note-path note) ""))))
-    (if (string-match "\\`\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\)" file)
-        (match-string 1 file)
-      (vulpea-vault-select--property-date note "CREATED"))))
+Taken from `:CREATED:' in the file-level property drawer.  A note whose
+drawer carries no stamp falls back to the date leading its file name,
+which is how the notes imported from Obsidian are named."
+  (or (vulpea-vault-select--property-date note "CREATED")
+      (let ((file (file-name-nondirectory (or (vulpea-note-path note) ""))))
+        (and (string-match "\\`\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\)" file)
+             (match-string 1 file)))))
 
 (defun vulpea-vault-select-modified (note)
   "Return NOTE's `:MODIFIED:' date as a YYYY-MM-DD string, or nil."
