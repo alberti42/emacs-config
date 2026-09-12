@@ -264,9 +264,8 @@ implies more:
 
 1. **Note creation in a non-live vault would not be indexed.**
    `vulpea-create` writes the file; the db learns of it only through the
-   live watcher/worker. So `org-id` auto-registration
-   (`vulpea-vault-register-ids`, fired from
-   `vulpea-db-worker-done-functions`) also misses it. → A redesign must
+   live watcher/worker. So `org-id`
+   registration, which vulpea does as it indexes, also misses it. → A redesign must
    make **creation promote its target vault to live**.
 2. **Schema/version skew kills the "read-only connection pool" shortcut.**
    `vulpea-db--init` rebuilds the schema (a full re-scan, needing the
@@ -609,12 +608,12 @@ heading link would otherwise repeat it. The note is then seeded with
 
 ## Two gotchas that cost real time
 
-- **vulpea does not hook `org-id`.** Its own commands resolve through
-  the db, but a plain `[[id:…]]` link goes through `org-id-locations`,
-  which nothing populates automatically. Run
-  `M-x vulpea-vault-update-id-locations` after a conversion.
-  (`vulpea-vault-register-ids` on `vulpea-db-worker-done-functions`
-  keeps the two in step for files indexed later.)
+- **`org-id` and vulpea keep separate indexes.** vulpea registers
+  every ID it indexes with `org-id`, but only for files it indexes and
+  never on removal. `M-x vulpea-vault-update-id-locations` registers a
+  whole tree from the db — needed after a conversion, and run by
+  `vulpea-vault-switch` for the vault being entered;
+  `vulpea-vault-unregister-dropped-ids` prunes a deleted note's IDs.
 - **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
   mismatch yields an *empty* attachment directory rather than an error.
   Likewise `vulpea-vault-directory` versus its `DEFAULT_OUT`. The
@@ -800,7 +799,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder; `C-c n d` opens Dired on the vault root |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |
-| `ids.el`              | keeps `org-id` in step with vulpea's db: the index hook, `M-x vulpea-vault-update-id-locations`, the lowercase-UUID `org-id-new` override |
+| `ids.el`              | closes the two gaps vulpea's own `org-id` registration leaves: pruning on removal, and `M-x vulpea-vault-update-id-locations` for a whole tree |
 | `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
 | `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
 | `bibdesk.el`          | the `x-bdsk:` link type                                         |
