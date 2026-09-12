@@ -14,7 +14,7 @@
              :type git
              :host github
              :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
-             ;; :branch "main"
+             :branch "jsonrpc"
              :repo "alberti42/emacs-ltex-plus")
 
   :custom
