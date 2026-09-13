@@ -6,19 +6,27 @@
 ;; tmux-thumbs / Vimium: press the key, every candidate sprouts a home-row
 ;; label, type it, point is there.  No search prompt, no narrowing step.
 ;;
-;; Two entry points are bound:
+;; Bound under the built-in goto-map (M-g), where the other "take me
+;; somewhere" commands already live (M-g g goto-line, M-g c goto-char,
+;; M-g n / M-g p next/previous error):
 ;;
-;;   M-j  `avy-goto-word-0'      label EVERY word in the visible windows at
-;;                               once.  Nothing is typed first; this is the
-;;                               tmux-thumbs gesture.
-;;   M-J  `avy-goto-char-timer'  type one or more characters, pause briefly,
-;;                               then labels appear on the matches.  Use this
-;;                               when the screen is dense enough that
-;;                               `avy-goto-word-0' needs two-character labels.
+;;   M-g a  `avy-goto-char-timer'  type as many characters as you like, then
+;;                                 press RET; labels appear on the remaining
+;;                                 matches (and with a single match left it
+;;                                 jumps straight there).  The primary
+;;                                 gesture: it stays usable in a dense buffer,
+;;                                 where labelling every word would exhaust
+;;                                 the one-character labels.  The name is
+;;                                 upstream's -- there is no timer here, see
+;;                                 `avy-timeout-seconds' below.
+;;   M-g A  `avy-goto-word-0'      label EVERY word in the visible windows at
+;;                                 once.  Nothing is typed first; this is the
+;;                                 tmux-thumbs gesture, best on sparse screens.
+;;   M-g l  `avy-goto-line'        label the start of every visible line.
 ;;
-;; M-j is chosen because it is a single chord that survives in a TTY frame
-;; (Super and C-; / C-. do not), and because its global binding,
-;; `default-indent-new-line', is also on C-M-j -- so nothing is lost.
+;; The goto-map is preferred over a single chord such as M-j: M-j is
+;; `default-indent-new-line', which this configuration's author uses as a
+;; C-j substitute, and M-g survives a TTY frame just as well.
 ;;
 ;; Beyond jumping, avy can ACT on a target without moving point: at the
 ;; "select a label" prompt, press a dispatch key first, then the label.
@@ -28,7 +36,7 @@
 ;;   x  kill target, move  X  kill target, stay    m  mark target
 ;;   Y  yank target line   z  zap to target        i  ispell target
 ;;
-;; So `M-j n <label>' copies a distant word to the kill ring while leaving
+;; So `M-g a n <label>' copies a distant word to the kill ring while leaving
 ;; point where it is -- the "hint it and it lands in the clipboard" half of
 ;; tmux-thumbs.
 
@@ -36,29 +44,31 @@
 
 (use-package avy
   :straight t
-  :bind (("M-j" . avy-goto-word-0)
-         ("M-J" . avy-goto-char-timer))
+  :bind (:map goto-map
+              ("A" . avy-goto-word-0)
+              ("a" . avy-goto-char-timer)
+              ("l" . avy-goto-line))
   :custom
-  ;; Home row only.  Labels are drawn from this list in order, so the nearest
-  ;; candidates get the strongest fingers.  Nine keys means up to 9 targets get
-  ;; a one-character label and the rest get two -- which is the whole screen.
+  ;; Use home row (matching avy's default). Labels are assigned in
+  ;; buffer-position order via a balanced tree; the balanced tree ensures that
+  ;; all candidates get labels differing by at most one key in length. In
+  ;; general, the label's length depends on how many matches there are.
   (avy-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
-  ;; Label every visible window, not just the selected one: this config runs
-  ;; tmux-style multi-window frames (see windows-config.el), and jumping
-  ;; across a split is most of the value.
-  (avy-all-windows t)
-  ;; ...but keep C-u M-j meaning "this window only".
-  (avy-all-windows-alt nil)
-  ;; Overlay the label on top of the target instead of shifting text right,
-  ;; so nothing reflows -- important in buffers whose alignment matters
-  ;; (org tables, markdown tables, code).
+  ;; Do not label every visible window, just the selected one.
+  (avy-all-windows nil)
+  ;; ...but label all windows with C-u M-g a.
+  (avy-all-windows-alt t)
+  ;; Overlay the label on top of the target instead of shifting text right, so
+  ;; nothing reflows.
   (avy-style 'at-full)
   ;; Case-insensitive matching for `avy-goto-char-timer'.
   (avy-case-fold-search t)
-  ;; How long `avy-goto-char-timer' waits after the last keystroke before it
-  ;; stops collecting input and shows the labels.
-  (avy-timeout-seconds 0.4)
-  ;; With exactly one candidate there is nothing to disambiguate: go.
+  ;; No timer: type the pattern at my own pace and end it with RET.  Timer is
+  ;; relevant for `avy-goto-char-timer', which stops collecting input once this
+  ;; many seconds pass without a keystroke; unless nil is provided.
+  (avy-timeout-seconds nil)
+  ;; With exactly one candidate there is nothing to disambiguate.  Consulted by
+  ;; `avy--process-1' once the pattern has been read, i.e. after RET.
   (avy-single-candidate-jump t))
 
 (provide 'avy-config)
