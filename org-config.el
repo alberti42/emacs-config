@@ -85,8 +85,10 @@
   ;; `org-id-locations' is a map from ID to file path on THIS machine, rebuilt
   ;; by rescanning, and it spans every org file this Emacs knows.  It is stored
   ;; in a cache file.  Remember: indexes owned by vulpea are a different thing
-  ;; and live inside the vault. — see `vulpea-db-location'.  Keeping the two in
-  ;; step is done by `vulpea-vault/ids.el'.
+  ;; and live inside the vault. — see `vulpea-db-location'.  vulpea keeps the
+  ;; two in step itself: it registers the ids of every file it indexes, drops
+  ;; them when it forgets a file, and registers a whole tree when autosync
+  ;; starts.
   (setq org-id-locations-file (emacs-config-cache-file "org-id-locations.eld")))
 
 ;;; -- org-appear --------------------------------------------------------------

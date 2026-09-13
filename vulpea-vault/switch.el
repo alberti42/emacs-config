@@ -35,7 +35,6 @@
 (require 'seq)
 (require 'vulpea-vault-scheme)
 (require 'vulpea-vault-core)
-(require 'vulpea-vault-ids)
 
 (defvar vulpea-vault-history nil
   "Vault roots opened in this Emacs, most recently opened first.
@@ -211,13 +210,11 @@ returns before its notes are findable."
       (when watching (vulpea-db-autosync-mode -1))
       (vulpea-db-close)
       (vulpea-vault-apply root)
+      ;; Re-enabling the watcher is also what registers the new vault's ids
+       ;; with `org-id': vulpea schedules that as it starts, which matters for a
+       ;; vault indexed on an earlier visit, where every file compares unchanged
+       ;; and nothing would otherwise be registered.
       (when watching (vulpea-db-autosync-mode +1))
-      ;; Register whatever the new vault's index already holds.  A vault
-      ;; indexed on a previous visit reports every file unchanged, so the hook
-      ;; that normally feeds `org-id' stays quiet and `[[id:…]]' links would
-      ;; fail until something re-scanned; a vault being indexed for the first
-      ;; time has nothing here yet and is covered by that hook instead.
-      (vulpea-vault-update-id-locations)
       ;; Recorded only once the switch has gone through, so a directory that
       ;; turned out not to be openable is not offered again.  The binding is
       ;; what makes `add-to-history' move an already-known vault to the front

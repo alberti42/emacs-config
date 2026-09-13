@@ -48,8 +48,8 @@ Two consequences that look like inconsistencies but are not:
 - `org-attach-preferred-new-method 'id` and `org-attach-use-inheritance
   t` live in `attachments.el`, not here — they are not taste, they follow
   from the ID-keyed store layout the scheme and the converter agreed on.
-- `org-id` is not configured here **at all**. The mechanism that keeps it
-  in step with vulpea's db is `ids.el`; where `org-id-locations-file`
+- `org-id` is not configured here **at all**. Keeping it in step with
+  vulpea's db is vulpea's own doing; where `org-id-locations-file`
   lives is an org-wide, per-machine choice and sits with the rest of org,
   in `org-config.el` — via `emacs-config-cache-file`, the one helper every
   module uses to keep state out of this git worktree.
@@ -101,9 +101,8 @@ Consumers split two ways:
 - **Answer nil and carry on** — `vulpea-vault--candidates` (no "current"
   entry, just the escape), `vulpea-vault-switch` (nothing to close),
   `vulpea-vault-special-directory`, `vulpea-vault--context-directory`.
-- **Refuse cleanly** — `vulpea-vault-orphans`,
-  `vulpea-vault-update-id-locations` and note creation with no daily
-  folder go through `vulpea-vault-or-error`, so nil fails as one
+- **Refuse cleanly** — `vulpea-vault-orphans` and note creation with no
+  daily folder go through `vulpea-vault-or-error`, so nil fails as one
   `user-error` instead of a wrong-type-argument deep inside.
 
 ## `vulpea-vault-apply`
@@ -608,12 +607,11 @@ heading link would otherwise repeat it. The note is then seeded with
 
 ## Two gotchas that cost real time
 
-- **`org-id` and vulpea keep separate indexes.** vulpea registers
-  every ID it indexes with `org-id`, but only for files it indexes and
-  never on removal. `M-x vulpea-vault-update-id-locations` registers a
-  whole tree from the db — needed after a conversion, and run by
-  `vulpea-vault-switch` for the vault being entered;
-  `vulpea-vault-unregister-dropped-ids` prunes a deleted note's IDs.
+- **`org-id` and vulpea keep separate indexes.** vulpea registers what
+  it indexes, drops what it forgets, and registers a whole tree when
+  autosync starts — so opening a vault, switching to another, and
+  deleting a note all keep `org-id` in step. `M-x
+  vulpea-db-register-org-ids` rebuilds the list by hand.
 - **`org-attach-id-dir` must match the converter's `--attach-dir`.** A
   mismatch yields an *empty* attachment directory rather than an error.
   Likewise `vulpea-vault-directory` versus its `DEFAULT_OUT`. The
@@ -634,10 +632,6 @@ heading link would otherwise repeat it. The note is then seeded with
 
 ## Other behaviour
 
-- **IDs are minted by an `:override` on `org-id-new`** (`ids.el`)
-  returning `(uuid-to-string (uuid-v4))`. Org 9.8.7 still forks
-  `org-id-uuid-program`, which is uppercase on macOS, and ID lookup is
-  case-sensitive.
 - **Cross-note attachment links** (`attachments.el`). Stock
   `attachment:` carries only a filename, resolved against the *current*
   node, so there is no cross-reference syntax. An `attachment:<uuid>/file`
@@ -799,7 +793,6 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder; `C-c n d` opens Dired on the vault root |
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
 | `create.el`           | where a new note lands and what it starts as                    |
-| `ids.el`              | closes the two gaps vulpea's own `org-id` registration leaves: pruning on removal, and `M-x vulpea-vault-update-id-locations` for a whole tree |
 | `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
 | `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
 | `bibdesk.el`          | the `x-bdsk:` link type                                         |
@@ -826,4 +819,3 @@ before `switch`, `switch` before `semantic`.
 | `C-c n l`                             | `vulpea-vault-log-saves` — the history with every save |
 | `C-c n v`                             | `vulpea-vault-switch` — open another vault, live |
 | `M-x vulpea-vault-orphans`            | the vault health report              |
-| `M-x vulpea-vault-update-id-locations` | repair `org-id-locations` from the db |

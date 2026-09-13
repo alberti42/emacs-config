@@ -16,8 +16,8 @@
 ;;
 ;; `org-id' itself is not configured here at all: where `org-id-locations-file'
 ;; lives is an org-wide, per-machine choice and belongs with the rest of it in
-;; `org-config.el'.  What this vault adds is only the part that keeps `org-id'
-;; in step with vulpea's database, which is `vulpea-vault/ids.el'.
+;; `org-config.el'.  Keeping it in step with vulpea's database is vulpea's own
+;; business: it registers what it indexes and drops what it forgets.
 ;;
 ;; The seam is worth keeping, and there is a one-line test for anything added
 ;; later: WOULD THIS BE WRONG ON ANOTHER MACHINE OR FOR ANOTHER VAULT?  Then
@@ -28,7 +28,6 @@
 ;;   scheme        what a vault may declare in its `.dir-locals.el'
 ;;   core          which vault is in use, and the settings derived from it
 ;;   modified-stamp, select, directories, tags, create   note-level behaviour
-;;   ids           `org-id' kept in step with vulpea's database
 ;;   attachments   the ID-keyed store, and cross-note `attachment:' links
 ;;   orphans       the dangling-link / unreferenced-file report
 ;;   bibdesk, pdffile, message                the vault's own link types
@@ -77,9 +76,8 @@
   :after org
   ;; Load eagerly (org is required at the top of this file, so this fires as the
   ;; form is reached) rather than deferring to the first `:bind' command.  The
-  ;; vault commands defined in vulpea-vault/ (e.g. `vulpea-vault-orphans',
-  ;; `vulpea-vault-update-id-locations') call the query API in
-  ;; `vulpea-db-query.el' directly, and those functions are NOT autoloaded (the
+  ;; vault commands defined in vulpea-vault/ (e.g. `vulpea-vault-orphans')
+  ;; call the query API in `vulpea-db-query.el' directly, and those functions are NOT autoloaded (the
   ;; build emits only `register-definition-prefixes').  A lazy vulpea would
   ;; leave them void until a `:bind' command happened to load the package.
   ;; `require'-ing vulpea pulls in `vulpea-db-query' transitively (through
@@ -130,8 +128,8 @@
 
 ;; The rest of vulpea-vault/, one concern per file, loaded the way
 ;; `completion.el' loads completions/.  Order matters where a module
-;; `require's a sibling: `attachments' before `orphans', `ids' before `switch',
-;; `switch' before `semantic'.
+;; `require's a sibling: `attachments' before `orphans', `switch' before
+;; `semantic'.
 (emacs-config-load-module
  "vulpea-vault/modified-stamp"
  "Could not load vulpea-vault/modified-stamp.el; :MODIFIED: will not refresh on save.")
@@ -151,10 +149,6 @@
 (emacs-config-load-module
  "vulpea-vault/create"
  "Could not load vulpea-vault/create.el; new notes will use vulpea's own defaults.")
-
-(emacs-config-load-module
- "vulpea-vault/ids"
- "Could not load vulpea-vault/ids.el; [[id:…]] links will not follow new notes.")
 
 (emacs-config-load-module
  "vulpea-vault/attachments"
