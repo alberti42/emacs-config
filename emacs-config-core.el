@@ -21,24 +21,50 @@
   (file-name-directory (file-truename (or load-file-name user-init-file user-emacs-directory)))
   "Directory containing this Emacs configuration.")
 
-;; Where this config's machine-local state goes.
+;; Where this config's machine-local files go.
 ;;
 ;; `user-emacs-directory' is a symlink into a git worktree here, so anything a
 ;; package persists by default (recentf's list, `org-id-locations', treemacs's
-;; workspaces, …) would land in the repository.  None of it is configuration:
-;; it is per-machine state, regenerable, and never worth committing.  It goes
-;; under `$XDG_CACHE_HOME/emacs/' instead.
+;; workspaces, …) would land in the repository.  None of it is configuration,
+;; so none of it belongs there — but "not configuration" covers two different
+;; kinds of file, and they get two different directories:
 ;;
-;; This lives in core, beside `emacs-config-dir', because it is the same kind
+;;   cache (`emacs-config-cache-dir', $XDG_CACHE_HOME/emacs/) — DERIVED data.
+;;     Something else is the source of truth, so deleting the whole tree costs
+;;     only the time to rebuild it: rendered SVGs recompile from their LaTeX,
+;;     `org-id-locations' is rescanned from the org files.
+;;
+;;   state (`emacs-config-state-dir', $XDG_STATE_HOME/emacs/) — data produced
+;;     by the USER'S OWN PAST ACTIONS, with no source to rebuild it from: the
+;;     visited-file history, the project list, the directories whose dir-locals
+;;     have been trusted.  Losing it is no drama — nothing vital, nothing worth
+;;     git — but no amount of recomputation brings it back, which is precisely
+;;     what separates it from cache.  This is what XDG means by state: "data
+;;     that should persist between restarts, but is not important or portable
+;;     enough to the user to belong in $XDG_DATA_HOME".
+;;
+;; Both live in core, beside `emacs-config-dir', because they are the same kind
 ;; of fact — where this configuration keeps its files — and because core is
-;; loaded before every module, so any of them may use it.
+;; loaded before every module, so any of them may use them.
 (defconst emacs-config-cache-dir
   (expand-file-name "emacs" (or (getenv "XDG_CACHE_HOME")
                                 (expand-file-name "~/.cache")))
-  "Directory for this configuration's machine-local state.
+  "Directory for this configuration's machine-local *derived* files.
+See `emacs-config-state-dir' for the files that are not derived.
 Never inside `emacs-config-dir', which is a git worktree.
 Use `emacs-config-cache-file' rather than expanding against this
 directly, so the directory is created before anything writes to it.")
+
+(defconst emacs-config-state-dir
+  (expand-file-name "emacs" (or (getenv "XDG_STATE_HOME")
+                                (expand-file-name "~/.local/state")))
+  "Directory for this configuration's machine-local *state*.
+State is what the user's own past actions produced and nothing can
+reconstruct — history lists, project lists, trusted directories — as
+opposed to `emacs-config-cache-dir', whose contents are derived and cost
+only time to rebuild.  Never inside `emacs-config-dir', which is a git
+worktree.  Use `emacs-config-state-file' rather than expanding against
+this directly, so the directory is created before anything writes to it.")
 
 (defun emacs-config-cache-file (name)
   "Return the path of NAME inside `emacs-config-cache-dir'.
@@ -48,6 +74,32 @@ time by the modules that set such a path, so the cost is one `mkdir -p'
 per setting."
   (make-directory emacs-config-cache-dir t)
   (expand-file-name name emacs-config-cache-dir))
+
+(defun emacs-config-state-file (name &optional legacy)
+  "Return the path of NAME inside `emacs-config-state-dir'.
+Creates that directory, like `emacs-config-cache-file'.
+
+LEGACY is an optional path, or list of paths, where this file used to be
+kept.  If NAME does not exist yet and one of them does, the first such
+file is renamed into place.  State cannot be regenerated, so a setting
+that moves must carry its file along or the user silently loses it; a
+plain rename is enough because the old location is only ever read by a
+version of this config that no longer runs.  The check costs one
+`file-exists-p' on a path that exists, so the clause may be left in
+place indefinitely."
+  (make-directory emacs-config-state-dir t)
+  (let ((new (expand-file-name name emacs-config-state-dir)))
+    (unless (file-exists-p new)
+      (when-let* ((old (seq-find #'file-exists-p
+                                 (if (listp legacy) legacy (list legacy)))))
+        (condition-case err
+            (rename-file old new)
+          (error (display-warning
+                  'emacs-config
+                  (format "Could not move %s to %s: %s"
+                          old new (error-message-string err))
+                  :warning)))))
+    new))
 
 (defun emacs-config-load-module (module warning)
   "Load local MODULE from `emacs-config-dir`.

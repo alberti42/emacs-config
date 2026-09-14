@@ -5,9 +5,9 @@
 ;; Enable and persist a list of recently visited files.
 ;;
 ;; Note: this config repo is intended to be symlinked into user-emacs-directory
-;; (e.g. ~/.config/emacs). To avoid writing state into the git worktree, the
-;; recentf file goes under `emacs-config-cache-dir' like every other
-;; machine-local file this config persists.
+;; (e.g. ~/.config/emacs). To avoid writing into the git worktree, the recentf
+;; file goes under `emacs-config-state-dir' -- state, not cache: the list is a
+;; record of what this user visited, and nothing can rebuild it once deleted.
 ;;
 
 ;;; Code:
@@ -16,7 +16,10 @@
   :straight nil
   :demand t
   :init
-  (setq recentf-save-file (emacs-config-cache-file "recentf.eld"))
+  (setq recentf-save-file
+        (emacs-config-state-file "recentf.eld"
+                                 (expand-file-name "recentf.eld"
+                                                   emacs-config-cache-dir)))
   (setq recentf-max-saved-items 200
         recentf-max-menu-items 50
         recentf-auto-cleanup 'mode

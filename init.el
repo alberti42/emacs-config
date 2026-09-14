@@ -209,10 +209,6 @@ monitor."
         (elisp-lint-indent-specs (git-gutter:awhen . 1))
         (buffer-file-coding-system . utf-8-unix)))
 
-;; Declare safe projects
-(add-to-list 'safe-local-variable-directories
-             "~/Programming/Websites/alberti42.github.io/")
-
 ;; Accept t or nil for AUCTeX's interactive-run toggle.
 (put 'TeX-interactive-mode 'safe-local-variable #'booleanp)
 
@@ -228,6 +224,16 @@ monitor."
          "emacs-config-core"
          (file-name-directory (file-truename init-path)))
         nil 'nomessage))
+
+;; Declare safe projects.  Which ones they are is per-machine state, so the
+;; list lives in a file under `emacs-config-state-dir' and is grown with
+;; `safe-locals-add-directory' -- the `+' answer at the unsafe-variables
+;; prompt cannot be used here, as it writes to the never-loaded `custom-file'.
+;; Must come after the bootstrap (it needs `emacs-config-state-file') but
+;; before anything visits a file, which is what reads a `.dir-locals.el'.
+(emacs-config-load-module
+ 'safe-locals-config
+ "Could not load safe-locals-config.el; no directory's dir-locals are trusted.")
 
 ;; UI chrome, fonts, frame setup, and TTY mode-line separator.
 (emacs-config-load-module

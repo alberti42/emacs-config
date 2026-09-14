@@ -40,8 +40,11 @@
     "s" #'osx-dictionary-search-input
     "S" #'osx-dictionary-select-dictionary)
   :custom
+  ;; State: which dictionary was last picked is a choice, not a derivation.
   (osx-dictionary-last-dictionary-file
-   (emacs-config-cache-file "osx-dictionary-last-dictionary"))
+   (emacs-config-state-file "osx-dictionary-last-dictionary"
+                            (expand-file-name "osx-dictionary-last-dictionary"
+                                              emacs-config-cache-dir)))
   (osx-dictionary-allowed-dictionaries
    '("Oxford Dictionary of English"
      "Oxford Thesaurus of English"

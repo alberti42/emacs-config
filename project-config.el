@@ -11,6 +11,15 @@
 ;; them into the parent repo's project root.
 (use-package project
   :straight nil
+  :init
+  ;; The known-project list defaults to `project-list-file' inside
+  ;; `user-emacs-directory' -- a symlink into the dotfiles worktree here.  It
+  ;; is state, not cache: the list is what this user happened to open, and no
+  ;; scan reproduces it.
+  (setq project-list-file
+        (emacs-config-state-file "projects"
+                                 (expand-file-name "projects"
+                                                   user-emacs-directory)))
   :custom
   (project-vc-merge-submodules nil)
   ;; `.dir-locals.el' is an extra root marker: `project-try-vc' roots at the

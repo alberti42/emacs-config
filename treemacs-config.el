@@ -10,10 +10,17 @@
          ("C-c t s" . treemacs-select-window)
          ("C-c t f" . treemacs-find-file))
   :init
-  ;; Persist workspaces/projects outside the config worktree.
-  (setq treemacs-persist-file (emacs-config-cache-file "treemacs-persist")
+  ;; Persist workspaces/projects outside the config worktree.  State rather
+  ;; than cache: a workspace is assembled by hand and has no source to be
+  ;; rebuilt from.  The last-error copy follows it, being a copy of it.
+  (setq treemacs-persist-file
+        (emacs-config-state-file "treemacs-persist"
+                                 (expand-file-name "treemacs-persist"
+                                                   emacs-config-cache-dir))
         treemacs-last-error-persist-file
-        (emacs-config-cache-file "treemacs-persist-at-last-error"))
+        (emacs-config-state-file "treemacs-persist-at-last-error"
+                                 (expand-file-name "treemacs-persist-at-last-error"
+                                                   emacs-config-cache-dir)))
   :config
   ;; Keep this light; avoid enabling optional modes by default.
   (setq treemacs-width 35)
