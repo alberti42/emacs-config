@@ -108,6 +108,9 @@
 
 (use-package flycheck
   :init
+  ;; Flycheck already shows current-buffer counts in its mode-line lighter.
+  ;; Suppress lsp-mode's separate workspace-scoped diagnostic counter.
+  (setq lsp-modeline-diagnostics-enable nil)
   ;; left-fringe: fringes are always present in GUI frames (no layout jitter)
   ;; and degrade gracefully in TTY.
   (setq flycheck-indication-mode 'left-fringe)

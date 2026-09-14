@@ -122,6 +122,7 @@ bundled both into one package.
 | ------------------------------------ | ---------- | --------------------------------------------- |
 | `read-process-output-max`            | 4 MB       | larger LSP JSON payloads without stalls       |
 | `lsp-diagnostics-provider`           | `:flycheck`| richer display, fringe stays fixed            |
+| `lsp-modeline-diagnostics-enable`    | `nil`      | avoid duplicate workspace counts beside Flycheck's buffer counts |
 | `lsp-completion-provider`            | `:none`    | hand-off to corfu+cape                        |
 | `lsp-headerline-breadcrumb-enable`   | `t`        | breadcrumb in header-line                     |
 | `lsp-auto-guess-root`                | `t`        | use `project.el` for workspace root           |

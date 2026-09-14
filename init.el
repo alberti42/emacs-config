@@ -240,6 +240,12 @@ monitor."
  'ui-config
  "Could not load ui-config.el; UI settings are disabled.")
 
+;; Global mode-line content policy: retain informative state while hiding
+;; minor-mode lighters that only advertise an enabled background feature.
+(emacs-config-load-module
+ 'mode-line-config
+ "Could not load mode-line-config.el; using default mode-line contents.")
+
 ;; Centered startup splash buffer (GUI only, no file args).
 (emacs-config-load-module
  'welcome-config
