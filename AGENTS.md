@@ -45,6 +45,30 @@ If no daemon/server is running, fall back to a batch eval:
 emacs --batch --quick -l init.el --eval '(princ (find-library-name "magit"))'
 ```
 
+## The daemon process and its logs
+
+The daemon is a launchd user agent, label `io.alberti42.emacs-daemon`, installed
+at `~/Library/LaunchAgents/io.alberti42.emacs-daemon.plist` (kept in the
+dotfiles repo under `Library/LaunchAgents/`). It runs `emacs --fg-daemon
+--debug-init` through the dotfiles zsh launcher, so the shell environment is
+already set up when Emacs starts.
+
+Its stdout and stderr go to `~/Library/Logs/emacs-daemon.log`. That file is
+where a fatal signal leaves Emacs's own C backtrace (`Fatal error 11:
+Segmentation fault` followed by `Backtrace:` and one address per frame), which
+is more complete than the macOS crash report in `~/Library/Logs/DiagnosticReports/`
+(that report loses the frames between `_sigtramp` and the caller once Emacs's
+signal handler has run). Symbolicate the addresses with `atos` against the
+running binary, using the `__TEXT` start of the Emacs image as the load address:
+
+```sh
+atos -o ~/Applications/Emacs.app/Contents/MacOS/Emacs -arch arm64 \
+     -l 0x100a88000 0x100ae1308 0x100aa8f10
+```
+
+The self-built app carries a symbol table but no DWARF, so `atos` resolves to
+function+offset, not file:line.
+
 ## Goals and Non-Goals
 
 Goals:
