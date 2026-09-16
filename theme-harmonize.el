@@ -60,8 +60,23 @@ the selected frame, and that frame would supply garbage.  The
   (when (theme-harmonize--real-frame-p)
     (theme-harmonize--apply)))
 
+(defun theme-harmonize--refresh-themed-pdf-buffers ()
+  "Re-render PDF buffers which follow the active theme.
+
+`pdf-view-themed-minor-mode' derives its render colors from the `default'
+face, but does not itself listen for theme changes.  Keep that appearance
+synchronization with the rest of the theme-change work here."
+  ;; pdf-tools is optional, so do not make theme harmonization load it.
+  (when (fboundp 'pdf-view-refresh-themed-buffer)
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+        (when (and (derived-mode-p 'pdf-view-mode)
+                   (bound-and-true-p pdf-view-themed-minor-mode))
+          (pdf-view-refresh-themed-buffer t))))))
+
 (defun theme-harmonize--apply ()
-  "Propagate the active theme colors to the faces that need harmonizing."
+  "Propagate active-theme appearance to dependent packages and buffers."
+  (theme-harmonize--refresh-themed-pdf-buffers)
   ;; Override line-number background for both TTY and GUI to ensure a single
   ;; consistent visual style (e.g. Catppuccin) regardless of frame type.
   ;; This also prevents daemon mode from producing different results depending
