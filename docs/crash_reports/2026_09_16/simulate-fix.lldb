@@ -1,0 +1,10 @@
+env MallocScribble=1
+process handle -p true -s false -n false SIGCHLD SIGALRM SIGPROF SIGIO SIGUSR1 SIGUSR2 SIGPIPE SIGWINCH
+br s -K false -n adjust_frame_glyphs -c "dont_resize_frames > 0"
+breakpoint command add 1
+bt 2
+expr -- ((struct frame *)$x0)->fonts_changed = true
+thread return
+continue
+DONE
+run
