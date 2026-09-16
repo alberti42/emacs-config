@@ -63,13 +63,12 @@ PROPERTY is matched with `equal': `vulpea-note-properties' is an alist
 keyed by strings, and `alist-get' compares with `eq' unless told
 otherwise — which silently finds nothing for every string key.
 
-Only the date part is kept.  The values are full ISO stamps
-\(2024-10-12T20:36:25+02:00); the time of day is noise in a completion
+Only the date part is kept: the time of day is noise in a completion
 list, and truncating rather than parsing keeps this free of any
 time-zone reinterpretation."
   (let ((value (alist-get property (vulpea-note-properties note) nil nil #'equal)))
     (and (stringp value)
-         (string-match "\\`\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\)" value)
+         (string-match "\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\)" value)
          (match-string 1 value))))
 
 (defun vulpea-vault-select-annotate (note)

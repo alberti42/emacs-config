@@ -21,11 +21,11 @@
 
 (require 'org)
 
-(defconst vulpea-vault-modified-time-format "%FT%T%:z"
+(defconst vulpea-vault-modified-time-format "[%Y-%m-%d %a %H:%M]"
   "`format-time-string' spec for the `:MODIFIED:' value.
-Matches what the vault already contains, e.g. 2026-04-13T08:08:00+02:00.
-Note `%:z' for the colon in the zone offset; plain `%z' would write
-+0200 and make new stamps differ from the migrated ones.")
+An inactive org timestamp, the shape `C-c .' inserts — inactive because
+an active one would file every note in the vault into the agenda on the
+days it was created and edited.")
 
 (defun vulpea-vault-modified-stamp-update ()
   "Set this buffer's `:MODIFIED:' property to the current time.
