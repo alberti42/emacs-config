@@ -28,6 +28,7 @@
   (lsp-ltex-plus-diagnostics-provider 'flycheck)
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-ltex-ls-log-level "warning")
+  (lsp-ltex-plus-debug nil)
   ;; A Premium account allows larger requests than the free service.
   (lsp-ltex-plus-max-request-size 60000)
   (lsp-ltex-plus-completion-enabled nil)
