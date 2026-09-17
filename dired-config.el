@@ -3,7 +3,7 @@
 ;;; Code:
 
 ;; When non-nil, inject the ls -h flag so sizes show as 4.0K / 1.2M rather
-;; than raw byte counts.  `dired-config--switches' reads this to build every
+;; than raw byte counts.  `my/dired--switches' reads this to build every
 ;; switch string (the default listing and each sort command), so there is a
 ;; single source of truth; `dired-config-toggle-human-readable-sizes' flips it
 ;; live.
@@ -12,7 +12,7 @@
   :type 'boolean
   :group 'dired)
 
-(defun dired-config--switches (base &optional extra)
+(defun my/dired--switches (base &optional extra)
   "Build an ls switch string from BASE, optional -h, and EXTRA.
 BASE is the leading flag cluster without the dash (e.g. \"al\", \"l\").
 The h flag is inserted when `dired-config-human-readable-sizes' is
@@ -22,11 +22,19 @@ non-nil.  EXTRA is any trailing flags/long options (e.g. \"S\", \"tr\",
           (if dired-config-human-readable-sizes "h" "")
           (or extra "")))
 
+(defun my/dired-create-directory (directory)
+  "Like `dired-create-directory', but complete over directories only."
+  (interactive
+   (list (read-directory-name "Create directory: " (dired-current-directory)))
+   dired-mode)
+  (dired-create-directory directory))
+
 (use-package dired
   :straight nil
   :init
   (when (eq system-type 'darwin)
     (setq insert-directory-program "gls"))
+  :bind (:map dired-mode-map ("+" . my/dired-create-directory))
   :custom
   ;; reuse single dired buffer when navigating instead
   ;; of opening new buffer for each directory
