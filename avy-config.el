@@ -55,7 +55,7 @@
   ;; general, the label's length depends on how many matches there are.
   (avy-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
   ;; Do not label every visible window, just the selected one.
-  (avy-all-windows nil)
+  (avy-all-windows t)
   ;; ...but label all windows with C-u M-g a.
   (avy-all-windows-alt t)
   ;; Overlay the label on top of the target instead of shifting text right, so
