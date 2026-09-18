@@ -1,5 +1,5 @@
 ;;; repro-timer.el --- crash display_mode_line by freeing the row it writes into  -*- lexical-binding: t; -*-
-;; Run:  Emacs -Q -l repro-timer.el   (needs a GUI frame; TTY matrices are different)
+;; Evaluate this file in emacs -Q with a GUI frame; the TTY matrix code differs.
 ;;
 ;; Same bug as repro.el, reached the way the real crash reached it.
 ;;
@@ -15,16 +15,15 @@
 ;;   4. display_mode_line continues and writes through its saved pointer, which
 ;;      now points into freed memory.  Emacs crashes.
 ;;
-;; In the real crash, step 2 was pdf-misc-size-indication asking the epdfinfo
+;; Freed memory often still holds usable values, so the bad write can go
+;; unnoticed.  To make it fail every time, start Emacs with freed memory
+;; poisoned: MallocScribble=1 on macOS, MALLOC_PERTURB_=85 with glibc.
+;;
+;; In the real crash, step 2 was pdf-misc-size-indication in pdf-tools asking the epdfinfo
 ;; process for a page size and waiting in accept-process-output, and step 3 was
 ;; a LaTeX process sentinel that ran during that wait and scrolled the window.
 ;; sleep-for does the same job here as accept-process-output did there: it lets
 ;; other Lisp run while the mode line is only half written.
-;;
-;; Freed memory often still holds usable values, so the bad write can go
-;; unnoticed.  MallocScribble=1 fills freed memory with 0x55, so it fails at
-;; once:
-;;   MallocScribble=1 lldb -b -o run -- Emacs -Q -l repro-timer.el
 (defvar repro-win nil)
 (defvar repro-count 0)
 
@@ -50,7 +49,9 @@ writing into."
     (sleep-for 0.2))
   (format "repro %d" repro-count))
 
+(setq repro-count 0)           ; so the file can be evaluated again
 (with-current-buffer (get-buffer-create "*repro*")
+  (erase-buffer)
   (dotimes (_ 300) (insert "line of text\n"))
   (setq-local mode-line-format '(:eval (repro-modeline))))
 (switch-to-buffer "*repro*")
@@ -60,6 +61,5 @@ writing into."
   (pos-visible-in-window-p (point-min) repro-win t))
 ;; Use the window normally afterwards, so a matrix left too small would show.
 (dotimes (_ 3) (redisplay t) (scroll-up 3) (redisplay t))
-(message "repro-timer: survived %d mode-line evaluations, vscroll now %d"
+(message "repro-timer: %d mode-line evaluations, vscroll now %d"
          repro-count (window-vscroll repro-win t))
-(kill-emacs 0)
