@@ -471,7 +471,10 @@ monitor."
 
 ;; multiple-cursors: Sublime Text-style multiple cursors.
 (use-package multiple-cursors
-  :bind (("C->" . mc/mark-next-like-this)
+  :custom
+  (mc/always-run-for-all t)
+  :bind (("C-S-c C-S-c" . mc/edit-lines)
+         ("C->" . mc/mark-next-like-this)
          ("C-<" . mc/mark-previous-like-this)))
 
 ;; auth-source-1password: serve the GitHub/Forge token from 1Password (`op')
