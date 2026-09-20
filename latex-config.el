@@ -166,10 +166,12 @@ Scans the first 10 lines of the buffer, case-insensitively.
      ;; viewer on first compile).
      (add-hook 'TeX-after-compilation-finished-functions
                #'TeX-revert-document-buffer)
+     ;; Use 90 as conventional depth position to add the function to the end of
+     ;; the list rather than prepending it.
      (add-hook 'TeX-after-compilation-finished-functions
                (lambda (_output-file)
                  (with-current-buffer TeX-command-buffer
-                   (TeX-view)))))
+                   (TeX-view))) 90))
 
     ('auto
      ;; Both viewers registered; AUCTeX's selection predicate picks
