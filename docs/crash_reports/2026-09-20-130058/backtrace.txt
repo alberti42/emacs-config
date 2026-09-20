@@ -1,0 +1,24 @@
+time 2026-09-20 13:00:44.2313 +0200
+exception {"codes": "0x0000000000000002, 0x0000007019292010", "rawCodes": [2, 481458462736], "type": "EXC_BAD_ACCESS", "signal": "SIGABRT", "subtype": "KERN_PROTECTION_FAILURE at 0x0000007019292010"}
+  0 libsystem_kernel.dylib     __pthread_kill +8
+  1 libsystem_pthread.dylib    pthread_kill +296
+  2 libsystem_c.dylib          raise +32
+  3 Emacs                      terminate_due_to_signal +228
+  4 Emacs                      emacs_abort +20
+  5 Emacs                      ns_term_shutdown +132
+  6 Emacs                      shut_down_emacs +360
+  7 Emacs                      terminate_due_to_signal +168
+  8 Emacs                      handle_fatal_signal +12
+  9 Emacs                      deliver_thread_signal +112
+ 10 Emacs                      deliver_fatal_thread_signal +128
+ 11 libsystem_platform.dylib   _sigtramp +56
+ 12 Emacs                      -[EmacsView copyRect:to:] +896
+ 13 Emacs                      ns_scroll_run +404
+ 14 Emacs                      scrolling_window +1776
+ 15 Emacs                      update_window +5700
+ 16 Emacs                      update_window_tree +116
+ 17 Emacs                      update_window_tree +48
+ 18 Emacs                      update_window_frame +108
+ 19 Emacs                      update_frame +144
+ 20 Emacs                      redisplay_internal +6480
+ 21 Emacs                      read_char +1556
