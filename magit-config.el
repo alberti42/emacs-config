@@ -16,11 +16,13 @@
   ;; Ask before saving modified repository buffers.
   (setq magit-save-repository-buffers t)
 
-  ;; Open the status buffer in a dedicated full-frame window.
-  (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+  ;; Open Magit buffers in the selected window; diff and process buffers
+  ;; still go to another window.
+  (setq magit-display-buffer-function
+        #'magit-display-buffer-same-window-except-diff-v1)
 
-  ;; Take snapshot of layout and restore it on exit.
-  (setq magit-bury-buffer-function #'magit-restore-window-configuration)
+  ;; `q' buries the buffer and lets the window show what it showed before.
+  (setq magit-bury-buffer-function #'magit-mode-quit-window)
   
   ;; Nerd icons for file entries (native support since magit 223461b).
   (when (fboundp 'magit-format-file-nerd-icons)
