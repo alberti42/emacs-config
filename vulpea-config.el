@@ -67,12 +67,13 @@
 (vulpea-vault-resume)
 
 (use-package vulpea
-  :straight (vulpea
-             :type git
-             :host github
-             :local-repo "/Users/andrea/Programming/Others/fork-vulpea"
-             :branch "fix/org-id-when-deleting-notes"
-             :repo "d12frosted/vulpea")
+  :straight t
+  ;; :straight (vulpea
+  ;;            :type git
+  ;;            :host github
+  ;;            :local-repo "/Users/andrea/Programming/Others/fork-vulpea"
+  ;;            :branch "fix/org-id-when-deleting-notes"
+  ;;            :repo "d12frosted/vulpea")
   :after org
   ;; Load eagerly (org is required at the top of this file, so this fires as the
   ;; form is reached) rather than deferring to the first `:bind' command.  The
