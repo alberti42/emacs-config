@@ -92,6 +92,21 @@ returns immediately when the module is already in place."
   :config
   (setq jupyter-eval-use-overlays t)
 
+  ;; The REPL highlights its input by copying the kernel language's
+  ;; `font-lock-defaults' into the REPL buffer.  `python-ts-mode' keeps no
+  ;; keywords there: it highlights from `treesit-font-lock-settings' and a
+  ;; parser, and both belong to the buffer that owns them, so the copy arrives
+  ;; empty and the input stays unhighlighted.  emacs-jupyter picks that mode by
+  ;; running `set-auto-mode' on a temporary `jupyter-repl-lang.py' buffer, which
+  ;; follows the `python-mode' -> `python-ts-mode' entry treesitter-config.el
+  ;; puts in `major-mode-remap-alist'.  Switch the remapping off for that one
+  ;; call so the REPL gets classic `python-mode'; buffers visiting files are
+  ;; untouched and keep `python-ts-mode'.
+  (define-advice jupyter-kernel-language-mode-properties
+      (:around (orig client) jupyter-config/no-ts-remap)
+    (let ((major-mode-remap-alist nil))
+      (funcall orig client)))
+
   ;; Customize face of input prompt inheriting from success
   (set-face-attribute 'jupyter-repl-input-prompt nil
                       :foreground 'unspecified
