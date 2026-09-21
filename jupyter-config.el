@@ -83,7 +83,13 @@ returns immediately when the module is already in place."
 ;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
-  :straight t
+  ;; `nn' is the branch the maintainer develops on; `master' is advanced to it
+  ;; from time to time and is currently 125 commits behind.
+  :straight (jupyter
+             :type git
+             :host github
+             :repo "emacs-jupyter/jupyter"
+             :branch "nn")
   :config
   (setq jupyter-eval-use-overlays t)
 
