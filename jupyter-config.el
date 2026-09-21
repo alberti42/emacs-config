@@ -83,14 +83,18 @@ returns immediately when the module is already in place."
 ;;; -- Setup jupyter package ---------------------------------------------------
 
 (use-package jupyter
-  :straight (jupyter
-             :type git
-             :host github
-             :repo "alberti42/fork-emacs-jupyter"
-             :branch "fix-org-key-filter-in-non-org-buffer"
-             :local-repo "/Users/andrea/Documents/Programming/Others/fork-emacs-jupyter")
+  :straight t
   :config
   (setq jupyter-eval-use-overlays t)
+
+  ;; `jupyter-org--define-key-filter' parses the current buffer as Org.  Emacs
+  ;; walks a keymap outside the buffers it applies to -- `C-h m' expands
+  ;; \\{org-mode-map} in a temporary `fundamental-mode' buffer -- and the filter
+  ;; then warns about the buffer it was handed.  Run it only in Org buffers.
+  ;; Submitted upstream as PR #630.
+  (define-advice jupyter-org--define-key-filter
+      (:before-while (&rest _) jupyter-config/org-buffers-only)
+    (derived-mode-p 'org-mode))
 
   ;; The REPL highlights its input by copying the kernel language's
   ;; `font-lock-defaults' into the REPL buffer.  `python-ts-mode' keeps no
