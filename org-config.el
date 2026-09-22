@@ -1,14 +1,25 @@
-;;; org-config.el --- Built-in Org with LaTeX preview and Python babel -*- lexical-binding: t; -*-
+;;; org-config.el --- Org with LaTeX preview and Python babel -*- lexical-binding: t; -*-
 
-;; NOTE: this must register Org as built-in with `:type built-in' rather than a
-;; bare `:straight nil'.  `org-appear' declares `(org "9.3")' in its
-;; Package-Requires, so straight resolves `org' as a dependency; without an
-;; explicit built-in recipe here straight rebuilds whatever `org' checkout lives
-;; in `straight/repos/org' (the leftover tecosaur fork) and puts it on
-;; `load-path', shadowing the bundled Org.  `:type built-in' makes both this
-;; block and the org-appear dependency resolve to the Emacs-bundled Org.
+;; Org comes from its own repository at Savannah.  Not from the copy bundled
+;; with Emacs, which moves only when the Org maintainer commits a released tree
+;; into emacs master branch.
+;;
+;; We use the org branch is `main'; the `bugfix' branch carries fixes for the
+;; current released.  The price of main is that it is pre-release.
+;;
+;; Nothing must load a package requiring `org' before the org module below runs;
+;; otherwise, the copy bundled with Emacs is the one that ends up in memory.
 (use-package org
-  :straight (org :type built-in)
+  :straight (org :type git :host nil
+                 :repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
+                 :local-repo "org" :branch "main" :depth full
+                 :pre-build (straight-recipes-org-elpa--build)
+                 :build (:not autoloads)
+                 :files (:defaults "lisp/*.el"
+                                   ("etc/styles/" "etc/styles/*")
+                                   ("etc/csl/" "etc/csl/*")
+                                   ("etc/org-babel/" "etc/org-babel/*")
+                                   ("etc/schema/" "etc/schema/*")))
   :defer t
   :custom
   ;; Display inline images (e.g. babel plot output) when opening a file.
