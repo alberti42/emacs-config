@@ -400,6 +400,16 @@ kept the last segment of `#Teaching/E4`. The converter still emits
 `00 Meta/org-tag-alist.el` for a fresh vault; the work vault's copy was
 folded into its `.dir-locals.el` and the file deleted.
 
+`C-c n t` (`vulpea-vault-find-by-tag`) searches the database by tag,
+passing the tag through `vulpea-tags-expand` so that `Log` finds notes
+tagged `Daily` or `Meeting`. `vulpea-tags-expand` reads
+`org-tag-groups-alist`, which is buffer-local and filled only in a
+buffer under the vault root; from any other buffer it returns the tag
+alone, and no note carries a group tag itself. The command therefore
+expands the tag in a temporary `org-mode` buffer whose
+`default-directory` is the root (`vulpea-vault-call-with-tags`), where
+applying the dir-locals runs the same recompute as for a note.
+
 ### Attachment store — `vulpea-vault-data-directory`
 
 A relative directory name (default `"data"`) placing the central
@@ -791,7 +801,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `modified-stamp.el`   | refreshes `:MODIFIED:` on save, only in notes that have it      |
 | `select.el`           | dates and sorting in the note-selection UI                      |
 | `directories.el`      | `vulpea-vault-special-directories` — role → folder; `C-c n d` opens Dired on the vault root |
-| `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute |
+| `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute; `C-c n t` finds notes by tag, groups expanded |
 | `create.el`           | where a new note lands and what it starts as                    |
 | `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
 | `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
@@ -816,6 +826,7 @@ before `switch`, `switch` before `semantic`.
 | `C-c n i`                             | `vulpea-insert`                      |
 | `C-c n b`                             | `vulpea-find-backlink`               |
 | `C-c n d`                             | `vulpea-vault-dired` — the vault root |
+| `C-c n t`                             | `vulpea-vault-find-by-tag` — a tag or any member of the group it names |
 | `C-c n l`                             | `vulpea-vault-log-saves` — the history with every save |
 | `C-c n v`                             | `vulpea-vault-switch` — open another vault, live |
 | `M-x vulpea-vault-orphans`            | the vault health report              |

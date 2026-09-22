@@ -22,6 +22,11 @@
 ;; hierarchical (#Log/Daily, #Teaching/E4) and org tags cannot contain a
 ;; slash, so the converter kept the last segment and expressed each parent as
 ;; a tag group.  Searching Log still matches Daily and Meeting.
+;;
+;; `C-c n t' (`vulpea-vault-find-by-tag') searches the vault's database that
+;; way: it expands a group tag into its members before querying, reading the
+;; groups from a temporary buffer at the vault root so that it works from any
+;; buffer.
 
 ;;; Code:
 
@@ -41,6 +46,42 @@ declaring `#+TAGS:' overrides `org-tag-alist' but not
     (org-set-regexps-and-options 'tags-only)))
 
 (add-hook 'hack-local-variables-hook #'vulpea-vault-apply-tag-alist)
+
+(defun vulpea-vault-call-with-tags (fn)
+  "Call FN with the vault's tag declarations in effect, and return its value.
+`org-current-tag-alist' and `org-tag-groups-alist' are buffer-local and
+filled only in a buffer under the vault root, so a command run from
+anywhere else would see no groups.  FN runs in a temporary `org-mode'
+buffer whose `default-directory' is the root; applying the dir-locals
+there runs `vulpea-vault-apply-tag-alist' as it does for a note."
+  (with-temp-buffer
+    (setq default-directory (vulpea-vault-or-error))
+    (delay-mode-hooks (org-mode))
+    (hack-dir-local-variables-non-file-buffer)
+    (funcall fn)))
+
+(defun vulpea-vault-find-by-tag (tag)
+  "Find a note tagged TAG, or tagged with any member of the group TAG.
+Groups are the vault's own, from `org-tag-alist' in its `.dir-locals.el',
+expanded by `vulpea-tags-expand'.  The candidates are the tags the
+vault declares and the tags its notes carry."
+  (interactive
+   (list (completing-read
+          "Tag: "
+          (seq-uniq
+           (append (vulpea-vault-call-with-tags
+                    (lambda ()
+                      (seq-filter #'stringp
+                                  (mapcar #'car org-current-tag-alist))))
+                   (vulpea-db-query-tags)))
+          nil t)))
+  (let ((tags (vulpea-vault-call-with-tags
+               (lambda () (vulpea-tags-expand (list tag))))))
+    (vulpea-find
+     :require-match t
+     :candidates-fn (lambda (_) (vulpea-db-query-by-tags-some tags)))))
+
+(keymap-global-set "C-c n t" #'vulpea-vault-find-by-tag)
 
 (provide 'vulpea-vault-tags)
 ;;; tags.el ends here
