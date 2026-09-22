@@ -63,6 +63,16 @@
   ;; has nothing to offer.  That default is meant for Usenet servers
   ;; carrying tens of thousands of groups; news.yhetil.org carries 20.
   (setq gnus-read-active-file t)
+  ;; Show the newest 5000 articles of a group and never ask.  Two settings
+  ;; are needed and they work at different points:
+  ;; `gnus-newsgroup-maximum-articles' drops everything older than the
+  ;; newest 5000 when the unread list is built, and `gnus-large-newsgroup'
+  ;; is the count above which Gnus asks how many to fetch -- equal to the
+  ;; cap, so the question never comes up.  The price is that articles
+  ;; below the window are out of reach from the summary; raise or unset
+  ;; the cap to read further back.
+  (setq gnus-newsgroup-maximum-articles 5000
+        gnus-large-newsgroup 5000)
   ;; Hand every NNTP server to the Agent, which keeps headers and articles
   ;; on disk; without it Gnus asks the server for the headers of every
   ;; unread article again on each entry.  Gnus reads this variable only
