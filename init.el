@@ -761,6 +761,16 @@ monitor."
  'scroll-config
  "Could not load scroll-config.el; scrolling settings are disabled.")
 
+;; Gnus: mail and news reader.  Behaviour here, servers in gnus-servers.el,
+;; subscriptions in newsrc.eld under `emacs-config-state-dir'.
+(emacs-config-load-module
+ 'gnus-config
+ "Could not load gnus-config.el; Gnus keeps its stock settings and paths.")
+
+(emacs-config-load-module
+ 'gnus-servers
+ "Could not load gnus-servers.el; Gnus knows no servers to read from.")
+
 ;; rmate-protocol server for editing remote files over SSH tunnels.
 (use-package remacs
   :straight nil
