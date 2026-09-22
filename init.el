@@ -771,6 +771,11 @@ monitor."
  'gnus-servers
  "Could not load gnus-servers.el; Gnus knows no servers to read from.")
 
+;; debbugs: the GNU bug tracker itself, as opposed to its mailing list.
+(emacs-config-load-module
+ 'debbugs-config
+ "Could not load debbugs-config.el; the GNU bug tracker client is disabled.")
+
 ;; rmate-protocol server for editing remote files over SSH tunnels.
 (use-package remacs
   :straight nil
