@@ -19,8 +19,8 @@
   :straight (git-gutter
              :host github
              :repo "alberti42/fork-git-gutter"
-             ;; :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
-             :branch "fix/visual-line"
+             :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
+             :branch "master"
              :files ("git-gutter.el"))
   ;; git-gutter does not define `git-gutter-mode-map' (its `define-minor-mode'
   ;; form has no :keymap argument), so we bind globally.  The commands are
@@ -36,7 +36,7 @@
   :demand t
   :config
   ;; Live-ish updates (idle timer).
-  (setq git-gutter:update-interval 0)
+  (setq git-gutter:update-interval 0.1)
 
   ;; One glyph, colored by face.  Appearance is handled by theme-harmonize.
   (setq git-gutter:modified-sign "▐")
