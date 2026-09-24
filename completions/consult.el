@@ -17,9 +17,11 @@
          ;; A small, mnemonic prefix for search/navigation.
          ("C-c s b" . consult-buffer)
          ("C-c s l" . consult-line)
+         ("C-c s L" . consult-line-multi)
          ("C-c s r" . consult-ripgrep)
          ("C-c s R" . consult-ripgrep-here)
          ("C-c s i" . consult-imenu)
+         ("C-c s I" . consult-imenu-multi)
          ("C-c s o" . consult-outline)
          ("C-c s h" . consult-org-heading)
          ("C-c s a" . consult-org-agenda)
