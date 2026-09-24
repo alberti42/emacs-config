@@ -243,6 +243,7 @@ Current syntax modules:
 - `syntaxes/magit.el`: Magit display settings, enables `visual-line-mode` and disables line numbers in Magit buffers.
 - `syntaxes/agent-shell.el`: disables line numbers in `agent-shell-mode`.
 - `syntaxes/gnus.el`: disables line numbers in every Gnus buffer. One `gnus-mode-hook` reaches them all — `gnus-group-mode`, `gnus-summary-mode`, `gnus-article-mode`, `gnus-server-mode`, `gnus-browse-mode`, `gnus-category-mode` and `gnus-tree-mode` are each derived from `gnus-mode`, and a derived mode runs its parent's hook. `message-mode` is hooked separately, since writing a message (and `gnus-article-edit-mode`) derives from `text-mode` instead.
+- `syntaxes/pdf-tools.el`: disables line numbers in the pdf-tools annotation edit buffer (`*Edit Annotation …*`). That buffer runs plain `org-mode` or `latex-mode`, so the hook is `pdf-annot-edit-contents-minor-mode-hook`, the minor mode pdf-tools turns on after the major mode.
 - `syntaxes/xwidget.el`: disables line numbers in `xwidget-webkit-mode` (the embedded webkit view used by typst-preview).
 
 Wrapping:
