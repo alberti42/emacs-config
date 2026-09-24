@@ -36,7 +36,7 @@
   :demand t
   :config
   ;; Live-ish updates (idle timer).
-  (setq git-gutter:update-interval 0.1)
+  (setq git-gutter:update-interval 0.25)
 
   ;; One glyph, colored by face.  Appearance is handled by theme-harmonize.
   (setq git-gutter:modified-sign "▐")
