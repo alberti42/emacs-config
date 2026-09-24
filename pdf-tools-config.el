@@ -46,8 +46,6 @@
                           "/Users/andrea/.config/emacs/straight/build/pdf-tools/"))
   :magic ("%PDF" . pdf-view-mode)
   :hook ((pdf-view-mode . pdf-view-roll-minor-mode)
-         ;; Recolour each PDF from the active theme's `default' face
-         (pdf-view-mode . pdf-view-themed-minor-mode)
          (pdf-view-mode . (lambda () (display-line-numbers-mode -1)))
          (pdf-view-mode . pdf-tools-config--wheel-to-pdf-roll))
   ;; The horizontal wheel is bound here because the global binding

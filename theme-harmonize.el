@@ -29,14 +29,22 @@ from — so a single override here propagates to compilation buffers,
 eshell, term, and ghostel.")
 
 (defconst theme-harmonize--ansi-color-faces
-  [ansi-color-black          ansi-color-red
-   ansi-color-green          ansi-color-yellow
-   ansi-color-blue           ansi-color-magenta
-   ansi-color-cyan           ansi-color-white
-   ansi-color-bright-black   ansi-color-bright-red
-   ansi-color-bright-green   ansi-color-bright-yellow
-   ansi-color-bright-blue    ansi-color-bright-magenta
-   ansi-color-bright-cyan    ansi-color-bright-white]
+  [ansi-color-black        
+   ansi-color-red
+   ansi-color-green        
+   ansi-color-yellow
+   ansi-color-blue         
+   ansi-color-magenta
+   ansi-color-cyan         
+   ansi-color-white
+   ansi-color-bright-black 
+   ansi-color-bright-red
+   ansi-color-bright-green 
+   ansi-color-bright-yellow
+   ansi-color-bright-blue  
+   ansi-color-bright-magenta
+   ansi-color-bright-cyan  
+   ansi-color-bright-white]
   "Ordered vector of the 16 standard ANSI color faces (since Emacs 28).
 Index matches the ANSI color number (0–15).")
 
@@ -60,23 +68,28 @@ the selected frame, and that frame would supply garbage.  The
   (when (theme-harmonize--real-frame-p)
     (theme-harmonize--apply)))
 
-(defun theme-harmonize--refresh-themed-pdf-buffers ()
-  "Re-render PDF buffers which follow the active theme.
+(defun theme-harmonize-pdf-midnight ()
+  "Turn `pdf-view-midnight-minor-mode' on in dark appearance, off in light.
+Acts on the current buffer, which must be in `pdf-view-mode'."
+  (let ((dark-p (eq (frame-parameter nil 'background-mode) 'dark)))
+    (unless (eq dark-p (bound-and-true-p pdf-view-midnight-minor-mode))
+      (pdf-view-midnight-minor-mode (if dark-p 1 -1)))))
 
-`pdf-view-themed-minor-mode' derives its render colors from the `default'
-face, but does not itself listen for theme changes.  Keep that appearance
-synchronization with the rest of the theme-change work here."
+;; A PDF opened later takes the appearance in force when it opens.
+(add-hook 'pdf-view-mode-hook #'theme-harmonize-pdf-midnight)
+
+(defun theme-harmonize--sync-pdf-buffers ()
+  "Run `theme-harmonize-pdf-midnight' in every `pdf-view-mode' buffer."
   ;; pdf-tools is optional, so do not make theme harmonization load it.
-  (when (fboundp 'pdf-view-refresh-themed-buffer)
+  (when (fboundp 'pdf-view-midnight-minor-mode)
     (dolist (buffer (buffer-list))
       (with-current-buffer buffer
-        (when (and (derived-mode-p 'pdf-view-mode)
-                   (bound-and-true-p pdf-view-themed-minor-mode))
-          (pdf-view-refresh-themed-buffer t))))))
+        (when (derived-mode-p 'pdf-view-mode)
+          (theme-harmonize-pdf-midnight))))))
 
 (defun theme-harmonize--apply ()
   "Propagate active-theme appearance to dependent packages and buffers."
-  (theme-harmonize--refresh-themed-pdf-buffers)
+  (theme-harmonize--sync-pdf-buffers)
   ;; Override line-number background for both TTY and GUI to ensure a single
   ;; consistent visual style (e.g. Catppuccin) regardless of frame type.
   ;; This also prevents daemon mode from producing different results depending
