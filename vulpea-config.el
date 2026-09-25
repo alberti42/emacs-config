@@ -87,7 +87,8 @@
   :bind (("C-c n f" . vulpea-find)
          ("C-c n i" . vulpea-insert)
          ("C-c n v" . vulpea-vault-switch)
-         ("C-c n b" . vulpea-find-backlink))
+         ("C-c n b" . vulpea-find-backlink)
+         ("C-c n o" . vulpea-vault-orphans))
   :init
   ;; `vulpea-db-sync-directories' and `vulpea-db-location' are set by
   ;; `vulpea-vault-apply', which follows the vault.  Note their exact names:
