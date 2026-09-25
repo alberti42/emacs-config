@@ -77,6 +77,13 @@
   ;; (add-to-list 'default-frame-alist '(undecorated . t))
   (add-to-list 'default-frame-alist '(internal-border-width . 10))))
 
+;; Frame title: name the buffer of the selected window, or of the window
+;; the minibuffer was entered from while the minibuffer is active.
+(setq frame-title-format
+      '(:eval (buffer-name
+               (window-buffer (or (minibuffer-selected-window)
+                                  (selected-window))))))
+
 ;; macOS: free the right Option for system character composition
 ;; (e.g. ⌥u u → ü, ⌥s → ß). Left Option stays as Meta for Emacs.
 ;; Only affects the Nextstep GUI build; TTY composition is handled
