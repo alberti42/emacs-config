@@ -32,10 +32,23 @@ coarse buckets track the face height closely enough in practice."
 (defun emacs-config-setup-emoji-fontset (height)
   "Render `emoji' glyphs using \"Apple Color Emoji\" for HEIGHT.
 Modify the default fontset to map `emoji' script to Apple Color Emoji,
-sized for HEIGHT."
-  (set-fontset-font t 'emoji
-                    (font-spec :family "Apple Color Emoji"
-                               :size (emacs-config-emoji-size-for-height height))))
+sized for HEIGHT.
+
+Also map the pictograph blocks #x1F300-#x1FAFF to the same font.
+`char-script-table' puts an emoji whose default presentation is text
+(e.g. 🖥 U+1F5A5) in the `symbol' script, not `emoji', and no font the
+fontset tries for `symbol' has it, so it is drawn as a missing-glyph
+box, with or without a following VARIATION SELECTOR-16.
+
+That mapping replaces every font for the range, so \"Symbola\" is
+appended after it for the pictographs that are not emoji and that Apple
+Color Emoji therefore lacks (e.g. U+1F322 BLACK DROPLET)."
+  (let ((spec (font-spec :family "Apple Color Emoji"
+                         :size (emacs-config-emoji-size-for-height height))))
+    (set-fontset-font t 'emoji spec)
+    (set-fontset-font t '(#x1F300 . #x1FAFF) spec)
+    (set-fontset-font t '(#x1F300 . #x1FAFF)
+                      (font-spec :family "Symbola") nil 'append)))
 
 (defvar emacs-config-icon-scale 0.85
   "Scale of Nerd Font icon glyphs relative to the `default' text size.
