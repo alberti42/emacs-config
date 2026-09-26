@@ -126,7 +126,9 @@ the new title.  Runs with the shell buffer current (see
   ;; Size multipliers on top of the engine's global `latex-to-svg-backend-font-scale':
   ;; display equations a bit larger than inline.
   (setq agent-shell-math-renderer-inline-rescale 1.20)
-  (setq agent-shell-math-renderer-display-rescale 1.25))
+  (setq agent-shell-math-renderer-display-rescale 1.25)
+  ;; Select the default engine
+  (agent-shell-math-renderer-engine 'latex))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here

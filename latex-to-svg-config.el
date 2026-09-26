@@ -34,6 +34,8 @@
   ;; Daemon / mixed TTY+GUI: compile even when a non-graphic frame is selected,
   ;; so equations are ready as soon as a GUI frame views the buffer.
   (latex-to-svg-backend-render-on-non-graphic t)
+  ;; Name of ratex render engine producing SVG graphics.
+  (latex-to-svg-backend-ratex-program "ratex-render-svg")
   ;; Extra LaTeX packages available in *every* equation (all front-ends).
   ;; Folded into the content hash, so editing it invalidates stale cached SVGs.
   (latex-to-svg-backend-appended-preamble
@@ -54,10 +56,13 @@ print-unity-mantissa=false,
 (use-package latex-to-svg-frontend
   :straight (latex-to-svg-frontend
              :type git
-             :branch "main"
+             :branch "ratex"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-frontend.el"))
-  :defer t)
+  :defer t
+  :custom
+  ;; Select the default engine
+  (latex-to-svg-frontend-engine 'latex))
 
 (provide 'latex-to-svg-config)
 ;;; latex-to-svg-config.el ends here
