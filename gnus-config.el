@@ -73,6 +73,10 @@
   ;; the cap to read further back.
   (setq gnus-newsgroup-maximum-articles 5000
         gnus-large-newsgroup 5000)
+  ;; List read articles in the summary as well as unread ones, marked `R'
+  ;; (read this session) or `O' (read earlier) in the first column.  By
+  ;; default a summary lists only unread and ticked articles.
+  (setq gnus-parameters '(("." (display . all))))
   ;; Hand every NNTP server to the Agent, which keeps headers and articles
   ;; on disk; without it Gnus asks the server for the headers of every
   ;; unread article again on each entry.  Gnus reads this variable only
