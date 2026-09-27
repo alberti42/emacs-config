@@ -232,7 +232,7 @@ buffer-locally before the adaptor turns on the shared core."
   (setq-local latex-to-svg-frontend-inline-rescale 1.20
               latex-to-svg-frontend-display-rescale 1.25)
   (setq-local latex-to-svg-frontend-padding-display '(4 0 4 0))
-  (setq-local latex-to-svg-frontend-center-display-math '(4 0 4 0))
+  (setq-local latex-to-svg-frontend-center-display-math t)
   (latex-to-svg-for-latex-mode 1))
 
 (use-package latex-to-svg-for-latex
@@ -243,7 +243,9 @@ buffer-locally before the adaptor turns on the shared core."
              :files ("latex-to-svg-for-latex.el"))
   :init
   (add-hook 'LaTeX-mode-hook #'latex-config--latex-to-svg-setup)
-  (add-hook 'latex-mode-hook #'latex-config--latex-to-svg-setup))
+  (add-hook 'latex-mode-hook #'latex-config--latex-to-svg-setup)
+  (add-hook 'TeX-after-compilation-finished-functions
+            #'latex-to-svg-for-latex-update-references))
 
 (provide 'latex-config)
 ;;; latex-config.el ends here
