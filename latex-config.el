@@ -215,5 +215,35 @@ Scans the first 10 lines of the buffer, case-insensitively.
   :custom
   (reftex-plug-into-AUCTeX t))
 
+;;; -- latex-to-svg-for-latex: render math in every LaTeX buffer ---------------
+
+;; SVG-math preview for LaTeX: the LaTeX adaptor of the shared
+;; `latex-to-svg-frontend' core.  While it is on, AUCTeX's preview-latex
+;; commands only say that they are off.
+;;
+;; The engine (`latex-to-svg-backend') and core (`latex-to-svg-frontend')
+;; recipes are registered in `latex-to-svg-config.el', which init.el loads
+;; first, so straight resolves this adaptor's dependencies from the local
+;; `latex-to-svg' checkout.
+(defun latex-config--latex-to-svg-setup ()
+  "Enable LaTeX SVG-math preview in this buffer with tuned rescales.
+Per-mode config lives here: inline / display size multipliers are set
+buffer-locally before the adaptor turns on the shared core."
+  (setq-local latex-to-svg-frontend-inline-rescale 1.20
+              latex-to-svg-frontend-display-rescale 1.25)
+  (setq-local latex-to-svg-frontend-padding-display '(4 0 4 0))
+  (setq-local latex-to-svg-frontend-center-display-math '(4 0 4 0))
+  (latex-to-svg-for-latex-mode 1))
+
+(use-package latex-to-svg-for-latex
+  :straight (latex-to-svg-for-latex
+             :type git
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :files ("latex-to-svg-for-latex.el"))
+  :init
+  (add-hook 'LaTeX-mode-hook #'latex-config--latex-to-svg-setup)
+  (add-hook 'latex-mode-hook #'latex-config--latex-to-svg-setup))
+
 (provide 'latex-config)
 ;;; latex-config.el ends here

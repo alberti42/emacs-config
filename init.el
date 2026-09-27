@@ -638,6 +638,14 @@ monitor."
  'pdf-preview
  "Could not load pdf-preview.el; shared PDF viewer selection is disabled.")
 
+;; latex-to-svg rendering engine (LaTeX -> SVG).  Registers + configures the
+;; shared library; must precede its front-ends (`latex-config' /
+;; `markdown-config' / `org-config' / `agent-shell-setup') so straight
+;; resolves their dependency on it.
+(emacs-config-load-module
+ 'latex-to-svg-config
+ "Could not load latex-to-svg-config.el; SVG math rendering is disabled.")
+
 (emacs-config-load-module
  'latex-config
  "Could not load latex-config.el; AUCTeX is disabled.")
@@ -646,14 +654,6 @@ monitor."
 (emacs-config-load-module
  'typst-config
  "Could not load typst-config.el; Typst editing is disabled.")
-
-;; latex-to-svg rendering engine (LaTeX -> SVG).  Registers + configures the
-;; shared library; must precede its front-ends (`markdown-config' /
-;; `org-config' / `agent-shell-setup') so straight resolves their dependency on
-;; it.
-(emacs-config-load-module
- 'latex-to-svg-config
- "Could not load latex-to-svg-config.el; SVG math rendering is disabled.")
 
 ;; Markdown reading/authoring (markdown-ts-mode, olivetti).  Loads after
 ;; `latex-to-svg-config' so straight can resolve `latex-to-svg-for-markdown''s
