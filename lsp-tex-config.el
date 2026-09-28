@@ -18,7 +18,13 @@
   :after lsp-mode
   :hook ((LaTeX-mode . lsp-deferred)
          (latex-mode . lsp-deferred)
-         (plain-tex-mode . lsp-deferred)))
+         (plain-tex-mode . lsp-deferred))
+  :custom
+  ;; No PNG of the symbol at point in texlab's hover; its alt text is
+  ;; shown instead.  The option is global: lsp-mode reads it in a
+  ;; temporary buffer while rendering, where no buffer-local value is
+  ;; visible.
+  (lsp-display-inline-image nil))
 
 (provide 'lsp-tex-config)
 ;;; lsp-tex-config.el ends here
