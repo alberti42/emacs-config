@@ -43,7 +43,7 @@ end of the line."
 ;; *Register Preview* window immediately, with command-aware filtering and
 ;; C-n/C-p navigation.  `insist' shows the preview and lets a second press of
 ;; the register name confirm the selection (plain `t' would require RET).
-(setopt register-use-preview 'insist)
+(setopt register-use-preview nil)
 
 ;; `visual-line-mode' remaps C-a/C-e to the visual-line boundaries, which are
 ;; determined by screen width rather than buffer content.  A wrapped row's start
