@@ -624,12 +624,7 @@ Interactively, prompts for WIDTH (defaulting to
 
 ;;; -- SVG math preview (latex-to-svg-for-markdown) ---------------------------
 
-;; SVG-math preview for Markdown: the Markdown adaptor of the shared
-;; `latex-to-svg-frontend' core.  The core detects `$…$' / `$$…$$' / `\(…\)' /
-;; `\[…\]' / `\begin{env}…\end{env}' with a blank-line-bounded scanner and
-;; overlays each with an SVG compiled once (content-addressed) that re-tints on
-;; theme switch / re-scales on text zoom straight from cache — no LaTeX
-;; recompile.  The adaptor just supplies Markdown's code/verbatim exclusions.
+;; SVG-math preview for Markdown
 ;;
 ;; The engine (`latex-to-svg-backend') and core (`latex-to-svg-frontend')
 ;; recipes are registered in `latex-to-svg-config.el', which init.el loads
