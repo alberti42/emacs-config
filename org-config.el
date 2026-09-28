@@ -169,6 +169,7 @@ buffer-locally before the adaptor turns on the shared core."
 (use-package latex-to-svg-for-org
   :straight (latex-to-svg-for-org
              :type git
+             :inherit nil
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-org.el"))

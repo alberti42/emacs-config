@@ -24,6 +24,7 @@
 (use-package latex-to-svg-backend
   :straight (latex-to-svg-backend
              :type git
+             :inherit nil
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg-backend")
   :defer t
@@ -56,7 +57,8 @@ print-unity-mantissa=false,
 (use-package latex-to-svg-frontend
   :straight (latex-to-svg-frontend
              :type git
-             :branch "ratex"
+             :inherit nil
+             :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-frontend.el"))
   :defer t

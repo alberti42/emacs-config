@@ -647,6 +647,7 @@ before the adaptor turns on the shared core."
 (use-package latex-to-svg-for-markdown
   :straight (latex-to-svg-for-markdown
              :type git
+             :inherit nil
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-markdown.el"))
