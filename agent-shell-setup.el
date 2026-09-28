@@ -119,9 +119,12 @@ the new title.  Runs with the shell buffer current (see
   ;; which must be turned on from `agent-shell-mode-hook'.
   :hook (agent-shell-mode . agent-shell-math-renderer-mode)
   :config
-  ;; Re-tint cached equations when the OS appearance flips the theme.
+  ;; Re-tint and rescale cached equations on a theme switch or a frame font
+  ;; change; the mode itself only tracks redisplay and buffer-local zoom.
   (add-hook 'enable-theme-functions
-            #'agent-shell-math-renderer-on-theme-change) 
+            #'agent-shell-math-renderer-on-appearance-change)
+  (add-hook 'after-setting-font-hook
+            #'agent-shell-math-renderer-on-appearance-change)
   (setq agent-shell-math-renderer-render-submitted-prompts t)
   ;; Size multipliers on top of the engine's global `latex-to-svg-backend-font-scale':
   ;; display equations a bit larger than inline.

@@ -64,7 +64,14 @@ print-unity-mantissa=false,
   :defer t
   :custom
   ;; Select the default engine
-  (latex-to-svg-frontend-engine 'latex))
+  (latex-to-svg-frontend-engine 'latex)
+  :config
+  ;; Re-tint and rescale previews on a theme switch or a frame font change;
+  ;; the mode itself only tracks redisplay and buffer-local zoom.
+  (add-hook 'enable-theme-functions
+            #'latex-to-svg-frontend-on-appearance-change)
+  (add-hook 'after-setting-font-hook
+            #'latex-to-svg-frontend-on-appearance-change))
 
 (provide 'latex-to-svg-config)
 ;;; latex-to-svg-config.el ends here
