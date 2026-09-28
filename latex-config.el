@@ -205,7 +205,22 @@ Scans the first 10 lines of the buffer, case-insensitively.
 (use-package preview
   :straight nil
   :after tex
-  :config)
+  :custom
+  ;; SVG images through dvisvgm instead of PNG through Ghostscript.
+  (preview-image-type 'dvi*)
+  (preview-dvi*-command #'preview-dvisvgm-command)
+  (preview-dvi*-image-type 'svg)
+  ;; dvisvgm reads DVI, but `TeX-PDF-mode' makes pdflatex write PDF,
+  ;; which preview hands to Ghostscript as PNG.  This replacement adds
+  ;; \pdfoutput=0 to preview's own pdflatex run.
+  (preview-LaTeX-command-replacements '(preview-LaTeX-disable-pdfoutput))
+  (preview-preserve-counters t)
+  ;; Away from point the preview replaces the source; at point the
+  ;; source is shown.
+  (preview-visibility-style 'off-point)
+  ;; Open a preview whenever point enters it, not only after the
+  ;; commands in `preview-auto-reveal-commands'.
+  (preview-auto-reveal t))
 
 (use-package reftex
   :straight nil
