@@ -67,10 +67,6 @@
    "completions/consult"
    "Could not load completions/consult.el; Consult is disabled."))
 
-(emacs-config-load-module
- "completions/embark"
- "Could not load completions/embark.el; Embark is disabled.")
-
 (provide 'completion)
 
 ;;; completion.el ends here

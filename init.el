@@ -468,6 +468,11 @@ monitor."
  'utils
  "Could not load utils.el; utility commands are disabled.")
 
+;; Contextual actions (Embark)
+(emacs-config-load-module
+ 'embark-config
+ "Could not load embark-config.el; Embark is disabled.")
+
 ;; Dired and file manager
 (emacs-config-load-module
  'dired-config

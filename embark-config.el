@@ -1,4 +1,4 @@
-;;; embark.el --- Contextual actions via Embark -*- lexical-binding: t; -*-
+;;; embark-config.el --- Contextual actions via Embark -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;;
@@ -14,10 +14,12 @@
          ("M-C-\\" . embark-dwim)
          :map minibuffer-local-map
          ("C-c C-o" . embark-export)
-         ("C-c C-c" . embark-collect)))
+         ("C-c C-c" . embark-collect))
+  :config
+  (keymap-set embark-region-map "O" #'my/markdown-region-to-org))
 
 (use-package embark-consult
   :after (embark consult))
 
-(provide 'completions-embark)
-;;; embark.el ends here
+(provide 'embark-config)
+;;; embark-config.el ends here

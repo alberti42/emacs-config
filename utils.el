@@ -638,7 +638,7 @@ locator; `C-u C-u M-w' copies a real fenced code block.  See
 
 (global-set-key (kbd "M-w") #'my/kill-ring-save-dwim)
 
-;;; -- Yank Markdown as Org ----------------------------------------------------
+;;; -- Markdown to Org -------------------------------------------------------
 
 (defun my/org-strip-heading-numbering ()
   "Strip leading section numbers from the Org headings in this buffer.
@@ -674,16 +674,16 @@ start of a line, which pandoc reserves for headings alone."
     (unless (save-excursion (forward-line 1) (looking-at-p (rx (* (in " \t")) eol)))
       (insert "\n"))))
 
-(defcustom my/yank-markdown-as-org-strip-numbering t
-  "Whether `my/yank-markdown-as-org' drops section numbers from headings.
+(defcustom my/markdown-to-org-strip-numbering t
+  "Whether `my/markdown-to-org' drops section numbers from headings.
 Org numbers headings itself, so numbering carried over from the Markdown
 is duplication.  See `my/org-strip-heading-numbering' for what counts as
 a section number."
   :type 'boolean
   :group 'convenience)
 
-(defcustom my/yank-markdown-as-org-blank-lines t
-  "Whether `my/yank-markdown-as-org' follows each heading with a blank line.
+(defcustom my/markdown-to-org-blank-lines t
+  "Whether `my/markdown-to-org' follows each heading with a blank line.
 Pandoc sets a heading\='s body flush against it, where org leaves a blank
 line.  See `my/org-blank-line-after-headings'."
   :type 'boolean
@@ -691,38 +691,65 @@ line.  See `my/org-blank-line-after-headings'."
 
 ;; `gfm_auto_identifiers' is off because the gfm reader has it on: with it,
 ;; every heading arrives carrying a :PROPERTIES: :CUSTOM_ID: drawer.
+(defun my/markdown-to-org (markdown &optional shift)
+  "Return the string MARKDOWN converted to Org using the pandoc utility.
+
+With SHIFT, a number, headings are shifted down by SHIFT levels, so a
+`#' becomes a heading of level SHIFT + 1.
+
+Section numbers on the headings are dropped, Org numbering its own
+headings, and each heading is given the blank line after it that org
+writes and pandoc does not.  Either pass can be turned off through
+`my/markdown-to-org-strip-numbering' and
+`my/markdown-to-org-blank-lines'."
+  (let ((command (concat "pandoc -f gfm-gfm_auto_identifiers -t org --wrap=preserve"
+                         (and shift (format " --shift-heading-level-by=%d" shift)))))
+    (with-temp-buffer
+      (insert markdown)
+      (shell-command-on-region (point-min) (point-max) command t t)
+      (when my/markdown-to-org-strip-numbering
+        (my/org-strip-heading-numbering))
+      (when my/markdown-to-org-blank-lines
+        (my/org-blank-line-after-headings))
+      (buffer-string))))
+
+(defun my/markdown-to-org--shift (arg pos)
+  "Return the heading level at POS when ARG is non-nil in an Org buffer.
+This is the SHIFT that `my/markdown-to-org' takes from a prefix ARG."
+  (and arg (derived-mode-p 'org-mode)
+       (save-excursion (goto-char pos) (org-current-level))))
+
 (defun my/yank-markdown-as-org (&optional arg)
   "Yank Markdown text as Org.
 
-This command will convert Markdown text in the top of the `kill-ring'
-and convert it to Org using the pandoc utility.  The converted text takes
-its place on the kill ring, and is what gets yanked.
+This command converts the Markdown text at the top of the `kill-ring' to
+Org with `my/markdown-to-org'.  The converted text takes its place on the
+kill ring, and is what gets yanked.
 
 With a prefix ARG, headings are shifted to sit under the heading point is
 in, so a `#' becomes its child instead of a top-level `*' closing the
-section it was pasted into.
-
-Section numbers on the pasted headings are dropped, Org numbering its
-own headings, and each heading is given the blank line after it that org
-writes and pandoc does not.  Either pass can be turned off through
-`my/yank-markdown-as-org-strip-numbering' and
-`my/yank-markdown-as-org-blank-lines'."
+section it was pasted into."
   (interactive "P")
-  (let* ((shift (and arg (derived-mode-p 'org-mode) (org-current-level)))
-         (command (concat "pandoc -f gfm-gfm_auto_identifiers -t org --wrap=preserve"
-                          (and shift (format " --shift-heading-level-by=%d" shift)))))
-    (with-temp-buffer
-      (yank)
-      (shell-command-on-region (point-min) (point-max) command t t)
-      (when my/yank-markdown-as-org-strip-numbering
-        (my/org-strip-heading-numbering))
-      (when my/yank-markdown-as-org-blank-lines
-        (my/org-blank-line-after-headings))
-      ;; `kill-new', not `kill-region': the latter appends to the previous
-      ;; entry when the command before this one was a kill, so the Markdown
-      ;; would be yanked back along with its conversion.
-      (kill-new (buffer-string))))
+  ;; `kill-new', not `kill-region': the latter appends to the previous
+  ;; entry when the command before this one was a kill, so the Markdown
+  ;; would be yanked back along with its conversion.
+  (kill-new (my/markdown-to-org (current-kill 0)
+                                (my/markdown-to-org--shift arg (point))))
   (yank))
+
+(defun my/markdown-region-to-org (start end &optional arg)
+  "Convert the Markdown between START and END to Org, in place.
+The conversion is `my/markdown-to-org'.
+
+With a prefix ARG, headings are shifted to sit under the heading START
+is in, so a `#' becomes its child instead of a top-level `*' closing the
+section it is in."
+  (interactive "r\nP")
+  (let ((org (my/markdown-to-org (buffer-substring-no-properties start end)
+                                 (my/markdown-to-org--shift arg start))))
+    (goto-char start)
+    (delete-region start end)
+    (insert org)))
 
 (provide 'utils)
 ;;; utils.el ends here
