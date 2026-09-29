@@ -19,7 +19,7 @@ External packages: none — all built on `windmove`, `winner-mode`, and
 
 ## Key bindings
 
-All under the `C-b` prefix unless noted. Resize / join / reflow / swap /
+All under the `C-b` prefix unless noted. Resize / join / unjoin / swap /
 send-buffer all carry `:repeat t` keymaps — once entered, the modifier
 chord can be repeated without `C-b` until `repeat-exit-timeout`.
 
@@ -28,9 +28,14 @@ chord can be repeated without `C-b` until `repeat-exit-timeout`.
 | `C-b <arrow>`      | move focus; falls through to `tmux select-pane` at edge   |
 | `C-b C-<arrow>`    | resize (arrow = direction the shared border moves)        |
 | `C-b S-<arrow>`    | join window into split adjacent to neighbour              |
-| `C-b M-S-<arrow>`  | reflow: join if neighbour exists, else full-edge split    |
+| `C-b M-S-<arrow>`  | unjoin: move window out of its stack, beside the stack    |
 | `C-b M-<arrow>`    | swap buffers with adjacent window                         |
 | `C-b C-M-<arrow>`  | send current buffer to adjacent window; focus follows     |
+| `C-b w <n>`        | select window `n`                                         |
+| `C-b M-w <n>`      | swap buffers with window `n`                              |
+| `C-b C-M-w <n>`    | send current buffer to window `n`; focus follows          |
+| `C-b W <n>`        | join window `n`                                           |
+| `C-b M-W <dir>`    | unjoin toward `l`/`r`/`u`/`d` or an arrow                 |
 | `C-b %`            | split right and switch to other buffer                    |
 | `C-b "`            | split below and switch to other buffer                    |
 | `C-b x`            | `delete-window`                                           |
@@ -58,13 +63,31 @@ each key explicitly in `tmux-map`. A `[t]` catch-all would interfere with
 arrow-key escape-sequence assembly in terminals — the prefix would intercept
 the `\e[` continuation and the arrow keys would never decode.
 
-### Reflow vs join
+### Numbered windows
 
-`windows-config-reflow-*` (M-S-arrow) is "always move": it calls
-`windows-config-join-*` when a neighbour exists, but at the frame edge it
-deletes the window and re-splits the frame root window on that side. This
-is what keeps reshaping unstuck — without it, S-arrow would silently
-no-op at the edge.
+`C-b w`, `C-b M-w`, `C-b C-M-w` and `C-b W` draw a number in every window
+and act on the window whose number is typed, as the arrow forms act on the
+neighbour. Numbers follow `window-list` from `frame-first-window`, so they
+do not depend on which window is selected; only 1–9 exist. The number
+replaces the first character shown in the window through a `display`
+overlay, so no text moves. Any non-digit key quits. `C-b M-W` draws no
+numbers: unjoin has no target window, so it reads a direction
+(`l`/`r`/`u`/`d` or an arrow) instead.
+
+`C-b W <n>` has no arrow to say how to split the target, so
+`windows-config--join-side` derives it: a target left or right of the
+selected window is split `below`, one above or below is split `right` (what
+the matching `S-<arrow>` does), and a diagonal target is split along its
+longer side.
+
+### Unjoin splits the parent before deleting
+
+`windows-config--unjoin` splits the window's parent (the stack) on the
+chosen side, then deletes the window. The other order breaks a stack of two:
+deleting one window dissolves the parent, and there is no stack left to
+split. `<left>`/`<right>` require a vertical stack, `<up>`/`<down>` a
+side-by-side row. When the whole frame is one stack, the parent is the root
+window and the window lands at the frame edge.
 
 ### tmux detection is daemon-aware
 

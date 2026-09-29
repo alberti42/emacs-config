@@ -175,96 +175,42 @@ otherwise it shows the other buffer."
 ;; Follows tmux move-pane convention:
 ;;   S-LEFT / S-RIGHT → vertical split (stacked) with the window in that column.
 ;;   S-UP   / S-DOWN  → horizontal split (side by side) with the window in that row.
+(defun windows-config--join (target side)
+  "Move the selected window into a new split of TARGET on SIDE."
+  (let ((source (selected-window))
+        (new-win (split-window target nil side)))
+    (set-window-buffer new-win (window-buffer source))
+    (delete-window source)
+    (select-window new-win)))
+
 (defun windows-config-join-left ()
   "Join current window with the window to the left as a vertical split."
   (interactive)
   (when-let* ((target (window-in-direction 'left)))
-    (let ((source (selected-window))
-          (new-win (split-window target nil 'below)))
-      (set-window-buffer new-win (window-buffer source))
-      (delete-window source)
-      (select-window new-win))))
+    (windows-config--join target 'below)))
 
 (defun windows-config-join-right ()
   "Join current window with the window to the right as a vertical split."
   (interactive)
   (when-let* ((target (window-in-direction 'right)))
-    (let ((source (selected-window))
-          (new-win (split-window target nil 'below)))
-      (set-window-buffer new-win (window-buffer source))
-      (delete-window source)
-      (select-window new-win))))
+    (windows-config--join target 'below)))
 
 (defun windows-config-join-up ()
   "Join current window with the window above as a horizontal split."
   (interactive)
   (when-let* ((target (window-in-direction 'above)))
-    (let ((source (selected-window))
-          (new-win (split-window target nil 'right)))
-      (set-window-buffer new-win (window-buffer source))
-      (delete-window source)
-      (select-window new-win))))
+    (windows-config--join target 'right)))
 
 (defun windows-config-join-down ()
   "Join current window with the window below as a horizontal split."
   (interactive)
   (when-let* ((target (window-in-direction 'below)))
-    (let ((source (selected-window))
-          (new-win (split-window target nil 'right)))
-      (set-window-buffer new-win (window-buffer source))
-      (delete-window source)
-      (select-window new-win))))
+    (windows-config--join target 'right)))
 
 (global-set-key (kbd "C-b S-<left>")  #'windows-config-join-left)
 (global-set-key (kbd "C-b S-<right>") #'windows-config-join-right)
 (global-set-key (kbd "C-b S-<up>")    #'windows-config-join-up)
 (global-set-key (kbd "C-b S-<down>")  #'windows-config-join-down)
-
-;; "Always move" window reflow: like the S-arrow joins above, but when the
-;; current window is already at the frame edge in that direction, it moves the
-;; window to the far side as a full-edge split, so reshaping never gets stuck.
-(defun windows-config--reflow-to-edge (side)
-  "Move the current window to SIDE of the frame as a full-edge split.
-SIDE is one of `left', `right', `above', `below'."
-  (unless (one-window-p)
-    (let ((buf (current-buffer)))
-      (delete-window)
-      (let ((new (split-window (frame-root-window) nil side)))
-        (set-window-buffer new buf)
-        (select-window new)))))
-
-(defun windows-config-reflow-left ()
-  "Reflow current window leftward; wrap to full-height far-left column at edge."
-  (interactive)
-  (if (window-in-direction 'left)
-      (windows-config-join-left)
-    (windows-config--reflow-to-edge 'left)))
-
-(defun windows-config-reflow-right ()
-  "Reflow current window rightward; wrap to full-height far-right column at edge."
-  (interactive)
-  (if (window-in-direction 'right)
-      (windows-config-join-right)
-    (windows-config--reflow-to-edge 'right)))
-
-(defun windows-config-reflow-up ()
-  "Reflow current window upward; wrap to full-width top row at edge."
-  (interactive)
-  (if (window-in-direction 'above)
-      (windows-config-join-up)
-    (windows-config--reflow-to-edge 'above)))
-
-(defun windows-config-reflow-down ()
-  "Reflow current window downward; wrap to full-width bottom row at edge."
-  (interactive)
-  (if (window-in-direction 'below)
-      (windows-config-join-down)
-    (windows-config--reflow-to-edge 'below)))
-
-(global-set-key (kbd "C-b S-M-<left>")  #'windows-config-reflow-left)
-(global-set-key (kbd "C-b S-M-<right>") #'windows-config-reflow-right)
-(global-set-key (kbd "C-b S-M-<up>")    #'windows-config-reflow-up)
-(global-set-key (kbd "C-b S-M-<down>")  #'windows-config-reflow-down)
 
 (defvar-keymap window-join-repeat-map
   :repeat t
@@ -273,12 +219,56 @@ SIDE is one of `left', `right', `above', `below'."
   "S-<up>"    #'windows-config-join-up
   "S-<down>"  #'windows-config-join-down)
 
-(defvar-keymap window-reflow-repeat-map
+;; Window unjoining, the reverse of joining: take the current window out of
+;; its stack and place it beside the whole stack.  The stack is the window's
+;; parent in the window tree, so splitting the parent gives a window as tall
+;; (or as wide) as the stack.  The split happens before the delete: in a
+;; stack of two, deleting first dissolves the parent.
+(defun windows-config--unjoin (side)
+  "Move the selected window out of its stack to SIDE of the stack.
+SIDE is one of `left', `right', `above', `below'.  For `left' and
+`right' the window must be part of a vertical stack, for `above'
+and `below' part of a side-by-side row."
+  (let* ((win (selected-window))
+         (row (memq side '(above below))))
+    (unless (window-combined-p win row)
+      (user-error "Window is not part of a %s" (if row "row" "stack")))
+    (let ((new-win (split-window (window-parent win) nil side)))
+      (set-window-buffer new-win (window-buffer win))
+      (delete-window win)
+      (select-window new-win))))
+
+(defun windows-config-unjoin-left ()
+  "Move current window out of its stack to the left of the stack."
+  (interactive)
+  (windows-config--unjoin 'left))
+
+(defun windows-config-unjoin-right ()
+  "Move current window out of its stack to the right of the stack."
+  (interactive)
+  (windows-config--unjoin 'right))
+
+(defun windows-config-unjoin-up ()
+  "Move current window out of its row to above the row."
+  (interactive)
+  (windows-config--unjoin 'above))
+
+(defun windows-config-unjoin-down ()
+  "Move current window out of its row to below the row."
+  (interactive)
+  (windows-config--unjoin 'below))
+
+(global-set-key (kbd "C-b M-S-<left>")  #'windows-config-unjoin-left)
+(global-set-key (kbd "C-b M-S-<right>") #'windows-config-unjoin-right)
+(global-set-key (kbd "C-b M-S-<up>")    #'windows-config-unjoin-up)
+(global-set-key (kbd "C-b M-S-<down>")  #'windows-config-unjoin-down)
+
+(defvar-keymap window-unjoin-repeat-map
   :repeat t
-  "M-S-<left>"  #'windows-config-reflow-left
-  "M-S-<right>" #'windows-config-reflow-right
-  "M-S-<up>"    #'windows-config-reflow-up
-  "M-S-<down>"  #'windows-config-reflow-down)
+  "M-S-<left>"  #'windows-config-unjoin-left
+  "M-S-<right>" #'windows-config-unjoin-right
+  "M-S-<up>"    #'windows-config-unjoin-up
+  "M-S-<down>"  #'windows-config-unjoin-down)
 
 ;; Window swapping: swap the current window's buffer with an adjacent window,
 ;; equivalent to tmux swap-pane.  Uses windmove-swap-states-* (Emacs 28+).
@@ -305,11 +295,16 @@ SIDE is one of `left', `right', `above', `below'."
 Focus follows the buffer into the destination window.
 DIRECTION is one of `left', `right', `above', `below'."
   (if-let* ((target (window-in-direction direction)))
-      (let ((buf (current-buffer)))
-        (switch-to-prev-buffer)
-        (set-window-buffer target buf)
-        (select-window target))
+      (windows-config--send-buffer-to-window target)
     (user-error "No window %s" direction)))
+
+(defun windows-config--send-buffer-to-window (target)
+  "Display current buffer in window TARGET; rotate source window.
+Focus follows the buffer into TARGET."
+  (let ((buf (current-buffer)))
+    (switch-to-prev-buffer)
+    (set-window-buffer target buf)
+    (select-window target)))
 
 (defun windows-config-send-buffer-left ()
   "Send current buffer to the window on the left."
@@ -342,6 +337,106 @@ DIRECTION is one of `left', `right', `above', `below'."
   "C-M-<right>" #'windows-config-send-buffer-right
   "C-M-<up>"    #'windows-config-send-buffer-up
   "C-M-<down>"  #'windows-config-send-buffer-down)
+
+;; Numbered windows: the long form of the arrow operations.  C-b w, C-b M-w,
+;; C-b C-M-w and C-b W draw a number in every window of the frame and act on
+;; the window whose number is typed, as C-b <arrow>, M-<arrow>, C-M-<arrow>
+;; and S-<arrow> act on the neighbour.  Numbers follow `window-list' from the
+;; frame's first window, so they do not depend on which window is selected.
+(defface windows-config-window-number
+  '((t :inherit isearch :weight bold))
+  "Face of the numbers drawn by `windows-config--read-window'.")
+
+(defun windows-config--number-overlay (window n)
+  "Draw N at the start of WINDOW and return the overlay.
+The number replaces the first character shown, so no text moves."
+  (with-current-buffer (window-buffer window)
+    (let* ((start (window-start window))
+           (on-char (and (< start (point-max))
+                         (/= (char-after start) ?\n)))
+           (ov (make-overlay start (if on-char (1+ start) start)))
+           (label (propertize (number-to-string n)
+                              'face 'windows-config-window-number)))
+      (overlay-put ov 'window window)
+      (overlay-put ov (if on-char 'display 'before-string) label)
+      ov)))
+
+(defun windows-config--read-window (prompt)
+  "Number the windows of the selected frame and return the one typed.
+PROMPT is shown in the echo area.  A key that is not a digit quits."
+  (let* ((windows (seq-take (window-list nil 'nomini (frame-first-window)) 9))
+         (overlays (seq-map-indexed
+                    (lambda (win i) (windows-config--number-overlay win (1+ i)))
+                    windows))
+         (key (unwind-protect
+                  (read-key prompt)
+                (mapc #'delete-overlay overlays)))
+         (n (and (characterp key) (<= ?1 key ?9) (- key ?0))))
+    (cond ((null n) (keyboard-quit))
+          ((nth (1- n) windows))
+          (t (user-error "No window %d" n)))))
+
+(defun windows-config--read-other-window (prompt)
+  "Like `windows-config--read-window' with PROMPT, but not the selected window."
+  (let ((target (windows-config--read-window prompt)))
+    (when (eq target (selected-window))
+      (user-error "That is the selected window"))
+    target))
+
+(defun windows-config--join-side (target)
+  "Return the side on which `windows-config-join-window' splits TARGET.
+A TARGET left or right of the selected window is split `below', one
+above or below it is split `right', as the S-<arrow> joins do.  A
+diagonal TARGET is split along its longer side."
+  (pcase-let ((`(,left ,top ,right ,bottom) (window-pixel-edges))
+              (`(,t-left ,t-top ,t-right ,t-bottom) (window-pixel-edges target)))
+    (let ((beside (or (<= t-right left) (>= t-left right)))
+          (stacked (or (<= t-bottom top) (>= t-top bottom))))
+      (cond ((and beside (not stacked)) 'below)
+            ((and stacked (not beside)) 'right)
+            ((> (window-pixel-width target) (window-pixel-height target)) 'right)
+            (t 'below)))))
+
+(defun windows-config-select-window ()
+  "Select the window whose number is typed."
+  (interactive)
+  (select-window (windows-config--read-window "Select window: ")))
+
+(defun windows-config-swap-window ()
+  "Swap states with the window whose number is typed."
+  (interactive)
+  (window-swap-states nil (windows-config--read-other-window "Swap with window: ")))
+
+(defun windows-config-send-buffer-to-window ()
+  "Send current buffer to the window whose number is typed."
+  (interactive)
+  (windows-config--send-buffer-to-window
+   (windows-config--read-other-window "Send buffer to window: ")))
+
+(defun windows-config-join-window ()
+  "Join current window with the window whose number is typed."
+  (interactive)
+  (let ((target (windows-config--read-other-window "Join window: ")))
+    (windows-config--join target (windows-config--join-side target))))
+
+(defun windows-config-unjoin-toward ()
+  "Unjoin current window toward the typed direction.
+The direction is one of l, r, u, d or an arrow; any other key quits."
+  (interactive)
+  (let ((side (pcase (read-key "Unjoin toward (l/r/u/d): ")
+                ((or ?l 'left) 'left)
+                ((or ?r 'right) 'right)
+                ((or ?u 'up) 'above)
+                ((or ?d 'down) 'below))))
+    (if side
+        (windows-config--unjoin side)
+      (keyboard-quit))))
+
+(global-set-key (kbd "C-b w")     #'windows-config-select-window)
+(global-set-key (kbd "C-b M-w")   #'windows-config-swap-window)
+(global-set-key (kbd "C-b C-M-w") #'windows-config-send-buffer-to-window)
+(global-set-key (kbd "C-b W")     #'windows-config-join-window)
+(global-set-key (kbd "C-b M-W")   #'windows-config-unjoin-toward)
 
 ;; Reversible C-x 1: press once to go single-window, again to restore.
 (winner-mode +1)
