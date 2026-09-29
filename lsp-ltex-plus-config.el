@@ -25,6 +25,7 @@
   ;; (see :config below); set to nil for the local server only.
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
   (lsp-ltex-plus-debug nil)
+  (lsp-ltex-plus-offered-languages '("auto" "en-US" "de-DE" "it-IT"))
   (lsp-ltex-plus-diagnostics-provider 'flycheck)
   (lsp-ltex-plus-diagnostic-severity "warning")
   (lsp-ltex-plus-ltex-ls-log-level "warning")
