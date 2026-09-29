@@ -689,8 +689,15 @@ line.  See `my/org-blank-line-after-headings'."
   :type 'boolean
   :group 'convenience)
 
-;; `gfm_auto_identifiers' is off because the gfm reader has it on: with it,
-;; every heading arrives carrying a :PROPERTIES: :CUSTOM_ID: drawer.
+;; Pandoc's own markdown reader, not gfm, because only it takes
+;; `tex_math_single_backslash': gfm reads `\[' as an escaped `[', and a
+;; line holding `=' in the equation then makes a setext heading.
+;; `autolink_bare_uris' turns bare URLs into links, and
+;; `lists_without_preceding_blankline' reads a list that directly follows
+;; a paragraph line, as gfm does.  A heading still needs a blank line
+;; before it.
+;; `auto_identifiers' is off because with it every heading arrives
+;; carrying a :PROPERTIES: :CUSTOM_ID: drawer.
 (defun my/markdown-to-org (markdown &optional shift)
   "Return the string MARKDOWN converted to Org using the pandoc utility.
 
@@ -702,7 +709,10 @@ headings, and each heading is given the blank line after it that org
 writes and pandoc does not.  Either pass can be turned off through
 `my/markdown-to-org-strip-numbering' and
 `my/markdown-to-org-blank-lines'."
-  (let ((command (concat "pandoc -f gfm-gfm_auto_identifiers -t org --wrap=preserve"
+  (let ((command (concat "pandoc -f markdown+tex_math_single_backslash"
+                         "+autolink_bare_uris+lists_without_preceding_blankline"
+                         "-auto_identifiers"
+                         " -t org --wrap=preserve"
                          (and shift (format " --shift-heading-level-by=%d" shift)))))
     (with-temp-buffer
       (insert markdown)
