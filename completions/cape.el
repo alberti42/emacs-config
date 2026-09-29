@@ -29,40 +29,90 @@
 
   :config
 
-;;; -- English-word CAPF for prose buffers. ------------------------------------
+;;; -- Word-list CAPF for prose buffers. ---------------------------------------
 
-  ;; Reads `cape-dict-file' once, caches the word list, and filters by prefix in
+  ;; Reads a language's word list once, caches it, and filters by prefix in
   ;; elisp. Replaces cape-dict for prose, which shells out to grep on every
   ;; cache miss and uses `-F` substring matching capped at `cape-dict-limit', a
   ;; combination that hides actual prefix matches behind alphabetically-earlier
   ;; substring matches and forces orderless (always appended as a fallback by
   ;; `completion--styles') to surface them.
-  (defvar emacs-config--dict-words nil
-    "Cached dictionary word list for `emacs-config-cape-dict-prefix'.")
+  ;;
+  ;; The language is the buffer's `lsp-ltex-plus-language', read at every
+  ;; call, so a value set by `lsp-ltex-plus-change-language', `setq' or
+  ;; `.dir-locals.el' applies without a hook.
+  (defvar emacs-config-dict-sources
+    '(("en-US" . "cat /usr/share/dict/words")
+      ("de-DE" . "aspell -d de_DE dump master | aspell -l de expand | tr ' ' '\\n'")
+      ;; aspell's Italian dictionary expands to 22 million forms (every verb
+      ;; form with every clitic pronoun), so Italian uses the 50k most
+      ;; frequent words of the OpenSubtitles corpus instead.
+      ("it-IT" . "curl -fsSL https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/it/it_50k.txt | cut -d' ' -f1"))
+    "Shell commands that print a language's word list, one word per line.
+Keys are codes as in `lsp-ltex-plus-language', matched with case
+ignored.  The output is kept in `emacs-config-cache-dir' as
+dict-CODE.txt, so a command runs only while that file is missing.")
 
-  (defun emacs-config--dict-words ()
-    "Precache list of English words."
-    (or emacs-config--dict-words
-        (setq emacs-config--dict-words
-              (with-temp-buffer
-                (insert-file-contents cape-dict-file)
-                (split-string (buffer-string) "\n" t)))))
+  (defvar emacs-config--dict-words nil
+    "Alist of language code to cached word list.
+A code whose list could not be built maps to nil, so its command is
+not run again on every keystroke.")
+
+  (defun emacs-config--dict-words (language)
+    "Return the word list of LANGUAGE, building it on first use.
+Nil when `emacs-config-dict-sources' has no entry for LANGUAGE or its
+command printed nothing."
+    (when-let* ((source (assoc-string language emacs-config-dict-sources t)))
+      (let ((code (car source)))
+        (if-let* ((cached (assoc code emacs-config--dict-words)))
+            (cdr cached)
+          (let ((file (emacs-config-cache-file (format "dict-%s.txt" code))))
+            (unless (file-exists-p file)
+              (call-process-shell-command (cdr source) nil (list :file file)))
+            (let ((words (with-temp-buffer
+                           (insert-file-contents file)
+                           (split-string (buffer-string) "\n" t))))
+              (unless words
+                (delete-file file)
+                (display-warning 'emacs-config-dict
+                                 (format "No word list for %s: `%s' printed nothing"
+                                         code (cdr source))))
+              (push (cons code words) emacs-config--dict-words)
+              words))))))
+
+  (defun emacs-config--dict-languages ()
+    "Return the languages whose words complete in the current buffer.
+The buffer's `lsp-ltex-plus-language', or en-US without LTeX+.  For
+\"auto\", every language in `emacs-config-dict-sources'."
+    (let ((language (or (bound-and-true-p lsp-ltex-plus-language) "en-US")))
+      (if (string-equal-ignore-case language "auto")
+          (mapcar #'car emacs-config-dict-sources)
+        (list language))))
 
   (defun emacs-config-cape-dict-prefix ()
-    "Prefix-only English-word CAPF; fires after 3 typed characters."
+    "Prefix-only dictionary CAPF; fires after 3 typed characters.
+Completes from the word lists of `emacs-config--dict-languages'."
     (when-let* ((bounds (bounds-of-thing-at-point 'word))
                 (beg (car bounds))
                 (end (cdr bounds))
-                ((>= (- end beg) 3)))
+                ((>= (- end beg) 3))
+                (languages (emacs-config--dict-languages)))
       (list beg end
             (completion-table-with-cache
              (lambda (prefix)
-               (seq-filter (lambda (w) (string-prefix-p prefix w t))
-                           (emacs-config--dict-words))))
+               (delete-dups
+                (mapcan (lambda (language)
+                          (seq-filter (lambda (w) (string-prefix-p prefix w t))
+                                      (emacs-config--dict-words language)))
+                        languages))))
             :annotation-function (lambda (_) " Dict")
             :company-kind (lambda (_) 'text)
             :category 'emacs-config-dict
-            :exclusive 'no))))
+            :exclusive 'no)))
+
+  ;; Read every word list now, so the first completion after a language
+  ;; switch does not wait for one.
+  (mapc #'emacs-config--dict-words (mapcar #'car emacs-config-dict-sources)))
 
 ;;; -- Cape for prose: merged dabbrev + dict -----------------------------------
 
@@ -70,16 +120,16 @@
 ;; sources into one popup via `cape-capf-super':
 ;;
 ;;   - `cape-dabbrev'                 — recent words from visible buffers.
-;;   - `emacs-config-cape-dict-prefix' — English dictionary.
+;;   - `emacs-config-cape-dict-prefix' — dictionary of the buffer's language.
 ;;
 ;; Both share word bounds, so the merge is safe.  Order: dabbrev first
 ;; → buffer-recent words (project-specific names, jargon) rank above
 ;; dictionary words.
 ;;
 ;; Why merge instead of a flat chain: dict produces a non-empty result
-;; for almost every 3+ char prefix (≈250k English words → there's
-;; always a match), so `:exclusive 'no' fall-through never happens and
-;; `cape-dabbrev' would be effectively dormant in prose. The super
+;; for almost every 3+ char prefix (tens of thousands of words per
+;; language → there's always a match), so `:exclusive 'no' fall-through
+;; never happens and `cape-dabbrev' would be effectively dormant in prose. The super
 ;; ranks both side-by-side instead.
 ;;
 ;; `:exclusive 'no' lets the chain fall through to subsequent CAPFs

@@ -1,7 +1,7 @@
 # completions/ — styles, orderless, cape (dict CAPF)
 
 Three closely-coupled modules. Together they decide *which* completion
-style runs for *which* category, and provide an in-memory English-word
+style runs for *which* category, and provide an in-memory word-list
 CAPF for prose buffers. Documented together because each piece only
 makes sense in the context of the other two.
 
@@ -54,12 +54,39 @@ one, audit its override list.
 
 ## The dict CAPF
 
-`emacs-config-cape-dict-prefix` (in `cape.el`) is an in-memory English-word
+`emacs-config-cape-dict-prefix` (in `cape.el`) is an in-memory word-list
 CAPF for prose buffers (Markdown, Org, plain text, LaTeX — see the
-respective `syntaxes/*.el`). Fires after 3 typed characters. Reads
-`cape-dict-file` once into `emacs-config--dict-words` (~1 MB resident),
-filters by prefix in elisp via `completion-table-with-cache`. Tags
-results with `:category 'emacs-config-dict`.
+respective `syntaxes/*.el`). Fires after 3 typed characters. Filters by
+prefix in elisp via `completion-table-with-cache`. Tags results with
+`:category 'emacs-config-dict`.
+
+The language is the buffer's `lsp-ltex-plus-language`, read at every call
+(en-US when LTeX+ is not configured). A value set by
+`lsp-ltex-plus-change-language`, `setq` or `.dir-locals.el` therefore
+applies with no function on `lsp-ltex-plus-change-language-functions`.
+For `auto`, the CAPF completes from the lists of every language in
+`emacs-config-dict-sources`. The variable is only read, with
+`bound-and-true-p`, so the CAPF does not depend on `lsp-ltex-plus`. A magic comment such as
+`% LTeX: language=de-DE` is read by the server only, so the CAPF does not
+see it.
+
+Each language's list comes from a shell command in
+`emacs-config-dict-sources`, keyed by code (matched with case ignored):
+
+| Code  | Source | Words |
+|-------|--------|-------|
+| en-US | `/usr/share/dict/words` | 235976 |
+| de-DE | aspell `de_DE`, expanded | 382300 |
+| it-IT | 50k most frequent words of OpenSubtitles (hermitdave/FrequencyWords) | 50000 |
+
+aspell's Italian dictionary expands to 22 million forms (every verb form
+with every clitic pronoun), which is why Italian uses a frequency list.
+The command's output is kept in `emacs-config-cache-dir` as
+`dict-CODE.txt`; the command runs only while that file is missing.
+`emacs-config--dict-words` maps each code to its list; a code whose
+command printed nothing maps to nil, with a warning, so the command is
+not rerun on every keystroke. To rebuild a list, delete its file and
+restart.
 
 ### Why not upstream `cape-dict`?
 
@@ -83,10 +110,12 @@ place, orderless never runs for the dict category anyway.
 
 ### Performance
 
-- Dictionary read: one-shot, on first prose completion, ~10–30 ms.
-- Per-keystroke filter: `seq-filter` over ~250k words plus
-  `completion-table-with-cache` memoization. Sub-millisecond after the
-  first invocation per prefix.
+- Lists read at startup: when `cape.el` loads, every list in
+  `emacs-config-dict-sources` is read from its cache file, 0.22 s for
+  en-US + de-DE + it-IT. Building them the first time runs the
+  commands (aspell, curl) as well.
+- Per-keystroke filter: `seq-filter` over each language's list plus
+  `completion-table-with-cache` memoization.
 
 ## Invariants — do not change without reading
 
@@ -113,13 +142,6 @@ Earlier versions of the prose-mode hooks used `cape-dict-3` (a
 Removed deliberately. The four prose syntax files
 (`syntaxes/markdown.el`, `org.el`, `text.el`, `latex.el`) all hook
 `emacs-config-cape-dict-prefix` instead.
-
-### `emacs-config--dict-words` is intentionally global, not per-buffer
-
-The cache is global state because the dictionary file is global state
-— there's only one `cape-dict-file`. If a future per-language
-dictionary requirement appears, the cache shape will need to change
-(keyed by file path or language).
 
 ## Snippets are not in the auto-popup completion chain
 
@@ -158,13 +180,13 @@ Prose buffers (Markdown, Org, plain text, LaTeX) hook
 `cape-capf-super` of:
 
 1. `(cape-capf-prefix-length #'cape-dabbrev 3)` — buffer-recent words.
-2. `emacs-config-cape-dict-prefix` — English dictionary.
+2. `emacs-config-cape-dict-prefix` — dictionary of the buffer's language.
 
 …wrapped with `cape-capf-properties :exclusive 'no`. Both sources
 share word bounds, so the super-CAPF merge is safe.
 
 Why merge (instead of a flat chain): dict produces a non-empty result
-for almost every 3+ char prefix (≈250k English words), so
+for almost every 3+ char prefix (tens of thousands of words per language), so
 `:exclusive 'no` fall-through from dict to dabbrev never happens.
 Without the super, dabbrev would be effectively dormant in prose.
 The merge ranks both sources side-by-side. Order: dabbrev first →
