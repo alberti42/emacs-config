@@ -674,6 +674,28 @@ start of a line, which pandoc reserves for headings alone."
     (unless (save-excursion (forward-line 1) (looking-at-p (rx (* (in " \t")) eol)))
       (insert "\n"))))
 
+(defun my/org-shift-headings (parent-level)
+  "Shift the Org headings in this buffer so the shallowest is at PARENT-LEVEL + 1.
+Every heading moves by the same number of levels, so their nesting is
+kept: a pasted `###' over `####' becomes `*' over `**' under
+PARENT-LEVEL 0.
+
+Like `my/org-strip-heading-numbering', this reads a heading as `*' at the
+start of a line, which pandoc reserves for headings alone."
+  (let ((heading (rx bol (group (+ "*")) (in " \t")))
+        shallowest)
+    (goto-char (point-min))
+    (while (re-search-forward heading nil t)
+      (setq shallowest (min (or shallowest most-positive-fixnum)
+                            (length (match-string 1)))))
+    (when shallowest
+      (let ((delta (- (1+ parent-level) shallowest)))
+        (unless (zerop delta)
+          (goto-char (point-min))
+          (while (re-search-forward heading nil t)
+            (replace-match (make-string (+ (length (match-string 1)) delta) ?*)
+                           t t nil 1)))))))
+
 (defcustom my/markdown-to-org-strip-numbering t
   "Whether `my/markdown-to-org' drops section numbers from headings.
 Org numbers headings itself, so numbering carried over from the Markdown
@@ -698,11 +720,12 @@ line.  See `my/org-blank-line-after-headings'."
 ;; before it.
 ;; `auto_identifiers' is off because with it every heading arrives
 ;; carrying a :PROPERTIES: :CUSTOM_ID: drawer.
-(defun my/markdown-to-org (markdown &optional shift)
+(defun my/markdown-to-org (markdown &optional parent-level)
   "Return the string MARKDOWN converted to Org using the pandoc utility.
 
-With SHIFT, a number, headings are shifted down by SHIFT levels, so a
-`#' becomes a heading of level SHIFT + 1.
+With PARENT-LEVEL, the headings are shifted so the shallowest is at
+level PARENT-LEVEL + 1; see `my/org-shift-headings'.  Without it, each
+heading keeps the level of its Markdown heading.
 
 Section numbers on the headings are dropped, Org numbering its own
 headings, and each heading is given the blank line after it that org
@@ -712,22 +735,26 @@ writes and pandoc does not.  Either pass can be turned off through
   (let ((command (concat "pandoc -f markdown+tex_math_single_backslash"
                          "+autolink_bare_uris+lists_without_preceding_blankline"
                          "-auto_identifiers"
-                         " -t org --wrap=preserve"
-                         (and shift (format " --shift-heading-level-by=%d" shift)))))
+                         " -t org --wrap=preserve")))
     (with-temp-buffer
       (insert markdown)
       (shell-command-on-region (point-min) (point-max) command t t)
+      (when parent-level
+        (my/org-shift-headings parent-level))
       (when my/markdown-to-org-strip-numbering
         (my/org-strip-heading-numbering))
       (when my/markdown-to-org-blank-lines
         (my/org-blank-line-after-headings))
       (buffer-string))))
 
-(defun my/markdown-to-org--shift (arg pos)
-  "Return the heading level at POS when ARG is non-nil in an Org buffer.
-This is the SHIFT that `my/markdown-to-org' takes from a prefix ARG."
-  (and arg (derived-mode-p 'org-mode)
-       (save-excursion (goto-char pos) (org-current-level))))
+(defun my/markdown-to-org--parent-level (arg pos)
+  "Return the heading level at POS, or nil when ARG is non-nil.
+This is the PARENT-LEVEL that `my/markdown-to-org' takes from a prefix
+ARG.  Outside Org, and above the first heading, the level is 0."
+  (unless arg
+    (or (and (derived-mode-p 'org-mode)
+             (save-excursion (goto-char pos) (org-current-level)))
+        0)))
 
 (defun my/yank-markdown-as-org (&optional arg)
   "Yank Markdown text as Org.
@@ -736,27 +763,29 @@ This command converts the Markdown text at the top of the `kill-ring' to
 Org with `my/markdown-to-org'.  The converted text takes its place on the
 kill ring, and is what gets yanked.
 
-With a prefix ARG, headings are shifted to sit under the heading point is
-in, so a `#' becomes its child instead of a top-level `*' closing the
-section it was pasted into."
+The shallowest pasted heading becomes a child of the heading point is
+in, so it does not close the section it was pasted into, and a top-level
+`*' above the first heading or outside Org.  With a prefix ARG, each
+heading keeps the level of its Markdown heading."
   (interactive "P")
   ;; `kill-new', not `kill-region': the latter appends to the previous
   ;; entry when the command before this one was a kill, so the Markdown
   ;; would be yanked back along with its conversion.
   (kill-new (my/markdown-to-org (current-kill 0)
-                                (my/markdown-to-org--shift arg (point))))
+                                (my/markdown-to-org--parent-level arg (point))))
   (yank))
 
 (defun my/markdown-region-to-org (start end &optional arg)
   "Convert the Markdown between START and END to Org, in place.
 The conversion is `my/markdown-to-org'.
 
-With a prefix ARG, headings are shifted to sit under the heading START
-is in, so a `#' becomes its child instead of a top-level `*' closing the
-section it is in."
+The shallowest heading in the region becomes a child of the heading
+START is in, so it does not close the section it is in, and a top-level
+`*' above the first heading or outside Org.  With a prefix ARG, each
+heading keeps the level of its Markdown heading."
   (interactive "r\nP")
   (let ((org (my/markdown-to-org (buffer-substring-no-properties start end)
-                                 (my/markdown-to-org--shift arg start))))
+                                 (my/markdown-to-org--parent-level arg start))))
     (goto-char start)
     (delete-region start end)
     (insert org)))
