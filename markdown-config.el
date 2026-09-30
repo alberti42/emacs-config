@@ -52,12 +52,15 @@ nil so the caller can fall back to `browse-url'.  Local paths:
 - Markdown files (.md, .markdown): open with `find-file', then jump to
   the heading named by a `#fragment', if URL has one.
 - Other files: open `dired' with the target highlighted.
-- Non-existent files: signal an error with the resolved path."
+- Non-existent files: signal an error with the resolved path.
+URL is split into path and fragment before either is percent-decoded
+\(RFC 3986), so a `%23' in a file name stays part of the name."
   (let* ((struct (url-generic-parse-url url))
          (full (url-fullness struct))
-         (fragment (url-target struct)))
+         (fragment (markdown-config--percent-decode (url-target struct))))
     (unless full
-      (let* ((file (car (url-path-and-query struct)))
+      (let* ((file (markdown-config--percent-decode
+                    (car (url-path-and-query struct))))
              (wp (and buffer-file-name
                       (file-name-directory buffer-file-name))))
         (when (and file wp (> (length file) 0))
@@ -69,9 +72,7 @@ nil so the caller can fall back to `browse-url'.  Local paths:
                     (progn
                       (find-file full-path)
                       (when (and fragment (> (length fragment) 0))
-                        (markdown-ts--follow-fragment
-                         (decode-coding-string
-                          (url-unhex-string fragment) 'utf-8))))
+                        (markdown-ts--follow-fragment fragment)))
                   (dired (file-name-directory full-path))
                   (dired-goto-file full-path))))
             t))))))
@@ -95,6 +96,14 @@ Used to clean CommonMark's pointy-bracket form
       (substring text 1 -1)
     text))
 
+(defun markdown-config--percent-decode (text)
+  "Percent-decode TEXT as UTF-8 when it contains a `%XX' escape.
+TEXT without an escape, or nil, is returned unchanged, so a literal `%'
+in a filename is left alone."
+  (if (and text (string-match-p "%[0-9A-Fa-f][0-9A-Fa-f]" text))
+      (decode-coding-string (url-unhex-string text) 'utf-8)
+    text))
+
 (defun markdown-config--normalize-link-path (path)
   "Strip a `<...>' wrapper from PATH and percent-decode it when encoded.
 Turns CommonMark's pointy-bracket form `<path with spaces>' and a
@@ -102,10 +111,8 @@ percent-encoded `path%20with%20spaces' into a plain filesystem path.
 Percent-decoding runs only when PATH actually contains a `%XX' escape, so
 a plain path (or an already-decoded one) is returned unchanged and a
 literal `%' in a filename is left alone."
-  (let ((p (markdown-config--strip-pointy-brackets path)))
-    (if (string-match-p "%[0-9A-Fa-f][0-9A-Fa-f]" p)
-        (url-unhex-string p)
-      p)))
+  (markdown-config--percent-decode
+   (markdown-config--strip-pointy-brackets path)))
 
 (defun markdown-config--inline-link-destination-node (link-node)
   "Return the `link_destination' child of LINK-NODE (an `inline_link'), or nil."
@@ -230,9 +237,9 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
     (put-text-property
      beg end 'action
      (lambda (_button)
-       (let ((dest (markdown-config--normalize-link-path url)))
-         (or (markdown-config--follow-local-link dest)
-             (find-file dest)))))))
+       (or (markdown-config--follow-local-link
+            (markdown-config--strip-pointy-brackets url))
+           (find-file (markdown-config--normalize-link-path url)))))))
 
 (with-eval-after-load 'markdown-ts-mode
   (advice-add 'markdown-ts--fontify-image :around
