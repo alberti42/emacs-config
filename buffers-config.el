@@ -83,27 +83,56 @@ so it can't abort the kill outright — it just skips the optimization."
 ;; far more useful day to day.  `set-goal-column' is still reachable via M-x.
 ;;
 ;;   C-x C-n         -> the shared *scratch* buffer (built-in `scratch-buffer')
-;;   C-u C-x C-n     -> a fresh, uniquely-named empty `markdown-ts-mode' scratch buffer
-;;   C-u C-u C-x C-n -> ditto, but in `lisp-interaction-mode'
+;;   C-u C-x C-n     -> a *<mode>-scratch* buffer in the current buffer's mode
+;;   C-u C-u C-x C-n -> ditto, prompting for the major mode
 
-(defun buffers-config-scratch (&optional arg)
-  "Switch to the shared *scratch* buffer.
-With a single prefix ARG, create and switch to a fresh, uniquely-named
-empty scratch buffer in `markdown-ts-mode'.  With a double prefix ARG,
-use `lisp-interaction-mode' instead."
+(defvar buffers-config-scratch-mode-alist
+  '((sql-interactive-mode     . sql-mode)
+    (shell-mode               . sh-mode)
+    (eshell-mode              . sh-mode)
+    (inferior-python-mode     . python-mode)
+    (inferior-emacs-lisp-mode . emacs-lisp-mode))
+  "Alist mapping interactive major modes to their source-mode counterparts.
+Consulted when `C-u \\[buffers-config-scratch]' derives the mode of a new
+scratch.")
+
+(defun buffers-config-scratch (arg)
+  "Switch to a scratch buffer.
+No prefix ARG: pop to the shared `*scratch*' buffer (`scratch-buffer').
+`C-u': pop to a scratch buffer whose major mode matches the current buffer.
+`C-u C-u': pop to a scratch buffer, prompting for the major mode.
+Each mode has one scratch buffer, `*<mode>-scratch*', reused on later calls.
+With an active region, its contents seed a newly-created scratch."
   (interactive "P")
   (if (not arg)
       (scratch-buffer)
-    (let* ((lisp (equal arg '(16)))
-           (buf (generate-new-buffer "*scratch*")))
-      (with-current-buffer buf
-        (if (not lisp)
-            (markdown-ts-mode)
-          (lisp-interaction-mode)
-          (when (stringp initial-scratch-message)
-            (insert (substitute-command-keys initial-scratch-message))
-            (set-buffer-modified-p nil))))
-      (switch-to-buffer buf))))
+    (let* ((prompt (not (equal arg '(4))))
+           (mode (cond
+                  (prompt
+                   (let (modes)
+                     (mapatoms
+                      (lambda (sym)
+                        (let ((name (symbol-name sym)))
+                          (when (and (commandp sym)
+                                     (string-suffix-p "-mode" name)
+                                     (not (string-match-p "--" name)))
+                            (push name modes)))))
+                     (intern (completing-read "Major mode: " modes nil t))))
+                  ((cdr (assq major-mode buffers-config-scratch-mode-alist)))
+                  (t major-mode)))
+           (name (format "*%s-scratch*"
+                         (replace-regexp-in-string
+                          "-mode\\'" "" (symbol-name mode))))
+           (existing (get-buffer name))
+           (region (and (use-region-p)
+                        (buffer-substring-no-properties
+                         (region-beginning) (region-end)))))
+      (pop-to-buffer
+       (or existing
+           (with-current-buffer (get-buffer-create name)
+             (funcall mode)
+             (when region (insert region))
+             (current-buffer)))))))
 
 (keymap-global-set "C-x C-n" #'buffers-config-scratch)
 
