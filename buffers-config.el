@@ -83,8 +83,8 @@ so it can't abort the kill outright — it just skips the optimization."
 ;; far more useful day to day.  `set-goal-column' is still reachable via M-x.
 ;;
 ;;   C-x C-n         -> the shared *scratch* buffer (built-in `scratch-buffer')
-;;   C-u C-x C-n     -> a *<mode>-scratch* buffer in the current buffer's mode
-;;   C-u C-u C-x C-n -> ditto, prompting for the major mode
+;;   C-u C-x C-n     -> a *<mode>-scratch* buffer, prompting for the major mode
+;;   C-u C-u C-x C-n -> ditto, in the current buffer's mode
 
 (defvar buffers-config-scratch-mode-alist
   '((sql-interactive-mode     . sql-mode)
@@ -93,20 +93,20 @@ so it can't abort the kill outright — it just skips the optimization."
     (inferior-python-mode     . python-mode)
     (inferior-emacs-lisp-mode . emacs-lisp-mode))
   "Alist mapping interactive major modes to their source-mode counterparts.
-Consulted when `C-u \\[buffers-config-scratch]' derives the mode of a new
-scratch.")
+Consulted when `C-u C-u \\[buffers-config-scratch]' derives the mode of a
+new scratch.")
 
 (defun buffers-config-scratch (arg)
   "Switch to a scratch buffer.
 No prefix ARG: pop to the shared `*scratch*' buffer (`scratch-buffer').
-`C-u': pop to a scratch buffer whose major mode matches the current buffer.
-`C-u C-u': pop to a scratch buffer, prompting for the major mode.
+`C-u': pop to a scratch buffer, prompting for the major mode.
+`C-u C-u': pop to a scratch buffer whose major mode matches the current buffer.
 Each mode has one scratch buffer, `*<mode>-scratch*', reused on later calls.
 With an active region, its contents seed a newly-created scratch."
   (interactive "P")
   (if (not arg)
       (scratch-buffer)
-    (let* ((prompt (not (equal arg '(4))))
+    (let* ((prompt (not (equal arg '(16))))
            (mode (cond
                   (prompt
                    (let (modes)
