@@ -162,8 +162,10 @@
   "Enable Org SVG-math preview in this buffer with tuned rescales.
 Per-mode config lives here: inline / display size multipliers are set
 buffer-locally before the adaptor turns on the shared core."
-  (setq-local latex-to-svg-frontend-inline-rescale 1.20
-              latex-to-svg-frontend-display-rescale 1.25)
+  (setq-local latex-to-svg-frontend-rescale-inline 1.20
+              latex-to-svg-frontend-rescale-display 1.25
+              latex-to-svg-frontend-padding-display '(4 0 4 0)
+              latex-to-svg-frontend-center-display-math t)
   (latex-to-svg-for-org-mode 1))
 
 (use-package latex-to-svg-for-org
@@ -173,8 +175,13 @@ buffer-locally before the adaptor turns on the shared core."
              :branch "main"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-org.el"))
+  :hook (org-mode . org-config--latex-to-svg-setup)
   :init
-  (add-hook 'org-mode-hook #'org-config--latex-to-svg-setup))
+  ;; Ignore `#+startup: latexpreview': it would run Org's own preview
+  ;; before this mode turns on (see Troubleshooting).
+  (with-eval-after-load 'org
+    (setq org-startup-options
+          (assoc-delete-all "latexpreview" org-startup-options))))
 
 ;;; -- Two-column table -> description list ------------------------------------
 

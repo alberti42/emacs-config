@@ -273,8 +273,8 @@ zoom straight from cache — no LaTeX recompile. The adaptor supplies
 Markdown's code and verbatim exclusions.
 
 Per-mode sizing is buffer-local and set here before the adaptor turns
-the core on: `latex-to-svg-frontend-inline-rescale` 1.20 and
-`latex-to-svg-frontend-display-rescale` 1.25, on top of the engine's
+the core on: `latex-to-svg-frontend-rescale-inline` 1.20 and
+`latex-to-svg-frontend-rescale-display` 1.25, on top of the engine's
 global `latex-to-svg-backend-font-scale`.
 
 `latex-to-svg-config.el` registers the engine and core recipes and

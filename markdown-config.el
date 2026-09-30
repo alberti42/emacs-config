@@ -635,8 +635,10 @@ Interactively, prompts for WIDTH (defaulting to
 Per-mode config lives here: inline / display size multipliers are set
 buffer-locally (on top of the engine's global `latex-to-svg-backend-font-scale')
 before the adaptor turns on the shared core."
-  (setq-local latex-to-svg-frontend-inline-rescale 1.20
-              latex-to-svg-frontend-display-rescale 1.25)
+  (setq-local latex-to-svg-frontend-rescale-inline 1.20
+              latex-to-svg-frontend-rescale-display 1.25
+              latex-to-svg-frontend-padding-display '(4 0 4 0)
+              latex-to-svg-frontend-center-display-math t)
   (latex-to-svg-for-markdown-mode 1))
 
 (use-package latex-to-svg-for-markdown
@@ -647,8 +649,7 @@ before the adaptor turns on the shared core."
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-markdown.el"))
   ;; Render math in every Markdown buffer (sets rescales, then enables).
-  :init
-  (add-hook 'markdown-ts-mode-hook #'markdown-config--latex-to-svg-setup))
+  :hook (markdown-ts-mode-hook . markdown-config--latex-to-svg-setup))
 
 ;;; -- Obsidian wiki links and embeds (optional) ------------------------------
 
