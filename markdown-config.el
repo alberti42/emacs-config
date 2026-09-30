@@ -49,11 +49,13 @@ Called by `markdown-config-follow-link-at-point' for `[label](path)'
 inline-link destinations, and by the rerouted link buttons.  Returns
 non-nil when handled.  Full URLs (with a scheme such as http://) return
 nil so the caller can fall back to `browse-url'.  Local paths:
-- Markdown files (.md, .markdown): open with `find-file'.
+- Markdown files (.md, .markdown): open with `find-file', then jump to
+  the heading named by a `#fragment', if URL has one.
 - Other files: open `dired' with the target highlighted.
 - Non-existent files: signal an error with the resolved path."
   (let* ((struct (url-generic-parse-url url))
-         (full (url-fullness struct)))
+         (full (url-fullness struct))
+         (fragment (url-target struct)))
     (unless full
       (let* ((file (car (url-path-and-query struct)))
              (wp (and buffer-file-name
@@ -64,7 +66,12 @@ nil so the caller can fall back to `browse-url'.  Local paths:
                 (user-error "Link target not found: %s" full-path)
               (let ((ext (downcase (or (file-name-extension full-path) ""))))
                 (if (member ext '("md" "markdown"))
-                    (find-file full-path)
+                    (progn
+                      (find-file full-path)
+                      (when (and fragment (> (length fragment) 0))
+                        (markdown-ts--follow-fragment
+                         (decode-coding-string
+                          (url-unhex-string fragment) 'utf-8))))
                   (dired (file-name-directory full-path))
                   (dired-goto-file full-path))))
             t))))))
