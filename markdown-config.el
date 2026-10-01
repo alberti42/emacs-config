@@ -278,7 +278,7 @@ at point.")
   :mode (("\\.md\\'"       . markdown-ts-mode)
          ("\\.markdown\\'" . markdown-ts-mode))
   :custom
-  (markdown-ts-hide-markup nil)
+  (markdown-ts-hide-markup t)
   :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup))
 
 ;; Collapse code-fence lines (```lang opener, closing ```) when markup is
