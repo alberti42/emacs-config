@@ -12,8 +12,6 @@ things the bundled mode still does not do, all of them CommonMark:
   `markdown-ts--fontify-image` resolves the raw node text with a bare
   `expand-file-name`, so `![a](<path with spaces>)` and `%20`-encoded
   paths silently never render.
-- **Inline links inside table cells**, which the grammar leaves out of
-  the `markdown-inline` parser entirely.
 - **Collapsing code-fence lines while editing** — upstream hides whole
   fence lines in `markdown-ts-view-mode` only.
 - **SVG math preview**, via the shared `latex-to-svg` front-end.
@@ -88,14 +86,9 @@ mapping (README.md is handled the same as any other `.md`).
   1. `markdown-config-follow-link-functions` via
      `run-hook-with-args-until-success` — the extension point where an
      optional module registers a non-CommonMark syntax of its own.
-  2. `[label](path)` via the treesit helper above (paragraphs).
-  3. `[label](path)` via `thing-at-point-looking-at` and
-     `markdown-config--inline-link-regexp` — a regex fallback for
-     contexts with no `inline_link` node, chiefly **table cells** (see
-     "Inline links inside tables" below). Group 2 is stripped of
-     pointy-brackets before following, so `[label](<url>)` works too.
-  4. Bare URL at point via `thing-at-point 'url`.
-  5. Otherwise `user-error "No link at point"`.
+  2. `[label](path)` via the treesit helper above.
+  3. Bare URL at point via `thing-at-point 'url`.
+  4. Otherwise `user-error "No link at point"`.
 
 ## Keybindings
 
@@ -106,8 +99,8 @@ and `button-map` binds `RET` and `mouse-2` to `push-button` with
 `mouse-1` following via `mouse-1-click-follows-link`.
 
 `markdown-config--link-keymap` gives the *same three gestures* to the
-links that never become buttons — table-cell links here, plus whatever an
-optional link-syntax module attaches it to:
+links that never become buttons — whatever an optional link-syntax
+module attaches it to:
 
 | Key | Command |
 | --- | ------- |
@@ -146,22 +139,20 @@ Two `:around` advices, sharing `markdown-config--normalize-link-path`:
 ## Rendering (markdown-ts-mode only)
 
 `markdown-ts-mode-hook` runs
-`markdown-config--markdown-ts-mode-setup`, which adds the table-cell
-keyword and turns on the code-fence collapse machinery. Inline links in
+`markdown-config--markdown-ts-mode-setup`, which turns on the code-fence
+collapse machinery. Inline links in
 prose need nothing from it — the bundled rules hide the brackets, parens
 and URL under `markdown-ts-hide-markup` and make the label a button.
 
-### Inline links inside tables — font-lock keyword
+### Inline links inside tables
 
 The bundled inline-link rules only fire where a **local**
 `markdown-inline` parser runs, and the range rule embeds one on host
 `(inline)` nodes only — `((inline) @markdown-inline)`. A
 `pipe_table_cell` is not an `inline` node: `treesitter-explore` shows
 `(pipe_table_cell [ . _ . ] ( . _ . ))` where a paragraph shows
-`(inline … (inline_link …))`. So no local parser covers a cell and
-nothing upstream renders inside a table — verified: a cell's label gets
-`button=no` and its destination stays visible under hide-markup, where a
-paragraph's label is a button with the destination hidden.
+`(inline … (inline_link …))`. So by itself the mode runs no local
+parser on a cell and renders nothing inside a table.
 
 Note the qualifier. The *global* `markdown-inline` parser does parse the
 whole buffer text and a whole-buffer query against it will happily
@@ -169,33 +160,12 @@ return an `inline_link` inside a table row. That is a different parser
 instance from the ones font-lock uses, so it proves nothing about
 rendering — don't let it mislead you into thinking the gap is closed.
 
-`markdown-config--table-inline-link-fontify` closes the gap with a
-parser-agnostic mechanism: a `re-search-forward`
-font-lock keyword over `markdown-config--inline-link-regexp`. It scans
-the whole buffer, but **every effect is gated on
-`markdown-config--in-table-cell-p`** (which walks up the `markdown`
-block tree looking for a `pipe_table` ancestor). For each match:
-
-1. The label gets `link` face, `mouse-face`, `keymap`
-   (`markdown-config--link-keymap`), and a `help-echo`, so `RET` and a
-   click follow it the way they do on an upstream button.
-2. When `markdown-ts-hide-markup` is non-nil, the surrounding `[` and
-   `](url)` are blanked with a **width-preserving** `display`
-   `(space :width N)` — **not** `invisible`.
-
-> **Why `display`-space and not `invisible` here.** Table columns are
-> aligned by raw character count. `invisible` collapses the markup to
-> zero width, which shifts everything after it and misaligns the table.
-> `(space :width N)` (N = the markup's character length) blanks the
-> markup while reserving exactly its original width, so the cell keeps
-> its column count and the table stays aligned. `display` is added to
-> `font-lock-extra-managed-props` so toggling hide-markup off cleanly
-> removes it and reveals the URL.
-
-The paragraph/table split is purely by the `markdown-config--in-table-cell-p`
-gate: paragraph links never reach this matcher's body, so prose keeps
-the bundled `invisible` collapse (no reserved gap — correct for prose),
-and only table links reserve width. No per-link configuration.
+`markdown-table-view-mode` (the `markdown-table-view` package, enabled
+from `markdown-ts-mode-hook` in this file) adds a rule to the buffer-local
+`treesit-range-settings` that runs `markdown-inline` on `pipe_table_cell`
+nodes too. The bundled rules then fontify, hide and follow links in a
+cell as they do in a paragraph, and nothing in this file handles tables.
+With that mode off, a link in a table is plain text.
 
 ### Code-fence collapse + reveal-on-edit
 
@@ -261,9 +231,8 @@ dependencies from the local `latex-to-svg` checkout.
 
 - Inline links (paragraphs): entirely the bundled tree-sitter rules,
   reusing nodes the parser already built. Nothing added here.
-- Inline links (tables): one bounded single-line regex per visible
-  window via `jit-lock`, plus a cheap `pipe_table` ancestor check per
-  match. Not measurable.
+- Inline links (tables): the same bundled rules, on the local parsers
+  `markdown-table-view-mode` runs on each cell.
 
 The reasons `markdown-mode` is slow on large files do not apply here:
 
@@ -274,7 +243,7 @@ The reasons `markdown-mode` is slow on large files do not apply here:
 
 ## Invariants — do not change without reading
 
-### Inline links are detected via treesit, not regex — except in tables
+### Inline links are detected via treesit, not regex
 
 For `[label](path)` **in paragraphs** we walk up to the `inline_link`
 ancestor and read the `link_destination` child. This handles nested
@@ -285,16 +254,6 @@ The pointy-bracket form `[label](<url with spaces>)` returns
 `<url with spaces>` from `treesit-node-text` — angle brackets included.
 `markdown-config--inline-link-destination-at-point` strips one matched
 `<…>` pair before returning, so the follower sees a plain path.
-
-**Tables are the exception.** Inside a `pipe_table` there is no
-`inline_link` node (the grammar keeps cell content out of the
-`markdown-inline` parser), so the treesit detector returns nil and both
-rendering and following fall back to `markdown-config--inline-link-regexp`.
-That regex's group 2 matches either `<url>` (which may contain `)`) or a
-bare URL stopping at the first `)`; `markdown-config--strip-pointy-brackets`
-removes the angle brackets on follow. Don't try to make the table path
-use treesit — there is nothing to query. See "Inline links inside
-tables" above.
 
 ### Advices name internal (double-underscore) upstream functions
 
@@ -310,8 +269,7 @@ upgrade.
 The bundled `link` face, the markup hiding, the buttons, and this file's
 `markdown-config--inline-link-destination-at-point` all depend on
 `markdown-inline` seeing complete `inline_link` constructs. If
-inline-link fontification, hiding or following breaks while the
-table-cell path (regex only) keeps working, suspect the
+inline-link fontification, hiding or following breaks, suspect the
 `markdown-inline` range setup rather than this module.
 
 ### Adding a link syntax means using the extension point

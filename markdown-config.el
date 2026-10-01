@@ -16,10 +16,6 @@
 ;; - Bracketed and percent-encoded image paths.  `markdown-ts--fontify-image'
 ;;   resolves the raw node text with a bare `expand-file-name', so
 ;;   `![a](<path with spaces>)' and `%20'-encoded paths silently never render.
-;; - Inline links inside table cells.  The grammar's range rule embeds
-;;   `markdown-inline' in `(inline)' nodes only, and a `pipe_table_cell' is
-;;   not one, so no `inline_link' node ever exists there and the mode's own
-;;   inline-link rules never fire in a table.
 ;; - Collapsing code-fence lines while editing.  Upstream hides whole fence
 ;;   lines in `markdown-ts-view-mode' only; in an editable buffer it marks
 ;;   just the delimiter text invisible, leaving a stray blank row per fence.
@@ -75,16 +71,6 @@ URL is split into path and fragment before either is percent-decoded
                   (dired (file-name-directory full-path))
                   (dired-goto-file full-path))))
             t))))))
-
-(defconst markdown-config--inline-link-regexp
-  "\\[\\([^]\n]+\\)\\](\\(<[^>\n]*>\\|[^)\n]+\\))"
-  "Match a CommonMark inline link `[label](url)'; group 1 label, 2 url.
-Group 2 matches either the pointy-bracket form `<url>' (which may itself
-contain `)') or a bare `url' that stops at the first `)'.  Callers strip
-the angle brackets via `markdown-config--strip-pointy-brackets'.
-Used where the tree-sitter `inline_link' node is unavailable — notably
-inside table cells, whose content the grammar does not route through the
-`markdown-inline' parser, so no `inline_link' node ever exists there.")
 
 (defun markdown-config--strip-pointy-brackets (text)
   "Strip a matched leading `<' and trailing `>' from TEXT.
@@ -150,12 +136,11 @@ without this file knowing what that syntax is.")
 
 (defun markdown-config-follow-link-at-point ()
   "Follow the inline link or URL at point.
-Bound on `markdown-config--link-keymap', which is attached as a `keymap'
-text property to the CommonMark links that never become upstream buttons
-— inline links inside table cells.  Everything the mode itself renders
-\(inline links in paragraphs, autolinks, bare URLs) is already a real
-text button whose own `button-map' follows it on RET and mouse-1, so it
-never reaches this command.
+Bound on `markdown-config--link-keymap', which an optional link-syntax
+module attaches as a `keymap' text property to its links.  Everything the
+mode itself renders \(inline links, autolinks, bare URLs) is already a
+real text button whose own `button-map' follows it on RET and mouse-1, so
+it never reaches this command.
 
 Syntaxes registered on `markdown-config-follow-link-functions' are tried
 first; the rest is CommonMark."
@@ -163,13 +148,6 @@ first; the rest is CommonMark."
   (cond
    ((run-hook-with-args-until-success 'markdown-config-follow-link-functions))
    ((when-let* ((dest (markdown-config--inline-link-destination-at-point)))
-      (or (markdown-config--follow-local-link dest)
-          (browse-url dest))))
-   ;; Regex fallback for `[label](url)' where there is no `inline_link'
-   ;; node to resolve against — chiefly inside table cells.
-   ((thing-at-point-looking-at markdown-config--inline-link-regexp)
-    (let ((dest (markdown-config--strip-pointy-brackets
-                 (match-string-no-properties 2))))
       (or (markdown-config--follow-local-link dest)
           (browse-url dest))))
    ((when-let* ((url (thing-at-point 'url)))
@@ -259,8 +237,8 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
     (define-key map [follow-link] 'mouse-face)
     map)
   "Keymap installed via the `keymap' text property on link labels.
-Covers the links that never become upstream buttons: inline links inside
-table cells, plus whatever an optional link-syntax module attaches it to.
+Covers the links that never become upstream buttons: whatever an optional
+link-syntax module attaches it to.
 Nothing here duplicates the mode's own buttons, which carry `button-map'
 already — which is also why no separate follow-link chord is needed on
 `markdown-ts-mode-map': RET works on both kinds.
@@ -269,71 +247,8 @@ The keymap is parser-agnostic — the bound command,
 `markdown-config-follow-link-at-point', dispatches on what is actually
 at point.")
 
-(defun markdown-config--in-table-cell-p (pos)
-  "Return non-nil when POS lies inside a `pipe_table'.
-Used to scope regex-based inline-link rendering to table cells, whose
-content the grammar parses as raw block-level tokens rather than routing
-it through the `markdown-inline' parser (so no `inline_link' node exists
-there for the treesit-driven rules to match)."
-  (when-let* ((node (treesit-node-at pos 'markdown)))
-    (treesit-parent-until node "\\`pipe_table\\'" t)))
-
-(defun markdown-config--table-inline-link-fontify (limit)
-  "Font-lock MATCHER for `[label](url)' inside table cells, up to LIMIT.
-The grammar emits no `inline_link' node inside a `pipe_table_cell', so
-the treesit rule that renders inline links in paragraphs never fires
-there.  This regex matcher fills the gap: it applies the `link' face and
-click-to-follow to the label and, when `markdown-ts-hide-markup' is on,
-replaces the surrounding `[' and `](url)' markup with a width-preserving
-`display' space — unlike `invisible', which collapses the text to zero
-width — so the cell keeps the same column count as its raw text and the
-table stays aligned.  Under `markdown-table-view-mode', which aligns the
-table itself from the text a reader sees, the markup is made `invisible'
-under the `markdown-ts--markup' spec instead, so it takes no room and
-`markdown-ts-toggle-hide-markup' shows and hides it."
-  (let (matched)
-    (while (and (not matched)
-                (re-search-forward markdown-config--inline-link-regexp limit t))
-      (let ((beg       (match-beginning 0))
-            (label-beg (match-beginning 1))
-            (label-end (match-end 1))
-            (end       (match-end 0))
-            (target    (markdown-config--strip-pointy-brackets
-                        (match-string-no-properties 2))))
-        ;; Paragraph links are handled by the treesit path; only take over
-        ;; inside table cells, where no `inline_link' node exists.
-        (when (markdown-config--in-table-cell-p beg)
-          (add-text-properties label-beg label-end
-                               (list 'mouse-face 'highlight
-                                     'keymap markdown-config--link-keymap
-                                     'help-echo (concat "Link → " target)))
-          (cond
-           ((bound-and-true-p markdown-table-view-mode)
-            (put-text-property beg label-beg 'invisible 'markdown-ts--markup)
-            (put-text-property label-end end 'invisible 'markdown-ts--markup))
-           (markdown-ts-hide-markup
-            (put-text-property beg label-beg 'display
-                               `(space :width ,(- label-beg beg)))
-            (put-text-property label-end end 'display
-                               `(space :width ,(- end label-end)))))
-          (set-match-data (list label-beg label-end))
-          (setq matched t))))
-    matched))
-
 (defun markdown-config--markdown-ts-mode-setup ()
-  "Render table-cell inline links and enable fence collapse in this buffer."
-  ;; --- Inline links inside table cells (regex-based) -----------------------
-  ;; The treesit path cannot reach them (no `inline_link' node inside a
-  ;; `pipe_table_cell'), so they go through a font-lock keyword instead.
-  (setq-local font-lock-extra-managed-props
-              (append font-lock-extra-managed-props
-                      '(display mouse-face keymap help-echo)))
-  (font-lock-add-keywords
-   nil
-   '((markdown-config--table-inline-link-fontify
-      (0 'link prepend)))
-   'append)
-  ;; --- Code-fence collapse + reveal-on-edit -------------------------------
+  "Enable code-fence collapse and reveal-on-edit in this buffer."
   ;; `markdown-config--collapse-fence-line' (advice) hides each fence line with
   ;; a `display' overlay; `reveal-mode' opens the one point is on for editing;
   ;; the notifier prunes overlays when a fence is deleted.
@@ -579,9 +494,9 @@ before the adaptor turns on the shared core."
 ;;; -- Aligned, wrapped tables (markdown-table-view) --------------------------
 
 ;; Draws each table row with columns aligned on the text a reader sees and
-;; long cells wrapped; the row point is on shows its raw text.  While it is
-;; on, `markdown-config--table-inline-link-fontify' hides table-link markup
-;; with `invisible' instead of a width-preserving space.
+;; long cells wrapped; the row point is on shows its raw text.  It also runs
+;; the `markdown-inline' grammar on table cells, so links in a cell are
+;; fontified, hidden and followed by the mode's own rules.
 (use-package markdown-table-view
   :straight (markdown-table-view
              :type git
