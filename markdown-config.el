@@ -23,7 +23,6 @@
 ;; - Collapsing code-fence lines while editing.  Upstream hides whole fence
 ;;   lines in `markdown-ts-view-mode' only; in an editable buffer it marks
 ;;   just the delimiter text invisible, leaving a stray blank row per fence.
-;; - `markdown-ts-table-fill-cells', which upstream has no equivalent of.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -288,7 +287,10 @@ click-to-follow to the label and, when `markdown-ts-hide-markup' is on,
 replaces the surrounding `[' and `](url)' markup with a width-preserving
 `display' space — unlike `invisible', which collapses the text to zero
 width — so the cell keeps the same column count as its raw text and the
-table stays aligned."
+table stays aligned.  Under `markdown-table-view-mode', which aligns the
+table itself from the text a reader sees, the markup is made `invisible'
+under the `markdown-ts--markup' spec instead, so it takes no room and
+`markdown-ts-toggle-hide-markup' shows and hides it."
   (let (matched)
     (while (and (not matched)
                 (re-search-forward markdown-config--inline-link-regexp limit t))
@@ -305,11 +307,15 @@ table stays aligned."
                                (list 'mouse-face 'highlight
                                      'keymap markdown-config--link-keymap
                                      'help-echo (concat "Link → " target)))
-          (when markdown-ts-hide-markup
+          (cond
+           ((bound-and-true-p markdown-table-view-mode)
+            (put-text-property beg label-beg 'invisible 'markdown-ts--markup)
+            (put-text-property label-end end 'invisible 'markdown-ts--markup))
+           (markdown-ts-hide-markup
             (put-text-property beg label-beg 'display
                                `(space :width ,(- label-beg beg)))
             (put-text-property label-end end 'display
-                               `(space :width ,(- end label-end))))
+                               `(space :width ,(- end label-end)))))
           (set-match-data (list label-beg label-end))
           (setq matched t))))
     matched))
@@ -489,101 +495,6 @@ a changed RANGES region that no longer sits inside a fenced code block."
   (advice-add 'markdown-ts--fontify-delimiter :after
               #'markdown-config--collapse-fence-line))
 
-;;; -- table cell wrapping ----------------------------------------------------
-;;
-;; `markdown-ts-table-fill-cells' reflows the data rows of the table at point so
-;; no cell exceeds a chosen column width.  Each cell is wrapped with the
-;; standard fill machinery (`fill-region', same as `fill-paragraph'); a row
-;; whose widest cell needs N lines is replaced by N physical lines, filling one
-;; column fragment per line (empty where a column ran out of fragments).  Header
-;; and delimiter rows are left untouched — only `pipe_table_row' nodes are
-;; rewritten.  No padding/alignment is applied: follow up with `C-c C-c'
-;; (`markdown-ts-table-align-table'), which pads each column to its widest
-;; (now-wrapped) cell.
-;;
-;; This is deliberately a standalone command rather than an extension of
-;; `markdown-ts-table-align-table': it keeps the logic portable and lets you
-;; fill first, then re-align.  The names sit in the upstream `markdown-ts-table-'
-;; namespace for consistency with the built-in table commands (verified free of
-;; collisions against the bundled mode).
-
-(defcustom markdown-ts-table-fill-cell 60
-  "Default maximum column width offered by `markdown-ts-table-fill-cells'.
-Analogous to `fill-column', but scoped to Markdown table cells."
-  :type 'integer
-  :group 'markdown-ts)
-
-(defun markdown-ts-table--fill-string (text width)
-  "Wrap TEXT to WIDTH columns with fill machinery; return a list of lines.
-Long single words are not broken, matching `fill-paragraph' behaviour."
-  (if (string-empty-p text)
-      (list "")
-    (with-temp-buffer
-      (insert text)
-      (let ((fill-column width)
-            (adaptive-fill-mode nil))
-        (fill-region (point-min) (point-max)))
-      (split-string (buffer-string) "\n"))))
-
-(defun markdown-ts-table--format-wrapped-row (wrapped nlines)
-  "Build NLINES physical table lines from WRAPPED.
-WRAPPED is a list of per-cell line lists (as returned by
-`markdown-ts-table--fill-string').  Line K holds, cell by cell, each
-column's K-th fragment, or the empty string when that column has fewer than
-K+1 fragments.  No alignment/padding is applied."
-  (mapconcat
-   (lambda (k)
-     (concat "| "
-             (mapconcat (lambda (cell) (or (nth k cell) "")) wrapped " | ")
-             " |"))
-   (number-sequence 0 (1- nlines))
-   "\n"))
-
-(defun markdown-ts-table-fill-cells (width)
-  "Fill each data-row cell of the Markdown table at point to WIDTH columns.
-Tree-sitter locates the enclosing `pipe_table' node and its rows; each
-`pipe_table_row' (i.e. every row below the delimiter) is reflowed so no
-cell exceeds WIDTH columns, splitting a row into as many physical lines as
-its widest cell requires.  The header and `|---|' delimiter rows are left
-untouched.  Signals a `user-error' when point is not inside a table.
-
-Interactively, prompts for WIDTH (defaulting to
-`markdown-ts-table-fill-cell')."
-  (interactive (list (read-number "Maximum column width: "
-                                  markdown-ts-table-fill-cell)))
-  (unless (and (integerp width) (> width 0))
-    (user-error "Column width must be a positive integer"))
-  (let ((table (treesit-parent-until (treesit-node-at (point) 'markdown)
-                                     "\\`pipe_table\\'" t)))
-    (unless table
-      (user-error "Point is not inside a Markdown table"))
-    (let (edits)
-      (dolist (row (treesit-node-children table))
-        (when (equal (treesit-node-type row) "pipe_table_row")
-          (let* ((cells (treesit-filter-child
-                         row
-                         (lambda (n)
-                           (equal (treesit-node-type n) "pipe_table_cell"))))
-                 (wrapped (mapcar
-                           (lambda (c)
-                             (markdown-ts-table--fill-string
-                              (string-trim (treesit-node-text c t)) width))
-                           cells))
-                 (nlines (apply #'max 1 (mapcar #'length wrapped))))
-            (when (> nlines 1)
-              ;; `push' onto `edits' yields bottom-to-top order, so the loop
-              ;; below rewrites lower rows first and leaves the start/end
-              ;; positions of the earlier (higher) rows valid.
-              (push (list (treesit-node-start row)
-                          (treesit-node-end row)
-                          (markdown-ts-table--format-wrapped-row wrapped nlines))
-                    edits)))))
-      (save-excursion
-        (dolist (e edits)
-          (delete-region (nth 0 e) (nth 1 e))
-          (goto-char (nth 0 e))
-          (insert (nth 2 e)))))))
-
 ;;; -- preview --------------------------------------------------------------
 
 ;; No in-Emacs preview package is configured.  `markdown-preview-mode' (and
@@ -664,6 +575,18 @@ before the adaptor turns on the shared core."
              :files ("latex-to-svg-for-markdown.el"))
   ;; Render math in every Markdown buffer (sets rescales, then enables).
   :hook (markdown-ts-mode-hook . markdown-config--latex-to-svg-setup))
+
+;;; -- Aligned, wrapped tables (markdown-table-view) --------------------------
+
+;; Draws each table row with columns aligned on the text a reader sees and
+;; long cells wrapped; the row point is on shows its raw text.  While it is
+;; on, `markdown-config--table-inline-link-fontify' hides table-link markup
+;; with `invisible' instead of a width-preserving space.
+(use-package markdown-table-view
+  :straight (markdown-table-view
+             :type git
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/markdown-table-view")
+  :hook (markdown-ts-mode-hook . markdown-table-view-mode))
 
 ;;; -- Obsidian wiki links and embeds (optional) ------------------------------
 

@@ -325,12 +325,6 @@ the face to the last non-blank line.
   defect. Upstream's `find-file`-for-everything is a defensible default.
 - **Wiki links and `![[embeds]]`** — Obsidian flavour, outside upstream's
   CommonMark + GFM scope. Kept in `markdown-obsidian.el`.
-- **`markdown-ts-table-fill-cells`** — a missing feature, not a defect, so not
-  a bug report. But
-  [#41 "Pipe table wrap/unwrap cell text"](https://github.com/LionyxML/markdown-ts-mode-lab/issues/41)
-  is an open request for exactly this, including the unwrap direction this
-  implementation does not have. Offering the implementation there is the
-  natural move.
 - **`my/md-recreate-inline-parser-at-point`** — the maintainer's debug helper
   implies a stale-inline-parser bug, but bug#81019 and bug#81195 have landed
   since. Needs a fresh reproducer before filing anything.

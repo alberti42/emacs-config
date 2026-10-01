@@ -16,7 +16,6 @@ things the bundled mode still does not do, all of them CommonMark:
   the `markdown-inline` parser entirely.
 - **Collapsing code-fence lines while editing** — upstream hides whole
   fence lines in `markdown-ts-view-mode` only.
-- **`markdown-ts-table-fill-cells`**, which has no upstream equivalent.
 - **SVG math preview**, via the shared `latex-to-svg` front-end.
 
 Anything upstream has since grown its own version of is **not** here:
@@ -237,29 +236,6 @@ hides whole fence lines via the host's `invisible` property, and
 swapping it for an overlay `display` would break off-screen consumers
 that extract the buffer with `buffer-substring` — notably `lsp-mode`'s
 hover and signature rendering, which does not capture overlays.
-
-## Table cell filling
-
-`markdown-ts-table-fill-cells` reflows the data rows of the table at
-point so no cell exceeds a chosen column width (prompted, defaulting to
-`markdown-ts-table-fill-cell`). Each cell is wrapped with the standard
-`fill-region` machinery; a row whose widest cell needs N lines becomes N
-physical lines, one column fragment per line, empty where a column ran
-out of fragments. Header and `|---|` delimiter rows are untouched — only
-`pipe_table_row` nodes are rewritten.
-
-No padding or alignment is applied; follow up with
-`markdown-ts-table-align-table`, which pads each column to its widest
-now-wrapped cell. Deliberately a standalone command rather than an
-extension of the align command, so filling and re-aligning stay
-independent. Edits are collected then applied bottom-to-top, so
-rewriting a lower row leaves the positions of higher rows valid.
-
-The names sit in the upstream `markdown-ts-table-` namespace for
-consistency with the built-in table commands, verified free of
-collisions against the bundled mode. Upstream has no equivalent;
-[lab issue #41](https://github.com/LionyxML/markdown-ts-mode-lab/issues/41)
-is an open request for it (plus an unwrap direction this does not have).
 
 ## SVG math preview
 
