@@ -118,17 +118,18 @@ monitor."
 ;; Useful after connecting/moving to a different screen.
 (global-set-key (kbd "<f12>") #'emacs-config-reapply-frame-fonts)
 
-;; Make the `fixed-pitch' face follow `default' so packages that deliberately
-;; route code/tables through `fixed-pitch' (mu4e bodies, `mixed-pitch-mode',
-;; some themes' "mixed-fonts" modes) use the SAME mono font as the rest of the
-;; editor, rather than the generic stock `fixed-pitch' family.
+;; Make the `fixed-pitch' face follow `default' family so packages that
+;; deliberately route code/tables through `fixed-pitch' (mu4e bodies,
+;; `mixed-pitch-mode', some themes' "mixed-fonts" modes) use the SAME mono font
+;; as the rest of the editor, rather than the generic stock `fixed-pitch'
+;; family.
 ;;
 ;; CAUTION: If `default' is ever switched to a proportional font, this turns
 ;; into a trap — `fixed-pitch' would inherit that proportional font and org
 ;; tables, src blocks, and anything else relying on `fixed-pitch' would lose
 ;; fixed-width rendering.  In that case replace `:inherit default' with an
 ;; explicit monospace `:family' / `:height' / `:weight'.
-(set-face-attribute 'fixed-pitch nil :inherit 'default)
+(set-face-attribute 'fixed-pitch nil :family (face-attribute 'default :family))
 
 ;; Disable bidirectional text reordering for better performance.
 (setq-default bidi-display-reordering 'left-to-right
