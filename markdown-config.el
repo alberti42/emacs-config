@@ -528,17 +528,19 @@ before the adaptor turns on the shared core."
   ;; Render math in every Markdown buffer (sets rescales, then enables).
   :hook (markdown-ts-mode-hook . markdown-config--latex-to-svg-setup))
 
-;;; -- Aligned, wrapped tables (markdown-table-view) --------------------------
+;;; -- Aligned, wrapped tables (pretty-tables-for-markdown) -------------------
 
 ;; Draws each table row with columns aligned on the text a reader sees and
 ;; long cells wrapped; the row point is on shows its raw text.  It also runs
 ;; the `markdown-inline' grammar on table cells, so links in a cell are
-;; fontified, hidden and followed by the mode's own rules.
-(use-package markdown-table-view
-  :straight (markdown-table-view
+;; fontified, hidden and followed by the mode's own rules.  The shared
+;; `pretty-tables' recipe is registered in pretty-tables-config.el.
+(use-package pretty-tables-for-markdown
+  :straight (pretty-tables-for-markdown
              :type git
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/markdown-table-view")
-  :hook (markdown-ts-mode-hook . markdown-table-view-mode))
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
+             :files ("pretty-tables-for-markdown.el"))
+  :hook (markdown-ts-mode-hook . pretty-tables-for-markdown-mode))
 
 ;;; -- Obsidian wiki links and embeds (optional) ------------------------------
 

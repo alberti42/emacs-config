@@ -661,6 +661,12 @@ monitor."
  'typst-config
  "Could not load typst-config.el; Typst editing is disabled.")
 
+;; Aligned, wrapped tables: the shared `pretty-tables' drawing.  Must precede
+;; `markdown-config' and `org-config', which configure its two adaptors.
+(emacs-config-load-module
+ 'pretty-tables-config
+ "Could not load pretty-tables-config.el; table drawing is disabled.")
+
 ;; Markdown reading/authoring (markdown-ts-mode, olivetti).  Loads after
 ;; `latex-to-svg-config' so straight can resolve `latex-to-svg-for-markdown''s
 ;; dependency on the engine (`latex-to-svg') from the local checkout.

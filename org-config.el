@@ -149,6 +149,18 @@
   (advice-add 'org-appear--show-with-lock
               :before-while #'my/org-appear-not-mouse-p))
 
+;;; -- Aligned, wrapped tables (pretty-tables-for-org) ------------------------
+
+;; Draws each table row with columns aligned on the text a reader sees and
+;; long cells wrapped; the row point is on shows its raw text.  The shared
+;; `pretty-tables' recipe is registered in pretty-tables-config.el.
+(use-package pretty-tables-for-org
+  :straight (pretty-tables-for-org
+             :type git
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
+             :files ("pretty-tables-for-org.el"))
+  :hook (org-mode-hook . pretty-tables-for-org-mode))
+
 ;;; -- latex-to-svg-for-org: render math in every Org buffer -------------------
 
 ;; SVG-math preview for Org: the Org adaptor of the shared
