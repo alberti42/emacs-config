@@ -351,6 +351,11 @@ monitor."
  'project-config
  "Could not load project-config.el; project root detection uses default behavior.")
 
+;; Remote file editing (TRAMP)
+(emacs-config-load-module
+ 'tramp-config
+ "Could not load tramp-config.el; TRAMP uses its default settings.")
+
 ;; Fast project search (prefer ripgrep)
 (emacs-config-load-module
  'search-config
