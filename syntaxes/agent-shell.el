@@ -9,6 +9,8 @@
               (display-line-numbers-mode -1)))
   (add-hook 'agent-shell-viewport-edit-mode-hook
             (lambda ()
+              (setq-local fill-column 100)
+              (soft-wrap-mode 1)
               (display-line-numbers-mode -1))))
 
 (provide 'syntaxes-agent-shell)
