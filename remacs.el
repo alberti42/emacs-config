@@ -191,8 +191,11 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
                 (remacs--file-append file chunk)
                 (when (remacs--file-ready file)
                   (setf (remacs--connection-parsing-data remacs--conn) nil)
-                  (remacs--file-open file)
-                  (setf (remacs--connection-file remacs--conn) nil)))))
+                  (setf (remacs--connection-file remacs--conn) nil)
+                  ;; `pop-to-buffer' makes the file buffer current, where
+                  ;; the buffer-local `remacs--conn' and `remacs--buf' are
+                  ;; unset.
+                  (save-current-buffer (remacs--file-open file))))))
         ;; Line mode: wait for a complete line.
         (let ((nl (cl-position ?\n remacs--buf)))
           (unless nl (throw 'need-more nil))
