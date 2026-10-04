@@ -66,8 +66,10 @@ atos -o ~/Applications/Emacs.app/Contents/MacOS/Emacs -arch arm64 \
      -l 0x100a88000 0x100ae1308 0x100aa8f10
 ```
 
-The self-built app carries a symbol table but no DWARF, so `atos` resolves to
-function+offset, not file:line.
+The self-built app's DWARF is in `Emacs.dSYM` next to the binary
+(`Contents/MacOS/Emacs.dSYM/Contents/Resources/DWARF/Emacs`). `atos`, `sample`
+and `lldb` find it there and match it to the binary by UUID (`dwarfdump --uuid`
+prints both), so `atos` resolves to file:line.
 
 ## Goals and Non-Goals
 
