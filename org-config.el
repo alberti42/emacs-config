@@ -195,6 +195,121 @@ buffer-locally before the adaptor turns on the shared core."
     (setq org-startup-options
           (assoc-delete-all "latexpreview" org-startup-options))))
 
+;;; -- Remote images -----------------------------------------------------------
+
+;; `org-display-remote-inline-images' applies to TRAMP files only, and Org
+;; gives the http and https link types no `:preview' function, so an image
+;; link to a web server is never displayed.  `my/org-link-preview-url'
+;; downloads the image asynchronously each time previews are drawn and keeps
+;; no cache; `my/org-attach-remote-images' stores it in the note's attachment
+;; directory instead, so the link no longer depends on the server.
+
+(defun my/org-remote-image-link-p (link)
+  "Return non-nil if LINK is an http or https link to an image file."
+  (and (member (org-element-property :type link) '("http" "https"))
+       (string-match-p (image-file-name-regexp)
+                       (org-element-property :path link))))
+
+(defun my/org-link-preview-url (ov _path link)
+  "Download the image LINK points to and display it in overlay OV.
+Intended as the `:preview' link parameter of http and https links."
+  (when (and (display-graphic-p) (my/org-remote-image-link-p link))
+    (let ((width (org-display-inline-image--width link)))
+      (url-retrieve
+       (org-element-property :raw-link link)
+       (lambda (status)
+         (unless (plist-get status :error)
+           (goto-char (point-min))
+           ;; The image data starts after the blank line ending the headers.
+           (when (re-search-forward "\r?\n\r?\n" nil t)
+             (let ((image (create-image
+                           (buffer-substring-no-properties (point) (point-max))
+                           nil t :width width)))
+               (when (overlay-buffer ov)
+                 (overlay-put ov 'display image)
+                 (overlay-put ov 'face 'default)
+                 (overlay-put ov 'keymap image-map)))))
+         (kill-buffer))
+       nil t)
+      t)))
+
+(with-eval-after-load 'ol
+  (dolist (type '("http" "https"))
+    (org-link-set-parameters type :preview #'my/org-link-preview-url)))
+
+(defun my/org--remote-image-links (beg end)
+  "Return the http and https image links between BEG and END."
+  (let (links)
+    (save-excursion
+      (goto-char beg)
+      (while (re-search-forward org-link-any-re end t)
+        (let ((link (save-excursion
+                      (forward-char -1)
+                      (org-element-lineage (org-element-context) 'link t))))
+          (when (and link (my/org-remote-image-link-p link))
+            (push link links)))))
+    links))
+
+(defun my/org--remote-image-target (link)
+  "Return (BEG END URL NAME DESC) for the remote image LINK.
+BEG and END are markers, because `org-attach-url' tags the heading and
+so moves the text after it."
+  (list (copy-marker (org-element-begin link))
+        (copy-marker (- (org-element-end link)
+                        (org-element-post-blank link)))
+        (org-element-property :raw-link link)
+        (file-name-nondirectory (org-element-property :path link))
+        (and (org-element-contents-begin link)
+             (buffer-substring-no-properties
+              (org-element-contents-begin link)
+              (org-element-contents-end link)))))
+
+(defun my/org--attach-remote-image (target)
+  "Download the image of TARGET and replace its link with an attachment link.
+TARGET is a list returned by `my/org--remote-image-target'.  A file
+already in the attachment directory under the same name is used as it
+is, without downloading it again."
+  (pcase-let ((`(,beg ,end ,url ,name ,desc) target))
+    (save-excursion
+      ;; `org-attach-dir' finds the attachment directory from point.
+      (goto-char beg)
+      (unless (file-exists-p (expand-file-name name (org-attach-dir t)))
+        (org-attach-url url))
+      (delete-region beg end)
+      (goto-char beg)
+      (insert (org-link-make-string (concat "attachment:" name) desc)))
+    (set-marker beg nil)
+    (set-marker end nil)))
+
+(defun my/org-attach-remote-images (&optional arg beg end)
+  "Download remote images into the attachment directory of the note.
+Replace each http or https image link with an `attachment:' link to
+the downloaded file.
+
+Act on the link at point.  When region BEG..END is active, act on the
+links in the region.  With prefix ARG \\[universal-argument] \
+\\[universal-argument], act on the links in the
+accessible portion of the buffer."
+  (interactive (cons current-prefix-arg
+                     (when (use-region-p)
+                       (list (region-beginning) (region-end))))
+               org-mode)
+  (require 'org-attach)
+  (let ((targets
+         (mapcar
+          #'my/org--remote-image-target
+          (cond
+           ((equal arg '(16))
+            (my/org--remote-image-links (point-min) (point-max)))
+           (beg (my/org--remote-image-links beg end))
+           (t (let ((link (org-element-lineage (org-element-context) 'link t)))
+                (if (and link (my/org-remote-image-link-p link))
+                    (list link)
+                  (user-error "No remote image link at point"))))))))
+    (mapc #'my/org--attach-remote-image targets)
+    (message "Attached %d remote image%s"
+             (length targets) (if (= (length targets) 1) "" "s"))))
+
 ;;; -- Two-column table -> description list ------------------------------------
 
 ;; A two-column table whose second column is prose is a description list
