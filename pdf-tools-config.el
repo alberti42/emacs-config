@@ -33,7 +33,7 @@
              :type git
              :host github
              :repo "alberti42/fork-pdf-tools"
-             :branch "merged"
+             :branch "feat/async-render"
              :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
              :files (:defaults "README" ("build" "Makefile") ("build" "server"))
              ;; A rebuild reconstructs the build directory from `:files', which
