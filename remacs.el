@@ -230,8 +230,15 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
              (file (remacs--connection-file conn)))
         (push (cons key val) (remacs--file-env file))
         (when (string= key "data")
-          (setf (remacs--file-file-size file) (string-to-number val))
-          (setf (remacs--connection-parsing-data conn) t))))
+          (let ((size (string-to-number val)))
+            (setf (remacs--file-file-size file) size)
+            (if (> size 0)
+                (setf (remacs--connection-parsing-data conn) t)
+              ;; An empty file sends no data bytes, so data mode would
+              ;; never see the file become ready: open it now.
+              (setf (remacs--file-ready file) t)
+              (setf (remacs--connection-file conn) nil)
+              (save-current-buffer (remacs--file-open file)))))))
 
      (t
       (message "[remacs] ignoring unknown line: %s" line)))))
