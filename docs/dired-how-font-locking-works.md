@@ -8,13 +8,13 @@ without a recognized type) appear in the **default face** instead of
 its neighbour — in the expected colors. Pressing `g` (`revert-buffer`)
 repaints everything in one shot.
 
-The same family of bug also surfaces with `nerd-icons-dired`'s icons: the
-upstream `(propertize string 'display string)` wrapper around the overlay
-`after-string` produces "colorless icons until first redisplay event"
-unless overridden — see the comment block in `dired-config.el` at
-`nerd-icons-dired--add-overlay`. Both phenomena point at the same root
-cause; the dir-name half is just easier to notice because diredfl colors
-many more elements than built-in dired does.
+The same bug also makes `nerd-icons-dired`'s icons appear colorless until
+the first redisplay event. That looks like a fault in the upstream
+`(propertize string 'display string)` wrapper around the overlay
+`after-string`, but it is not: the wrapper is what makes an icon take the
+`hl-line-mode` background, and the fix below colors the icons with it in
+place. The dir-name half is easier to notice because diredfl colors many
+more elements than built-in dired does.
 
 Icons sit on a different track: `nerd-icons-dired` builds them as overlay
 `after-string`s with the face baked into the propertized string returned by
@@ -51,10 +51,8 @@ by reading the `dired-filename` text property set during `dired-readin`.
 
 ## Root cause
 
-The bug is upstream of both diredfl and nerd-icons-dired. It predates
-diredfl in this config (the icon-color workaround on
-`nerd-icons-dired--add-overlay` was already needed before diredfl was
-added).
+The bug is upstream of both diredfl and nerd-icons-dired, and shows
+without diredfl.
 
 When the buffer is first visited:
 
