@@ -34,6 +34,18 @@
 ;; json-ts-mode is built-in (Emacs 29+); uses tree-sitter.
 (add-hook 'json-ts-mode-hook #'lsp-deferred)
 
+;; The tree-sitter JSON grammar parses comments, so JSONC needs no
+;; other mode; lsp-mode sends the "jsonc" language id for *.jsonc.
+(add-to-list 'auto-mode-alist '("\\.jsonc\\'" . json-ts-mode))
+
+;; The server accepts comments only when lsp-mode sends the "jsonc"
+;; language id, which lsp-mode picks from the file name.  These
+;; patterns name *.json files that are JSONC; `add-to-list' puts them
+;; ahead of lsp-mode's generic "\\.json$" entry.
+(with-eval-after-load 'lsp-mode
+  (dolist (pattern '("/Sublime Text/Packages/.*\\.json\\'"))
+    (add-to-list 'lsp-language-id-configuration (cons pattern "jsonc"))))
+
 ;; Once lsp-mode is loaded, we can apply specific JSON client settings if needed.
 (use-package lsp-json
   :straight nil
