@@ -125,6 +125,11 @@ tunnels).  Use \"0.0.0.0\" to accept connections from any interface
         (puthash buf file remacs--files)
         (pop-to-buffer buf)
         (select-frame-set-input-focus (selected-frame))
+        ;; macOS 14+ no longer lets an app bring itself to the front, so
+        ;; ask Launch Services to activate the running bundle.
+        (when (eq window-system 'ns)
+          (call-process "/usr/bin/open" nil 0 nil "-a"
+                        (expand-file-name "../.." invocation-directory)))
         (message "[remacs] opened %s" display-name)))))
 
 (defun remacs--file-cleanup (file)
