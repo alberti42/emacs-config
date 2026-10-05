@@ -11,6 +11,7 @@
               (when (bound-and-true-p soft-wrap-mode)
                 (soft-wrap-mode -1))
               (visual-line-mode -1)
+              (hl-line-mode 1)
               (setq-local truncate-lines t)
               (setq-local word-wrap nil)
               (setq-local truncate-partial-width-windows nil))))
