@@ -13,8 +13,8 @@
   ;; Set location of git executable to speed up magit
   (setq magit-git-executable (executable-find "git"))
 
-  ;; Ask before saving modified repository buffers.
-  (setq magit-save-repository-buffers t)
+  ;; Stop asking before saving modified repository buffers.
+  (setq magit-save-repository-buffers nil)
 
   ;; Open Magit buffers in the selected window; diff and process buffers
   ;; still go to another window.
