@@ -17,6 +17,11 @@
 ;; leaves as mail through `smtpmail' -- `S W' in the summary buffer, not
 ;; `F'.
 ;;
+;; `news.gwene.org' serves RSS and Atom feeds as newsgroups over NNTP,
+;; with no account and no password, among them the arXiv listings:
+;;
+;;   gwene.org.arxiv.rss.quant-ph   https://rss.arxiv.org/rss/quant-ph
+;;
 
 ;;; Code:
 
@@ -25,9 +30,12 @@
 (setq gnus-select-method '(nnnil ""))
 
 (setq gnus-secondary-select-methods
-      ;; Plain NNTP on 119.  The host offers no TLS port.
+      ;; Plain NNTP on 119.  Neither host offers a TLS port.
       '((nntp "yhetil"
               (nntp-address "news.yhetil.org")
+              (nntp-port-number 119))
+        (nntp "gwene"
+              (nntp-address "news.gwene.org")
               (nntp-port-number 119))))
 
 (provide 'gnus-servers)
