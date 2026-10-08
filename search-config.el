@@ -74,6 +74,20 @@ recentering hooks."
 ;; unconditional `recenter' before this hook runs.
 (add-hook 'next-error-hook #'search-recenter-point)
 
+;; `count-screen-lines' in `search-recenter-point' narrows the buffer and calls
+;; `vertical-motion', which fontifies.  `visual-wrap-prefix-function' never
+;; returns when `point-max' falls inside an overlay with a `display' string,
+;; such as a drawn table row or an equation preview: its loop stays at
+;; `point-max'.  Widening first, as font-lock does, lets the loop get past the
+;; overlay.  Remove once Emacs fixes `visual-wrap-prefix-function'.
+(defun search-config--visual-wrap-widen (orig beg end)
+  "Call ORIG, `visual-wrap-prefix-function', on BEG and END with the buffer widened."
+  (save-restriction
+    (widen)
+    (funcall orig beg end)))
+
+(advice-add 'visual-wrap-prefix-function :around #'search-config--visual-wrap-widen)
+
 ;; ;; DEL deletes one character from the search string instead of undoing the
 ;; ;; last input action (which would remove an entire yank in one keystroke).
 ;; (define-key isearch-mode-map [remap isearch-delete-char] #'isearch-del-char)
