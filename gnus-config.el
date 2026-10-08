@@ -92,5 +92,24 @@
   ;; Gnus takes the whole frame otherwise.
   (gnus-use-full-window nil))
 
+;;; -- latex-to-svg-for-gnus: render math in Gnus articles ---------------------
+
+;; SVG-math preview for the article buffer, such as the abstracts of the
+;; arXiv feeds on gwene.org: the Gnus adaptor of the shared
+;; `latex-to-svg-frontend' core.
+;;
+;; The engine (`latex-to-svg-backend') and core (`latex-to-svg-frontend')
+;; recipes are registered in `latex-to-svg-config.el', which init.el loads
+;; first, so straight resolves this adaptor's dependencies from the local
+;; `latex-to-svg' checkout.
+(use-package latex-to-svg-for-gnus
+  :straight (latex-to-svg-for-gnus
+             :type git
+             :inherit nil
+             :branch "main"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :files ("latex-to-svg-for-gnus.el"))
+  :hook (gnus-article-mode . latex-to-svg-for-gnus-mode))
+
 (provide 'gnus-config)
 ;;; gnus-config.el ends here
