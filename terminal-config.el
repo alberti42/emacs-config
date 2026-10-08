@@ -149,6 +149,20 @@ Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
 ;; passthrough, OSC 8 hyperlinks, 5 underline styles, and auto shell integration.
 ;; The native module is downloaded automatically on first use.
 ;; To open a new session use M-x ghostel.
+
+(defvar my/ghostel-title-prefix-regexp "\\`[✳◐◓◑◒] +"
+  "Regexp matching the status glyph Claude Code puts before its title.")
+
+(defun my/ghostel-buffer-name-by-title (title &optional regexp)
+  "Name the buffer *ghostel: TITLE*, with the match of REGEXP removed.
+REGEXP defaults to `my/ghostel-title-prefix-regexp'.  Claude Code's
+glyph changes while it works; removing it keeps the name stable for
+`consult-buffer'."
+  (and title
+       (format "*ghostel: %s*"
+               (replace-regexp-in-string
+                (or regexp my/ghostel-title-prefix-regexp) "" title))))
+
 (use-package ghostel
   ;; Use ghostel's canonical MELPA recipe — do NOT hand-roll a :straight recipe
   ;; with a custom :files.  The MELPA recipe is `(:defaults "etc" "src"
@@ -164,6 +178,9 @@ Killing runs `eb--release' via `kill-buffer-hook', unblocking the shell."
   :custom
   (ghostel-shell shell-file-name)
   (ghostel-term "xterm-ghostty")
+  ;; Rename the buffer after the terminal title (OSC 0/2), so `consult-buffer'
+  ;; finds a Claude Code session by its name.
+  (ghostel-buffer-name-function #'my/ghostel-buffer-name-by-title)
   ;; Hand the shell the location of etc/bin (see the eb section above).  Only the
   ;; directory is exported, never PATH itself: PATH is the shell's to build, and
   ;; a value snapshotted here would go stale the moment Emacs's own PATH changed.
