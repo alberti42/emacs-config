@@ -77,6 +77,12 @@
   ;; (read this session) or `O' (read earlier) in the first column.  By
   ;; default a summary lists only unread and ticked articles.
   (setq gnus-parameters '(("." (display . all))))
+  ;; Show each article's date in the summary, in place of the line count
+  ;; (`%4L') of the default format.  `%&user-date;' writes it according to
+  ;; `gnus-user-date-format-alist': "Today, 06:00", "Yesterday, 06:00",
+  ;; the weekday within the past week, then month and day.
+  (setq gnus-summary-line-format
+        "%U%R%z %-17,17&user-date; %I%(%[%-23,23f%]%) %s\n")
   ;; Hand every NNTP server to the Agent, which keeps headers and articles
   ;; on disk; without it Gnus asks the server for the headers of every
   ;; unread article again on each entry.  Gnus reads this variable only
