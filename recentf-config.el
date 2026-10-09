@@ -21,7 +21,7 @@
                                  (expand-file-name "recentf.eld"
                                                    emacs-config-cache-dir)))
   (setq recentf-max-saved-items 200
-        recentf-max-menu-items 50
+        recentf-max-menu-items 200
         recentf-auto-cleanup 'mode
         recentf-show-messages nil ; requires Emacs 31+
         recentf-exclude
