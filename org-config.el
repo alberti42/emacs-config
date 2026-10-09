@@ -38,8 +38,8 @@
   ;; headings (e.g. \alpha → α, H_2O → H₂O).  `org-fontify-entities' guards only
   ;; on `org-at-comment-p', NOT on LaTeX fragments, so `\alpha' composes to `α'
   ;; inside math too -- visible while editing a fragment that
-  ;; `latex-to-svg-for-org-mode' has un-previewed.  Set to nil if that bites.
-  (org-pretty-entities t)
+  ;; `latex-to-svg-for-org-mode' has un-previewed.
+  (org-pretty-entities nil)
   ;; C-a/C-e stop at the end of the heading text (before tags) on the first
   ;; press, at the true line bounds on the second.
   (org-special-ctrl-a/e t)
