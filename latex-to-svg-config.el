@@ -64,7 +64,7 @@ print-unity-mantissa=false,
   :defer t
   :custom
   ;; Select the default engine
-  (latex-to-svg-frontend-engine 'latex)
+  (latex-to-svg-frontend-engine 'texres)
   :config
   ;; Re-tint and rescale previews on a theme switch or a frame font change;
   ;; the mode itself only tracks redisplay and buffer-local zoom.
