@@ -47,6 +47,8 @@
   (org-catch-invisible-edits 'show-and-error)
   ;; Compact fold ellipsis.
   (org-ellipsis "…")
+  ;; Stock list plus `md', which `embark-org-copy-as-markdown' exports with.
+  (org-export-backends '(ascii html icalendar latex odt md))
   :hook
   ;; Number sections as overlays rather than as text in the heading.
   (org-mode . org-num-mode)
