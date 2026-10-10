@@ -19,11 +19,10 @@
 ;; token).  Only the item ID is encoded in the `op://' path -- the ident selects the item, and `^'
 ;; is invalid in a reference anyway.
 ;;
-;; The stock backend answers *every* auth-source query, returning the `op read' output verbatim
-;; (even an error message), which would shadow ~/.authinfo and break other consumers such as
-;; smtpmail.  The backend is therefore restricted to the idents listed in
-;; `auth-source-1password-config-items'; lookups for any other host fall through to the remaining
-;; `auth-sources'.
+;; The backend is restricted to the idents listed in `auth-source-1password-config-items':
+;; `auth-source-1password-config--reference' returns nil for any other ident, the backend then
+;; skips the `op' call and returns nil, and the lookup falls through to the remaining
+;; `auth-sources' (~/.authinfo for smtpmail, for example).
 
 ;;; Code:
 
@@ -52,15 +51,6 @@ probe), fall back to the first entry registered for HOST."
            (cdr (seq-find (lambda (e) (equal (caar e) host))
                           auth-source-1password-config-items)))))
 
-(defun auth-source-1password-config--scope (fn &rest spec)
-  "Restrict the 1Password backend to hosts in `auth-source-1password-config-items'.
-FN is the wrapped `auth-source-1password-search'; SPEC is its
-auth-source query plist.  Return nil for unlisted idents so the other
-backends run."
-  (when (auth-source-1password-config--item (plist-get spec :host)
-                                            (plist-get spec :user))
-    (apply fn spec)))
-
 (defun auth-source-1password-config--reference (_backend _type host user _port)
   "Build an `op://' secret reference for the (HOST . USER) ident.
 Look the ident up in `auth-source-1password-config-items' and target the
@@ -84,7 +74,6 @@ reference, so only the resolved item ID is encoded in the path."
   (auth-source-1password-vault "Personal")
   (auth-source-1password-construct-secret-reference #'auth-source-1password-config--reference)
   :config
-  (advice-add 'auth-source-1password-search :around #'auth-source-1password-config--scope)
   (auth-source-1password-enable))
 
 (provide 'auth-source-1password-config)
