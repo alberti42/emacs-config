@@ -112,7 +112,7 @@
   :straight (latex-to-svg-for-gnus
              :type git
              :inherit nil
-             :branch "main"
+             :branch "develop"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-gnus.el"))
   :hook (gnus-article-mode . latex-to-svg-for-gnus-mode))

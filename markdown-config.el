@@ -522,7 +522,7 @@ before the adaptor turns on the shared core."
   :straight (latex-to-svg-for-markdown
              :type git
              :inherit nil
-             :branch "main"
+             :branch "develop"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-markdown.el"))
   ;; Render math in every Markdown buffer (sets rescales, then enables).
@@ -539,6 +539,7 @@ before the adaptor turns on the shared core."
   :straight (pretty-tables-for-markdown
              :type git
              :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
+             :branch "develop"
              :files ("pretty-tables-for-markdown.el"))
   :hook (markdown-ts-mode-hook . pretty-tables-for-markdown-mode))
 

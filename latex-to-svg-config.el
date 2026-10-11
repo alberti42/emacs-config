@@ -25,16 +25,13 @@
   :straight (latex-to-svg-backend
              :type git
              :inherit nil
-             :branch "main"
+             :branch "develop"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg-backend")
   :defer t
   :custom
   ;; Equation size relative to the surrounding buffer font.  1.0 = match; a bit
   ;; above 1 makes both inline and display math slightly larger than the text.
   (latex-to-svg-backend-font-scale 1.0)
-  ;; Daemon / mixed TTY+GUI: compile even when a non-graphic frame is selected,
-  ;; so equations are ready as soon as a GUI frame views the buffer.
-  (latex-to-svg-backend-render-on-non-graphic t)
   ;; Name of ratex render engine producing SVG graphics.
   (latex-to-svg-backend-ratex-program "ratex-render-svg")
   ;; Extra LaTeX packages available in *every* equation (all front-ends).
@@ -58,7 +55,7 @@ print-unity-mantissa=false,
   :straight (latex-to-svg-frontend
              :type git
              :inherit nil
-             :branch "main"
+             :branch "develop"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-frontend.el"))
   :defer t

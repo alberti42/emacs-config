@@ -15,6 +15,7 @@
   :straight (pretty-tables
              :type git
              :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
+             :branch "develop"
              :files ("pretty-tables.el"))
   :defer t)
 

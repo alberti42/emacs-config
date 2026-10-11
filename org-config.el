@@ -160,6 +160,7 @@
   :straight (pretty-tables-for-org
              :type git
              :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
+             :branch "develop"
              :files ("pretty-tables-for-org.el"))
   :hook (org-mode-hook . pretty-tables-for-org-mode))
 
@@ -186,7 +187,7 @@ buffer-locally before the adaptor turns on the shared core."
   :straight (latex-to-svg-for-org
              :type git
              :inherit nil
-             :branch "main"
+             :branch "develop"
              :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-org.el"))
   :hook (org-mode . org-config--latex-to-svg-setup)
