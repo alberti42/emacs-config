@@ -244,8 +244,8 @@ Scans the first 10 lines of the buffer, case-insensitively.
   "Enable LaTeX SVG-math preview in this buffer with tuned rescales.
 Per-mode config lives here: inline / display size multipliers are set
 buffer-locally before the adaptor turns on the shared core."
-  (setq-local latex-to-svg-frontend-rescale-inline 1.20
-              latex-to-svg-frontend-rescale-display 1.25
+  (setq-local latex-to-svg-frontend-rescale-inline 1.0
+              latex-to-svg-frontend-rescale-display 1.0
               latex-to-svg-frontend-padding-display '(4 0 4 0)
               latex-to-svg-frontend-center-display-math t)
   (latex-to-svg-for-latex-mode 1))
