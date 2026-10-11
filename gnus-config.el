@@ -98,6 +98,18 @@
   ;; Gnus takes the whole frame otherwise.
   (gnus-use-full-window nil))
 
+;; `n' and `p' move to the next and previous article in the summary,
+;; read or unread.  By default they skip read articles, which suits a
+;; summary listing only unread ones; this one lists all of them (the
+;; `display' parameter above).  The remap also covers the article
+;; buffer, which looks its keys up in the summary map.
+(use-package gnus-sum
+  :straight nil
+  :defer t
+  :bind (:map gnus-summary-mode-map
+         ([remap gnus-summary-next-unread-article] . gnus-summary-next-article)
+         ([remap gnus-summary-prev-unread-article] . gnus-summary-prev-article)))
+
 ;;; -- latex-to-svg-for-gnus: render math in Gnus articles ---------------------
 
 ;; SVG-math preview for the article buffer, such as the abstracts of the
