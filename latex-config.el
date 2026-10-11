@@ -247,7 +247,10 @@ buffer-locally before the adaptor turns on the shared core."
   (setq-local latex-to-svg-frontend-rescale-inline 1.0
               latex-to-svg-frontend-rescale-display 1.0
               latex-to-svg-frontend-padding-display '(4 0 4 0)
-              latex-to-svg-frontend-center-display-math t)
+              latex-to-svg-frontend-center-display-math t
+              latex-to-svg-frontend-foreground-ignored-faces '(font-latex-math-face
+                                                               font-latex-sedate-face
+                                                               font-lock-keyword-face))
   (latex-to-svg-for-latex-mode 1))
 
 (use-package latex-to-svg-for-latex
