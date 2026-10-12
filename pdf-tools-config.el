@@ -7,10 +7,9 @@
 ;; uses `pdf-loader-install' so the C helper is built on first PDF open
 ;; rather than at startup.
 ;;
-;; On the fork's `feat/single-page-roll' branch `pdf-view-mode' scrolls
-;; continuously across pages; `M-x pdf-view-single-page-mode' shows one
-;; page at a time instead.  `pdf-view-roll-minor-mode' is obsolete there
-;; and only warns.
+;; On the fork's `merged' branch `pdf-view-mode' scrolls continuously
+;; across pages; `M-x pdf-view-single-page-mode' shows one page at a time
+;; instead.  `pdf-view-roll-minor-mode' is obsolete there and only warns.
 ;;
 ;; External dependencies (built once, on first PDF open):
 ;;   - poppler, automake, autoconf, pkg-config (for epdfinfo)
@@ -20,17 +19,17 @@
 
 (use-package pdf-tools
   ;; Pinned to the fork.  `merged' carries the fixes sent upstream as pull
-  ;; requests; `feat/single-page-roll', built on it and on
-  ;; `feat/async-render', adds rendering without waiting for the server,
-  ;; continuous scrolling as the default and `pdf-view-single-page-mode'.
-  ;; It is being tested here before it is merged into `merged'.
+  ;; requests, rendering without waiting for the server, continuous
+  ;; scrolling as the default and `pdf-view-single-page-mode'.  straight
+  ;; builds whatever branch the `:local-repo' checkout is on, not
+  ;; `:branch', so that checkout must stay on `merged'.
   ;; `:files' mirrors the MELPA recipe -- without it the `build/' tree that
   ;; `pdf-tools-install' compiles `epdfinfo' from is missing.
   :straight (pdf-tools
              :type git
              :host github
              :repo "alberti42/fork-pdf-tools"
-             :branch "feat/single-page-roll"
+             :branch "merged"
              :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
              :files (:defaults "README" ("build" "Makefile") ("build" "server"))
              ;; A rebuild reconstructs the build directory from `:files', which
