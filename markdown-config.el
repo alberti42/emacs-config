@@ -515,7 +515,8 @@ before the adaptor turns on the shared core."
   (setq-local latex-to-svg-frontend-rescale-inline 1.0
               latex-to-svg-frontend-rescale-display 1.0
               latex-to-svg-frontend-padding-display '(4 0 4 0)
-              latex-to-svg-frontend-center-display-math t)
+              latex-to-svg-frontend-center-display-math t
+              latex-to-svg-frontend-foreground-ignored-faces '(markdown-ts-delimiter markdown-ts-latex))
   (latex-to-svg-for-markdown-mode 1))
 
 (use-package latex-to-svg-for-markdown
