@@ -94,6 +94,27 @@ MSG is the `compilation-finish-functions' status string."
 
 (add-hook 'compilation-finish-functions #'typst-config--show-compile-on-error)
 
+;;;; Quote compile options for the shell ---------------------------------------
+;;
+;; `typst-ts-common-options' is a list of arguments, one per element.
+;; `typst-ts-watch-mode' passes them to `start-process' as they are, but
+;; `typst-ts-compile' joins them with spaces into a shell command string
+;; without quoting, so an argument containing a space or a parenthesis (such
+;; as a `--root' path) breaks the compile.  Quoting it in the variable instead
+;; breaks watch, which then receives the backslashes literally.  The advice
+;; below quotes each element for the compile only.
+
+(defun typst-config--quote-compile-options (fn &rest args)
+  "Call FN with ARGS while the typst option lists are shell-quoted."
+  (let ((typst-ts-common-options
+         (mapcar #'shell-quote-argument typst-ts-common-options))
+        (typst-ts-compile-options
+         (mapcar #'shell-quote-argument typst-ts-compile-options)))
+    (apply fn args)))
+
+(with-eval-after-load 'typst-ts-compile
+  (advice-add 'typst-ts-compile :around #'typst-config--quote-compile-options))
+
 ;;;; Live preview via tinymist -------------------------------------------------
 ;;
 ;; `typst-preview.el' (havarddj) drives tinymist's incremental HTML preview
