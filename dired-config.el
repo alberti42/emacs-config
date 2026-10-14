@@ -3,7 +3,7 @@
 ;;; Code:
 
 ;; When non-nil, inject the ls -h flag so sizes show as 4.0K / 1.2M rather
-;; than raw byte counts.  `my/dired--switches' reads this to build every
+;; than raw byte counts.  `dired-config--switches' reads this to build every
 ;; switch string (the default listing and each sort command), so there is a
 ;; single source of truth; `dired-config-toggle-human-readable-sizes' flips it
 ;; live.
@@ -12,7 +12,7 @@
   :type 'boolean
   :group 'dired)
 
-(defun my/dired--switches (base &optional extra)
+(defun dired-config--switches (base &optional extra)
   "Build an ls switch string from BASE, optional -h, and EXTRA.
 BASE is the leading flag cluster without the dash (e.g. \"al\", \"l\").
 The h flag is inserted when `dired-config-human-readable-sizes' is
