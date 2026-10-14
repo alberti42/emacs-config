@@ -115,6 +115,28 @@ MSG is the `compilation-finish-functions' status string."
 (with-eval-after-load 'typst-ts-compile
   (advice-add 'typst-ts-compile :around #'typst-config--quote-compile-options))
 
+;; `typst-ts-set-compile-command' sets the `compile-command' that `M-x
+;; compile' offers.  It inserts `typst-ts-compile-options' with %s, which
+;; prints the list in parentheses, and leaves out `typst-ts-common-options'.
+;; The replacement below builds the same command as `typst-ts-compile',
+;; without the output file, which typst then puts next to the input.
+
+(defun typst-config--set-compile-command ()
+  "Set buffer-local `compile-command' with each option shell-quoted."
+  (when-let* ((target-file (typst-ts-compile-get-target-file-argument)))
+    (setq-local compile-command
+                (format "%s compile %s"
+                        typst-ts-compile-executable-location
+                        (mapconcat #'shell-quote-argument
+                                   (append (list target-file)
+                                           typst-ts-common-options
+                                           typst-ts-compile-options)
+                                   " ")))))
+
+(with-eval-after-load 'typst-ts-mode
+  (advice-add 'typst-ts-set-compile-command
+              :override #'typst-config--set-compile-command))
+
 ;;;; Live preview via tinymist -------------------------------------------------
 ;;
 ;; `typst-preview.el' (havarddj) drives tinymist's incremental HTML preview
