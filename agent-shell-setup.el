@@ -132,7 +132,7 @@ the new title.  Runs with the shell buffer current (see
   (setq agent-shell-math-renderer-display-rescale 1.0)
   (setq agent-shell-math-renderer-padding-display '(10 0 10 0))
   ;; Select the default engine
-  (agent-shell-math-renderer-engine 'latex))
+  (setq agent-shell-math-renderer-engine 'texres))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
