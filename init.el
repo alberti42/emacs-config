@@ -679,6 +679,13 @@ monitor."
  'markdown-config
  "Could not load markdown-config.el; Markdown enhancements are disabled.")
 
+;; Source of the Markdown element at point, rendered appearance elsewhere.
+;; Loads after `markdown-config', which enables the latex-to-svg adaptor that
+;; this package attaches its reveal policy to.
+(emacs-config-load-module
+ 'markdown-ts-appear-config
+ "Could not load markdown-ts-appear-config.el; markdown-ts-appear is disabled.")
+
 ;; Org mode (LaTeX preview, Python babel, literate notebooks)
 (emacs-config-load-module
  'org-config
