@@ -136,10 +136,11 @@ Two `:around` advices, sharing `markdown-config--normalize-link-path`:
 
 ## Rendering (markdown-ts-mode only)
 
-Code fences are drawn by `markdown-ts-appear` (see
-`markdown-ts-appear-config.el`), which shows a fence's source when point
-enters it. Inline links in prose need nothing from this file — the bundled rules hide the brackets, parens
-and URL under `markdown-ts-hide-markup` and make the label a button.
+`markdown-ts-appear` (see `markdown-ts-appear-config.el`) sets
+`markdown-ts-hide-markup` to t in each buffer, draws code fences, and
+shows the source of the element at point. Inline links in prose need
+nothing from this file — the bundled rules hide the brackets, parens and
+URL under `markdown-ts-hide-markup` and make the label a button.
 
 ### Inline links inside tables
 
@@ -214,8 +215,8 @@ The pointy-bracket form `[label](<url with spaces>)` returns
 
 ### Advices name internal (double-underscore) upstream functions
 
-`markdown-ts--fontify-image`, `markdown-ts--make-link-button` and
-`markdown-ts--fontify-delimiter` are all internal symbols. Advising them
+`markdown-ts--fontify-image` and `markdown-ts--make-link-button` are
+both internal symbols. Advising them
 is deliberate — the alternative is inlining copies that drift from
 upstream — but it means a rename upstream breaks this file loudly rather
 than silently. The advices are the first thing to check after an Emacs

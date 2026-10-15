@@ -215,44 +215,11 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
             (markdown-config--strip-pointy-brackets url))
            (find-file (markdown-config--normalize-link-path url)))))))
 
-(defcustom markdown-config-hide-link-markup t
-  "When non-nil, hide the brackets and destination of every Markdown link.
-Only the link text stays visible.  This is the link part of
-`markdown-ts-hide-markup', which also hides heading `#'s, emphasis
-markers and code-span backticks; that option can stay nil while this one
-is on.  Read when a buffer enters `markdown-ts-mode'."
-  :type 'boolean
-  :group 'markdown-ts)
-
-(defvar markdown-config--link-node-types
-  '("inline_link" "full_reference_link" "collapsed_reference_link"
-    "shortcut_link" "image")
-  "Tree-sitter node types whose markup `markdown-config-hide-link-markup' hides.")
-
-(defun markdown-config--hide-link-markup (orig node &rest args)
-  "Around advice: hide link markup with `markdown-ts-hide-markup' nil.
-When `markdown-config-hide-link-markup' is non-nil and NODE (a delimiter
-or a link destination) belongs to a link or an image, run ORIG with
-`markdown-ts-hide-markup' bound to t, so the brackets and the destination
-get the same `invisible' property they get under full hiding.  Every
-other delimiter, heading `#'s included, stays visible."
-  (let ((markdown-ts-hide-markup
-         (or markdown-ts-hide-markup
-             (and markdown-config-hide-link-markup
-                  (member (treesit-node-type (treesit-node-parent node))
-                          markdown-config--link-node-types)
-                  t))))
-    (apply orig node args)))
-
 (with-eval-after-load 'markdown-ts-mode
   (advice-add 'markdown-ts--fontify-image :around
               #'markdown-config--fontify-image-normalize-dest)
   (advice-add 'markdown-ts--make-link-button :around
-              #'markdown-config--reroute-link-button)
-  (advice-add 'markdown-ts--fontify-delimiter :around
-              #'markdown-config--hide-link-markup)
-  (advice-add 'markdown-ts--fontify-link-destination :around
-              #'markdown-config--hide-link-markup))
+              #'markdown-config--reroute-link-button))
 
 ;;; -- click-to-follow keymap --------------------------------------------------
 
@@ -277,14 +244,6 @@ The keymap is parser-agnostic — the bound command,
 `markdown-config-follow-link-at-point', dispatches on what is actually
 at point.")
 
-(defun markdown-config--markdown-ts-mode-setup ()
-  "Make the link markup hidden by `markdown-config-hide-link-markup' invisible."
-  ;; The mode adds this spec only when `markdown-ts-hide-markup' is non-nil;
-  ;; without it the `invisible' property on link markup has no effect.
-  (when markdown-config-hide-link-markup
-    (add-to-invisibility-spec 'markdown-ts--markup))
-  (font-lock-flush))
-
 ;;; -- markdown-ts-mode -------------------------------------------------------
 
 ;; Emacs 31 ships markdown-ts-mode as the default for `.md' / `.markdown'.
@@ -303,10 +262,7 @@ at point.")
 (use-package markdown-ts-mode
   :straight nil  ; bundled with Emacs 31
   :mode (("\\.md\\'"       . markdown-ts-mode)
-         ("\\.markdown\\'" . markdown-ts-mode))
-  :custom
-  (markdown-ts-hide-markup nil)
-  :hook (markdown-ts-mode . markdown-config--markdown-ts-mode-setup))
+         ("\\.markdown\\'" . markdown-ts-mode)))
 
 ;;; -- preview --------------------------------------------------------------
 
