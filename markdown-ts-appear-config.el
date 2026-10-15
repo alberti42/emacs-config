@@ -5,8 +5,11 @@
 ;; `markdown-ts-appear' (Thysrael) is a minor mode over `markdown-ts-mode'
 ;; that shows the Markdown source of the element at point and the rendered
 ;; appearance everywhere else.  The package is on MELPA; straight is pointed
-;; at the `experiment/latex-to-svg-integration' branch instead, which hands
-;; math previews to `latex-to-svg-for-markdown'.
+;; instead at the local checkout of the fork
+;; `~/Programming/Others/fork-markdown-ts-appear', which carries the
+;; `experiment/latex-to-svg-integration' branch that hands math previews to
+;; `latex-to-svg-for-markdown'.  straight builds whatever branch that checkout
+;; is on, not `:branch'.
 ;;
 ;; `markdown-config.el' already turns `latex-to-svg-for-markdown-mode' on
 ;; from `markdown-ts-mode-hook'.  The package attaches its reveal policy to
@@ -23,8 +26,9 @@
   :straight (markdown-ts-appear
              :type git
              :host github
-             :repo "Thysrael/markdown-ts-appear"
-             :branch "experiment/latex-to-svg-integration")
+             ;; :repo "Thysrael/markdown-ts-appear"
+             :branch "experiment/latex-to-svg-integration"
+             :local-repo "~/Programming/Others/fork-markdown-ts-appear")
   :custom
   (markdown-ts-appear-table-style 'raw)
   :hook (markdown-ts-mode-hook . markdown-ts-appear-mode))
