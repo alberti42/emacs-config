@@ -13,9 +13,6 @@
 ;;   schemeless destination with `find-file', so clicking an image link lands
 ;;   a JPEG in `image-mode'.  Rerouted so markdown opens in a buffer and
 ;;   anything else lands in `dired' with point on the file.
-;; - Bracketed and percent-encoded image paths.  `markdown-ts--fontify-image'
-;;   resolves the raw node text with a bare `expand-file-name', so
-;;   `![a](<path with spaces>)' and `%20'-encoded paths silently never render.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -30,8 +27,6 @@
 ;; `.markdown' directly to `markdown-ts-mode'.
 
 ;;; Code:
-
-(require 'cl-lib)                        ; `cl-letf' (preview major-mode advice)
 
 ;;; -- Link helpers -----------------------------------------------------------
 
@@ -151,51 +146,15 @@ first; the rest is CommonMark."
       (browse-url url)))
    (t (user-error "No link at point"))))
 
-;;; -- bundled link/image handling fixes -------------------------------------
+;;; -- bundled link button fix ---------------------------------------------
 ;;
-;; Two corrections to the bundled `markdown-ts-mode' that share
-;; `markdown-config--normalize-link-path':
-;;
-;;   1. `markdown-ts--fontify-image' resolves an image's `link_destination'
-;;      with a bare `expand-file-name' on the raw node text, so the
-;;      pointy-bracket form `![a](<path with spaces>)' keeps its literal
-;;      `<>' and a `%20'-encoded path keeps its escapes — both then fail the
-;;      `file-exists-p' guard and the image silently never renders.  We
-;;      normalize the destination by hooking the one `treesit-node-text'
-;;      call the fontifier makes (guarded to `link_destination' nodes) for
-;;      the dynamic extent of ORIG.  Hooking `expand-file-name' here would
-;;      be wrong: it is a C primitive, and redefining it forces native-comp
-;;      trampoline rebuilds on every fontify pass.  `treesit-node-text' is a
-;;      native-compiled Lisp function (`subr-native-elisp-p'), so rebinding
-;;      it needs no trampoline.
-;;
-;;   2. `markdown-ts--make-link-button' gives every schemeless destination a
-;;      stock `find-file' action, so clicking an image/link button opens the
-;;      target in a buffer (e.g. a JPEG in image-mode) regardless of type.
-;;      We reroute schemeless (local-file) buttons through
-;;      `markdown-config--follow-local-link' so they obey the same policy as
-;;      `C-c C-o': markdown opens with `find-file', anything else lands in
-;;      `dired' with point on the file.  URLs, `mailto:' and `#fragment'
-;;      targets keep the stock action.
-
-(defun markdown-config--fontify-image-normalize-dest (orig &rest args)
-  "Around advice on `markdown-ts--fontify-image': accept bracketed/encoded paths.
-Rebinds `treesit-node-text' for the duration of ORIG so that the text of a
-`link_destination' node passes through `markdown-config--normalize-link-path'
-before path resolution, letting `![a](<path with spaces>)' and `%20'-encoded
-local images render.  Only `link_destination' results are rewritten; every
-other node's text is returned verbatim.  `treesit-node-text' is a Lisp
-function, so this rebind triggers no native-comp trampoline (unlike rebinding
-the C primitive `expand-file-name')."
-  (cl-letf* ((orig-fn (symbol-function 'treesit-node-text))
-             ((symbol-function 'treesit-node-text)
-              (lambda (node &optional no-property)
-                (let ((text (funcall orig-fn node no-property)))
-                  (if (and node
-                           (string= (treesit-node-type node) "link_destination"))
-                      (markdown-config--normalize-link-path text)
-                    text)))))
-    (apply orig args)))
+;; `markdown-ts--make-link-button' gives every schemeless destination a stock
+;; `find-file' action, so clicking an image/link button opens the target in a
+;; buffer (e.g. a JPEG in image-mode) regardless of type.  We reroute
+;; schemeless (local-file) buttons through `markdown-config--follow-local-link'
+;; so they obey the same policy as `C-c C-o': markdown opens with `find-file',
+;; anything else lands in `dired' with point on the file.  URLs, `mailto:' and
+;; `#fragment' targets keep the stock action.
 
 (defun markdown-config--reroute-link-button (orig beg end url)
   "Around advice on `markdown-ts--make-link-button': route local files via dired.
@@ -216,8 +175,6 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
            (find-file (markdown-config--normalize-link-path url)))))))
 
 (with-eval-after-load 'markdown-ts-mode
-  (advice-add 'markdown-ts--fontify-image :around
-              #'markdown-config--fontify-image-normalize-dest)
   (advice-add 'markdown-ts--make-link-button :around
               #'markdown-config--reroute-link-button))
 

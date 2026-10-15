@@ -8,10 +8,6 @@ things the bundled mode still does not do, all of them CommonMark:
   schemeless destination with `find-file`, so clicking an image link
   lands a JPEG in `image-mode`. Rerouted so Markdown opens in a buffer
   and anything else lands in `dired` with point on the file.
-- **Bracketed and percent-encoded image paths.**
-  `markdown-ts--fontify-image` resolves the raw node text with a bare
-  `expand-file-name`, so `![a](<path with spaces>)` and `%20`-encoded
-  paths silently never render.
 - **SVG math preview**, via the shared `latex-to-svg` front-end.
 
 Anything upstream has since grown its own version of is **not** here:
@@ -107,24 +103,9 @@ module attaches it to:
 Reaching for a separate chord (`C-c C-o` and the like) would be a second
 way to do what `RET` already does, so there isn't one.
 
-## Bundled link and image fixes
+## Bundled link button fix
 
-Two `:around` advices, sharing `markdown-config--normalize-link-path`:
-
-- **`markdown-ts--fontify-image`** resolves an image's
-  `link_destination` with a bare `expand-file-name` on the raw node text,
-  so `![a](<path with spaces>)` keeps its literal `<>` and a `%20`-encoded
-  path keeps its escapes — both then fail the `file-exists-p` guard and
-  the image silently never renders. The advice normalizes the
-  destination by rebinding the one `treesit-node-text` call the fontifier
-  makes, guarded to `link_destination` nodes, for the dynamic extent of
-  the original.
-
-  > **Why hook `treesit-node-text` and not `expand-file-name`.**
-  > `expand-file-name` is a C primitive, and redefining it forces
-  > native-comp trampoline rebuilds on every fontify pass.
-  > `treesit-node-text` is a native-compiled Lisp function
-  > (`subr-native-elisp-p`), so rebinding it needs no trampoline.
+One `:around` advice:
 
 - **`markdown-ts--make-link-button`** gives every schemeless destination
   a stock `find-file` action, so clicking an image or link button opens
@@ -213,13 +194,12 @@ The pointy-bracket form `[label](<url with spaces>)` returns
 `markdown-config--inline-link-destination-at-point` strips one matched
 `<…>` pair before returning, so the follower sees a plain path.
 
-### Advices name internal (double-underscore) upstream functions
+### The advice names an internal (double-underscore) upstream function
 
-`markdown-ts--fontify-image` and `markdown-ts--make-link-button` are
-both internal symbols. Advising them
-is deliberate — the alternative is inlining copies that drift from
+`markdown-ts--make-link-button` is an internal symbol. Advising it
+is deliberate — the alternative is inlining a copy that drifts from
 upstream — but it means a rename upstream breaks this file loudly rather
-than silently. The advices are the first thing to check after an Emacs
+than silently. The advice is the first thing to check after an Emacs
 upgrade.
 
 ### Inline-link handling relies on the `markdown-inline` grammar
