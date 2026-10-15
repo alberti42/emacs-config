@@ -12,8 +12,6 @@ things the bundled mode still does not do, all of them CommonMark:
   `markdown-ts--fontify-image` resolves the raw node text with a bare
   `expand-file-name`, so `![a](<path with spaces>)` and `%20`-encoded
   paths silently never render.
-- **Collapsing code-fence lines while editing** — upstream hides whole
-  fence lines in `markdown-ts-view-mode` only.
 - **SVG math preview**, via the shared `latex-to-svg` front-end.
 
 Anything upstream has since grown its own version of is **not** here:
@@ -138,10 +136,9 @@ Two `:around` advices, sharing `markdown-config--normalize-link-path`:
 
 ## Rendering (markdown-ts-mode only)
 
-`markdown-ts-mode-hook` runs
-`markdown-config--markdown-ts-mode-setup`, which turns on the code-fence
-collapse machinery. Inline links in
-prose need nothing from it — the bundled rules hide the brackets, parens
+Code fences are drawn by `markdown-ts-appear` (see
+`markdown-ts-appear-config.el`), which shows a fence's source when point
+enters it. Inline links in prose need nothing from this file — the bundled rules hide the brackets, parens
 and URL under `markdown-ts-hide-markup` and make the label a button.
 
 ### Inline links inside tables
@@ -166,46 +163,6 @@ from `markdown-ts-mode-hook` in this file) adds a rule to the buffer-local
 nodes too. The bundled rules then fontify, hide and follow links in a
 cell as they do in a paragraph, and nothing in this file handles tables.
 With that mode off, a link in a table is plain text.
-
-### Code-fence collapse + reveal-on-edit
-
-With `markdown-ts-hide-markup` on, the bundled fontifier marks only the
-fence delimiter *text* invisible and leaves the line's newline live, so
-every hidden fence leaves a stray blank row. (Upstream collapses whole
-fence lines in `markdown-ts-view-mode` only.)
-`markdown-config--collapse-fence-line`, `:after` advice on
-`markdown-ts--fontify-delimiter`, hides the whole physical line —
-newline included — with an overlay `display` of `""`, which renders the
-range as nothing and pulls the next line up. It also drops the host's
-`invisible` text property on the node, so a revealed fence shows its
-real text including the language tag.
-
-> **Why an overlay `display` and not the `invisible` property.**
-> `reveal-mode` reveals *overlays* only (it scans `overlays-at`), and
-> only those hidden via ellipsis-`invisible` or a `display` property
-> carrying a `reveal-toggle-invisible` function. A plain `invisible`
-> overlay or property is invisible to it, and ellipsis would render a
-> literal `…` on the row. `display` `""` plus a toggle function is the
-> only form that both fully removes the line and is revealable.
-
-Both of a block's fence overlays are created together from parse-tree
-positions and cross-linked via `markdown-config-fence-sibling`, so
-opener and closer reveal and re-collapse as a pair — and so the closer's
-overlay exists even before that line has been fontified or scrolled into
-view. The sibling link is stored at fontify time, where the parse tree
-is solid, rather than looked up inside the toggle: a toggle-time treesit
-lookup fails when the closing fence has not been fontified yet, and
-`reveal-mode`'s `with-demoted-errors` swallows the error, so the opener
-toggles and the closer silently does not.
-
-`markdown-config--prune-fence-overlays`, a `treesit-parser` notifier,
-drops overlays in a reparsed region whose `fenced_code_block` is gone.
-
-Skipped entirely in `markdown-ts-view-mode`: that read-only mode already
-hides whole fence lines via the host's `invisible` property, and
-swapping it for an overlay `display` would break off-screen consumers
-that extract the buffer with `buffer-substring` — notably `lsp-mode`'s
-hover and signature rendering, which does not capture overlays.
 
 ## SVG math preview
 
