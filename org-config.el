@@ -378,5 +378,73 @@ The table must have exactly two columns."
     (goto-char beg)
     (insert (mapconcat #'identity (nreverse items) "\n") "\n")))
 
+;;; -- LaTeX export into a temporary directory ---------------------------------
+
+;; Org splits the text into elements before it looks for math delimiters, so
+;; a line starting with `|', `- ' or `*' inside a multi-line `\[' ... `\]'
+;; or `$$' ... `$$' starts a table, a list or a heading, and the equation
+;; breaks.  A LaTeX environment is an element whose contents Org does not
+;; parse, so the export rewrites each multi-line `\[' ... `\]' as
+;; `equation*' in the copy of the buffer it exports; the note is unchanged.
+;;
+;; The .tex file goes to a temporary directory, one per file (named from a
+;; hash of its path) or, for a buffer visiting no file, one per buffer
+;; object, and is compiled from there by hand.  The export adds the note's
+;; directory to `\graphicspath', so images linked by a relative path are
+;; found from there.
+
+(defun my/org--display-math-to-environment (_backend)
+  "Rewrite each multi-line \\=\\[ ... \\=\\] as an `equation*' environment.
+Intended for `org-export-before-parsing-functions'."
+  (goto-char (point-min))
+  (while (re-search-forward "^[ \t]*\\\\\\[[ \t]*$" nil t)
+    (unless (org-in-block-p '("src" "example"))
+      (let ((beg (match-beginning 0)))
+        (when (re-search-forward "^[ \t]*\\\\\\][ \t]*$" nil t)
+          (replace-match "\\\\end{equation*}" t)
+          (save-excursion
+            (goto-char beg)
+            (looking-at "^[ \t]*\\\\\\[[ \t]*$")
+            (replace-match "\\\\begin{equation*}" t)))))))
+
+(defun my/org--graphicspath-header (dir)
+  "Return a function adding DIR to `\\graphicspath' in the export copy.
+Intended for `org-export-before-parsing-functions'.  The keyword goes at
+the end of the buffer, where it cannot displace a file-level property
+drawer."
+  (lambda (_backend)
+    (goto-char (point-max))
+    (insert "\n#+latex_header: \\graphicspath{{" dir "}}\n")))
+
+(defun my/org--export-tex-directory ()
+  "Return the temporary export directory of the current buffer, creating it."
+  (let* ((key (if buffer-file-name
+                  (file-truename buffer-file-name)
+                (number-to-string (sxhash-eq (current-buffer)))))
+         (dir (expand-file-name
+               (concat "org-tex-" (substring (secure-hash 'sha1 key) 0 16))
+               temporary-file-directory)))
+    (with-file-modes #o700
+      (make-directory dir t))
+    dir))
+
+(defun my/org-export-tex ()
+  "Export the current Org buffer to a .tex file in a temporary directory.
+Visit the .tex file."
+  (interactive nil org-mode)
+  (require 'ox-latex)
+  (let ((tex (expand-file-name
+              (concat (if buffer-file-name
+                          (file-name-base buffer-file-name)
+                        "buffer")
+                      ".tex")
+              (my/org--export-tex-directory)))
+        (org-export-before-parsing-functions
+         (append (list #'my/org--display-math-to-environment
+                       (my/org--graphicspath-header
+                        (expand-file-name default-directory)))
+                 org-export-before-parsing-functions)))
+    (find-file (org-export-to-file 'latex tex))))
+
 (provide 'org-config)
 ;;; org-config.el ends here
