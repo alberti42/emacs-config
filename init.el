@@ -813,6 +813,12 @@ monitor."
  'debbugs-config
  "Could not load debbugs-config.el; the GNU bug tracker client is disabled.")
 
+;; Elfeed: RSS and Atom feeds fetched directly, database under
+;; `emacs-config-state-dir'.
+(emacs-config-load-module
+ 'elfeed-config
+ "Could not load elfeed-config.el; the Elfeed feed reader is disabled.")
+
 ;; rmate-protocol server for editing remote files over SSH tunnels.
 (use-package remacs
   :straight nil
