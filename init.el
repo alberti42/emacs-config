@@ -819,6 +819,11 @@ monitor."
  'elfeed-config
  "Could not load elfeed-config.el; the Elfeed feed reader is disabled.")
 
+;; Matrix: the elneo client, one `elneo-server' daemon per account.
+(emacs-config-load-module
+ 'matrix-config
+ "Could not load matrix-config.el; the Matrix client is disabled.")
+
 ;; rmate-protocol server for editing remote files over SSH tunnels.
 (use-package remacs
   :straight nil
