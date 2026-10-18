@@ -29,5 +29,16 @@
   (setq elfeed-feeds
         '(("https://rss.arxiv.org/rss/quant-ph" arxiv quant-ph))))
 
+;;; -- latex-to-svg-for-elfeed: render math in elfeed articles -----------------
+
+(use-package latex-to-svg-for-elfeed
+  :straight (latex-to-svg-for-elfeed
+             :type git
+             :inherit nil
+             :branch "develop"
+             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :files ("latex-to-svg-for-elfeed.el"))
+  :hook (elfeed-show-mode . latex-to-svg-for-elfeed-mode))
+
 (provide 'elfeed-config)
 ;;; elfeed-config.el ends here
