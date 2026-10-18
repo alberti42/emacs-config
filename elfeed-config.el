@@ -27,7 +27,24 @@
   (setq elfeed-db-directory
         (emacs-config-state-file "elfeed" (expand-file-name "~/.elfeed")))
   (setq elfeed-feeds
-        '(("https://rss.arxiv.org/rss/quant-ph" arxiv quant-ph))))
+        '(("https://rss.arxiv.org/rss/quant-ph" arxiv quant-ph)))
+  :config
+  (add-hook 'elfeed-new-entry-hook #'elfeed-config--tag-arxiv-announce-type))
+
+(defun elfeed-config--tag-arxiv-announce-type (entry)
+  "Tag ENTRY with its arXiv announcement type.
+An arXiv RSS listing mixes four kinds of item, and each one names its
+kind at the start of its description, as in \"Announce Type: new\":
+`new' (submitted to the category), `cross' (cross-listed from another
+one), `replace' and `replace-cross' (a new version of an older paper).
+The type becomes a tag, so a filter such as `+new' or `-replace' picks
+them apart.  Entries of feeds not served by rss.arxiv.org are left
+alone."
+  (when (string-prefix-p "https://rss.arxiv.org/" (elfeed-entry-feed-id entry))
+    (let ((content (elfeed-deref (elfeed-entry-content entry))))
+      (when (and content
+                 (string-match "Announce Type: \\([a-z-]+\\)" content))
+        (elfeed-tag entry (intern (match-string 1 content)))))))
 
 ;;; -- latex-to-svg-for-elfeed: render math in elfeed articles -----------------
 
