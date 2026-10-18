@@ -34,7 +34,8 @@
   ;; One log file for every profile's daemon, where the default is one
   ;; file per profile.
   (setq elneo-server-logfile (emacs-config-state-file "elneo-server.log"))
-  :config
+  ;; In `:init', not `:config': the package has no `elneo.el', so the
+  ;; `elneo' feature `:config' waits for is never provided.
   (advice-add 'elneo-add-account :around #'matrix-config--forget-password))
 
 (defun matrix-config--forget-password (fn &rest args)
