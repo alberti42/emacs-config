@@ -24,11 +24,11 @@
 
 (use-package markdown-ts-appear
   :straight (markdown-ts-appear
+             :branch "main"
+             ;; :local-repo "~/Programming/Others/fork-markdown-ts-appear"             
              :type git
              :host github
-             ;; :repo "Thysrael/markdown-ts-appear"
-             :branch "experiment/latex-to-svg-integration"
-             :local-repo "~/Programming/Others/fork-markdown-ts-appear")
+             :repo "Thysrael/markdown-ts-appear")             
   :custom
   (markdown-ts-appear-table-style 'raw)
   :hook (markdown-ts-mode-hook . markdown-ts-appear-mode))
