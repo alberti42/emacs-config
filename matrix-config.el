@@ -33,23 +33,7 @@
   (setq elneo-account-file (emacs-config-state-file "elneo-accounts.el"))
   ;; One log file for every profile's daemon, where the default is one
   ;; file per profile.
-  (setq elneo-server-logfile (emacs-config-state-file "elneo-server.log"))
-  ;; In `:init', not `:config': the package has no `elneo.el', so the
-  ;; `elneo' feature `:config' waits for is never provided.
-  (advice-add 'elneo-add-account :around #'matrix-config--forget-password))
-
-(defun matrix-config--forget-password (fn &rest args)
-  "Call FN with ARGS, then drop its entries from `command-history'.
-`elneo-add-account' reads the password in its interactive form, and
-`call-interactively' records a command run with \\[execute-extended-command]
-in `command-history' together with its argument values, which savehist
-then writes to disk.  The entries are removed whether or not the login
-succeeds."
-  (unwind-protect
-      (apply fn args)
-    (setq command-history
-          (seq-remove (lambda (entry) (eq (car-safe entry) 'elneo-add-account))
-                      command-history))))
+  (setq elneo-server-logfile (emacs-config-state-file "elneo-server.log")))
 
 (provide 'matrix-config)
 ;;; matrix-config.el ends here
