@@ -36,20 +36,23 @@
   ;; on.  Pi runs via Node `process.cwd()', which resolves symlinks, so it
   ;; records sessions under the *physical* path; `file-truename' canonicalizes
   ;; here so a symlinked `default-directory' (e.g. through ~/.config/dotfiles)
-  ;; still matches.  `directory-file-name' strips the trailing slash Pi omits.
-  ;; Once pi-acp normalizes its cwd match, this whole function can be dropped
-  ;; and `agent-shell-cwd-function' left nil.
+  ;; still matches.  The function keeps the trailing slash, because the shell
+  ;; buffer's `default-directory' is this value and without the slash Emacs
+  ;; looks for .dir-locals.el in the parent directory.  The path resolver strips
+  ;; the slash Pi omits from every path agent-shell sends the agent.  Once
+  ;; pi-acp normalizes its cwd match, the function and the resolver can be
+  ;; dropped and both variables left nil.
   (defun my/agent-shell-cwd-function ()
     "Return the project root (else `default-directory') canonicalized.
 
-Resolves symlinks and drops the trailing slash so the path matches what
-Pi records for its sessions."
-    (directory-file-name
+Resolves symlinks so the path matches what Pi records for its sessions."
+    (file-name-as-directory
      (file-truename
       (if-let* ((proj (project-current)))
           (project-root proj)
         default-directory))))
   (setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
+  (setq agent-shell-path-resolver-function #'directory-file-name)
 
   ;; Don't let the `agent-shell' launcher paste the active region/context into
   ;; a new shell's first prompt -- opening a shell should just open it.  The
