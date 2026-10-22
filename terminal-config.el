@@ -36,8 +36,9 @@
 ;; `eb--release` (writes SEMAPHORE) — run from BOTH `eb-done` and a buffer-local
 ;; `kill-buffer-hook`, so killing the buffer (C-x k) instead of C-c C-q still
 ;; unblocks the caller rather than hanging it forever.  No Emacs server is
-;; involved.  `eb-open-file` is whitelisted in `ghostel-eval-cmds` at the bottom
-;; of this file.  For a non-blocking "just open it", use `ghostel_cmd find-file'.
+;; involved.  `eb-open-file` is whitelisted in `ghostel-eval-cmds` in the :config
+;; of `use-package ghostel' below.  For a non-blocking "just open it", use
+;; `ghostel_cmd find-file'.
 ;;
 ;; `eb-open-file` also records the buffer that triggered the edit (the terminal
 ;; the $EDITOR call came from, current when the OSC handler runs), and on release
@@ -175,15 +176,30 @@ glyph changes while it works; removing it keeps the name stable for
   ;; recipe repositories (MELPA), so just `:straight t'.
   :straight t
   :commands (ghostel)
+  ;; The project commands live in ghostel-project.el, which ships inside the
+  ;; ghostel package; ghostel's autoloads already define them.
+  :bind (:map project-prefix-map
+              ("t" . ghostel-project)
+              ("T" . ghostel-project-list-buffers))
+  :init
+  ;; Add both commands to the menu of `project-switch-project' (C-x p p).  In
+  ;; :init, not :config: :config runs only once ghostel is loaded, so the menu
+  ;; would lack them until the first terminal is opened.
+  (with-eval-after-load 'project
+    (add-to-list 'project-switch-commands '(ghostel-project "Ghostel") t)
+    (add-to-list 'project-switch-commands '(ghostel-project-list-buffers "Ghostel buffers") t))
   :custom
   (ghostel-shell shell-file-name)
   (ghostel-term "xterm-ghostty")
   ;; Rename the buffer after the terminal title (OSC 0/2), so `consult-buffer'
   ;; finds a Claude Code session by its name.
   (ghostel-buffer-name-function #'my/ghostel-buffer-name-by-title)
-  ;; Hand the shell the location of etc/bin (see the eb section above).  Only the
-  ;; directory is exported, never PATH itself: PATH is the shell's to build, and
-  ;; a value snapshotted here would go stale the moment Emacs's own PATH changed.
+  ;; Export the location of etc/bin, which holds `eb' (see the eb section above).
+  ;; .zshrc checks for it: when INSIDE_EMACS is `ghostel' and EMACS_GHOSTEL_BIN
+  ;; is not empty, it prepends the directory to PATH and sets EDITOR and VISUAL
+  ;; to `eb'.  Only the directory is exported, never PATH itself: PATH is the
+  ;; shell's to build, and a value copied here would go stale as soon as Emacs's
+  ;; own PATH changed.
   (ghostel-environment
    (list (concat "EMACS_GHOSTEL_BIN=" (expand-file-name "etc/bin" emacs-config-dir))))
   :config
@@ -203,9 +219,7 @@ glyph changes while it works; removing it keeps the name stable for
   ;; add-to-list call is kept for any future rebuild of the map.
   (add-to-list 'ghostel-keymap-exceptions "C-b")
   (define-key ghostel-mode-map           (kbd "C-b") (lookup-key global-map (kbd "C-b")))
-  (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b"))))
-
-(with-eval-after-load 'ghostel
+  (define-key ghostel-semi-char-mode-map (kbd "C-b") (lookup-key global-map (kbd "C-b")))
   (add-to-list 'ghostel-eval-cmds '("eb-open-file" eb-open-file)))
 
 (provide 'terminal-config)
