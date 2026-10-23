@@ -46,7 +46,8 @@ detect-weight=true,
 exponent-product={\\times},
 output-decimal-marker={.},
 print-unity-mantissa=false,
-}"))
+}
+\\AtBeginDocument{\\RenewCommandCopy\\qty\\SI}"))
 
 ;; Shared preview core for the mode adaptors.  Registered here (not built until
 ;; an adaptor requires it) so straight can resolve each adaptor's dependency on
