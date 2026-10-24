@@ -58,5 +58,12 @@
               ([wheel-left]  . mwheel-scroll)
               ([wheel-right] . mwheel-scroll)))
 
+;; New text annotations are yellow instead of the default red.  Only the
+;; `text' entry changes; the other annotation types keep their defaults.
+(with-eval-after-load 'pdf-annot
+  (setf (alist-get 'color
+                   (alist-get 'text pdf-annot-default-annotation-properties))
+        "#ffff00"))
+
 (provide 'pdf-tools-config)
 ;;; pdf-tools-config.el ends here
