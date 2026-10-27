@@ -49,9 +49,13 @@ emacs --batch --quick -l init.el --eval '(princ (find-library-name "magit"))'
 
 The daemon is a launchd user agent, label `io.alberti42.emacs-daemon`, installed
 at `~/Library/LaunchAgents/io.alberti42.emacs-daemon.plist` (kept in the
-dotfiles repo under `Library/LaunchAgents/`). It runs `emacs --fg-daemon
---debug-init` through the dotfiles zsh launcher, so the shell environment is
-already set up when Emacs starts.
+dotfiles repo under `Library/LaunchAgents/`). It runs
+`Emacs.app/Contents/MacOS/Emacs --fg-daemon --debug-init` directly, with
+`EMACS_IMPORT_SHELL_ENV` set, so `env-config.el` imports the login shell's
+environment at startup. launchd reads the plist only when the job is loaded:
+after editing it, run `launchctl bootout` and `launchctl bootstrap`, because
+`launchctl kickstart -k`, or killing the daemon, restarts the job launchd
+already holds.
 
 Its stdout and stderr go to `~/Library/Logs/emacs-daemon.log`. That file is
 where a fatal signal leaves Emacs's own C backtrace (`Fatal error 11:
