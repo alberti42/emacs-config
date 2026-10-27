@@ -23,16 +23,16 @@
 ;; https://emacs-lsp.github.io/lsp-mode/page/performance/
 (setenv "LSP_USE_PLISTS" "true")
 
-;; Import shell environment before straight.el and package lookups run, so PATH
-;; is correct from the very start.  Uses file-truename trick to work through the
-;; ~/.config/emacs symlink.
+;; Import the shell environment before straight.el and package lookups run, so
+;; PATH is correct from the very start.  Uses file-truename trick to work through
+;; the ~/.config/emacs symlink.
 (let ((dir (file-name-directory (file-truename (or load-file-name buffer-file-name)))))
   (load (expand-file-name "env-config" dir) nil 'nomessage))
 
 ;; Unset editor-selection variables so that git subprocesses (e.g. spawned
-;; by Magit) never try to re-enter Emacs.  Must run unconditionally: in
-;; daemon mode env-config.el is skipped, so EDITOR is already present from
-;; the shell that started the daemon.  Magit sets GIT_EDITOR itself when needed.
+;; by Magit) never try to re-enter Emacs.  Must run after env-config.el, which
+;; imports EDITOR and VISUAL from the shell, and also covers an Emacs started
+;; from a shell, which inherits them.  Magit sets GIT_EDITOR itself when needed.
 (setq process-environment
       (seq-remove (lambda (e)
                     (member (car (split-string e "=")) '("EDITOR" "GIT_EDITOR" "VISUAL")))

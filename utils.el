@@ -112,9 +112,9 @@ incremented."
 ;;; -- Shell files declaring environment variables ------------------------------
 ;;
 ;; Reading a value out of one of the plain `KEY=VALUE' files the shell sources
-;; -- `~/.config/envs/*.sh', a cached `interactive-shell-env.sh', a secrets file
-;; kept outside this repository -- without running a shell and without baking
-;; the value into a variable at load time.
+;; -- `~/.config/envs/*.sh', a secrets file kept outside this repository --
+;; without running a shell and without baking the value into a variable at load
+;; time.
 ;;
 ;; LITERAL ASSIGNMENTS ONLY, BY DESIGN.  No `$VAR' interpolation, no command
 ;; substitution, no `unset', no line continuations, no heredocs, no arithmetic:

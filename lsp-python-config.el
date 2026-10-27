@@ -12,7 +12,7 @@
   :straight t
   :init
   ;; basedpyright-langserver lives in the py313 uv virtualenv's bin, which is
-  ;; not on the PATH that env-config.el imports from the shell env cache file.
+  ;; not on the PATH that env-config.el imports from the login shell.
   (add-to-list 'exec-path (expand-file-name "bin" lsp-python-basedpyright-venv))
   (setq lsp-pyright-langserver-command "basedpyright")
   ;; One server per project root, each with a single workspace folder.  Must be

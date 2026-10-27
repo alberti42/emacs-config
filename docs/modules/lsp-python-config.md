@@ -41,7 +41,7 @@ codebases:
 
 ### Hardcoded `~/.pyenv/versions/py313/bin` on `exec-path`
 
-`env-config.el` imports PATH from a shell env cache that does *not* include
+`env-config.el` imports PATH from the login shell, which does *not* include
 the pyenv version's bin directory; only the pyenv shim directory. That
 means `basedpyright` (which lives in the version bin, not the shim dir) is
 not findable without this explicit `add-to-list 'exec-path`. If the
