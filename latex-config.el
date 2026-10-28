@@ -116,6 +116,28 @@ Scans the first 10 lines of the buffer, case-insensitively.
   (let ((entry (assoc "View" TeX-command-list)))
     (when entry (setf (nth 3 entry) nil)))
 
+  ;; C-u C-c C-c compiles without the forward search afterwards.  This
+  ;; replaces AUCTeX's meaning of the prefix (edit the command line before
+  ;; it runs).
+  (defvar-local latex-config--skip-view nil
+    "Non-nil when the next compilation of this buffer must not run `TeX-view'.")
+
+  (defun latex-config-command-master (&optional skip-view)
+    "Run `TeX-command-master'.
+With a prefix argument SKIP-VIEW, do not run `TeX-view' once the
+compilation finishes."
+    (interactive "P")
+    (setq latex-config--skip-view (and skip-view t))
+    (TeX-command-master))
+
+  (defun latex-config--view ()
+    "Run `TeX-view' unless `latex-config--skip-view' is set."
+    (if latex-config--skip-view
+        (setq latex-config--skip-view nil)
+      (TeX-view)))
+
+  (define-key TeX-mode-map [remap TeX-command-master] #'latex-config-command-master)
+
   ;; Enable SyncTeX so forward search (C-c C-v) embeds position information.
   ;; TeX-source-correlate-mode adds -synctex=1 to the compilation command.
   (TeX-source-correlate-mode 1)
@@ -145,7 +167,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
                (lambda (output-file)
                  (with-current-buffer TeX-command-buffer
                    (pdf-preview-skim-revert output-file)
-                   (TeX-view)))))
+                   (latex-config--view)))))
 
     ('pdf-tools
      ;; In-Emacs viewer.  pdf-tools registers itself in
@@ -171,7 +193,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
      (add-hook 'TeX-after-compilation-finished-functions
                (lambda (_output-file)
                  (with-current-buffer TeX-command-buffer
-                   (TeX-view))) 90))
+                   (latex-config--view))) 90))
 
     ('auto
      ;; Both viewers registered; AUCTeX's selection predicate picks
@@ -200,7 +222,7 @@ Scans the first 10 lines of the buffer, case-insensitively.
                     (t
                      (when (stringp output-file)
                        (TeX-revert-document-buffer output-file))))
-                   (TeX-view)))))))
+                   (latex-config--view)))))))
 
 (use-package preview
   :straight nil
