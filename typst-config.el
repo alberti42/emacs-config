@@ -29,8 +29,8 @@
 ;; Editing, navigation, and highlighting work without either binary.
 ;;
 ;; In-mode bindings (from `typst-ts-mode-map'):
-;;   C-c C-c    typst-ts-compile
-;;   C-c C-S-c  typst-ts-compile-and-preview
+;;   C-c C-c    typst-config-compile      (compile, then open the PDF;
+;;                                         C-u: compile only)
 ;;   C-c C-p    typst-ts-preview          (compiled PDF)
 ;;   C-c C-w    typst-ts-watch-mode
 ;;   C-c C-l    typst-preview-mode        (live tinymist preview)
@@ -54,7 +54,19 @@
   ;; block guarantees, since it runs at load time).
   (typst-ts-enable-raw-blocks-highlight t)
   ;; Hide the compilation buffer on a successful `typst compile'.
-  (typst-ts-compile-hide-compilation-buffer-if-success t))
+  (typst-ts-compile-hide-compilation-buffer-if-success t)
+  :config
+  ;; C-c C-c compiles and opens the PDF; C-u C-c C-c compiles only.
+  ;; Upstream binds the two the other way round, and the second also
+  ;; to C-c C-S-c, which is removed.
+  (defun typst-config-compile (&optional no-preview)
+    "Compile the typst file and open the PDF.
+With a prefix argument NO-PREVIEW, compile only."
+    (interactive "P")
+    (typst-ts-compile (not no-preview)))
+
+  (keymap-set typst-ts-mode-map "C-c C-c" #'typst-config-compile)
+  (keymap-unset typst-ts-mode-map "C-c C-S-c" t))
 
 ;;;; Keep the compile buffer out of the window layout ---------------------------
 ;;
