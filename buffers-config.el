@@ -36,7 +36,12 @@
               ("p" . ibuffer-filter-by-project-root))
   :preface
   (defun buffers-config--apply-project-groups ()
+    ;; One filter group per project.el root; buffers outside any project
+    ;; fall into the `Default' group.
     (setq ibuffer-filter-groups (ibuffer-project-generate-filter-groups))
+    ;; Sort by file path relative to the project root.  Calling an
+    ;; `ibuffer-do-sort-by-*' command while its mode is already active
+    ;; reverses the order, so call it only when the mode is not active.
     (unless (eq ibuffer-sorting-mode 'project-file-relative)
       (ibuffer-do-sort-by-project-file-relative))))
 
