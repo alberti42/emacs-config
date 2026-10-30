@@ -20,7 +20,25 @@
   :custom
   (ibuffer-expert t)
   (ibuffer-show-empty-filter-groups nil)
-  (ibuffer-default-sorting-mode 'recency))
+  (ibuffer-default-sorting-mode 'recency)
+  :preface
+  (defun buffers-config--ibuffer-region-skip-headers (args)
+    "Move the region start in ARGS past title and group-header lines.
+`ibuffer-mark-interactive' moves from the region start past the title
+lines but stops on a group header, and on a header it marks only that
+group.  A region selecting the whole buffer then marks the first group."
+    (if (use-region-p)
+        (cons (save-excursion
+                (goto-char (car args))
+                (beginning-of-line)
+                (ibuffer-skip-properties
+                 '(ibuffer-title ibuffer-filter-group-name) 1)
+                (point))
+              (cdr args))
+      args))
+  :config
+  (advice-add 'ibuffer-mark-region-or-n-with-char
+              :filter-args #'buffers-config--ibuffer-region-skip-headers))
 
 ;; Group buffers by project.el root.  `ibuffer-hook' (not `ibuffer-mode-hook')
 ;; fires on every invocation so the groups refresh as projects come and go.
