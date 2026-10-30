@@ -7,7 +7,8 @@ behaviours should land here rather than in standalone modules.
 Currently contains:
 
 1. `ibuffer` setup with project-aware grouping and nerd-icons.
-2. Smart kill-buffer behavior (suppresses prompt when buffer content
+2. Region marking in ibuffer that works with filter groups.
+3. Smart kill-buffer behavior (suppresses prompt when buffer content
    matches disk).
 
 ## External packages
@@ -53,6 +54,28 @@ The hook only sorts by `project-file-relative` when the current sort mode
 isn't already that. So if you manually sort by recency or alphabetically
 inside ibuffer, the next refresh keeps your choice — only the *initial*
 sort is project-relative. This is intentional UX.
+
+### Region marking with filter groups
+
+`buffers-config--ibuffer-mark-region` is an `:around` advice on
+`ibuffer-mark-region-or-n-with-char`, which `m`, `u` and `d` call. With an
+active region, it gives the mark to each line between the region's start
+and end that shows a buffer (`ibuffer-current-buffer` is nil on title,
+group-header and summary lines). Without a region it calls the original
+function, so `m` with point on a group header still marks that group.
+
+The original turns the region into a line count for
+`ibuffer-mark-interactive`, which goes wrong with filter groups:
+
+1. A region starting above the first group stops on its header, and on a
+   header `ibuffer-mark-interactive` marks only that group. Selecting the
+   whole buffer then marks the first group.
+2. The count includes the group headers, which the marking loop skips, so
+   each header marks one more buffer after the region's end. With `d`,
+   `x` then kills buffers outside the region.
+
+Both are upstream bugs, not yet reported. A `:filter-args` advice cannot
+fix the second, because the function computes the line count itself.
 
 ### Smart kill-buffer: skip prompt when content matches disk
 
