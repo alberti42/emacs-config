@@ -13,6 +13,8 @@
 ;;   schemeless destination with `find-file', so clicking an image link lands
 ;;   a JPEG in `image-mode'.  Rerouted so markdown opens in a buffer and
 ;;   anything else lands in `dired' with point on the file.
+;; - List item filling.  `fill-paragraph' in a list item fills only the
+;;   item's first paragraph; it now fills the paragraph at point.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -177,6 +179,43 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
 (with-eval-after-load 'markdown-ts-mode
   (advice-add 'markdown-ts--make-link-button :around
               #'markdown-config--reroute-link-button))
+
+;;; -- list item filling fix ---------------------------------------------------
+;;
+;; `markdown-ts--fill-list-item' narrows to the item's first paragraph, so
+;; with point in a later paragraph of the item (after a code block, say)
+;; `fill-paragraph' does nothing.  We fill the paragraph at point instead.
+
+(defun markdown-config--fill-item-paragraph (orig &optional justify)
+  "Around advice on `markdown-ts--fill-paragraph': fill the paragraph at point.
+When point is in a paragraph of a list item outside a block quote, fill
+that paragraph, with continuation lines indented to the column where it
+starts.  Otherwise call ORIG with JUSTIFY."
+  ;; A query, not `treesit-node-at': at the indentation of a continuation
+  ;; line, that returns the item's `block_continuation' node.
+  (if-let* ((pos (max (point)
+                      (save-excursion (back-to-indentation) (point))))
+            (para (cdar (treesit-query-capture
+                         (treesit-buffer-root-node 'markdown)
+                         '((paragraph) @para)
+                         pos (min (1+ pos) (point-max)))))
+            ((treesit-parent-until para "\\`list_item\\'"))
+            ((not (treesit-parent-until para "\\`block_quote\\'"))))
+      (let* ((beg (treesit-node-start para))
+             (fill-prefix (make-string (save-excursion
+                                         (goto-char beg)
+                                         (current-column))
+                                       ?\s))
+             (fill-forward-paragraph-function #'forward-paragraph))
+        (save-restriction
+          (narrow-to-region beg (treesit-node-end para))
+          (fill-paragraph justify))
+        t)
+    (funcall orig justify)))
+
+(with-eval-after-load 'markdown-ts-mode
+  (advice-add 'markdown-ts--fill-paragraph :around
+              #'markdown-config--fill-item-paragraph))
 
 ;;; -- click-to-follow keymap --------------------------------------------------
 
