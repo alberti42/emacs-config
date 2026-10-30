@@ -88,7 +88,7 @@ so it can't abort the kill outright — it just skips the optimization."
 ;; far more useful day to day.  `set-goal-column' is still reachable via M-x.
 ;;
 ;;   C-x C-n         -> the shared *scratch* buffer (built-in `scratch-buffer')
-;;   C-u C-x C-n     -> a *<mode>-scratch* buffer, prompting for the major mode
+;;   C-u C-x C-n     -> a new *<mode>-scratch* buffer, prompting for the major mode
 ;;   C-u C-u C-x C-n -> ditto, in the current buffer's mode
 
 (defvar buffers-config-scratch-mode-alist
@@ -104,10 +104,11 @@ new scratch.")
 (defun buffers-config-scratch (arg)
   "Switch to a scratch buffer.
 No prefix ARG: pop to the shared `*scratch*' buffer (`scratch-buffer').
-`C-u': pop to a scratch buffer, prompting for the major mode.
-`C-u C-u': pop to a scratch buffer whose major mode matches the current buffer.
-Each mode has one scratch buffer, `*<mode>-scratch*', reused on later calls.
-With an active region, its contents seed a newly-created scratch."
+`C-u': pop to a new scratch buffer, prompting for the major mode.
+`C-u C-u': pop to a new scratch buffer in the current buffer's major mode.
+Every call with a prefix creates a new buffer, `*<mode>-scratch*', or
+`*<mode>-scratch*<N>' when that name is taken.
+With an active region, its contents seed the new scratch."
   (interactive "P")
   (if (not arg)
       (scratch-buffer)
@@ -128,16 +129,14 @@ With an active region, its contents seed a newly-created scratch."
            (name (format "*%s-scratch*"
                          (replace-regexp-in-string
                           "-mode\\'" "" (symbol-name mode))))
-           (existing (get-buffer name))
            (region (and (use-region-p)
                         (buffer-substring-no-properties
                          (region-beginning) (region-end)))))
       (pop-to-buffer
-       (or existing
-           (with-current-buffer (get-buffer-create name)
-             (funcall mode)
-             (when region (insert region))
-             (current-buffer)))))))
+       (with-current-buffer (generate-new-buffer name)
+         (funcall mode)
+         (when region (insert region))
+         (current-buffer))))))
 
 (keymap-global-set "C-x C-n" #'buffers-config-scratch)
 
