@@ -22,23 +22,30 @@
   (ibuffer-show-empty-filter-groups nil)
   (ibuffer-default-sorting-mode 'recency)
   :preface
-  (defun buffers-config--ibuffer-region-skip-headers (args)
-    "Move the region start in ARGS past title and group-header lines.
-`ibuffer-mark-interactive' moves from the region start past the title
-lines but stops on a group header, and on a header it marks only that
-group.  A region selecting the whole buffer then marks the first group."
+  (defun buffers-config--ibuffer-mark-region (orig start end arg mark-char)
+    "Give MARK-CHAR to each buffer line between START and END.
+Without an active region, call ORIG with START, END, ARG and MARK-CHAR.
+ORIG turns the region into a line count for `ibuffer-mark-interactive',
+which goes wrong with filter groups:
+1. A region starting above the first group stops on its header, and on
+   a header `ibuffer-mark-interactive' marks only that group.
+2. The count includes the group headers, which the marking loop skips,
+   so each header marks one more buffer after the region's end."
     (if (use-region-p)
-        (cons (save-excursion
-                (goto-char (car args))
-                (beginning-of-line)
-                (ibuffer-skip-properties
-                 '(ibuffer-title ibuffer-filter-group-name) 1)
-                (point))
-              (cdr args))
-      args))
+        (let ((cur (point))
+              (end (copy-marker end)))
+          (goto-char start)
+          (beginning-of-line)
+          (while (< (point) end)
+            (when (ibuffer-current-buffer)
+              (ibuffer-set-mark mark-char))
+            (forward-line 1))
+          (set-marker end nil)
+          (goto-char cur))
+      (funcall orig start end arg mark-char)))
   :config
   (advice-add 'ibuffer-mark-region-or-n-with-char
-              :filter-args #'buffers-config--ibuffer-region-skip-headers))
+              :around #'buffers-config--ibuffer-mark-region))
 
 ;; Group buffers by project.el root.  `ibuffer-hook' (not `ibuffer-mode-hook')
 ;; fires on every invocation so the groups refresh as projects come and go.
