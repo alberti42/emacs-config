@@ -15,6 +15,8 @@
 ;;   anything else lands in `dired' with point on the file.
 ;; - List item filling.  `fill-paragraph' in a list item fills only the
 ;;   item's first paragraph; it now fills the paragraph at point.
+;;   `fill-region' skips an item that ends with a code block; it now fills
+;;   each paragraph of the region separately.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -180,7 +182,7 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
   (advice-add 'markdown-ts--make-link-button :around
               #'markdown-config--reroute-link-button))
 
-;;; -- list item filling fix ---------------------------------------------------
+;;; -- list item filling fixes -------------------------------------------------
 ;;
 ;; `markdown-ts--fill-list-item' narrows to the item's first paragraph, so
 ;; with point in a later paragraph of the item (after a code block, say)
@@ -216,6 +218,35 @@ starts.  Otherwise call ORIG with JUSTIFY."
 (with-eval-after-load 'markdown-ts-mode
   (advice-add 'markdown-ts--fill-paragraph :around
               #'markdown-config--fill-item-paragraph))
+
+;; `fill-region' moves with `markdown-ts--fill-forward-paragraph', which
+;; treats a whole list item as one paragraph.  For an item that ends with a
+;; code block, moving back from the item's end lands in the code block and
+;; `fill-region' skips the item.  We fill each paragraph of the region with
+;; `fill-paragraph' instead.
+
+(defun markdown-config--fill-region-by-paragraph
+    (orig from to &optional justify nosqueeze to-eop)
+  "Around advice on `fill-region': fill each Markdown paragraph separately.
+In `markdown-ts-mode', call `fill-paragraph' with JUSTIFY at the start of
+every paragraph node between FROM and TO.  Elsewhere call ORIG with FROM,
+TO, JUSTIFY, NOSQUEEZE and TO-EOP."
+  (if (not (derived-mode-p 'markdown-ts-mode))
+      (funcall orig from to justify nosqueeze to-eop)
+    (let ((starts (mapcar (lambda (capture)
+                            (copy-marker (treesit-node-start (cdr capture))))
+                          (treesit-query-capture
+                           (treesit-buffer-root-node 'markdown)
+                           '((paragraph) @para)
+                           (min from to) (max from to)))))
+      (save-excursion
+        (dolist (start starts)
+          (goto-char start)
+          (fill-paragraph justify)
+          (set-marker start nil))))
+    nil))
+
+(advice-add 'fill-region :around #'markdown-config--fill-region-by-paragraph)
 
 ;;; -- click-to-follow keymap --------------------------------------------------
 
