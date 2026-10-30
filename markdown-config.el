@@ -15,8 +15,9 @@
 ;;   anything else lands in `dired' with point on the file.
 ;; - List item filling.  `fill-paragraph' in a list item fills only the
 ;;   item's first paragraph; it now fills the paragraph at point.
-;;   `fill-region' skips an item that ends with a code block; it now fills
-;;   each paragraph of the region separately.
+;;   `fill-region' merges a code block inside an item into the item's text,
+;;   or skips an item that ends with a code block; it now fills each
+;;   paragraph of the region separately.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -220,10 +221,12 @@ starts.  Otherwise call ORIG with JUSTIFY."
               #'markdown-config--fill-item-paragraph))
 
 ;; `fill-region' moves with `markdown-ts--fill-forward-paragraph', which
-;; treats a whole list item as one paragraph.  For an item that ends with a
-;; code block, moving back from the item's end lands in the code block and
-;; `fill-region' skips the item.  We fill each paragraph of the region with
-;; `fill-paragraph' instead.
+;; treats a whole list item as one paragraph.  For an item that contains a
+;; code block and ends with a paragraph, `fill-region' fills the whole item
+;; as one paragraph and merges the code block into the text.  For an item
+;; that ends with a code block, moving back from the item's end lands in the
+;; code block and `fill-region' skips the item.  We fill each paragraph of
+;; the region with `fill-paragraph' instead.
 
 (defun markdown-config--fill-region-by-paragraph
     (orig from to &optional justify nosqueeze to-eop)
