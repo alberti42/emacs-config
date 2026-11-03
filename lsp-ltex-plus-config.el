@@ -24,6 +24,8 @@
   ;; Online LanguageTool with the Premium credentials from the environment
   ;; (see :config below); set to nil for the local server only.
   (lsp-ltex-plus-lt-server-uri "https://api.languagetoolplus.com")
+  ;; Check with the bundled LanguageTool while Premium cannot be reached.
+  (lsp-ltex-plus-lt-offline-fallback t)
   (lsp-ltex-plus-debug nil)
   (lsp-ltex-plus-offered-languages '("auto" "en-US" "de-DE" "it-IT"))
   (lsp-ltex-plus-diagnostics-provider 'flycheck)
