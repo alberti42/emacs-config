@@ -58,12 +58,22 @@ over a list of conveniences would be the worse failure."
     (add-to-list 'safe-local-variable-directories
                  (file-name-as-directory (expand-file-name dir)))))
 
+(defun safe-locals--confirm (dir)
+  "Ask whether to trust the dir-locals in DIR; return DIR on `y'.
+Signal `user-error' on `n'."
+  (if (y-or-n-p (format "Trust dir-locals in %s? " (abbreviate-file-name dir)))
+      dir
+    (user-error "Not trusted: %s" (abbreviate-file-name dir))))
+
 (defun safe-locals-add-directory (dir)
   "Trust the directory-local variables in DIR, remembering it across restarts.
 Persists to `safe-locals-file' and applies the change now.  Use this
 instead of the `+' answer at the unsafe-local-variables prompt, which
-would write to the unloaded `custom-file'."
-  (interactive "DTrust dir-locals in directory: ")
+would write to the unloaded `custom-file'.
+Interactively, prompt for DIR, then ask for confirmation."
+  (interactive
+   (list (safe-locals--confirm
+          (read-directory-name "Trust dir-locals in directory: "))))
   (let* ((dir (abbreviate-file-name
                (file-name-as-directory (expand-file-name dir))))
          (dirs (delete-dups (append (safe-locals--read) (list dir)))))
@@ -73,6 +83,20 @@ would write to the unloaded `custom-file'."
       (pp dirs (current-buffer)))
     (safe-locals-apply)
     (message "Trusting dir-locals in %s" dir)))
+
+(defun safe-locals-add-current-project ()
+  "Trust the `.dir-locals.el' that applies to the current buffer.
+The directory trusted is the one holding that file, found by
+`dir-locals-find-file', because that is the directory Emacs compares
+with `safe-local-variable-directories'.  It is usually the project
+root, but a nested `.dir-locals.el' takes precedence over the root's.
+Ask for confirmation, then call `safe-locals-add-directory'."
+  (interactive)
+  (let ((found (dir-locals-find-file (or buffer-file-name default-directory))))
+    (unless found
+      (user-error "No .dir-locals.el applies to this buffer"))
+    (safe-locals-add-directory
+     (safe-locals--confirm (if (consp found) (car found) found)))))
 
 (safe-locals-apply)
 
