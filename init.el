@@ -371,6 +371,11 @@ monitor."
  'completion
  "Could not load completion.el; using default completion behavior.")
 
+;; ElDoc text in a child frame at point
+(emacs-config-load-module
+ 'eldoc-config
+ "Could not load eldoc-config.el; ElDoc uses the echo area.")
+
 ;; Nerd icons (Nerd Fonts)
 (emacs-config-load-module
  'nerd-icons-config
