@@ -61,12 +61,13 @@
   ;; `~/.config/emacs/.lsp-session-v1' at all. The session file becomes
   ;; irrelevant and stops growing.
   (setq lsp-guess-root-without-session t)
-  ;; ElDoc: show LSP hover info in the echo area (signature only).
-  ;; lsp-eldoc-render-all nil keeps it to one line; full docs are available
-  ;; on demand via C-c l h h (`lsp-describe-thing-at-point').
+  ;; ElDoc: show LSP hover info, in a child frame at point
+  ;; (eldoc-config.el).  lsp-eldoc-render-all t passes ElDoc all of the
+  ;; info returned by textDocument/hover; nil would cut it to the first
+  ;; line.  The same text opens in a buffer with C-c l h h
+  ;; (`lsp-describe-thing-at-point').
   (setq lsp-eldoc-enable-hover t)
-  ;; If this is set to nil, eldoc will show only the symbol information.
-  (setq lsp-eldoc-render-all nil)
+  (setq lsp-eldoc-render-all t)
   ;; `lsp-completion-no-cache' and `lsp-completion-use-last-result' kept at
   ;; their defaults (caching enabled, last result reused on interrupt).
   ;; `cape-capf-buster' wraps `lsp-completion-at-point' in the LSP Super-Capf
