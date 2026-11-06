@@ -36,7 +36,7 @@
   (latex-to-svg-backend-ratex-program "ratex-render-svg")
   ;; Extra LaTeX packages available in *every* equation (all front-ends).
   ;; Folded into the content hash, so editing it invalidates stale cached SVGs.
-  (latex-to-svg-backend-appended-preamble
+  (latex-to-svg-backend-preamble-packages
    "\\usepackage{physics}
 \\usepackage[only,llbracket,rrbracket]{stmaryrd}
 \\usepackage{siunitx}
