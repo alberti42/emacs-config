@@ -50,28 +50,20 @@ Color Emoji therefore lacks (e.g. U+1F322 BLACK DROPLET)."
     (set-fontset-font t '(#x1F300 . #x1FAFF)
                       (font-spec :family "Symbola") nil 'append)))
 
-(defvar emacs-config-icon-scale 0.85
-  "Scale of Nerd Font icon glyphs relative to the `default' text size.
-  A dedicated icon font like \"Symbols Nerd Font Mono\" may have metrics
-  for its glyphs that differ from the default text font, so its icons can
-  look oversized at full scale; this factor brings them back into
-  proportion.")
-
-(defun emacs-config-icon-size-for-height (height)
-  "Return the icon `:size' (points) for a `default' face of HEIGHT (1/10 pt)."
-  (* (/ height 10.0) emacs-config-icon-scale))
-
-(defun emacs-config-setup-pua-fontset (height)
-  "Render Nerd Fonts codepoints using \"Symbols Nerd Font Mono\" for HEIGHT.
-  Map the Private Use Area #xe000-#xffff, which is typically used by Nerd
-  Fonts to display their icons, to \"Symbols Nerd Font Mono\".  It covers
-  both the BMP PUA (#xe000–#xffff) and the Supplementary
-  PUA-A (#xf0000–#xfffff), where Nerd Fonts v3 placed the Material Design
-  Icons (nf-md-*); without the second range those glyphs fall back to the
-  default font with wrong metrics.  Glyphs are sized to
-  `emacs-config-icon-scale' of the text size via the font-spec `:size'."
-  (let ((spec (font-spec :family "Symbols Nerd Font Mono"
-                         :size (emacs-config-icon-size-for-height height))))
+(defun emacs-config-setup-pua-fontset (frame)
+  "Render Nerd Fonts codepoints with FRAME's `default' font family.
+  Map the Private Use Area, which Nerd Fonts use for their icons, to the
+  family of the `default' face.  It covers both the BMP PUA (#xe000–#xffff)
+  and the Supplementary PUA-A (#xf0000–#xfffff), where Nerd Fonts v3
+  placed the Material Design Icons (nf-md-*).
+  The `default' family is a patched Nerd Font Mono, whose icons are one
+  cell wide and one row high.  Ghostel leaves a glyph that fits its cell
+  unchanged; a wider glyph is shrunk to the cell, and one with a space on
+  both sides is enlarged over two cells, which makes icons from a font
+  such as \"Symbols Nerd Font Mono\" larger or smaller than the text.
+  The font-spec has no `:size': a fixed size makes Emacs ignore the
+  `height' display property ghostel uses to shrink a glyph."
+  (let ((spec (font-spec :family (face-attribute 'default :family frame))))
     (set-fontset-font t '(#xe000 . #xffff) spec)
     (set-fontset-font t '(#xf0000 . #xfffff) spec)))
 
@@ -83,7 +75,7 @@ Color Emoji therefore lacks (e.g. U+1F322 BLACK DROPLET)."
       (let ((height (emacs-config-font-height-for-frame frame)))
         (set-face-attribute 'default frame :height height)
         (emacs-config-setup-emoji-fontset height)
-        (emacs-config-setup-pua-fontset height)))))
+        (emacs-config-setup-pua-fontset frame)))))
 
 ;; We specify the default font for GUI frames; TTY frames ignore font face
 ;; attributes.  We configure the family/weight plus a baseline height (the

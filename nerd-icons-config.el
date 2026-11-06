@@ -14,12 +14,13 @@
   ;; corfu kind-icons).
   (nerd-icons-scale-factor 1.0))
 
-;; NOTE: the Private Use Area (#xe000–#xffff) → "Symbols Nerd Font Mono"
-;; fontset mapping is intentionally NOT installed here.  It must ride the
-;; `default'-font application in `emacs-config-apply-frame-font' (init.el):
-;; changing the default font re-derives the fontset and drops standalone
-;; `set-fontset-font' entries, and on macOS a detached re-mapping does not
-;; refresh an already-settled frame.  See `emacs-config-setup-pua-fontset'.
+;; NOTE: the Private Use Area fontset mapping (raw icon codepoints, e.g. in
+;; ghostel, go to the `default' font family) is intentionally NOT installed
+;; here.  It must ride the `default'-font application in
+;; `emacs-config-apply-frame-font' (init.el): changing the default font
+;; re-derives the fontset and drops standalone `set-fontset-font' entries,
+;; and on macOS a detached re-mapping does not refresh an already-settled
+;; frame.  See `emacs-config-setup-pua-fontset'.
 
 (provide 'nerd-icons-config)
 ;;; nerd-icons-config.el ends here
