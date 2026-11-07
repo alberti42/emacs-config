@@ -17,7 +17,9 @@
              :local-repo "/Users/andrea/Documents/Programming/Emacs/pretty-tables"
              :branch "develop"
              :files ("pretty-tables.el"))
-  :defer t)
+  :defer t
+  :custom
+  (pretty-tables-borders 'lines))
 
 (provide 'pretty-tables-config)
 ;;; pretty-tables-config.el ends here
