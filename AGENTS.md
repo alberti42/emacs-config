@@ -258,6 +258,7 @@ Current syntax modules:
 - `syntaxes/gnus.el`: disables line numbers in every Gnus buffer. One `gnus-mode-hook` reaches them all — `gnus-group-mode`, `gnus-summary-mode`, `gnus-article-mode`, `gnus-server-mode`, `gnus-browse-mode`, `gnus-category-mode` and `gnus-tree-mode` are each derived from `gnus-mode`, and a derived mode runs its parent's hook. `message-mode` is hooked separately, since writing a message (and `gnus-article-edit-mode`) derives from `text-mode` instead.
 - `syntaxes/pdf-tools.el`: disables the line numbers that `global-display-line-numbers-mode` turns on in every pdf-tools buffer, from the hooks of `pdf-view-mode` (which also runs in `pdf-virtual-view-mode`, derived from it), `pdf-annot-list-mode`, `pdf-outline-buffer-mode`, `pdf-occur-buffer-mode`, `pdf-metadata-buffer-mode` and `pdf-annot-edit-contents-minor-mode`. The annotation edit buffer (`*Edit Annotation …*`) runs plain `org-mode` or `latex-mode`; the minor mode is what marks it, and its hook runs after theirs.
 - `syntaxes/elfeed.el`: disables line numbers in `elfeed-search-mode` and `elfeed-show-mode`.
+- `syntaxes/help.el`: disables line numbers in `help-mode`.
 - `syntaxes/xwidget.el`: disables line numbers in `xwidget-webkit-mode` (the embedded webkit view used by typst-preview).
 
 Wrapping:
