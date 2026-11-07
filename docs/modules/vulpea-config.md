@@ -93,13 +93,13 @@ not exist yet.
 ### No vault open is a supported state
 
 `vulpea-vault-directory` nil is ordinary — a first run with an
-empty history. Autosync stays off with a message, and the first note
-opened from a vault activates it through the `find-file-hook` guard.
+empty history. Autosync stays off with a message until a vault is
+opened with `C-c n v` (`vulpea-vault-switch`).
 
 Consumers split two ways:
 
 - **Answer nil and carry on** — `vulpea-vault--candidates` (no "current"
-  entry, just the escape), `vulpea-vault-switch` (nothing to close),
+  entry, just the escape), `vulpea-vault-switch` (nothing to tear down),
   `vulpea-vault-special-directory`, `vulpea-vault--context-directory`.
 - **Refuse cleanly** — `vulpea-vault-orphans` and note creation with no
   daily folder go through `vulpea-vault-or-error`, so nil fails as one
@@ -144,9 +144,9 @@ it elsewhere.
 
 ## Switching vaults live
 
-`M-x vulpea-vault-switch` (`vulpea-vault/switch.el`) closes the leaving
-vault's buffers, stops the watcher, closes the database, re-points, and
-restarts — no Emacs restart.
+`M-x vulpea-vault-switch` (`vulpea-vault/switch.el`) stops the watcher,
+closes the database, re-points, and restarts — no Emacs restart. The
+leaving vault's buffers stay open.
 
 The prompt offers `vulpea-vault-history` (persisted via
 `savehist-additional-variables`, appended under a
@@ -160,9 +160,8 @@ after the switch succeeds.
 **A directory chosen by hand must be a vault.** `vulpea-vault-switch`
 refuses a directory whose `.dir-locals.el` declares no
 `vulpea-vault-version`, with a `user-error` — an explicit switch is the
-one path with no other signal that a directory is a vault (the
-`find-file-hook` guard keys off the per-buffer `vulpea-vault-version` a
-note's own directory-locals set), so without this check the
+one path with no other signal that a directory is a vault, so without
+this check the
 `... (choose a directory)` escape would happily open an ordinary
 directory like `~/org` as a vault. A directory that declares a
 *non-nil but unrecognised* version is still a vault and is opened with a
@@ -171,34 +170,38 @@ refused. The same `vulpea-vault-p` test guards the startup resume
 (`vulpea-vault-resume`), so a stale non-vault entry left in the
 history is skipped rather than resumed.
 
-Modified notes are offered for saving before the kill, `save-some-buffers`
-doing the asking; declining leaves `kill-buffer` to ask again, which is
-the bargain any other kill makes.
+A note's attachment store does not depend on the active vault.
+`vulpea-vault/attachments.el` sets `org-attach-id-dir` buffer-locally,
+from `hack-local-variables-hook`, to the absolute store of the vault the
+note belongs to; the global value is the active vault's store. A note
+from another vault — left open across a switch, or opened later — so
+resolves `attachment:` links, previews and `org-attach` against its own
+store. Opening such a note does not prompt and does not switch vault;
+switching is `C-c n v`. Its saves reach the index only once its vault
+is opened again, since autosync queues a save only under
+`vulpea-db-sync-directories`.
 
-**Closing the buffers is required, not tidy.** `org-attach-id-dir` is a
-single global with no per-buffer form, so a note left open from the old
-vault would resolve `attachment:` links against the *new* vault's store
-and find nothing. Dir-locals, being per-buffer, stay correct — it is
-only this one global that cannot. Buffers are closed *before* anything
-is re-pointed, so declining to kill a modified note leaves the vault
-unchanged rather than half-switched.
+The orphan report (`vulpea-vault-orphans`) lists the active vault's
+store through `vulpea-vault-attach-directory`, not `org-attach-id-dir`,
+so the buffer it is run from does not matter.
 
-The same module guards the other direction from `find-file-hook`:
-opening an org file whose vault is not the active one offers **switch /
-open anyway / cancel**, since that is exactly the case where
-`attachment:` links fail silently. With no vault active there is nothing
-to weigh, so the note's own vault is simply opened. A loose org file
-outside any vault never prompts.
+`C-c C-l id:` completes from vulpea (`my/org-id-complete-from-vulpea`
+in `vulpea-config.el`): the notes of the active vault, by title. Org's
+own `org-id-complete` offers every heading of every file in
+`org-id-locations`, which spans every vault opened in this Emacs, and
+visits each of those files to read its headings.
 
 ## Multiple vaults: why single-vault, and what a redesign would take
 
-The current design keeps **one vault active at a time** and closes the
-leaving vault's buffers on `vulpea-vault-switch`. This is a deliberate
-choice forced by vulpea's architecture, not a preference. What follows
-records a design investigation (2026) into a project.el-style model —
-where every open buffer belongs to *its own* vault and switching closes
-nothing — so the reasoning need not be re-derived. **Nothing here is
-implemented; the decision was to defer and pursue the fix upstream.**
+The current design keeps **one vault active at a time**: one database,
+one watcher, and the commands that query them, all bound to the vault
+`vulpea-vault-switch` opened. Open buffers already belong to their own
+vault (attachment store, tags, templates) and switching closes none of
+them. What follows records a design investigation (2026) into a
+project.el-style model, where the database also follows the buffer's
+vault, so the reasoning need not be re-derived. **The database half is
+not implemented; the decision was to defer and pursue the fix
+upstream.**
 
 ### What a project.el-style model would want
 
@@ -220,18 +223,12 @@ current project from the buffer rather than from a global:
 - **Registered vaults** — `vulpea-vault-history`, the set worth backing
   up and offering in the picker.
 
-### The one soft blocker: attachments (solvable)
+### Attachments
 
-The stated reason for closing buffers — `org-attach-id-dir` is a single
-global — is **soft**. It is a defcustom, but nothing stops making it
-**buffer-local**: `org-attach-dir-from-id` reads it dynamically in the
-current buffer when following / previewing / exporting a link. Setting
-`(setq-local org-attach-id-dir <this-buffer's-vault-store>)` from
-`find-file-hook` makes every open note resolve its *own* vault's
-attachments regardless of which vault is live — removing the entire
-reason to close buffers. (Cross-*vault* attachment cross-refs would then
-miss, but those never worked and are never used here; the 51
-within-vault crossrefs the converter emits are fine.)
+Not a blocker: `org-attach-id-dir` is already set per note (see above),
+so every open note resolves its own vault's attachments whichever vault
+is live. Cross-*vault* attachment cross-refs miss, but none exist here;
+the 51 within-vault crossrefs the converter emits resolve.
 
 ### The hard blocker: vulpea's db + sync are singletons
 
@@ -325,7 +322,7 @@ is still a vault and is still opened — `vulpea-vault-version-check` warns
 (once per vault per session, since the check runs for every note opened
 there) but does not refuse, because being unable to read a vault
 perfectly is no reason to refuse it at all. Declaring *nothing*,
-however, means the directory is not a vault: the `find-file-hook` guard
+however, means the directory is not a vault: `vulpea-vault--buffer-vault`
 never treats such a buffer as belonging to one, and `vulpea-vault-switch`
 refuses to open it (see "Switching vaults live"). The version governs
 the whole vault↔config contract (folder roles, tag vocabulary,
@@ -475,7 +472,7 @@ tightened predicate — see below.
 ### One spelling for a root — `vulpea-vault-root`
 
 Absolute, trailing slash, symlinks left alone. Used by `apply-vault`, the
-switch prompt, the `find-file-hook` guard and the backup's vault list.
+switch prompt, `vulpea-vault--buffer-vault` and the backup's vault list.
 
 **Equality depends on it**, which is why it is a named function and not an
 inline idiom: a candidate is hidden from the switch prompt by `equal`
@@ -705,12 +702,10 @@ credential handed to it.
 is `vulpea-vault-git--known-vaults` = `vulpea-vault-history` + the active
 vault. Under today's single-active-vault design, `vulpea-vault-history`
 grows *only* when a vault is **switched into** — `vulpea-vault-switch`,
-the `find-file-hook` guard's **switch** choice, or the active vault at
-startup. It does **not** grow on the guard's **open anyway** choice, nor
-by merely visiting a note. So a vault backed up is exactly a vault
-switched into at least once (persisted across sessions by savehist); a
-vault only ever "opened anyway" is neither rolled up nor given per-save
-WIP hooks. This is self-consistent now — *using* another vault means
+or the active vault at startup. It does **not** grow by merely visiting
+a note. So a vault backed up is exactly a vault switched into at least
+once (persisted across sessions by savehist); a vault whose notes are
+only ever visited is neither rolled up nor given per-save WIP hooks. This is self-consistent now — *using* another vault means
 switching to it, which is the act that registers it — but it is
 precisely consequence #4 ("opening must register a vault") of the
 deferred multi-vault work above: if that model is ever built, the

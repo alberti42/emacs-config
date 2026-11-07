@@ -106,7 +106,8 @@
    ;; Safe for these notes: vulpea reads `#+filetags:' from the parsed
    ;; syntax tree rather than from `org-file-tags' (which mode init would
    ;; set), no note uses per-file `#+TODO:', `#+PROPERTY:', `#+TAGS:',
-   ;; `#+SETUPFILE:' or `:DIR:', and `org-attach-id-dir' is global.
+   ;; `#+SETUPFILE:' or `:DIR:', and every note indexed belongs to the active
+   ;; vault, whose store is the global value of `org-attach-id-dir'.
    vulpea-db-parse-method 'single-temp-buffer
 
    ;; Silence the routine "Vulpea: Syncing N files... / Sync complete"
@@ -127,6 +128,18 @@
    (t
     (message "vulpea: %s does not exist yet; autosync not started"
              vulpea-vault-directory))))
+
+(defun my/org-id-complete-from-vulpea (&optional _arg)
+  "Return an `id:' link to a note of the active vault, chosen by title.
+Replaces `org-id-complete' as the completion of `id:' in
+`org-insert-link'.  `org-id-complete' offers every heading of every file
+in `org-id-locations', which spans all vaults opened in this Emacs, and
+visits each of those files to read its headings."
+  (vulpea-vault-or-error)
+  (concat "id:" (vulpea-note-id (vulpea-select "Note" :require-match t))))
+
+(with-eval-after-load 'org-id
+  (org-link-set-parameters "id" :complete #'my/org-id-complete-from-vulpea))
 
 ;; The rest of vulpea-vault/, one concern per file, loaded the way
 ;; `completion.el' loads completions/.  Order matters where a module

@@ -41,11 +41,34 @@
 
 (require 'rx)
 (require 'org-attach)
+(require 'vulpea-vault-core)
 
-;; `org-attach-id-dir' is assigned by `vulpea-vault-apply', which follows the
-;; vault; these two are the same for every vault, so they are set once.
+;; These two are the same for every vault, so they are set once.
 (setq org-attach-preferred-new-method 'id)
 (setq org-attach-use-inheritance t)
+
+(defun vulpea-vault-attach-use-own-store ()
+  "Point this note's `org-attach-id-dir' at the store of its own vault.
+
+The global value, assigned by `vulpea-vault-apply', is the active vault's
+store.  A note from another vault resolves its `attachment:' links, its
+previews and `org-attach' against the buffer-local value set here, so it
+finds its attachments whichever vault is active.  `org-attach-dir-from-id'
+reads the variable in the note's buffer.
+
+Absolute, because `org-attach-dir-from-id' expands a relative value
+against the buffer's own directory, not the vault root.
+
+Runs from `hack-local-variables-hook', once the dir-locals have set
+`vulpea-vault-version' and `vulpea-vault-data-directory' in the buffer."
+  (when (derived-mode-p 'org-mode)
+    (when-let* ((root (vulpea-vault--buffer-vault)))
+      (setq-local org-attach-id-dir
+                  (expand-file-name
+                   (file-name-as-directory (or vulpea-vault-data-directory "data"))
+                   root)))))
+
+(add-hook 'hack-local-variables-hook #'vulpea-vault-attach-use-own-store)
 
 (defconst vulpea-vault-attach-crossref-regexp
   (rx bos (group (= 8 hex) "-" (= 4 hex) "-" (= 4 hex) "-" (= 4 hex) "-" (= 12 hex))

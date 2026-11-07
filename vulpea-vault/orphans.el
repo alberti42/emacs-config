@@ -162,11 +162,11 @@ own, so reporting them as orphans would never end.
 This is the same convention vulpea applies when scanning for notes: it
 skips paths containing \"/.\"."
   (seq-some (lambda (part) (string-prefix-p "." part))
-            (split-string (file-relative-name file org-attach-id-dir) "/" t)))
+            (split-string (file-relative-name file vulpea-vault-attach-directory) "/" t)))
 
 (defun vulpea-vault--store-files ()
   "Every attachment currently in the store, ignoring filesystem debris."
-  (let ((dir org-attach-id-dir))
+  (let ((dir vulpea-vault-attach-directory))
     (when (file-directory-p dir)
       (seq-filter (lambda (f)
                     (and (file-regular-p f)

@@ -127,6 +127,23 @@ read plain values, and vulpea opens its database from
   (make-directory vulpea-vault-state-directory t)
   vulpea-vault-directory)
 
+(defun vulpea-vault--buffer-vault ()
+  "Return the root of the vault this buffer's file belongs to, or nil.
+
+The vault declared itself with `vulpea-vault-version', which the
+directory-locals have already applied here, so the question costs no
+file reading; and the answer does not depend on which vault happens to
+be active, since where a file sits is not a matter of opinion.
+
+A vault from a scheme these modules do not implement is still a vault,
+and is treated as one — the warning has been given, and refusing to see
+it would help nobody."
+  (when (and buffer-file-name vulpea-vault-version)
+    (when-let* ((root (locate-dominating-file default-directory dir-locals-file))
+                (root (vulpea-vault-root root)))
+      (vulpea-vault-version-check vulpea-vault-version root)
+      root)))
+
 (defun vulpea-vault-or-error ()
   "Return the active vault root, or say that there is none.
 For the commands that are meaningless without one — where nil would
