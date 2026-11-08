@@ -19,7 +19,10 @@
              :files ("pretty-tables.el"))
   :defer t
   :custom
-  (pretty-tables-borders 'lines))
+  (pretty-tables-borders 'lines)
+  (pretty-tables-separator-spacing 0.25)
+  (pretty-tables-pretty-tables-image-spacing 0.5)
+  (pretty-tables-image-spacing-factor 2))
 
 (provide 'pretty-tables-config)
 ;;; pretty-tables-config.el ends here
