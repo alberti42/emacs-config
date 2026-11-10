@@ -510,6 +510,11 @@ monitor."
  'magit-config
  "Could not load magit-config.el; Magit is disabled.")
 
+;; diff-review: pull-request style review of a branch or commit range.
+(emacs-config-load-module
+ 'diff-review-config
+ "Could not load diff-review-config.el; diff-review is disabled.")
+
 ;; ;; Project tree (TTY-friendly)
 ;; (emacs-config-load-module
 ;;  'treemacs-config
