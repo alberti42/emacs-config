@@ -2,6 +2,21 @@
 
 ;;; Code:
 
+(define-minor-mode magit-config-same-window-mode
+  "Show every Magit buffer in the selected window, diffs and commits included.
+When off, diff, revision, stash and process buffers go to another
+window, as with `magit-display-buffer-same-window-except-diff-v1'."
+  :global t
+  :lighter nil
+  (message "Magit diffs and commits: %s"
+           (if magit-config-same-window-mode "selected window" "another window")))
+
+(defun magit-config-display-buffer (buffer)
+  "Display the Magit BUFFER according to `magit-config-same-window-mode'."
+  (if magit-config-same-window-mode
+      (display-buffer buffer '(display-buffer-same-window))
+    (magit-display-buffer-same-window-except-diff-v1 buffer)))
+
 (use-package magit
   :bind
   ("C-c g" . magit-status)
@@ -17,9 +32,13 @@
   (setq magit-save-repository-buffers nil)
 
   ;; Open Magit buffers in the selected window; diff and process buffers
-  ;; still go to another window.
-  (setq magit-display-buffer-function
-        #'magit-display-buffer-same-window-except-diff-v1)
+  ;; go to another window unless `magit-config-same-window-mode' is on.
+  (setq magit-display-buffer-function #'magit-config-display-buffer)
+  (keymap-set magit-mode-map "\\" #'magit-config-same-window-mode)
+
+  ;; With `magit-config-same-window-mode' on, the staged diff shown while
+  ;; writing a commit message would otherwise replace the message buffer.
+  (setq magit-commit-diff-inhibit-same-window t)
 
   ;; `q' buries the buffer and lets the window show what it showed before.
   (setq magit-bury-buffer-function #'magit-mode-quit-window)
