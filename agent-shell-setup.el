@@ -12,7 +12,7 @@
   (agent-shell-show-context-usage-indicator 'detailed)
   (agent-shell-session-restore-verbosity 'full)
   (agent-shell-agent-shell-openai-default-model-id "openai-codex/gpt-5.6-sol")
-  ;; (agent-shell-anthropic-default-model-id "claude-opus-4-6")
+  (agent-shell-anthropic-default-model-id "anthropic/claude-opus-5-5")
   (agent-shell-opencode-default-model-id "openai/gpt-5.5")
   (agent-shell-opencode-acp-command '("opencode" "acp"))
   (agent-shell-preferred-agent-config '(preselect . pi))
