@@ -83,6 +83,19 @@ selected window is split `below`, one above or below is split `right` (what
 the matching `S-<arrow>` does), and a diagonal target is split along its
 longer side.
 
+### Key reference page
+
+`C-b h` (`windows-config-help`) opens `*Window keys*`, which lists what each
+window key does, grouped by topic. The descriptions and the grouping are
+written in `windows-config-help-sections`; the keys are looked up from the
+global map with `where-is-internal` each time the page opens, so a
+rebinding shows on the page without editing that list. A row whose
+commands have no key is left out. The four arrow keys of a row that share
+their modifiers are shown once as `<arrow>`, and a command with a
+`repeat-map` gets its repeat keys appended. The tmux rows come from
+`windows-config-tmux-key-commands`. Command names are shown only as
+`help-echo` on the keys.
+
 ### Unjoin splits the parent before deleting
 
 `windows-config--unjoin` splits the window's parent (the stack) on the

@@ -462,5 +462,143 @@ The direction is one of l, r, u, d or an arrow; any other key quits."
 
 (global-set-key (kbd "C-`") #'switch-to-minibuffer)
 
+;; C-b h: a page listing what the window keys do.  The descriptions are
+;; written here, grouped by topic; the keys are looked up from the global
+;; map each time the page opens, so a rebinding shows without editing this
+;; list.  A row whose commands have no key is left out.
+(defconst windows-config-help-sections
+  '(("Move"
+     ("Move to the neighbouring window, or the tmux pane at the frame edge"
+      windmove-left-or-tmux windmove-right-or-tmux
+      windmove-up-or-tmux windmove-down-or-tmux)
+     ("Move to the window whose number is typed"
+      windows-config-select-window))
+    ("Swap"
+     ("Swap buffers and layout state with the neighbouring window"
+      windmove-swap-states-left windmove-swap-states-right
+      windmove-swap-states-up windmove-swap-states-down)
+     ("Swap with the window whose number is typed"
+      windows-config-swap-window))
+    ("Send buffer"
+     ("Show this buffer in the neighbouring window and follow it; this window goes back to its previous buffer"
+      windows-config-send-buffer-left windows-config-send-buffer-right
+      windows-config-send-buffer-up windows-config-send-buffer-down)
+     ("Send this buffer to the window whose number is typed"
+      windows-config-send-buffer-to-window))
+    ("Join and unjoin"
+     ("Join this window with the neighbouring window, as a new split of it"
+      windows-config-join-left windows-config-join-right
+      windows-config-join-up windows-config-join-down)
+     ("Join this window with the window whose number is typed"
+      windows-config-join-window)
+     ("Move this window out of its stack or row, to that side of it"
+      windows-config-unjoin-left windows-config-unjoin-right
+      windows-config-unjoin-up windows-config-unjoin-down)
+     ("Unjoin toward a typed direction (l, r, u, d or an arrow)"
+      windows-config-unjoin-toward))
+    ("Layout"
+     ("Split right; the new window shows the other buffer"
+      windows-config-split-right)
+     ("Split below; the new window shows the other buffer"
+      windows-config-split-below)
+     ("Move the window border in the arrow's direction"
+      windows-config-resize-left windows-config-resize-right
+      windows-config-resize-up windows-config-resize-down)
+     ("Keep only this window; press again to restore the others"
+      windows-config-toggle-delete-other-windows)
+     ("Close this window"
+      delete-window)
+     ("This page"
+      windows-config-help)))
+  "Sections of the page shown by `windows-config-help'.
+Each section is (TITLE ROW...), and each row is (DESCRIPTION COMMAND...).
+A row's keys are the keys of its COMMANDs.")
+
+(defun windows-config--help-keys (commands keymap)
+  "Return the keys of COMMANDS in KEYMAP as one string.
+Keys that differ only in the arrow and cover every command in COMMANDS
+are shown once, as PREFIX<arrow>."
+  (let ((by-prefix nil) (others nil))
+    (dolist (cmd commands)
+      (dolist (key (where-is-internal cmd keymap))
+        (unless (memq (aref key 0) '(menu-bar tool-bar remap))
+          (let ((desc (key-description key)))
+            (if (string-match "\\`\\(.*\\)<\\(left\\|right\\|up\\|down\\)>\\'" desc)
+                (push desc (alist-get (match-string 1 desc) by-prefix
+                                      nil nil #'equal))
+              (push desc others))))))
+    (string-join
+     (append
+      (mapcan (lambda (entry)
+                (if (and (cdr commands) (= (length (cdr entry)) (length commands)))
+                    (list (concat (car entry) "<arrow>"))
+                  (reverse (cdr entry))))
+              (reverse by-prefix))
+      (reverse others))
+     ", ")))
+
+(defun windows-config--help-repeat-keys (commands)
+  "Return the keys that repeat COMMANDS through `repeat-mode', or nil."
+  (when-let* ((map (get (car commands) 'repeat-map)))
+    (let ((keys (windows-config--help-keys
+                 commands (list (if (symbolp map) (symbol-value map) map)))))
+      (unless (string-empty-p keys) keys))))
+
+(define-derived-mode windows-config-help-mode special-mode "Window keys"
+  "Major mode of the page shown by `windows-config-help'.")
+
+(defun windows-config-help ()
+  "Show what the window keys do, with their current bindings."
+  (interactive)
+  (let ((rows nil))
+    (dolist (section windows-config-help-sections)
+      (push (list 'title (car section)) rows)
+      (dolist (row (cdr section))
+        (let ((keys (windows-config--help-keys (cdr row) global-map)))
+          (unless (string-empty-p keys)
+            (push (list 'row keys (car row) (cdr row)) rows)))))
+    (push (list 'title "Forwarded to tmux (inside tmux only)") rows)
+    (let ((keys (where-is-internal 'windows-config-tmux-forward-key global-map)))
+      (pcase-dolist (`(,char . ,args) windows-config-tmux-key-commands)
+        (dolist (key keys)
+          (when (eq (aref key (1- (length key))) char)
+            (push (list 'row (key-description key)
+                        (concat "tmux " (string-join args " "))
+                        '(windows-config-tmux-forward-key))
+                  rows)))))
+    (setq rows (nreverse rows))
+    (let ((width (apply #'max (mapcar (lambda (r) (if (eq (car r) 'row)
+                                                      (string-width (nth 1 r))
+                                                    0))
+                                      rows))))
+      (with-current-buffer (get-buffer-create "*Window keys*")
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (pcase-dolist (`(,kind . ,data) rows)
+            (pcase kind
+              ('title
+               (unless (bobp) (insert "\n"))
+               (insert (propertize (car data) 'face 'bold) "\n"))
+              ('row
+               (pcase-let* ((`(,keys ,desc ,commands) data)
+                            (repeat (windows-config--help-repeat-keys commands)))
+                 (insert "  "
+                         (propertize (string-pad keys width)
+                                     'face 'help-key-binding
+                                     'help-echo (mapconcat #'symbol-name commands " "))
+                         "  " desc)
+                 (when repeat
+                   (insert (propertize (format " (then %s repeats)" repeat)
+                                       'face 'shadow)))
+                 (insert "\n")))))
+          (goto-char (point-min)))
+        (windows-config-help-mode)
+        (setq-local truncate-lines nil
+                    word-wrap t
+                    wrap-prefix (make-string (+ width 4) ?\s))
+        (pop-to-buffer (current-buffer))))))
+
+(global-set-key (kbd "C-b h") #'windows-config-help)
+
 (provide 'windows-config)
 ;;; windows-config.el ends here
