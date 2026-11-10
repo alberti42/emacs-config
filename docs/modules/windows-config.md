@@ -69,8 +69,11 @@ the `\e[` continuation and the arrow keys would never decode.
 and act on the window whose number is typed, as the arrow forms act on the
 neighbour. Numbers follow `window-list` from `frame-first-window`, so they
 do not depend on which window is selected; only 1–9 exist. The number
-replaces the first character shown in the window through a `display`
-overlay, so no text moves. Any non-digit key quits. `C-b M-W` draws no
+is shown at the left of each window's mode line through the
+`mode-line-format` window parameter, which overrides the buffer's mode line
+in that window only; no window changes height, and the number shows in
+windows whose text is an image, such as a pdf-tools page. Any non-digit key
+quits. `C-b M-W` draws no
 numbers: unjoin has no target window, so it reads a direction
 (`l`/`r`/`u`/`d` or an arrow) instead.
 

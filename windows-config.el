@@ -345,32 +345,38 @@ Focus follows the buffer into TARGET."
 ;; frame's first window, so they do not depend on which window is selected.
 (defface windows-config-window-number
   '((t :inherit isearch :weight bold))
-  "Face of the numbers drawn by `windows-config--read-window'.")
+  "Face of the window numbers that `windows-config--read-window' shows.")
 
-(defun windows-config--number-overlay (window n)
-  "Draw N at the start of WINDOW and return the overlay.
-The number replaces the first character shown, so no text moves."
-  (with-current-buffer (window-buffer window)
-    (let* ((start (window-start window))
-           (on-char (and (< start (point-max))
-                         (/= (char-after start) ?\n)))
-           (ov (make-overlay start (if on-char (1+ start) start)))
-           (label (propertize (number-to-string n)
-                              'face 'windows-config-window-number)))
-      (overlay-put ov 'window window)
-      (overlay-put ov (if on-char 'display 'before-string) label)
-      ov)))
+(defun windows-config--number-mode-line (window n)
+  "Show N at the left of WINDOW's mode line.
+Return a function that restores the mode line.  The number goes in the
+`mode-line-format' window parameter, which overrides the buffer's mode
+line in WINDOW only, so it shows in windows whose text is an image (a
+pdf-tools page) and no window changes height."
+  (let ((old (window-parameter window 'mode-line-format))
+        (label (propertize (format " %d " n)
+                           'face 'windows-config-window-number)))
+    (set-window-parameter
+     window 'mode-line-format
+     (list label
+           (if (and old (not (eq old 'none)))
+               old
+             (buffer-local-value 'mode-line-format (window-buffer window)))))
+    (lambda () (set-window-parameter window 'mode-line-format old))))
 
 (defun windows-config--read-window (prompt)
   "Number the windows of the selected frame and return the one typed.
 PROMPT is shown in the echo area.  A key that is not a digit quits."
   (let* ((windows (seq-take (window-list nil 'nomini (frame-first-window)) 9))
-         (overlays (seq-map-indexed
-                    (lambda (win i) (windows-config--number-overlay win (1+ i)))
+         (restores (seq-map-indexed
+                    (lambda (win i)
+                      (windows-config--number-mode-line win (1+ i)))
                     windows))
          (key (unwind-protect
-                  (read-key prompt)
-                (mapc #'delete-overlay overlays)))
+                  (progn (force-mode-line-update t)
+                         (read-key prompt))
+                (mapc #'funcall restores)
+                (force-mode-line-update t)))
          (n (and (characterp key) (<= ?1 key ?9) (- key ?0))))
     (cond ((null n) (keyboard-quit))
           ((nth (1- n) windows))
