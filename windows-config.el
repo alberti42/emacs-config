@@ -290,19 +290,24 @@ and `below' part of a side-by-side row."
 ;; side effects); focus follows the buffer into the destination window so
 ;; repeated chords carry the same buffer across a chain of windows.  No
 ;; tmux equivalent.
-(defun windows-config--send-buffer-to (direction)
+(defun windows-config--send-buffer-to (direction &optional delete)
   "Display current buffer in the window in DIRECTION; rotate source window.
 Focus follows the buffer into the destination window.
-DIRECTION is one of `left', `right', `above', `below'."
+DIRECTION is one of `left', `right', `above', `below'.
+With DELETE non-nil, delete the source window instead of rotating it."
   (if-let* ((target (window-in-direction direction)))
-      (windows-config--send-buffer-to-window target)
+      (windows-config--send-buffer-to-window target delete)
     (user-error "No window %s" direction)))
 
-(defun windows-config--send-buffer-to-window (target)
+(defun windows-config--send-buffer-to-window (target &optional delete)
   "Display current buffer in window TARGET; rotate source window.
-Focus follows the buffer into TARGET."
+Focus follows the buffer into TARGET.  With DELETE non-nil, delete the
+source window instead of rotating it.  The source window is deleted
+first, so a window that cannot be deleted leaves the buffer where it is."
   (let ((buf (current-buffer)))
-    (switch-to-prev-buffer)
+    (if delete
+        (delete-window)
+      (switch-to-prev-buffer))
     (set-window-buffer target buf)
     (select-window target)))
 
@@ -337,6 +342,41 @@ Focus follows the buffer into TARGET."
   "C-M-<right>" #'windows-config-send-buffer-right
   "C-M-<up>"    #'windows-config-send-buffer-up
   "C-M-<down>"  #'windows-config-send-buffer-down)
+
+;; Send buffer and delete: as send buffer, but the source window is deleted.
+;; For a window that a command opened with `other-window' semantics, whose
+;; buffer belongs in a window of its own choosing.
+(defun windows-config-send-buffer-and-delete-left ()
+  "Send current buffer to the window on the left and delete this window."
+  (interactive)
+  (windows-config--send-buffer-to 'left t))
+
+(defun windows-config-send-buffer-and-delete-right ()
+  "Send current buffer to the window on the right and delete this window."
+  (interactive)
+  (windows-config--send-buffer-to 'right t))
+
+(defun windows-config-send-buffer-and-delete-up ()
+  "Send current buffer to the window above and delete this window."
+  (interactive)
+  (windows-config--send-buffer-to 'above t))
+
+(defun windows-config-send-buffer-and-delete-down ()
+  "Send current buffer to the window below and delete this window."
+  (interactive)
+  (windows-config--send-buffer-to 'below t))
+
+(global-set-key (kbd "C-b C-M-S-<left>")  #'windows-config-send-buffer-and-delete-left)
+(global-set-key (kbd "C-b C-M-S-<right>") #'windows-config-send-buffer-and-delete-right)
+(global-set-key (kbd "C-b C-M-S-<up>")    #'windows-config-send-buffer-and-delete-up)
+(global-set-key (kbd "C-b C-M-S-<down>")  #'windows-config-send-buffer-and-delete-down)
+
+(defvar-keymap window-send-buffer-and-delete-repeat-map
+  :repeat t
+  "C-M-S-<left>"  #'windows-config-send-buffer-and-delete-left
+  "C-M-S-<right>" #'windows-config-send-buffer-and-delete-right
+  "C-M-S-<up>"    #'windows-config-send-buffer-and-delete-up
+  "C-M-S-<down>"  #'windows-config-send-buffer-and-delete-down)
 
 ;; Numbered windows: the long form of the arrow operations.  C-b w, C-b M-w,
 ;; C-b C-M-w and C-b W draw a number in every window of the frame and act on
@@ -419,6 +459,13 @@ diagonal TARGET is split along its longer side."
   (windows-config--send-buffer-to-window
    (windows-config--read-other-window "Send buffer to window: ")))
 
+(defun windows-config-send-buffer-and-delete-to-window ()
+  "Send current buffer to the window whose number is typed; delete this window."
+  (interactive)
+  (windows-config--send-buffer-to-window
+   (windows-config--read-other-window "Send buffer to window, deleting this one: ")
+   t))
+
 (defun windows-config-join-window ()
   "Join current window with the window whose number is typed."
   (interactive)
@@ -441,6 +488,7 @@ The direction is one of l, r, u, d or an arrow; any other key quits."
 (global-set-key (kbd "C-b w")     #'windows-config-select-window)
 (global-set-key (kbd "C-b M-w")   #'windows-config-swap-window)
 (global-set-key (kbd "C-b C-M-w") #'windows-config-send-buffer-to-window)
+(global-set-key (kbd "C-b C-M-S-w") #'windows-config-send-buffer-and-delete-to-window)
 (global-set-key (kbd "C-b W")     #'windows-config-join-window)
 (global-set-key (kbd "C-b M-W")   #'windows-config-unjoin-toward)
 
@@ -485,6 +533,12 @@ The direction is one of l, r, u, d or an arrow; any other key quits."
       windows-config-send-buffer-up windows-config-send-buffer-down)
      ("Send this buffer to the window whose number is typed"
       windows-config-send-buffer-to-window))
+    ("Send buffer and delete window"
+     ("Show this buffer in the neighbouring window and follow it; this window is deleted"
+      windows-config-send-buffer-and-delete-left windows-config-send-buffer-and-delete-right
+      windows-config-send-buffer-and-delete-up windows-config-send-buffer-and-delete-down)
+     ("Send this buffer to the window whose number is typed and delete this window"
+      windows-config-send-buffer-and-delete-to-window))
     ("Join and unjoin"
      ("Join this window with the neighbouring window, as a new split of it"
       windows-config-join-left windows-config-join-right
@@ -506,7 +560,7 @@ The direction is one of l, r, u, d or an arrow; any other key quits."
       windows-config-resize-up windows-config-resize-down)
      ("Keep only this window; press again to restore the others"
       windows-config-toggle-delete-other-windows)
-     ("Close this window"
+     ("Delete this window"
       delete-window)
      ("This page"
       windows-config-help)))

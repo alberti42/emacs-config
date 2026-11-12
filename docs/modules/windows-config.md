@@ -20,7 +20,7 @@ External packages: none — all built on `windmove`, `winner-mode`, and
 ## Key bindings
 
 All under the `C-b` prefix unless noted. Resize / join / unjoin / swap /
-send-buffer all carry `:repeat t` keymaps — once entered, the modifier
+send-buffer / send-and-delete all carry `:repeat t` keymaps — once entered, the modifier
 chord can be repeated without `C-b` until `repeat-exit-timeout`.
 
 | Key                | Action                                                    |
@@ -31,9 +31,11 @@ chord can be repeated without `C-b` until `repeat-exit-timeout`.
 | `C-b M-S-<arrow>`  | unjoin: move window out of its stack, beside the stack    |
 | `C-b M-<arrow>`    | swap buffers with adjacent window                         |
 | `C-b C-M-<arrow>`  | send current buffer to adjacent window; focus follows     |
+| `C-b C-M-S-<arrow>` | send current buffer to adjacent window and delete this one |
 | `C-b w <n>`        | select window `n`                                         |
 | `C-b M-w <n>`      | swap buffers with window `n`                              |
 | `C-b C-M-w <n>`    | send current buffer to window `n`; focus follows          |
+| `C-b C-M-S-w <n>`  | send current buffer to window `n` and delete this one      |
 | `C-b W <n>`        | join window `n`                                           |
 | `C-b M-W <dir>`    | unjoin toward `l`/`r`/`u`/`d` or an arrow                 |
 | `C-b %`            | split right and switch to other buffer                    |
