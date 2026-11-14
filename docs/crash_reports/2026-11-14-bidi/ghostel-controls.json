@@ -1,0 +1,17 @@
+[
+  {
+    "variant": "ghostel-baseline",
+    "returncode": -6,
+    "stderr": "2026-11-14 19:08:23.903 Emacs[77810:6178825] ApplePersistence=NO"
+  },
+  {
+    "variant": "ghostel-no-prefix",
+    "returncode": 0,
+    "stderr": "2026-11-14 19:08:25.292 Emacs[77821:6178908] ApplePersistence=NO"
+  },
+  {
+    "variant": "ghostel-line-count-fallback",
+    "returncode": 0,
+    "stderr": "2026-11-14 19:08:26.606 Emacs[77826:6178958] ApplePersistence=NO"
+  }
+]

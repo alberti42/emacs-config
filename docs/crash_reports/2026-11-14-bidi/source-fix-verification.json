@@ -1,0 +1,77 @@
+[
+  {
+    "case": "unpatched-prefix-test",
+    "returncode": -6,
+    "stdout": "",
+    "stderr": "2026-11-14 19:27:33.012 Emacs[92478:6232662] ApplePersistence=NO\n"
+  },
+  {
+    "case": "unpatched-display-test",
+    "returncode": -6,
+    "stdout": "",
+    "stderr": "2026-11-14 19:27:34.241 Emacs[92481:6232744] ApplePersistence=NO\n"
+  },
+  {
+    "case": "patched-xdisp-suite",
+    "timeout": true,
+    "stdout": "None",
+    "stderr": "b'2026-11-14 19:27:35.567 emacs[92484:6232796] ApplePersistence=NO\\n'"
+  },
+  {
+    "case": "patched-prefix-reproducer",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:28:20.507 emacs[93193:6235057] ApplePersistence=NO\n"
+  },
+  {
+    "case": "patched-display-reproducer",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:28:21.433 emacs[93201:6235117] ApplePersistence=NO\n"
+  },
+  {
+    "case": "patched-ghostel-reproducer",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:28:22.674 emacs[93205:6235179] ApplePersistence=NO\n"
+  },
+  {
+    "case": "patched-prefix-test",
+    "timeout": true,
+    "stdout": "None",
+    "stderr": "b'2026-11-14 19:28:40.119 emacs[93276:6235782] ApplePersistence=NO\\n'"
+  },
+  {
+    "case": "patched-display-test",
+    "timeout": true,
+    "stdout": "None",
+    "stderr": "b'2026-11-14 19:29:24.957 emacs[93410:6236843] ApplePersistence=NO\\n'"
+  },
+  {
+    "case": "patched-xdisp-suite",
+    "timeout": true,
+    "stdout": "None",
+    "stderr": "b'2026-11-14 19:30:09.909 emacs[93540:6237982] ApplePersistence=NO\\n'"
+  },
+  {
+    "case": "patched-prefix-test",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:30:59.606 emacs[93850:6239852] ApplePersistence=NO\n",
+    "ert_report": "Tests: 1; unexpected: 0; skipped: 0\nFor information about GNU Emacs and the GNU system, type C-h C-a.\nLoading /Users/andrea/Documents/Programming/Others/fork-emacs/test/src/xdisp-tests.el (source)...done\nRunning 1 tests (2026-11-14 19:31:00+0100, selector \u2018\"^xdisp-tests--window-text-pixel-size-empty-prefix-overlay$\"\u2019)\n   passed  1/1  xdisp-tests--window-text-pixel-size-empty-prefix-overlay (0.000827 sec)\n\nRan 1 tests, 1 results as expected, 0 unexpected (2026-11-14 19:31:00+0100, 0.003825 sec)\n\n"
+  },
+  {
+    "case": "patched-display-test",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:31:00.943 emacs[93851:6239982] ApplePersistence=NO\n",
+    "ert_report": "Tests: 1; unexpected: 0; skipped: 0\nFor information about GNU Emacs and the GNU system, type C-h C-a.\nLoading /Users/andrea/Documents/Programming/Others/fork-emacs/test/src/xdisp-tests.el (source)...done\nRunning 1 tests (2026-11-14 19:31:01+0100, selector \u2018\"^xdisp-tests--window-text-pixel-size-display-in-overlay$\"\u2019)\n   passed  1/1  xdisp-tests--window-text-pixel-size-display-in-overlay (0.001031 sec)\n\nRan 1 tests, 1 results as expected, 0 unexpected (2026-11-14 19:31:01+0100, 0.003499 sec)\n\n"
+  },
+  {
+    "case": "patched-xdisp-suite",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "2026-11-14 19:31:02.261 emacs[93853:6240020] ApplePersistence=NO\n",
+    "ert_report": "Tests: 13; unexpected: 0; skipped: 0\nFor information about GNU Emacs and the GNU system, type C-h C-a.\nLoading /Users/andrea/Documents/Programming/Others/fork-emacs/test/src/xdisp-tests.el (source)...done\nRunning 13 tests (2026-11-14 19:31:03+0100, selector \u2018t\u2019)\n   passed   1/13  test-get-display-property (0.000169 sec)\n   passed   2/13  test-messages-buffer-name (0.000245 sec)\n   passed   3/13  xdisp-test-format-mode-line (0.000498 sec)\n   passed   4/13  xdisp-tests--find-directional-overrides-case-1 (0.000065 sec)\n   passed   5/13  xdisp-tests--find-directional-overrides-case-2 (0.000053 sec)\n   passed   6/13  xdisp-tests--find-directional-overrides-case-3 (0.000049 sec)\n   passed   7/13  xdisp-tests--minibuffer-resizing (0.006620 sec)\n   passed   8/13  xdisp-tests--minibuffer-scroll (0.012363 sec)\n   passed   9/13  xdisp-tests--window-text-pixel-size (0.000081 sec)\n   passed  10/13  xdisp-tests--window-text-pixel-size-display-in-overlay (0.014004 sec)\n   passed  11/13  xdisp-tests--window-text-pixel-size-empty-prefix-overlay (0.000375 sec)\n   passed  12/13  xdisp-tests--window-text-pixel-size-leading-space (0.000049 sec)\n   passed  13/13  xdisp-tests--window-text-pixel-size-trailing-space (0.000041 sec)\n\nRan 13 tests, 13 results as expected, 0 unexpected (2026-11-14 19:31:03+0100, 0.040268 sec)\n\n"
+  }
+]

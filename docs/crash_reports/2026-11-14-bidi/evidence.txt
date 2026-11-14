@@ -1,0 +1,140 @@
+Recorded 2026-11-14, macOS arm64 NS Emacs 32.0.50.
+Ghostel checkout: 0169dad4bb15a9a8208ff4850d8675356e8c4c61
+Ghostel native module version: 0.65.0
+
+Original afternoon incident
+/Users/andrea/Library/Logs/DiagnosticReports/Emacs-2026-11-14-160050.ips
+Time: 2026-11-14 16:00:46.7004 +0100
+Binary UUID: cb73170c-a245-3d20-a2f3-812615bc26e9
+Exception: {'codes': '0x0000000000000000, 0x0000000000000000', 'rawCodes': [0, 0], 'type': 'EXC_CRASH', 'signal': 'SIGABRT'}
+  __pthread_kill : +8
+  pthread_kill : +296
+  raise : +32
+  terminate_due_to_signal emacs.c:480 +228
+  emacs_abort sysdep.c:2404 +20
+  ns_term_shutdown nsterm.m:6366 +132
+  shut_down_emacs emacs.c:3176 +360
+  terminate_due_to_signal emacs.c:463 +168
+  emacs_abort sysdep.c:2404 +20
+  bidi_paragraph_init bidi.c: +1276
+  push_prefix_prop xdisp.c:25335 +116
+  handle_line_prefix xdisp.c:25478 +236
+  move_it_in_display_line_to xdisp.c:10197 +364
+  move_it_to xdisp.c:11022 +996
+  window_text_pixel_size xdisp.c:12115 +2800
+  ghostel--pixel-anchor : +180
+  Ffuncall eval.c:3211 +408
+  ghostel--balance-top-pad : +108
+  Ffuncall eval.c:3211 +408
+  ghostel--anchor-window : +748
+  Ffuncall eval.c:3211 +408
+  ghostel--adjust-size : +240
+  Ffuncall eval.c:3211 +408
+  internal_condition_case_n eval.c:1792 +288
+  safe_funcall eval.c:3239 +92
+  run_window_change_functions_locally window.c:4018 +144
+  run_window_change_functions window.c:4220 +1828
+  redisplay_internal xdisp.c:17827 +2520
+  redisplay_preserve_echo_area xdisp.c:18516 +132
+  Fredisplay dispnew.c:7040 +16
+  exec_byte_code bytecode.c:822 +1984
+  Ffuncall eval.c:3211 +408
+
+Package-free reduced example
+/Users/andrea/Library/Logs/DiagnosticReports/Emacs-2026-11-14-185432.ips
+Time: 2026-11-14 18:54:28.9614 +0100
+Binary UUID: cb73170c-a245-3d20-a2f3-812615bc26e9
+Exception: {'codes': '0x0000000000000000, 0x0000000000000000', 'rawCodes': [0, 0], 'type': 'EXC_CRASH', 'signal': 'SIGABRT'}
+  __pthread_kill : +8
+  pthread_kill : +296
+  raise : +32
+  terminate_due_to_signal emacs.c:480 +228
+  emacs_abort sysdep.c:2404 +20
+  ns_term_shutdown nsterm.m:6366 +132
+  shut_down_emacs emacs.c:3176 +360
+  terminate_due_to_signal emacs.c:463 +168
+  emacs_abort sysdep.c:2404 +20
+  bidi_paragraph_init bidi.c: +1276
+  push_prefix_prop xdisp.c:25335 +116
+  handle_line_prefix xdisp.c:25478 +236
+  move_it_in_display_line_to xdisp.c:10197 +364
+  move_it_to xdisp.c:10961 +400
+  move_it_vertically_backward xdisp.c:11322 +684
+  move_it_by_lines xdisp.c:11525 +16
+  window_text_pixel_size xdisp.c:11849 +1560
+  eval_sub eval.c:2725 +1452
+  Fprogn eval.c:444 +12
+  funcall_lambda eval.c:3468 +900
+  Ffuncall eval.c:3211 +408
+  exec_byte_code bytecode.c:822 +1984
+  Ffuncall eval.c:3211 +408
+  timer_check_2 keyboard.c:4938 +92
+  timer_check keyboard.c:5003 +1192
+  readable_events keyboard.c:3708 +4
+  get_input_pending keyboard.c:8116 +24
+  detect_input_pending_run_timers keyboard.c:12111 +80
+  wait_reading_process_output process.c:5929 +4588
+  kbd_buffer_get_event keyboard.c: +492
+  read_event_from_main_queue keyboard.c:2408 +908
+  read_decoded_event_from_main_queue keyboard.c:2489 +908
+
+Ghostel example
+/Users/andrea/Library/Logs/DiagnosticReports/Emacs-2026-11-14-190614.ips
+Time: 2026-11-14 19:06:12.1367 +0100
+Binary UUID: cb73170c-a245-3d20-a2f3-812615bc26e9
+Exception: {'codes': '0x0000000000000000, 0x0000000000000000', 'rawCodes': [0, 0], 'type': 'EXC_CRASH', 'signal': 'SIGABRT'}
+  __pthread_kill : +8
+  pthread_kill : +296
+  raise : +32
+  terminate_due_to_signal emacs.c:480 +228
+  emacs_abort sysdep.c:2404 +20
+  ns_term_shutdown nsterm.m:6366 +132
+  shut_down_emacs emacs.c:3176 +360
+  terminate_due_to_signal emacs.c:463 +168
+  emacs_abort sysdep.c:2404 +20
+  bidi_paragraph_init bidi.c: +1276
+  push_prefix_prop xdisp.c:25335 +116
+  handle_line_prefix xdisp.c:25478 +236
+  move_it_in_display_line_to xdisp.c:10197 +364
+  move_it_to xdisp.c:10961 +400
+  move_it_vertically_backward xdisp.c:11322 +684
+  window_text_pixel_size xdisp.c:11860 +1944
+  ghostel--pixel-anchor : +180
+  Ffuncall eval.c:3211 +408
+  ghostel--balance-top-pad : +108
+  Ffuncall eval.c:3211 +408
+  ghostel--anchor-window : +748
+  eval_sub eval.c:2707 +2320
+  Fprogn eval.c:444 +12
+  funcall_lambda eval.c:3468 +900
+  Ffuncall eval.c:3211 +408
+  exec_byte_code bytecode.c:822 +1984
+  Ffuncall eval.c:3211 +408
+  timer_check_2 keyboard.c:4938 +92
+  timer_check keyboard.c:5003 +1192
+  readable_events keyboard.c:3708 +4
+  get_input_pending keyboard.c:8116 +24
+  detect_input_pending_run_timers keyboard.c:12111 +80
+
+Debugger observations for the four-character package-free example:
+  LLDB breakpoint: emacs_abort; caller: bidi_paragraph_init
+  bidi_it->charpos = 3
+  bidi_it->bytepos = 3
+  bidi_it->string.lstring = NULL
+  bidi_it->string.schars = 0
+  bidi_it->first_elt = true
+  buffer end (x23) = 3
+
+Controls (separate -Q graphical Emacs processes):
+  Package-free baseline: SIGABRT
+  line-prefix nil: exit 0
+  no overlay: exit 0
+  shorter overlay "a\n": exit 0
+  bidi-paragraph-direction left-to-right: SIGABRT
+  cons FROM with zero offset: SIGABRT
+  integer FROM 3: SIGABRT
+  default FROM nil: exit 0
+
+Ghostel controls: see ghostel-controls.json.
+  The test overlay and prefix are synthetic; their source in the original incident is unknown.
+  No daemon state, configuration defaults, Emacs sources, or Ghostel sources were changed.
