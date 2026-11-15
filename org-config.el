@@ -159,7 +159,9 @@
 (use-package pretty-tables-for-org
   :straight (pretty-tables-for-org
              :type git
+             :host github
              :local-repo "~/Programming/Emacs/pretty-tables"
+             :repo "alberti42/pretty-tables.el"
              :branch "develop"
              :files ("pretty-tables-for-org.el"))
   :hook (org-mode-hook . pretty-tables-for-org-mode))

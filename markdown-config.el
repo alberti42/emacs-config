@@ -386,7 +386,9 @@ before the adaptor turns on the shared core."
 (use-package pretty-tables-for-markdown
   :straight (pretty-tables-for-markdown
              :type git
+             :host github
              :local-repo "~/Programming/Emacs/pretty-tables"
+             :repo "alberti42/pretty-tables.el"
              :branch "develop"
              :files ("pretty-tables-for-markdown.el"))
   :hook (markdown-ts-mode-hook . pretty-tables-for-markdown-mode))

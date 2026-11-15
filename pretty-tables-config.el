@@ -14,7 +14,9 @@
 (use-package pretty-tables
   :straight (pretty-tables
              :type git
+             :host github
              :local-repo "~/Programming/Emacs/pretty-tables"
+             :repo "alberti42/pretty-tables.el"
              :branch "develop"
              :files ("pretty-tables.el"))
   :defer t
