@@ -28,7 +28,7 @@
   :straight (popon
              :type git
              :repo "https://codeberg.org/alberti42/fork-emacs-popon.git"
-             :branch "fix/make-framebuffer-invisible-loop")
+             :branch "merged")
   :defer t)
 
 (defgroup warning-toast nil
