@@ -18,8 +18,12 @@ falling back to the \"Unknown\" entry."
                     (assoc "Unknown" emacs-config-font-height-by-monitor))))
     (cdr entry)))
 
+(defvar emacs-config-emoji-font-family
+  (if (eq system-type 'darwin) "Apple Color Emoji" "Noto Color Emoji")
+  "Color emoji font family; Apple Color Emoji exists only on macOS.")
+
 (defun emacs-config-emoji-size-for-height (height)
-  "Return the Apple Color Emoji :size that fits a `default' face of HEIGHT.
+  "Return the emoji font :size that fits a `default' face of HEIGHT.
 HEIGHT is the `default' face `:height' (1/10 pt).  Without this, a line
 containing an emoji (e.g. 💡) jumps to the emoji font's taller line
 height and causes vertical jitter when typing; the size must fit the
@@ -30,9 +34,9 @@ coarse buckets track the face height closely enough in practice."
         (t 11)))
 
 (defun emacs-config-setup-emoji-fontset (height)
-  "Render `emoji' glyphs using \"Apple Color Emoji\" for HEIGHT.
-Modify the default fontset to map `emoji' script to Apple Color Emoji,
-sized for HEIGHT.
+  "Render `emoji' glyphs using `emacs-config-emoji-font-family' for HEIGHT.
+Modify the default fontset to map `emoji' script to that font, sized
+for HEIGHT.
 
 Also map the pictograph blocks #x1F300-#x1FAFF to the same font.
 `char-script-table' puts an emoji whose default presentation is text
@@ -41,9 +45,9 @@ fontset tries for `symbol' has it, so it is drawn as a missing-glyph
 box, with or without a following VARIATION SELECTOR-16.
 
 That mapping replaces every font for the range, so \"Symbola\" is
-appended after it for the pictographs that are not emoji and that Apple
-Color Emoji therefore lacks (e.g. U+1F322 BLACK DROPLET)."
-  (let ((spec (font-spec :family "Apple Color Emoji"
+appended after it for the pictographs that are not emoji and that the
+emoji font therefore lacks (e.g. U+1F322 BLACK DROPLET)."
+  (let ((spec (font-spec :family emacs-config-emoji-font-family
                          :size (emacs-config-emoji-size-for-height height))))
     (set-fontset-font t 'emoji spec)
     (set-fontset-font t '(#x1F300 . #x1FAFF) spec)
