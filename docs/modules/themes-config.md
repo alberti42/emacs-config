@@ -7,9 +7,10 @@ the harmonization library it drives.
 
 ## External packages
 
-- `modus-themes` — installed via straight to track Protesilaos' upstream
-  (the bundled Emacs version lags). Light variant: `modus-operandi`. Dark:
-  `modus-vivendi-tinted`.
+- `doom-themes` — installed via straight with `doom-themes-enable-bold` and
+  `doom-themes-enable-italic` on, and `doom-themes-org-config` for Org's
+  headings, blocks and TODO keywords. Light theme: `doom-opera-light`. Dark:
+  `doom-challenger-deep`.
 
 `theme-harmonize` and `zac-theme-autodetection` are local modules
 (`:straight nil :load-path …`).
@@ -22,14 +23,17 @@ The order is intentional and load-bearing:
    `theme-harmonize-theme` and adds it to `enable-theme-functions` and
    `after-make-frame-functions`. Must load *first* so the function exists
    before any theme change fires the hook.
-2. **`modus-themes`** is installed and configured here, but **not loaded
-   yet** — `themes-config.el` does not call `load-theme`. The actual
-   activation happens in step 3.
+2. **`doom-themes`** is installed and configured here, but **no theme is
+   loaded yet** — `themes-config.el` does not call `load-theme` itself. The
+   activation happens in step 3. (In the file `use-package doom-themes`
+   comes first; it only installs, so its position relative to
+   `theme-harmonize` does not matter.)
 3. **`zac-theme-autodetection`** (in `local/`, see CLAUDE.md "Local
    package overrides"). Reads the OS appearance state file written by
    `zsh-appearance-control` and calls `zac-load-theme-callback` with
-   `:light` or `:dark`. The callback (set in `:init`) calls `load-theme`
-   with the appropriate modus variant. `load-theme` runs
+   `:light` or `:dark`. The callback (set in `:init`) disables every other
+   enabled theme, then calls `load-theme` on the matching doom theme.
+   `load-theme` runs
    `enable-theme-functions`, which in turn runs `theme-harmonize-theme`
    — synchronizing all derived faces.
 
@@ -46,11 +50,25 @@ If you change this order, things break silently:
 
 | Variable                              | Purpose                                                      |
 | ------------------------------------- | ------------------------------------------------------------ |
-| `theme-harmonize-line-number-bg`      | plist `(:light "#xxx" :dark "#yyy")`. Drives the gutter color across `line-number`, `margin`, `fringe`, `header-line`, `flycheck-fringe-*`, and `git-gutter:*` backgrounds. Currently Catppuccin (Latte / Frappe). |
-| `theme-harmonize-git-gutter-colors`   | plist `(:light (:added :modified :deleted) :dark (...))`. Foreground colors for git-gutter indicators per appearance. |
-| `modus-operandi-palette-overrides`    | currently `((fg-heading-1 "#2e6b6a"))` (teal H1 in light theme). |
-| `modus-vivendi-tinted-palette-overrides` | currently `((fg-heading-1 "#8fbcbb"))` (lighter teal H1 in dark theme). |
-| `zac-load-theme-callback`             | function `(appearance) → unit`. Receives `:light` or `:dark`; switches the theme. Set in `:init` so the watcher picks it up on first application. |
+| `theme-harmonize-line-number-bg`      | plist `(:light "#xxx" :dark "#yyy")`. Overrides the `line-number` background, which is then spread to `margin`, `fringe`, `header-line`, `flycheck-fringe-*`, and `git-gutter:*`. **Currently commented out**: the theme's own `line-number` background is what gets spread. |
+| `theme-harmonize-git-gutter-colors`   | plist `(:light (:added :modified :deleted) :dark (...))`. Foreground colors for git-gutter indicators per appearance. **Currently commented out**: git-gutter keeps its own colors. |
+| `theme-harmonize-ansi-color-palette`  | plist `(:light [16 colors] :dark [16 colors])`. Overrides the `ansi-color-*` faces. Currently Catppuccin Latte / Frappe, matching WezTerm. |
+| `zac-load-theme-callback`             | function `(appearance) → unit`. Receives `:light` or `:dark`; disables every other enabled theme and loads `doom-opera-light` or `doom-challenger-deep`. Set in `:init` so the watcher picks it up on first application. |
+
+## Face fixes on top of the theme
+
+`themes-config.el` adjusts four faces. Each fix is a function on
+`enable-theme-functions`, because the callback disables every other theme
+(including `user`) on each switch and so wipes any earlier
+`set-face-attribute`; a `with-eval-after-load` covers the package loading
+after the theme.
+
+| Function | What it does |
+| -------- | ------------ |
+| `themes-config--clear-markdown-html-block-bg` | removes the background of `markdown-ts-html-block`: HTML comments in Markdown (e.g. `<!-- ltex: ... -->`) are prose, not code |
+| `themes-config--harmonize-markdown-headings` | makes `markdown-ts-heading-1`…`-6` inherit `org-level-1`…`-6`, since the bundled faces all inherit one face and every level renders alike |
+| `themes-config--fix-annotation-contrast` | in `doom-opera-light` only, `completions-annotations` and `marginalia-documentation` get `#8e8e8e`, readable on the `#bdbdbd` of `vertico-current` |
+| `themes-config--fix-magit-header-line-contrast` | in `doom-opera-light` only, `magit-header-line` gets a `#fafafa` foreground; the theme's `#424242` on `#5272AF` is about 2.2:1 |
 
 Adding a new package that needs harmonizing → edit
 `theme-harmonize-theme` in `theme-harmonize.el`. The existing structure is
@@ -60,17 +78,18 @@ pattern.
 ## What `theme-harmonize-theme` actually propagates
 
 Pulled from `(face-background 'line-number)` after the appearance-aware
-override at the top of the function:
+override at the top of the function (skipped while
+`theme-harmonize-line-number-bg` is nil):
 
 | Face                                                        | Why                                                          |
 | ----------------------------------------------------------- | ------------------------------------------------------------ |
-| `line-number`                                               | the source — set first from `theme-harmonize-line-number-bg` |
+| `line-number`                                               | the source — the theme's own, or `theme-harmonize-line-number-bg` when set |
 | `margin` (guarded by `facep`)                               | gutter column blends across the margin (bug#80693 — face only exists on patched builds) |
 | `fringe`                                                    | same column on GUI                                           |
 | `header-line`                                               | lsp-mode headerline breadcrumb bar — individual `lsp-headerline-breadcrumb-*` faces carry no background of their own; the bar color comes entirely from `header-line` |
 | `flycheck-fringe-error` / `-warning` / `-info`              | fringe diagnostic indicators blend with gutter               |
 | `git-gutter:added` / `-modified` / `-deleted` / `-unchanged` / `-separator` (background) | gutter indicators blend with the column                       |
-| `git-gutter:added` / `-modified` / `-deleted` (foreground)  | per-appearance from `theme-harmonize-git-gutter-colors`      |
+| `git-gutter:added` / `-modified` / `-deleted` (foreground)  | per-appearance from `theme-harmonize-git-gutter-colors`, when set |
 | `git-gutter:unchanged` / `-separator` (foreground)          | matches background — invisible spaces, no artifact shows     |
 
 ## Invariants — do not change without reading
@@ -91,15 +110,14 @@ frames are harmonized, not just TTY.
 without a graphical frame still receives the harmonized faces.
 Removing the second hook silently breaks daemon-with-mixed-clients.
 
-### `modus-themes-mixed-fonts nil`
+### The callback disables the other themes before loading
 
-When `t`, modus makes code/table faces inherit from `fixed-pitch` instead
-of `default`. That's useful only when `default` is proportional (a
-prose-writing setup). Since `default` is monospace
-(`early-init.el`), enabling it would route org tables and src blocks
-through whatever `fixed-pitch` resolves to (Courier on macOS, different
-metrics than the rest of the editor) and they would misalign. Keep off
-unless `default` ever becomes proportional.
+`load-theme` layers the new theme on top of the enabled ones: a face the
+new theme does not define keeps the old theme's value. The callback
+therefore runs `(mapc #'disable-theme (remq theme custom-enabled-themes))`
+first. On a new frame the appearance is unchanged, the theme is already
+the only one enabled, and nothing is disabled, so there is no flash. This
+is also why the face fixes above live on `enable-theme-functions`.
 
 ### `zac-load-theme-callback` is set in `:init`, not `:config`
 
@@ -124,9 +142,8 @@ deliberate — the inner `expand-file-name` runs at load time when
   recolored here.
 - `lsp-core.el` — the `header-line` background is set here so the
   lsp headerline breadcrumb bar has a consistent color.
-- `early-init.el` — the `default` font being monospace is what makes
-  `modus-themes-mixed-fonts nil` correct here. Don't change one without
-  reconsidering the other.
+- `markdown-config.el` / `org-config.el` — the Markdown heading faces are
+  derived from Org's `org-level-N`, which `doom-themes-org-config` styles.
 
 ## Where the live appearance state comes from
 

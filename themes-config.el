@@ -7,7 +7,7 @@
 ;;  1. theme-harmonize  — defines `theme-harmonize-theme'.  Must be loaded
 ;;                        first so the function exists before anything calls it.
 ;;
-;;  2. load-theme       — activates the base theme.
+;;  2. doom-themes      — installs the themes; nothing is loaded yet.
 ;;
 ;;  3. zac-theme-autodetection — reads the OS appearance and invokes
 ;;                        `zac-load-theme-callback'.  `theme-harmonize-theme'
@@ -18,8 +18,9 @@
 ;;; Code:
 
 ;; doom-themes: large collection of ported themes.  Theme *selection* is
-;; delegated to zac-theme-autodetection below, which picks doom-one-light or
-;; doom-one from the OS appearance; everything here is theme-independent setup.
+;; delegated to zac-theme-autodetection below, which picks doom-opera-light or
+;; doom-challenger-deep from the OS appearance; everything here is
+;; theme-independent setup.
 (use-package doom-themes
   :straight t
   :demand t
