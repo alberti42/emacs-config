@@ -139,8 +139,8 @@ return an `inline_link` inside a table row. That is a different parser
 instance from the ones font-lock uses, so it proves nothing about
 rendering — don't let it mislead you into thinking the gap is closed.
 
-`markdown-table-view-mode` (the `markdown-table-view` package, enabled
-from `markdown-ts-mode-hook` in this file) adds a rule to the buffer-local
+`pretty-tables-for-markdown-mode` (the `pretty-tables-for-markdown`
+package, enabled from `markdown-ts-mode-hook` in this file) adds a rule to the buffer-local
 `treesit-range-settings` that runs `markdown-inline` on `pipe_table_cell`
 nodes too. The bundled rules then fontify, hide and follow links in a
 cell as they do in a paragraph, and nothing in this file handles tables.
@@ -171,7 +171,7 @@ dependencies from the local `latex-to-svg` checkout.
 - Inline links (paragraphs): entirely the bundled tree-sitter rules,
   reusing nodes the parser already built. Nothing added here.
 - Inline links (tables): the same bundled rules, on the local parsers
-  `markdown-table-view-mode` runs on each cell.
+  `pretty-tables-for-markdown-mode` runs on each cell.
 
 The reasons `markdown-mode` is slow on large files do not apply here:
 
