@@ -38,8 +38,12 @@
              ;; Recompile it here.  `-D' leaves the Homebrew dependencies
              ;; (poppler, automake) alone, and `autobuild' cds to its own
              ;; directory, so the relative path works from the repo root.
-             :post-build ("./server/autobuild" "-D" "-i"
-                          "/Users/andrea/.config/emacs/straight/build/pdf-tools/"))
+             ;; An elisp form rather than a string command, so the build
+             ;; directory is computed instead of naming one machine's home.
+             :post-build ((unless (straight--process-run-p
+                                   "./server/autobuild" "-D" "-i"
+                                   (straight--build-dir "pdf-tools"))
+                            (error "pdf-tools: epdfinfo build failed"))))
   ;; `pdf-loader-install' is autoloaded: it runs at startup, before pdf-tools
   ;; is loaded, and puts entries in `auto-mode-alist' and `magic-mode-alist'
   ;; that load pdf-tools when the first PDF is visited.
