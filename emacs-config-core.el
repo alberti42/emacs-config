@@ -218,17 +218,20 @@ skipped, failures emit a warning instead of aborting startup."
   (let ((cmds
          (mapcar
           (lambda (p)
+            ;; A bare form: straight already `eval's each non-string
+            ;; command, so wrapping it in `eval' would evaluate its
+            ;; return value a second time (the list `warn' returns
+            ;; then signals `invalid-function' and aborts the build).
             (let ((path (expand-file-name p emacs-config-patches-dir)))
-              `(eval
-                (let ((default-directory
-                       (straight--repos-dir ,(symbol-name package))))
-                  (unless (zerop (call-process
+              `(let ((default-directory
+                      (straight--repos-dir ,(symbol-name package))))
+                 (unless (zerop (call-process
                                  "git" nil nil nil
                                  "apply" "--reverse" "--check" ,path))
-                    (unless (zerop (call-process
+                   (unless (zerop (call-process
                                    "git" nil nil nil "apply" ,path))
-                      (warn ,(format "%s: patch %s failed to apply"
-                                     package p))))))))
+                     (warn ,(format "%s: patch %s failed to apply"
+                                    package p)))))))
           patches)))
     (straight-register-package `(,package :pre-build ,cmds))))
 

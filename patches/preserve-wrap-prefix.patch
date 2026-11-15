@@ -20,16 +20,13 @@ indicator takes priority over the before-string fringe indicator
 when both land on the same visual line — which happens when
 word-wrap pushes the error's first word to the next visual line.
 ---
- flycheck.el | 52 ++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 38 insertions(+), 14 deletions(-)
-
 diff --git a/flycheck.el b/flycheck.el
-index ccddb519..b73af003 100644
+index a46a3995..de51e9ae 100644
 --- a/flycheck.el
 +++ b/flycheck.el
-@@ -517,6 +517,23 @@ highlight them according to `flycheck-highlighting-mode'."
-                  (const :tag "Do not indicate" nil))
-   :safe #'symbolp)
+@@ -646,6 +646,23 @@ fixable and non-fixable errors alike."
+   :safe #'booleanp
+   :package-version '(flycheck . "38"))
  
 +(defcustom flycheck-indication-mode-continuation t
 +  "Whether to show continuation indicators on wrapped error lines.
@@ -51,27 +48,19 @@ index ccddb519..b73af003 100644
  (defcustom flycheck-highlighting-mode 'symbols
    "The highlighting mode for Flycheck errors and warnings.
  
-@@ -4766,28 +4783,33 @@ function resolves `conditional' style specifications."
-       (setf (overlay-get overlay 'before-string)
-             (flycheck-error-level-make-indicator
-              level flycheck-indication-mode))
+@@ -7235,8 +7252,9 @@ function resolves `conditional' style specifications."
+                           t)))
+         (setf (overlay-get overlay 'before-string)
+               (flycheck-error-level-make-indicator level side nil fixable)))
 -      (setf (overlay-get overlay 'wrap-prefix)
--            (flycheck-error-level-make-indicator
--             level flycheck-indication-mode t))
+-            (flycheck-error-level-make-indicator level side t))
 +      (when flycheck-indication-mode-continuation
 +        (setf (overlay-get overlay 'wrap-prefix)
-+              (flycheck-error-level-make-indicator
-+               level flycheck-indication-mode t)))
++              (flycheck-error-level-make-indicator level side t)))
        ;; Preserve existing text-property prefixes so the overlay doesn't
        ;; clobber indentation set by other modes.
        ;;
-       ;; line-prefix: copy the text property onto the overlay unchanged
-       ;; (e.g. from org-indent-mode).
-       ;;
--      ;; wrap-prefix: compose the flycheck fringe indicator with the
-+      ;; wrap-prefix: when `flycheck-indication-mode-continuation' is
-+      ;; non-nil, compose the flycheck fringe indicator with the
-       ;; existing value (e.g. from visual-wrap-prefix-mode).  The fringe
+@@ -7248,7 +7266,10 @@ function resolves `conditional' style specifications."
        ;; indicator uses a `display' property for `!' that directly
        ;; renders in the fringe without producing any character in the
        ;; text area.  This effectively-zero-width character is composed
@@ -82,20 +71,8 @@ index ccddb519..b73af003 100644
 +      ;; overlay doesn't clobber it.
        ;;
        ;; Per the Elisp manual ("Properties with Special Meanings"),
--      ;; `wrap-prefix' may be a string, an image, or a stretch spec (`:width' or
--      ;; `:align-to').  When the preexisting value is a string (e.g. a repeated
--      ;; comment prefix like "% "), concatenate it directly; otherwise wrap it
--      ;; in a propertized character via its `display' property so it can be
--      ;; concatenated.
-+      ;; `wrap-prefix' may be a string, an image, or a stretch spec
-+      ;; (`:width' or `:align-to').  When the preexisting value is a
-+      ;; string (e.g. a repeated comment prefix like "% "), concatenate
-+      ;; it directly; otherwise wrap it in a propertized character via
-+      ;; its `display' property so it can be concatenated.
-       ;;
-       ;; Without this, an error overlay on the first character of a
-       ;; soft-wrapped visual continuation line replaces the indentation
-@@ -4803,10 +4825,12 @@ function resolves `conditional' style specifications."
+       ;; `wrap-prefix' may be a string, an image, or a stretch spec (`:width' or
+@@ -7271,10 +7292,12 @@ function resolves `conditional' style specifications."
                (setf (overlay-get overlay 'line-prefix) existing-lp))
              (when existing-wp
                (setf (overlay-get overlay 'wrap-prefix)
@@ -112,6 +89,3 @@ index ccddb519..b73af003 100644
      (pcase (flycheck--highlighting-style err)
        ((or `nil (guard (null flycheck-highlighting-mode)))
         ;; Erase the highlighting
--- 
-2.54.0
-
