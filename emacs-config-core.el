@@ -105,7 +105,8 @@ place indefinitely."
   "Load local MODULE from `emacs-config-dir`.
 
 MODULE is a symbol or string (e.g. 'zac-theme-autodetection).
-If loading fails, emit WARNING via `display-warning` and return nil.
+If the file is missing or signals an error while loading, emit WARNING
+via `display-warning` and return nil, so startup goes on.
 On success, return non-nil.
 
 Always loads the `.el' source and never a `.elc'.  Passing the explicit
@@ -127,10 +128,19 @@ shadowing bug above."
                                (file-name-nondirectory elc))
                        :warning)
       (ignore-errors (delete-file elc)))
-    (if (load path t 'nomessage 'nosuffix)
-        t
-      (display-warning 'init warning :warning)
-      nil)))
+    ;; NOERROR only covers a missing file; an error signalled while the
+    ;; module runs (e.g. straight failing to clone a recipe) would abort
+    ;; init.el and skip every module after this one, so catch it too.
+    (condition-case err
+        (if (load path t 'nomessage 'nosuffix)
+            t
+          (display-warning 'init warning :warning)
+          nil)
+      (error
+       (display-warning 'init
+                        (format "%s\n%s" warning (error-message-string err))
+                        :error)
+       nil))))
 
 ;; Keep Emacs Customize UI writes out of init.el.
 ;;
