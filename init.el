@@ -7,16 +7,33 @@
     ("LS27A80" . 150)
     ("Unknown"     . 150))
   "Alist mapping a monitor name to the `default' face :height (in 1/10 pt).
-The \"Unknown\" entry is the fallback used for any monitor not listed.")
+The \"Unknown\" entry is the fallback used for any monitor not listed.
+Heights are in macOS terms; `emacs-config-font-height-scale' converts
+them for the platform.")
+
+(defvar emacs-config-font-height-scale
+  (if (eq system-type 'darwin) 1.0 0.75)
+  "Factor applied to every height in `emacs-config-font-height-by-monitor'.
+A point is not the same size on screen on every platform.  macOS turns
+points into pixels at 72 per logical inch, so 15 pt is 15 logical
+pixels.  GTK (the PGTK and X builds) uses the desktop's DPI, which is 96
+per logical inch at any scaling (`Xft.dpi' 192 at 2x), so the same 15 pt
+is 20 logical pixels, a third larger.  0.75 = 72/96 undoes that, so one
+table gives text of the same size on both.")
+
+(defun emacs-config-font-scaled-height (height)
+  "Return HEIGHT, in macOS terms, converted for this platform."
+  (round (* height emacs-config-font-height-scale)))
 
 (defun emacs-config-font-height-for-frame (frame)
   "Return the configured `default' :height for FRAME's monitor.
 Looks up the monitor name in the alist `emacs-config-font-height-by-monitor',
-falling back to the \"Unknown\" entry."
+falling back to the \"Unknown\" entry, and converts it with
+`emacs-config-font-scaled-height'."
   (let* ((name (alist-get 'name (frame-monitor-attributes frame)))
          (entry (or (assoc name emacs-config-font-height-by-monitor)
                     (assoc "Unknown" emacs-config-font-height-by-monitor))))
-    (cdr entry)))
+    (emacs-config-font-scaled-height (cdr entry))))
 
 (defvar emacs-config-emoji-font-family
   (if (eq system-type 'darwin) "Apple Color Emoji" "Noto Color Emoji")
@@ -87,7 +104,8 @@ emoji font therefore lacks (e.g. U+1F322 BLACK DROPLET)."
 ;; `emacs-config-apply-frame-font' refines it.
 (set-face-attribute 'default nil
                     :family "JetBrainsMonoNL Nerd Font Mono" :weight 'light
-                    :height (cdr (assoc "Unknown" emacs-config-font-height-by-monitor)))
+                    :height (emacs-config-font-scaled-height
+                             (cdr (assoc "Unknown" emacs-config-font-height-by-monitor))))
 
 ;; Apply `emacs-config-apply-frame-font' right now for the initial (non-daemon)
 ;; frame and configure a hook that covers daemon / emacsclient frames and any
