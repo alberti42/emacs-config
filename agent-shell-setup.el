@@ -7,7 +7,7 @@
 (use-package agent-shell
   ;; :straight (agent-shell
   ;;            :type git
-  ;;            :local-repo "~/Documents/Programming/Others/fork-agent-shell")
+  ;;            :local-repo "~/Programming/Others/fork-agent-shell")
   :custom
   (agent-shell-show-context-usage-indicator 'detailed)
   (agent-shell-session-restore-verbosity 'full)
@@ -75,7 +75,7 @@ Resolves symlinks so the path matches what Pi records for its sessions."
   (setq agent-shell-pi-acp-command
         (list "node"
               (expand-file-name
-               "~/Documents/Programming/Others/fork-pi-acp/dist/index.js")))
+               "~/Programming/Others/fork-pi-acp/dist/index.js")))
 
   ;; Reflect the ACP session title in the shell buffer name, e.g.
   ;; "Pi Agent @ <session title>" instead of "Pi Agent @ <project>".
@@ -111,7 +111,7 @@ the new title.  Runs with the shell buffer current (see
              ;; Development happens on `develop'; `main' is fast-forwarded
              ;; to it at each release.
              :branch "develop"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/agent-shell-math-renderer")
+             :local-repo "~/Programming/Emacs/agent-shell-math-renderer")
   :after agent-shell
   ;; Rendering is driven by the buffer-local `agent-shell-math-renderer-mode',
   ;; which must be turned on from `agent-shell-mode-hook'.

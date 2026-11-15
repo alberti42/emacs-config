@@ -173,7 +173,7 @@ stale across `project.el` root changes.
 
 The `:straight` recipe points `lsp-mode` at a personal fork
 (`:branch "merged"`, mirrored locally at
-`~/Documents/Programming/Others/fork-lsp-mode`) rather than upstream MELPA.
+`~/Programming/Others/fork-lsp-mode`) rather than upstream MELPA.
 The fork exists to carry a patch from an **upstream PR still under review**,
 not yet in a released lsp-mode. Do **not** switch this to the stock recipe
 until that PR lands upstream, or the patch is lost.

@@ -192,7 +192,7 @@ monitor."
 (global-unset-key (kbd "C-t"))
 
 ;; Add reference to Emacs C source files
-(let ((src "~/Documents/Programming/Others/fork-emacs"))
+(let ((src "~/Programming/Others/fork-emacs"))
   (when (file-directory-p src)
     (setq source-directory src)))
 

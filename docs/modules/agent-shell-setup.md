@@ -30,7 +30,7 @@ The `agent-shell-opencode-acp-command` value passes `--attach <url>` to
 binary on `$PATH` must come from a personal fork that carries the patch:
 
 - Fork repo: <https://github.com/alberti42/fork-opencode>
-- Local working copy: `~/Documents/Programming/Others/fork-opencode.nosync`
+- Local working copy: `~/Programming/Others/fork-opencode.nosync`
 - Feature branch: `acp-attach` (clean feature commit on top of upstream `dev`).
 - Working branch: `integrated` (carries the same patch alongside other
   local changes; this is what's typically built and installed).

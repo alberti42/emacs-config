@@ -10,7 +10,7 @@ step** — an inline image, or an overlay before/after-string carrying an
 image (the markdown-ts `"\n " + image` idiom is the worst case).
 
 The commits live in the local Emacs fork
-(`~/Documents/Programming/Others/fork-emacs`) on branch
+(`~/Programming/Others/fork-emacs`) on branch
 `fix/pixel-scroll-precision-margin-settle`.
 
 ## The series (apply in this order)
@@ -84,7 +84,7 @@ Three distinct misbehaviours, all triggered by a tall line:
 ## Verifying
 
 ```sh
-cd ~/Documents/Programming/Others/fork-emacs
+cd ~/Programming/Others/fork-emacs
 make -j8                       # ~10s incremental for one TU
 
 # regression test for commit 3 (runs in batch):
@@ -99,7 +99,7 @@ load-and-run reproducer in the same style as the other `docs/debug-*.el`. Each
 test opens a buffer that documents itself.
 
 ```sh
-EMACS=~/Documents/Programming/Others/fork-emacs/src/emacs   # or any build
+EMACS=~/Programming/Others/fork-emacs/src/emacs   # or any build
 $EMACS -Q --load docs/debug-pixel-scroll-tall-line.el \
        --eval '(pixel-scroll-tall-line-test-001)'
 ```

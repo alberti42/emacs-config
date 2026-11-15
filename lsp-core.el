@@ -11,7 +11,7 @@
   :straight (lsp-mode
              :type git
              :host github
-             :local-repo  "/Users/andrea/Documents/Programming/Others/fork-lsp-mode"
+             :local-repo  "~/Programming/Others/fork-lsp-mode"
              :branch "merged"
              ;; :branch "fix/diagnostics-remap-on-edit"
              :repo "alberti42/fork-lsp-mode")

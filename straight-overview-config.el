@@ -18,7 +18,7 @@
   :straight (straight-overview
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/straight-overview"
+             :local-repo "~/Programming/Emacs/straight-overview"
              :repo "alberti42/straight-overview")
   :commands (straight-overview)
   :init

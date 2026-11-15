@@ -19,7 +19,7 @@
   :straight (git-gutter
              :host github
              :repo "alberti42/fork-git-gutter"
-             :local-repo "/Users/andrea/Documents/Programming/Others/git-gutter"
+             :local-repo "~/Programming/Others/git-gutter"
              :branch "master"
              :files ("git-gutter.el"))
   ;; git-gutter does not define `git-gutter-mode-map' (its `define-minor-mode'

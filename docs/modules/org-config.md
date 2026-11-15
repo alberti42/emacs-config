@@ -76,7 +76,7 @@ Consequences of using built-in Org (for anything other than math preview, which
 In-buffer math is **not** rendered by built-in Org's classic
 `org-latex-preview`. It is rendered by the homegrown **`org-latex-to-svg`**
 package, a front-end over the standalone **`latex-to-svg`** engine. Both live
-in `~/Documents/Programming/Emacs/` and are wired in at the end of
+in `~/Programming/Emacs/` and are wired in at the end of
 `org-config.el` via local-checkout straight recipes; `org-mode-hook` turns on
 `org-latex-to-svg-mode`, which renders every `latex-fragment` /
 `latex-environment` on open.
@@ -180,7 +180,7 @@ Math rendering is owned by the homegrown `org-latex-to-svg` (over `latex-to-svg`
 wired in at the bottom of the file. Do NOT resurrect the tecosaur fork
 dependency for math. Enhancements (per-keystroke live update, reveal-on-cursor,
 equation numbering, `\eqref`) belong in those packages'
-(`~/Documents/Programming/Emacs/{latex-to-svg,org-latex-to-svg}`) repos, not
+(`~/Programming/Emacs/{latex-to-svg,org-latex-to-svg}`) repos, not
 here. `org-config.el` only wires the mode on and keeps classic `org-latex-preview`
 (dvisvgm) as an off-mode fallback. `org-karthink-config.el` remains unloaded,
 kept only for reference.

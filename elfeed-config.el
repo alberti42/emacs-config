@@ -53,7 +53,7 @@ alone."
              :type git
              :inherit nil
              :branch "develop"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :local-repo "~/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-elfeed.el"))
   :hook (elfeed-show-mode . latex-to-svg-for-elfeed-mode))
 

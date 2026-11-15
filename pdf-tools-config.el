@@ -30,7 +30,7 @@
              :host github
              :repo "alberti42/fork-pdf-tools"
              :branch "merged"
-             :local-repo "/Users/andrea/Documents/Programming/Others/fork-pdf-tools"
+             :local-repo "~/Programming/Others/fork-pdf-tools"
              :files (:defaults "README" ("build" "Makefile") ("build" "server"))
              ;; A rebuild reconstructs the build directory from `:files', which
              ;; drops the `epdfinfo' binary `pdf-tools-install' compiled into

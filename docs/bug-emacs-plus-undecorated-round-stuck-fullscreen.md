@@ -65,7 +65,7 @@ Confirm with `NSLog` in the non-native branch of `-toggleFullScreen:` and in
 ## Where it lives
 
 - **Local Emacs source fork (for building/testing):**
-  `/Users/andrea/Documents/Programming/Others/fork-emacs`
+  `~/Programming/Others/fork-emacs`
   - `emacs-31` = the vanilla base branch (build this to confirm vanilla is unaffected).
   - `fix-ns-invisible-child-frame-resurrection` = the branch carrying our skip-attach fix
     (the *other*, upstream bug — see *Related*).

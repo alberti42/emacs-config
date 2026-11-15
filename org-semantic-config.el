@@ -54,7 +54,7 @@
 ;; a symlink there:
 ;;
 ;;   mkdir -p ~/.config/emacs/org-semantic
-;;   ln -sf ~/Documents/Programming/Emacs/org-semantic/target/release/org-semantic \
+;;   ln -sf ~/Programming/Emacs/org-semantic/target/release/org-semantic \
 ;;          ~/.config/emacs/org-semantic/org-semantic
 ;;
 ;; `cargo build --release' then updates what Emacs runs, with no copying — and
@@ -69,7 +69,7 @@
   :straight (org-semantic
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/org-semantic"
+             :local-repo "~/Programming/Emacs/org-semantic"
              :repo "alberti42/org-semantic"
              ;; The Lisp lives under lisp/; straight's default recipe would
              ;; look for *.el at the repository root and find nothing.

@@ -280,7 +280,7 @@ buffer-locally before the adaptor turns on the shared core."
              :type git
              :inherit nil
              :branch "develop"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :local-repo "~/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-for-latex.el"))
   :hook
   (LaTeX-mode-hook . latex-config--latex-to-svg-setup)

@@ -15,7 +15,7 @@
   :straight (lsp-ltex-plus
              :type git
              :host github
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/emacs-ltex-plus"
+             :local-repo "~/Programming/Emacs/emacs-ltex-plus"
              ;; :branch "lsp-mode"
              :repo "alberti42/emacs-ltex-plus")
 

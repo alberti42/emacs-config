@@ -26,7 +26,7 @@
              :type git
              :inherit nil
              :branch "develop"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg-backend")
+             :local-repo "~/Programming/Emacs/latex-to-svg-backend")
   :defer t
   :custom
   ;; Equation size relative to the surrounding buffer font.  1.0 = match; a bit
@@ -57,7 +57,7 @@ print-unity-mantissa=false,
              :type git
              :inherit nil
              :branch "develop"
-             :local-repo "/Users/andrea/Documents/Programming/Emacs/latex-to-svg"
+             :local-repo "~/Programming/Emacs/latex-to-svg"
              :files ("latex-to-svg-frontend.el"))
   :defer t
   :custom
