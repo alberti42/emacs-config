@@ -34,7 +34,7 @@ A project may override it from `.dir-locals.el', e.g. \"make -j8\" or
 
 (defvar compile-config--last-target (make-hash-table :test #'equal)
   "Last target run, keyed by the directory holding the makefile.
-Makes a repeat build `C-c c RET'.")
+Makes a repeat build `C-c M-c RET'.")
 
 (defun compile-config--makefile (dir)
   "Return the makefile governing DIR, or nil if it has none."
@@ -120,7 +120,7 @@ the way to append one-off flags."
           (my/compile-make make-dir)
         (compile compile-command)))))
 
-(keymap-global-set "C-c c" #'my/compile-dwim)
+(keymap-global-set "C-c M-c" #'my/compile-dwim)
 
 ;;; Quiet builds: no window unless the command fails
 
