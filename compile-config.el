@@ -102,23 +102,21 @@ last built there, else the makefile's own default goal (its first rule)."
 
 (defun my/compile-dwim (&optional edit)
   "Build the current buffer's project, without a minibuffer prompt.
-Runs `compile-command' in `default-directory'.  When that is only the
-global default and a makefile governs the directory, prompt for a target
-instead (see `my/compile-make') — a project states \"just run this\" by
-setting `compile-command' from its `.dir-locals.el', which is a
-buffer-local binding and therefore wins.
+Runs `compile-command' in `default-directory' when the buffer sets it
+locally, which a project does from its `.dir-locals.el'.  Otherwise
+prompt for a target of the makefile governing the directory (see
+`my/compile-make'), and when there is none, say so in the echo area.
 
 With prefix argument EDIT, prompt for the shell command itself, which is
 the way to append one-off flags."
   (interactive "P")
-  (if edit
-      (call-interactively #'compile)
-    ;; Only walk the tree when no project has claimed `compile-command'.
-    (let ((make-dir (and (not (local-variable-p 'compile-command))
-                         (compile-config--make-dir))))
-      (if make-dir
-          (my/compile-make make-dir)
-        (compile compile-command)))))
+  (let (make-dir)
+    (cond
+     (edit (call-interactively #'compile))
+     ((local-variable-p 'compile-command) (compile compile-command))
+     ((setq make-dir (compile-config--make-dir)) (my/compile-make make-dir))
+     (t (message "No makefile in %s or above, and no local `compile-command'"
+                 (abbreviate-file-name default-directory))))))
 
 (keymap-global-set "C-c M-c" #'my/compile-dwim)
 
