@@ -10,7 +10,9 @@
 ;; predicate accepts a directory-local string only while
 ;; `compilation-read-command' is non-nil, i.e. only when the command would still
 ;; be shown in the minibuffer before running.  The global default is therefore
-;; left at t and the prompt is skipped per invocation instead.
+;; left at t, and `my/compile-dwim' skips the prompt only for a command set by
+;; a `.dir-locals.el' in `safe-local-variable-directories' (see
+;; `safe-locals-config.el') or by Lisp code such as a major mode.
 
 (require 'compile)
 
@@ -26,8 +28,9 @@
 (defvar compile-config-make-command "make"
   "Program, with any flags, used to run a Makefile target.
 A project may override it from `.dir-locals.el', e.g. \"make -j8\" or
-\"make -k\".")
-(put 'compile-config-make-command 'safe-local-variable #'stringp)
+\"make -k\".  It is not a safe local variable: the command runs without
+being shown, so Emacs asks before applying a project's value unless the
+directory is in `safe-local-variable-directories'.")
 
 (defvar compile-config-makefile-names '("GNUmakefile" "makefile" "Makefile")
   "Makefile names, in the order GNU make itself looks for them.")
@@ -100,19 +103,44 @@ last built there, else the makefile's own default goal (its first rule)."
     (let ((default-directory dir))
       (compile (string-trim (concat command " " target))))))
 
+(defun compile-config--command-trusted-p ()
+  "Return non-nil if the buffer's `compile-command' may run unseen.
+That is the case when Lisp code set it, and when a `.dir-locals.el' in
+`safe-local-variable-directories' set it.  A value from any other
+`.dir-locals.el', or from the file's own local variables, is not trusted."
+  (let ((applied (assq 'compile-command file-local-variables-alist)))
+    (cond
+     ;; Set by Lisp code (a major mode, a hook) after local variables.
+     ((not (equal (cdr applied) compile-command)) t)
+     ;; Set by the file's own local variables.
+     ((not (equal applied (assq 'compile-command dir-local-variables-alist)))
+      nil)
+     ;; Set by a `.dir-locals.el': trusted with the directory holding it,
+     ;; the directory Emacs compares with `safe-local-variable-directories'.
+     (t
+      (let* ((found (dir-locals-find-file (or buffer-file-name default-directory)))
+             (dir (if (consp found) (car found) found)))
+        (and dir
+             (seq-some (lambda (safe) (file-equal-p safe dir))
+                       safe-local-variable-directories)))))))
+
 (defun my/compile-dwim (&optional edit)
   "Build the current buffer's project, without a minibuffer prompt.
 Runs `compile-command' in `default-directory' when the buffer sets it
-locally, which a project does from its `.dir-locals.el'.  Otherwise
-prompt for a target of the makefile governing the directory (see
-`my/compile-make'), and when there is none, say so in the echo area.
+locally, which a project does from its `.dir-locals.el'.  The command is
+shown in the minibuffer first unless `compile-config--command-trusted-p'.
+Otherwise prompt for a target of the makefile governing the directory
+\(see `my/compile-make'), and when there is none, say so in the echo area.
 
 With prefix argument EDIT, prompt for the shell command itself, which is
 the way to append one-off flags."
   (interactive "P")
   (let (make-dir)
     (cond
-     (edit (call-interactively #'compile))
+     ((or edit
+          (and (local-variable-p 'compile-command)
+               (not (compile-config--command-trusted-p))))
+      (call-interactively #'compile))
      ((local-variable-p 'compile-command) (compile compile-command))
      ((setq make-dir (compile-config--make-dir)) (my/compile-make make-dir))
      (t (message "No makefile in %s or above, and no local `compile-command'"
