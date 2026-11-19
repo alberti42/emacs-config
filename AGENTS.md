@@ -260,6 +260,7 @@ Current syntax modules:
 - `syntaxes/pdf-tools.el`: disables the line numbers that `global-display-line-numbers-mode` turns on in every pdf-tools buffer, from the hooks of `pdf-view-mode` (which also runs in `pdf-virtual-view-mode`, derived from it), `pdf-annot-list-mode`, `pdf-outline-buffer-mode`, `pdf-occur-buffer-mode`, `pdf-metadata-buffer-mode` and `pdf-annot-edit-contents-minor-mode`. The annotation edit buffer (`*Edit Annotation …*`) runs plain `org-mode` or `latex-mode`; the minor mode is what marks it, and its hook runs after theirs.
 - `syntaxes/elfeed.el`: disables line numbers in `elfeed-search-mode` and `elfeed-show-mode`.
 - `syntaxes/help.el`: disables line numbers in `help-mode`.
+- `syntaxes/image.el`: disables line numbers and `git-gutter-mode` in `image-mode`. `git-gutter-mode` is turned off from the major-mode hook, which marks it as set explicitly, so `global-git-gutter-mode` leaves it off.
 - `syntaxes/xwidget.el`: disables line numbers in `xwidget-webkit-mode` (the embedded webkit view used by typst-preview).
 
 Wrapping:
