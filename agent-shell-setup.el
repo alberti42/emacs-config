@@ -110,7 +110,14 @@ the new title.  Runs with the shell buffer current (see
   (setq agent-shell-math-renderer-display-rescale 1.0)
   (setq agent-shell-math-renderer-padding-display '(10 0 10 0))
   ;; Select the default engine
-  (setq agent-shell-math-renderer-engine 'texres))
+  (setq agent-shell-math-renderer-engine 'texres)
+  ;; Ask the agent for the delimiters the renderer draws.  Only agents with
+  ;; ACP's `systemPrompt' capability receive it; pi-acp does not have it.
+  (setopt agent-shell-system-prompt
+          "When a reply contains a mathematical formula, write short inline \
+formulas as \\( ... \\) and longer display equations as \\[ ... \\] starting \
+on a new line.  This applies only to formulas in replies, not to files you \
+write."))
 
 (provide 'agent-shell-setup)
 ;;; agent-shell-setup.el ends here
