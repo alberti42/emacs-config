@@ -16,9 +16,17 @@
   (agent-shell-opencode-default-model-id "openai/gpt-5.5")
   (agent-shell-opencode-acp-command '("opencode" "acp"))
   (agent-shell-preferred-agent-config '(preselect . pi))
-  :bind (:map agent-shell-mode-map
-              ("M-RET" . newline)
-              ("C-c e" . agent-shell-prompt-compose))
+  :bind ((:map agent-shell-mode-map
+               ("M-RET" . newline)
+               ("C-c e" . agent-shell-prompt-compose))
+         (:map project-prefix-map
+               ("a" . agent-shell)))
+  :init
+  ;; Add `agent-shell' to the menu of `project-switch-project' (C-x p p); the
+  ;; menu takes its key from the binding in `project-prefix-map'.  In :init,
+  ;; not :config: :config runs only once agent-shell is loaded.
+  (with-eval-after-load 'project
+    (add-to-list 'project-switch-commands '(agent-shell "Agent shell") t))
   :config
   ;; Use the project root as the agent's working directory (monorepo
   ;; subprojects are pinned via `project-vc-extra-root-markers', so project.el
