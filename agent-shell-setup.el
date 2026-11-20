@@ -48,10 +48,11 @@ Resolves symlinks so the path matches what Pi records for its sessions."
   ;; sessions by comparing this string.
   (setq agent-shell-path-resolver-function #'directory-file-name)
 
-  ;; Run pi-acp from upstream main, built in a local checkout, which includes
-  ;; the fix in PR #126.  The released version 0.0.34 does not include the fix
-  ;; yet. When a new release is available, update with `npm update -g pi-acp'
-  ;; and remove this custom command.
+  ;; Run pi-acp from the branch `merged' of our fork, built in a local
+  ;; checkout: upstream main, which includes PR #126 (session renames), plus
+  ;; PR #176 (steering).  The released version 0.0.34 includes neither.  When
+  ;; a release includes both, update with `npm update -g pi-acp' and remove
+  ;; this custom command.  Rebuild after merging another PR: `npm run build'.
   (setq agent-shell-pi-acp-command
         (list "node"
               (expand-file-name
