@@ -16,6 +16,8 @@
   (agent-shell-opencode-default-model-id "openai/gpt-5.5")
   (agent-shell-opencode-acp-command '("opencode" "acp"))
   (agent-shell-preferred-agent-config '(preselect . pi))
+  ;; Open a shell with an empty prompt, not one holding the line at point.
+  (agent-shell-context-sources nil)
   :bind ((:map agent-shell-mode-map
                ("M-RET" . newline)
                ("C-c e" . agent-shell-prompt-compose))
@@ -28,23 +30,9 @@
   (with-eval-after-load 'project
     (add-to-list 'project-switch-commands '(agent-shell "Agent shell") t))
   :config
-  ;; Use the project root as the agent's working directory (monorepo
-  ;; subprojects are pinned via `project-vc-extra-root-markers', so project.el
-  ;; already resolves a marked subdirectory to its own root).  With a
-  ;; project-root cwd shared by every buffer in the project, stock session
-  ;; reuse (which matches on `equal' of `agent-shell-cwd') already groups them,
-  ;; so no `agent-shell-project-buffers' override is needed.
-  ;;
-  ;; The custom bits both exist to match the exact cwd string `pi-acp' filters
-  ;; on.  Pi runs via Node `process.cwd()', which resolves symlinks, so it
-  ;; records sessions under the *physical* path; `file-truename' canonicalizes
-  ;; here so a symlinked `default-directory' (e.g. through ~/.config/dotfiles)
-  ;; still matches.  The function keeps the trailing slash, because the shell
-  ;; buffer's `default-directory' is this value and without the slash Emacs
-  ;; looks for .dir-locals.el in the parent directory.  The path resolver strips
-  ;; the slash Pi omits from every path agent-shell sends the agent.  Once
-  ;; pi-acp normalizes its cwd match, the function and the resolver can be
-  ;; dropped and both variables left nil.
+  ;; Start agents in the project root, else in `default-directory', as stock
+  ;; agent-shell does, but with symlinks resolved: Pi records its sessions
+  ;; under the resolved path.
   (defun my/agent-shell-cwd-function ()
     "Return the project root (else `default-directory') canonicalized.
 
@@ -55,43 +43,27 @@ Resolves symlinks so the path matches what Pi records for its sessions."
           (project-root proj)
         default-directory))))
   (setq agent-shell-cwd-function #'my/agent-shell-cwd-function)
+  ;; Send directories without the trailing slash Emacs adds, as `pwd' would
+  ;; write them; Pi needs no trailing slash because it finds a project's
+  ;; sessions by comparing this string.
   (setq agent-shell-path-resolver-function #'directory-file-name)
 
-  ;; Don't let the `agent-shell' launcher paste the active region/context into
-  ;; a new shell's first prompt -- opening a shell should just open it.  The
-  ;; launcher routes context through `agent-shell--dwim', so bind the sources
-  ;; to nil for that function's dynamic extent.  `agent-shell-send-dwim' (and
-  ;; the other `agent-shell-send-*' commands) gather context *outside* that
-  ;; extent, so they keep the full `agent-shell-context-sources' behavior.
-  (defun my/agent-shell--dwim-without-context (orig-fn &rest args)
-    "Run ORIG-FN (`agent-shell--dwim') without carrying automatic context."
-    (let ((agent-shell-context-sources nil))
-      (apply orig-fn args)))
-  (advice-add 'agent-shell--dwim :around
-              #'my/agent-shell--dwim-without-context)
-
-  ;; Run our forked pi-acp instead of the npm-global one.  The fork adds a
-  ;; `session_info_changed' -> ACP `session_info_update' bridge: when the
-  ;; agent renames its own session (the `set_session_name' extension tool
-  ;; calling `pi.setSessionName'), pi emits `session_info_changed' on its RPC
-  ;; event stream, which upstream pi-acp drops.  The fork forwards it as a
-  ;; `session_info_update' carrying the new title, so agent-shell can react.
-  ;; Invoked via `node <dist>' (rather than the `pi-acp' bin on PATH) so the
-  ;; switch is explicit, self-contained, and trivially reversible; the fork's
-  ;; bundle externalizes `@agentclientprotocol/sdk', resolved from the fork's
-  ;; own node_modules.  Rebuild after editing the fork: `npm run build'.
+  ;; Run pi-acp from upstream main, built in a local checkout, which includes
+  ;; the fix in PR #126.  The released version 0.0.34 does not include the fix
+  ;; yet. When a new release is available, update with `npm update -g pi-acp'
+  ;; and remove this custom command.
   (setq agent-shell-pi-acp-command
         (list "node"
               (expand-file-name
                "~/Programming/Others/fork-pi-acp/dist/index.js")))
 
-  ;; Reflect the ACP session title in the shell buffer name, e.g.
-  ;; "Pi Agent @ <session title>" instead of "Pi Agent @ <project>".
-  ;; agent-shell already stores the title (from the ACP `session_info_update')
-  ;; into session state and emits `session-title-changed'; we subscribe to it
-  ;; per shell and rename the buffer to <prefix><title>.  Until the agent sets
-  ;; an explicit name, agent-shell seeds the title from the first user prompt,
-  ;; so the buffer name tracks that first, then updates when the tool fires.
+  ;; Reflect the ACP session title in the shell buffer name, e.g.  "Pi Agent @
+  ;; <session title>" instead of "Pi Agent @ <project>".  agent-shell already
+  ;; stores the title (from the ACP `session_info_update') into session state
+  ;; and emits `session-title-changed'; we subscribe to it per shell and rename
+  ;; the buffer to <prefix><title>.  Until the agent sets an explicit name,
+  ;; agent-shell seeds the title from the first user prompt, so the buffer name
+  ;; tracks that first, then updates when the tool fires.
   (defun my/agent-shell-sync-buffer-name (event)
     "Rename the shell buffer to \"<Agent> Agent @ <session title>\".
 EVENT is the `session-title-changed' payload; its `(:data :title)' holds
