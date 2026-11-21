@@ -43,7 +43,59 @@
   ;; To customize a subdir WITHOUT making it a subproject, don't drop a
   ;; `.dir-locals.el' there — put a `("subdir" . ((mode-or-nil . ((var . val)))))'
   ;; entry in the repo-root `.dir-locals.el' instead (deepest match wins).
-  (project-vc-extra-root-markers '(".dir-locals.el")))
+  (project-vc-extra-root-markers '(".dir-locals.el"))
+  :config
+  (advice-add 'project-find-dir :override #'project-config-find-dir))
+
+(defun project-config--list-dirs (root ignores)
+  "Return the directories under ROOT, relative and ending in a slash.
+IGNORES is a list of patterns in the form `project-ignores' returns.
+ROOT itself is left out, and so is every directory named in
+`vc-directory-exclusion-list': IGNORES excludes only what is inside such
+a directory (`*/.git/*'), which for files is the same thing."
+  (let ((default-directory (file-name-as-directory root))
+        (command (format "%s -L . %s -type d -print0"
+                         find-program
+                         (xref--find-ignores-arguments ignores "./")))
+        dirs)
+    (with-temp-buffer
+      ;; A subdirectory that cannot be read makes find exit non-zero; the
+      ;; directories it printed are still used, and its errors are dropped.
+      (process-file-shell-command command nil '(t nil))
+      (dolist (dir (split-string (buffer-string) "\0" t))
+        (unless (or (equal dir ".")
+                    (member (file-name-nondirectory dir)
+                            vc-directory-exclusion-list))
+          (push (concat (string-remove-prefix "./" dir) "/") dirs))))
+    (sort dirs #'string<)))
+
+(defun project-config-find-dir ()
+  "Start Dired in a directory inside the current project.
+Replaces `project-find-dir'.  In a project without version control,
+the candidates are read from the file system, so empty directories and
+directories holding only subdirectories are offered too.  Directories
+named in `vc-directory-exclusion-list' are skipped.  In a project under
+version control, the candidates are the directories of `project-files',
+as in `project-find-dir'."
+  (interactive)
+  (require 'xref)
+  (let* ((project (project-current t))
+         (root (project-root project))
+         (completion-ignore-case read-file-name-completion-ignore-case)
+         (all-dirs
+          (cons "./"
+                (if (and (eq (car project) 'vc) (cadr project))
+                    (let ((project-files-relative-names t))
+                      (delq nil (delete-dups
+                                 (mapcar #'file-name-directory
+                                         (project-files project)))))
+                  (project-config--list-dirs
+                   root (project-ignores project root)))))
+         (default-directory root)
+         (dir (project--read-file-name
+               project "Dired" all-dirs nil 'file-name-history
+               (project--find-default-from default-directory project))))
+    (dired dir)))
 
 (provide 'project-config)
 ;;; project-config.el ends here
