@@ -21,6 +21,15 @@ window, as with `magit-display-buffer-same-window-except-diff-v1'."
   :bind
   ("C-c g" . magit-status)
   ("C-c M-g" . magit-dispatch)
+  (:map project-prefix-map
+        ("m" . magit-project-status))
+  :init
+  ;; Add `magit-project-status' to the menu of `project-switch-project'
+  ;; (C-x p p); the menu takes its key from the binding in
+  ;; `project-prefix-map'.  In :init, not :config: :config runs only once
+  ;; Magit is loaded.
+  (with-eval-after-load 'project
+    (add-to-list 'project-switch-commands '(magit-project-status "Magit") t))
   :config
   ;; Show fine-grained word-level diffs within a hunk.
   (setq magit-diff-refine-hunk 'all)
