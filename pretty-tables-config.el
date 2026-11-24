@@ -22,6 +22,7 @@
   :defer t
   :custom
   (pretty-tables-borders 'lines)
+  (pretty-tables-width '150)
   (pretty-tables-separator-spacing 0.25)
   (pretty-tables-pretty-tables-image-spacing 0.5)
   (pretty-tables-image-spacing-factor 2))
