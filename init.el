@@ -88,6 +88,13 @@ emoji font therefore lacks (e.g. U+1F322 BLACK DROPLET)."
     (set-fontset-font t '(#xe000 . #xffff) spec)
     (set-fontset-font t '(#xf0000 . #xfffff) spec)))
 
+(defun emacs-config-setup-star-fontset ()
+  "Render ★ (U+2605) and ☆ (U+2606) with \"Symbola\".
+The `default' font lacks both, and the fallback Emacs picks for them
+otherwise is Inter, a proportional font."
+  (set-fontset-font t '(#x2605 . #x2606)
+                    (font-spec :family "Symbola") nil 'prepend))
+
 (defun emacs-config-apply-frame-font (&optional frame)
   "Set FRAME's `default' :height and emoji size from its monitor.
   No-op on TTY frames, which ignore font face attributes."
@@ -96,7 +103,8 @@ emoji font therefore lacks (e.g. U+1F322 BLACK DROPLET)."
       (let ((height (emacs-config-font-height-for-frame frame)))
         (set-face-attribute 'default frame :height height)
         (emacs-config-setup-emoji-fontset height)
-        (emacs-config-setup-pua-fontset frame)))))
+        (emacs-config-setup-pua-fontset frame)
+        (emacs-config-setup-star-fontset)))))
 
 ;; We specify the default font for GUI frames; TTY frames ignore font face
 ;; attributes.  We configure the family/weight plus a baseline height (the
