@@ -159,6 +159,12 @@ in the buffer-local switches)."
 ;; bits, directories, symlinks, executables, compressed files, etc.  Works in
 ;; both GUI and TTY.
 (use-package diredfl
+  ;; Fork with the fix for symlink names containing spaces (purcell/diredfl
+  ;; PR pending).  straight builds whatever branch the checkout is on.
+  :straight (diredfl :type git :host github
+                     :repo "alberti42/fork-diredfl"
+                     :branch "fix-symlink-face"
+                     :local-repo "~/Programming/Others/fork-diredfl")
   :hook (dired-mode . diredfl-mode))
 
 ;;; -- Nerd icons --------------------------------------------------------------
