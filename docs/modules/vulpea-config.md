@@ -801,6 +801,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
 | `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
 | `bibdesk.el`          | the `x-bdsk:` link type                                         |
+| `zotero.el`           | the `zotero:` link type                                         |
 | `pdffile.el`          | the `pdffile:` link type                                        |
 | `message.el`          | the `message:` link type                                        |
 | `switch.el`           | live vault switching, the history, the wrong-vault guard        |

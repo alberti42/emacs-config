@@ -30,7 +30,7 @@
 ;;   modified-stamp, select, directories, tags, create   note-level behaviour
 ;;   attachments   the ID-keyed store, and cross-note `attachment:' links
 ;;   orphans       the dangling-link / unreferenced-file report
-;;   bibdesk, pdffile, message                the vault's own link types
+;;   bibdesk, zotero, pdffile, message        the vault's own link types
 ;;   switch, semantic, git    changing vaults, searching them, backing up
 ;;
 ;; `scheme' and `core' are loaded before the `use-package' forms rather than
@@ -176,6 +176,10 @@ visits each of those files to read its headings."
 (emacs-config-load-module
  "vulpea-vault/bibdesk"
  "Could not load vulpea-vault/bibdesk.el; x-bdsk: links will not open.")
+
+(emacs-config-load-module
+ "vulpea-vault/zotero"
+ "Could not load vulpea-vault/zotero.el; zotero: links will not open.")
 
 (emacs-config-load-module
  "vulpea-vault/pdffile"
