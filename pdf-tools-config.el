@@ -31,9 +31,9 @@
   :straight (pdf-tools
              :type git
              :host github
-             :repo "alberti42/fork-pdf-tools"
+             :repo "alberti42/pdf-tools"
              :branch "merged"
-             :local-repo "~/Programming/Others/fork-pdf-tools"
+             :local-repo "~/Programming/Others/pdf-tools"
              :files (:defaults "README" ("build" "Makefile") ("build" "server")))
   :init
   ;; The default location of `epdfinfo' is the build directory, which a
