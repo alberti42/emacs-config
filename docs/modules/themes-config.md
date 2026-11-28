@@ -57,7 +57,7 @@ If you change this order, things break silently:
 
 ## Face fixes on top of the theme
 
-`themes-config.el` adjusts four faces. Each fix is a function on
+`themes-config.el` has five face fixes. Each fix is a function on
 `enable-theme-functions`, because the callback disables every other theme
 (including `user`) on each switch and so wipes any earlier
 `set-face-attribute`; a `with-eval-after-load` covers the package loading
@@ -69,6 +69,7 @@ after the theme.
 | `themes-config--harmonize-markdown-headings` | makes `markdown-ts-heading-1`…`-6` inherit `org-level-1`…`-6`, since the bundled faces all inherit one face and every level renders alike |
 | `themes-config--fix-annotation-contrast` | in `doom-opera-light` only, `completions-annotations` and `marginalia-documentation` get `#8e8e8e`, readable on the `#bdbdbd` of `vertico-current` |
 | `themes-config--fix-magit-header-line-contrast` | in `doom-opera-light` only, `magit-header-line` gets a `#fafafa` foreground; the theme's `#424242` on `#5272AF` is about 2.2:1 |
+| `themes-config--fix-org-block-contrast` | in `doom-challenger-deep` only, `org-block`, `org-block-begin-line` and `org-block-end-line` get the `#12111E` background, and `font-lock-comment-face` and the two delimiter lines the `#858FA5` foreground; the theme's `#565575` comments on the `#292F37` block are 1.9:1, the new pair 5.75:1 |
 
 Adding a new package that needs harmonizing → edit
 `theme-harmonize-theme` in `theme-harmonize.el`. The existing structure is

@@ -82,6 +82,25 @@
 (with-eval-after-load 'marginalia
   (themes-config--fix-annotation-contrast))
 
+;; `doom-challenger-deep' gives Org source blocks the background `base1'
+;; (#292F37) and comments the foreground `base4' (#565575): 1.9:1 contrast, so
+;; comments and the #+begin_src/#+end_src lines are hard to read inside a
+;; block. Blocks get `bg-alt' (#12111E), darker than the default background,
+;; and comments get `base5' (#858FA5): 5.75:1 in a block, 5.11:1 outside.
+;; Same re-apply story as the fixes above.
+(defun themes-config--fix-org-block-contrast (&rest _)
+  (when (custom-theme-enabled-p 'doom-challenger-deep)
+    (set-face-attribute 'font-lock-comment-face nil :foreground "#858FA5")
+    (dolist (face '(org-block org-block-begin-line org-block-end-line))
+      (when (facep face)
+        (set-face-attribute face nil :background "#12111E")))
+    (dolist (face '(org-block-begin-line org-block-end-line))
+      (when (facep face)
+        (set-face-attribute face nil :foreground "#858FA5")))))
+(add-hook 'enable-theme-functions #'themes-config--fix-org-block-contrast)
+(with-eval-after-load 'org
+  (themes-config--fix-org-block-contrast))
+
 ;; `magit-header-line' (the "commit HASH" bar in e.g. `magit-revision-mode',
 ;; remapped in via that buffer's `face-remapping-alist') is
 ;; `:background dark-blue :foreground base8' in `doom-opera-light'. `base8' =
