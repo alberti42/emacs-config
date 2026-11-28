@@ -29,6 +29,10 @@
 ;; nowhere.  They belong in the report: org renders them as links, and the fix
 ;; is to make them verbatim.
 ;;
+;; A file a note tangles to (`C-c C-v t') is referenced by that note, though
+;; no link names it.  The report rebuilds the text each such note would
+;; tangle and lists the files on disk that differ from it.
+;;
 ;; The report closes with the same question asked of tags: which of the tags
 ;; the notes actually carry are missing from the vault's declared vocabulary.
 ;; Only that direction is drift — a declared tag with no notes yet is someone
@@ -37,6 +41,7 @@
 ;;; Code:
 
 (require 'org)
+(require 'ob-tangle)
 (require 'seq)
 (require 'vulpea-vault-core)
 (require 'vulpea-vault-attachments)
@@ -199,6 +204,82 @@ whether it lives under `vulpea-vault-directory'."
                         (vulpea-vault--org-link path line (vulpea-note-title note))
                         (plist-get link :type) target))))))
 
+(defun vulpea-vault--tangled-text (lspecs)
+  "Return the text `org-babel-tangle' writes for the blocks LSPECS.
+
+LSPECS is one file's entry of `org-babel-tangle-collect-blocks'.  The
+loop copies the one in `org-babel-tangle', which builds the text and
+writes it in the same function, so no part of it can be called alone:
+padlines, the first shebang, and `org-babel-spec-to-string', with the
+block language's major mode on for the `comment-region' it calls."
+  (with-temp-buffer
+    (let (lang she-banged)
+      (pcase-dolist (`(,block-lang . ,spec) lspecs)
+        (let* ((params (nth 4 spec))
+               (she-bang (org-string-nw-p (cdr (assq :shebang params)))))
+          (unless (equal block-lang lang)
+            (setq lang block-lang)
+            (when-let* ((mode (org-src-get-lang-mode-if-bound lang)))
+              (delay-mode-hooks (ignore-errors (funcall mode)))))
+          (unless (or (equal "no" (cdr (assq :padline params)))
+                      (= (point) (point-min)))
+            (insert "\n"))
+          (when (and she-bang (not she-banged))
+            (insert she-bang "\n")
+            (setq she-banged t))
+          (org-babel-spec-to-string spec))))
+    (buffer-string)))
+
+(defun vulpea-vault--tangle-targets (note)
+  "Return ((FILE . TEXT) ...): the files NOTE tangles to, and their text.
+
+Nil, without starting `org-mode', when the file does not contain
+\":tangle\".  Header arguments are evaluated as `C-c C-v t' evaluates
+them, so a `:tangle (expand-file-name \"x\" (org-attach-dir t))' names the
+note's store — and creates it if it does not exist yet.
+
+`buffer-file-name' is set because tangling resolves relative targets and
+`:tangle yes' against it; `create-lockfiles' is nil and the buffer
+unmodified so that setting it neither locks nor guards the real file."
+  (let ((path (vulpea-note-path note))
+        (create-lockfiles nil))
+    (with-temp-buffer
+      (insert-file-contents path)
+      (when (search-forward ":tangle" nil t)
+        (delay-mode-hooks (org-mode))
+        (set-buffer-modified-p nil)
+        (setq buffer-file-name path)
+        (unwind-protect
+            (mapcar (lambda (by-file)
+                      (cons (expand-file-name (car by-file))
+                            (vulpea-vault--tangled-text (cdr by-file))))
+                    (org-babel-tangle-collect-blocks))
+          (set-buffer-modified-p nil)
+          (setq buffer-file-name nil))))))
+
+(defun vulpea-vault--tangle-audit (notes)
+  "Return (TANGLED . STALE) for NOTES.
+TANGLED is a hash table of every file the notes tangle to.  STALE lists
+\(NOTE FILE) for each such file that exists and differs from what
+`C-c C-v t' would write; a file not written yet is not listed."
+  (let ((tangled (make-hash-table :test 'equal))
+        stale)
+    (dolist (note notes)
+      (pcase-dolist (`(,file . ,text)
+                     (condition-case err
+                         (vulpea-vault--tangle-targets note)
+                       (error (message "vulpea-vault-orphans: %s: %s"
+                                       (vulpea-note-path note)
+                                       (error-message-string err))
+                              nil)))
+        (puthash file t tangled)
+        (when (and (file-readable-p file)
+                   (not (equal text (with-temp-buffer
+                                      (insert-file-contents file)
+                                      (buffer-string)))))
+          (push (list note file) stale))))
+    (cons tangled (nreverse stale))))
+
 (defun vulpea-vault--declared-tags ()
   "Return the tag names the vault declares in its `.dir-locals.el'.
 
@@ -310,8 +391,11 @@ in a second pass."
          (pcase-dolist (`(,scheme . ,count) (cdr audit))
            (cl-incf (gethash scheme skipped 0) count))))
      fuzzy)
-    (let ((orphans (seq-remove (lambda (f) (gethash f referenced))
-                               (vulpea-vault--store-files)))
+    (let* ((tangle (vulpea-vault--tangle-audit notes))
+           (stale (cdr tangle))
+           (orphans (seq-remove (lambda (f) (or (gethash f referenced)
+                                                (gethash f (car tangle))))
+                                (vulpea-vault--store-files)))
           (undeclared (seq-difference (vulpea-db-query-tags)
                                       (vulpea-vault--declared-tags)))
           (buffer (get-buffer-create "*vulpea orphans*")))
@@ -322,9 +406,10 @@ in a second pass."
           ;; Timed here rather than around the whole command: everything that
           ;; scans has run by now, and what follows is only rendering.
           (insert "#+title: Vault orphans\n\n"
-                  (format "%d notes scanned in %.2f s: %d dangling links, %d unreferenced files, %d undeclared tags\n"
+                  (format "%d notes scanned in %.2f s: %d dangling links, %d unreferenced files, %d tangled files out of date, %d undeclared tags\n"
                           (length notes) (float-time (time-since start))
-                          (length dangling) (length orphans) (length undeclared)))
+                          (length dangling) (length orphans) (length stale)
+                          (length undeclared)))
           ;; Split by where the target lives: inside the vault it is the vault's
           ;; own problem to repair, outside it is a file that moved or a volume
           ;; that is not mounted — a different kind of follow-up.
@@ -338,6 +423,19 @@ in a second pass."
             (dolist (f (sort orphans #'string<))
               (insert (format "- %s\n"
                               (vulpea-vault--org-link f nil (file-name-nondirectory f))))))
+          (insert (format "\n* Tangled files that differ from their note (%d)\n"
+                          (length stale)))
+          (if (null stale)
+              (insert "  none\n")
+            (pcase-dolist (`(,note ,file) stale)
+              (insert (format "- %s\n  tangled to %s\n"
+                              (vulpea-vault--org-link (vulpea-note-path note) nil
+                                                      (vulpea-note-title note))
+                              (vulpea-vault--org-link file nil
+                                                      (file-name-nondirectory file)))))
+            (insert "\n  `C-c C-v t' in the note overwrites the file with the blocks.\n"
+                    "  `org-babel-detangle' copies the file back into the blocks, but\n"
+                    "  only when the block was tangled with `:comments link'.\n"))
           (vulpea-vault--insert-undeclared-tags undeclared)
           (insert "\n* Not checked\n")
           (if (zerop (hash-table-count skipped))

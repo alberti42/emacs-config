@@ -799,7 +799,7 @@ One concern per file, loaded from `vulpea-config.el` the way
 | `tags.el`             | the vault's tag vocabulary as safe file-locals, plus the recompute; `C-c n t` finds notes by tag, groups expanded |
 | `create.el`           | where a new note lands and what it starts as                    |
 | `attachments.el`      | the ID-keyed store: `org-attach-preferred-new-method` / `-use-inheritance`, and the cross-note `attachment:<uuid>/file` syntax |
-| `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, undeclared tags |
+| `orphans.el`          | `M-x vulpea-vault-orphans` — dangling links, unreferenced attachments, tangled files that differ from their note, undeclared tags |
 | `bibdesk.el`          | the `x-bdsk:` link type                                         |
 | `zotero.el`           | the `zotero:` link type                                         |
 | `pdffile.el`          | the `pdffile:` link type                                        |
