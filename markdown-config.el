@@ -186,6 +186,46 @@ type-aware policy as `markdown-config-follow-link-at-point'.  Fragments,
   (advice-add 'markdown-ts--make-link-button :around
               #'markdown-config--reroute-link-button))
 
+;;; -- Org code blocks fontified in a temp buffer ------------------------------
+;;
+;; To fontify a fenced code block, `markdown-ts--fontify-non-ts-collect-faces'
+;; runs the block's major mode in an indirect buffer of the whole document
+;; and narrows to the block afterwards.  `org-mode' parses the buffer while
+;; it sets up, and Org keeps its element cache in the base buffer, so for an
+;; `org' block Org parses the entire Markdown document as Org, with the
+;; Markdown buffer current.  There `tab-width' is the global default, so
+;; `org-current-text-column' warns "Tab width in Org files must be 8" and
+;; sets `tab-width' to 8 in the Markdown buffer.  We fontify an `org' block
+;; in a temp buffer holding only the block's text.
+
+(defun markdown-config--collect-org-faces (orig mode beg end)
+  "Around advice on `markdown-ts--fontify-non-ts-collect-faces'.
+When MODE is `org-mode' or derived from it, copy the BEG..END text into a
+temp buffer, fontify it there in MODE, and return (BUF-BEG BUF-END FACE)
+triples in the coordinates of the current buffer.  Otherwise call ORIG
+with MODE, BEG and END."
+  (if (not (provided-mode-derived-p mode 'org-mode))
+      (funcall orig mode beg end)
+    (let ((content (buffer-substring-no-properties beg end))
+          res)
+      (with-temp-buffer
+        (insert content)
+        (delay-mode-hooks (funcall mode))
+        (font-lock-ensure)
+        (let ((pos (point-min)))
+          (while (< pos (point-max))
+            (let ((next (next-single-property-change
+                         pos 'face nil (point-max)))
+                  (face (get-text-property pos 'face)))
+              (when face
+                (push (list (+ beg (1- pos)) (+ beg (1- next)) face) res))
+              (setq pos next)))))
+      (nreverse res))))
+
+(with-eval-after-load 'markdown-ts-mode
+  (advice-add 'markdown-ts--fontify-non-ts-collect-faces :around
+              #'markdown-config--collect-org-faces))
+
 ;;; -- list item filling fixes -------------------------------------------------
 ;;
 ;; `markdown-ts--fill-list-item' narrows to the item's first paragraph, so
