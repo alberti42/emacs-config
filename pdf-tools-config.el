@@ -4,15 +4,17 @@
 ;;
 ;; pdf-tools renders PDFs as images via a C helper (`epdfinfo', built
 ;; against poppler) and replaces DocView for `.pdf' files.  This module
-;; uses `pdf-loader-install' so the C helper is built on first PDF open
-;; rather than at startup.
+;; uses `pdf-loader-install', so pdf-tools loads on the first PDF open
+;; rather than at startup.  If `epdfinfo' is missing or older than the
+;; Lisp files expect, `pdf-tools-install' offers to download the program
+;; of the fork's release or to build it.
 ;;
 ;; On the fork's `merged' branch `pdf-view-mode' scrolls continuously
 ;; across pages; `M-x pdf-view-single-page-mode' shows one page at a time
 ;; instead.  `pdf-view-roll-minor-mode' is obsolete there and only warns.
 ;;
-;; External dependencies (built once, on first PDF open):
-;;   - poppler, automake, autoconf, pkg-config (for epdfinfo)
+;; External dependencies, only to build `epdfinfo' instead of downloading it:
+;;   - poppler, automake, autoconf, pkg-config
 ;;   - on macOS: `brew install poppler automake'
 
 ;;; Code:
@@ -24,30 +26,27 @@
   ;; builds whatever branch the `:local-repo' checkout is on, not
   ;; `:branch', so that checkout must stay on `merged'.
   ;; `:files' mirrors the MELPA recipe -- without it the `build/' tree that
-  ;; `pdf-tools-install' compiles `epdfinfo' from is missing.
+  ;; `pdf-tools-install' compiles `epdfinfo' from, when it builds rather
+  ;; than downloads, is missing.
   :straight (pdf-tools
              :type git
              :host github
              :repo "alberti42/fork-pdf-tools"
              :branch "merged"
              :local-repo "~/Programming/Others/fork-pdf-tools"
-             :files (:defaults "README" ("build" "Makefile") ("build" "server"))
-             ;; A rebuild reconstructs the build directory from `:files', which
-             ;; drops the `epdfinfo' binary `pdf-tools-install' compiled into
-             ;; it; `pdf-view-mode' then fails and PDFs open as raw bytes.
-             ;; Recompile it here.  `-D' leaves the Homebrew dependencies
-             ;; (poppler, automake) alone, and `autobuild' cds to its own
-             ;; directory, so the relative path works from the repo root.
-             ;; An elisp form rather than a string command, so the build
-             ;; directory is computed instead of naming one machine's home.
-             :post-build ((unless (straight--process-run-p
-                                   "./server/autobuild" "-D" "-i"
-                                   (straight--build-dir "pdf-tools"))
-                            (error "pdf-tools: epdfinfo build failed"))))
+             :files (:defaults "README" ("build" "Makefile") ("build" "server")))
+  :init
+  ;; The default location of `epdfinfo' is the build directory, which a
+  ;; rebuild reconstructs from `:files', deleting the program.  In the
+  ;; cache directory it survives rebuilds; `pdf-tools-install' downloads or
+  ;; builds it into the directory this names, which the build requires to
+  ;; exist.
+  (setq pdf-info-epdfinfo-program
+        (emacs-config-cache-file "pdf-tools/epdfinfo"))
+  (make-directory (file-name-directory pdf-info-epdfinfo-program) t)
   ;; `pdf-loader-install' is autoloaded: it runs at startup, before pdf-tools
   ;; is loaded, and puts entries in `auto-mode-alist' and `magic-mode-alist'
   ;; that load pdf-tools when the first PDF is visited.
-  :init
   (pdf-loader-install)
   ;; The horizontal wheel is bound here because the global binding
   ;; (`scroll-config-horizontal') scrolls by columns, which an image buffer has
