@@ -18,9 +18,6 @@
 ;;   `fill-region' merges a code block inside an item into the item's text,
 ;;   or skips an item that ends with a code block; it now fills each
 ;;   paragraph of the region separately.
-;; - Whole jit-lock chunks.  `jit-lock-function' ends a chunk at every
-;;   change of `invisible', so with markup hidden it fontifies a line once
-;;   per hidden backtick.  It now fontifies whole chunks in Markdown.
 ;; - SVG math preview, via the shared `latex-to-svg' front-end.
 ;;
 ;; Everything here is CommonMark.  Obsidian's `[[wiki links]]' and
@@ -293,35 +290,6 @@ TO, JUSTIFY, NOSQUEEZE and TO-EOP."
     nil))
 
 (advice-add 'fill-region :around #'markdown-config--fill-region-by-paragraph)
-
-;;; -- jit-lock chunks over hidden markup --------------------------------------
-;;
-;; Since Emacs 29, `jit-lock-function' ends each chunk at the next change of
-;; the `invisible' property (commit 91a79eedf6c, bug#57447), so that the text
-;; in an outline fold is not fontified.  With markup hidden, every backtick
-;; of an inline code span is `invisible': a chunk ends at the next backtick,
-;; the backtick is a chunk of its own, and font-lock widens each of these
-;; pieces to whole lines.  A line with ten code spans is fontified about
-;; twenty times.  Moving across 300 lines of a list of such lines took
-;; 5.55 s and 1931 calls of `font-lock-fontify-region'; with whole chunks,
-;; 0.11 s and 21 calls.  We fontify whole chunks in `markdown-ts-mode'.
-
-(defun markdown-config--jit-lock-whole-chunk (orig start)
-  "Around advice on `jit-lock-function': fontify a whole chunk from START.
-In `markdown-ts-mode', when jit-lock does not defer, fontify from START
-to `jit-lock-chunk-size' characters after it, invisible text included.
-Otherwise call ORIG with START."
-  (if (and (derived-mode-p 'markdown-ts-mode)
-           jit-lock-mode (not memory-full)
-           ;; The condition under which `jit-lock-function' does not defer.
-           (not (and jit-lock-defer-timer
-                     (or (not (eq jit-lock-defer-time 0))
-                         (input-pending-p)))))
-      (jit-lock-fontify-now
-       start (min (point-max) (+ start jit-lock-chunk-size)))
-    (funcall orig start)))
-
-(advice-add 'jit-lock-function :around #'markdown-config--jit-lock-whole-chunk)
 
 ;;; -- click-to-follow keymap --------------------------------------------------
 

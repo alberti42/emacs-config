@@ -173,19 +173,9 @@ dependencies from the local `latex-to-svg` checkout.
 - Inline links (tables): the same bundled rules, on the local parsers
   `pretty-tables-for-markdown-mode` runs on each cell.
 
-- jit-lock chunks: since Emacs 29, `jit-lock-function` ends each chunk
-  at the next change of the `invisible` property (commit `91a79eedf6c`,
-  bug#57447), so that the text in an outline fold is not fontified.
-  With markup hidden, every backtick of an inline code span is
-  `invisible`: a chunk ends at the next backtick, the backtick is a
-  chunk of its own, and font-lock widens each piece to whole lines. In a
-  list whose lines hold many code spans, moving across 300 lines took
-  5.55 s and 1931 calls of `font-lock-fontify-region`, and scrolling
-  hung for seconds. `markdown-config--jit-lock-whole-chunk`, an
-  `:around` advice on `jit-lock-function`, fontifies whole chunks of
-  `jit-lock-chunk-size` in `markdown-ts-mode`: 0.11 s and 21 calls.
-  Other buffers, and a jit-lock that defers, get the original function.
-  A folded Markdown heading is fontified when jit-lock reaches it.
+- Hidden markup: since Emacs 29, jit-lock fontified a line once per
+  hidden backtick, and scrolling a list of lines with many code spans
+  hung for seconds. `jit-lock-config.el` fixes it for every mode.
 
 The reasons `markdown-mode` is slow on large files do not apply here:
 
@@ -215,13 +205,6 @@ is deliberate — the alternative is inlining a copy that drifts from
 upstream — but it means a rename upstream breaks this file loudly rather
 than silently. The advice is the first thing to check after an Emacs
 upgrade.
-
-### The jit-lock advice copies the deferral condition
-
-`markdown-config--jit-lock-whole-chunk` repeats the condition under
-which `jit-lock-function` does not defer, and calls the original
-otherwise. After an Emacs upgrade, compare it with `jit-lock-function`.
-Remove the advice if Emacs stops ending chunks at short invisible runs.
 
 ### Inline-link handling relies on the `markdown-inline` grammar
 

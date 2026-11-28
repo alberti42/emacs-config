@@ -287,6 +287,12 @@ monitor."
  'welcome-config
  "Could not load welcome-config.el; startup splash is disabled.")
 
+;; jit-lock fontifies whole chunks over short invisible runs, such as hidden
+;; Markdown markup (Emacs 29+ fontified a line once per hidden backtick).
+(emacs-config-load-module
+ 'jit-lock-config
+ "Could not load jit-lock-config.el; hidden markup slows down scrolling.")
+
 ;; Transient corner toast (popon, TTY+GUI) for `display-warning' messages,
 ;; so warnings don't hide silently in the `*Warnings*' buffer.
 (emacs-config-load-module
